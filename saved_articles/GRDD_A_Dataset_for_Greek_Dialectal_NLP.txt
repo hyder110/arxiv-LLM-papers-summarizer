@@ -1,0 +1,404 @@
+GRDD: A Dataset for Greek Dialectal NLP
+Stergios Chatzikyriakidis
+University of Crete
+name.surname@uoc.grChatrine Qwaider
+Chalmers Institute of Technology
+name.surname@chalmers.seIlias Koloukousis
+University of Leipzig
+surname@studserv.uni-leipzig.de
+Christina Koula
+University of Crete
+philp0960@philology.uoc.grDimitris Papadakis
+University of Crete
+philp0961@philology.uoc.grEfthymia Sakellariou
+University of Crete
+philp0962@philology.uoc.gr
+Abstract
+In this paper, we present a dataset for the com-
+putational study of a number of Modern Greek
+dialects. It consists of raw text data from
+four dialects of Modern Greek, Cretan, Pontic,
+Northern Greek and Cypriot Greek. The dataset
+is of considerable size, albeit imbalanced, and
+presents the first attempt to create large scale di-
+alectal resources of this type for Modern Greek
+dialects.1We then use the dataset to perform
+dialect idefntification. We experiment with tra-
+ditional ML algorithms, as well as simple DL
+architectures. The results show very good per-
+formance on the task, potentially revealing that
+the dialects in question have distinct enough
+characteristics allowing even simple ML mod-
+els to perform well on the task. Error analysis
+is performed for the top performing algorithms
+showing that in a number of cases the errors
+are due to insufficient dataset cleaning.
+1 Introduction
+Standard Modern Greek (SMG) has seen a number
+of computational resources being developed in the
+last years (see (Papantoniou and Tzitzikas, 2020)
+for an overview). However, dialects of Modern
+Greek have not received much attention from the
+perspective of NLP. One of the reasons for this sit-
+uation is the scarcity of dialectal resources that can
+be exploited computationally to train Greek dialec-
+tal models on NLP tasks. Getting hold of dialectal
+data is a costly procedure. However, a number of
+Modern Greek dialects have an online presence,
+and various sources of this kind of data can be iden-
+tified and extracted. For example, Cypriot Greek
+(CG) data can be traced in a number of online fo-
+rums, social media platforms and blogspot type
+posts. For Pontic and Cretan Greek, data are more
+difficult to be found online, but a number of sources
+1The dataset can be found here:
+https://github.com/StergiosCha/Greek_dialect_corpus.can be still identified, mainly pertaining to tradi-
+tional story narrations, song lyrics, older literary
+texts in the dialect, as well as attempts to translate
+classical texts into the dialect. Similar considera-
+tions apply for the Northern varieties.
+In this paper, we try to identify the places where
+dialectal data can be found freely on the internet
+for four dialects of MG. When this is done, we
+extract the data, and lightly pre-process them. We
+end up with a quite substantial dataset, albeit an
+imbalanced one: 2.3m words from CG, 880k words
+for Cretan, 282k from Pontic, and 35k words from
+Northern Greek. Extra control of the data is done
+by extracting a random sample of 10k words per
+dialect and asking native speakers of the respective
+dialects to rate them w.r.t. validity. Lastly, we
+use the dataset for a dialect identification task and
+present the results.
+2 Related work
+Creating datasets for the computational study Mod-
+ern Greek dialects has not attracted a lot of atten-
+tion and as such, attempts of this sort are rather
+sparse. It goes without saying that the task of Di-
+alect Identification has not seen more work either,
+given this resource sparseness. There is a small
+dataset for the Griko (Anastasopoulos et al., 2018)
+dialect.2. It is parallel (Italian-Griko) and annotated
+with POS tags. Sababa and Stassopoulou (2018)
+design a simple Naive Bayes Algorithm to distin-
+guish between Standard Modern Greek (SMG) and
+Cypriot Greek (CG) data. As part of this project,
+they created a dataset of around 7k CG sentences.
+Themistocleous (2019) uses a simple DNN to dis-
+tinguish between SMG and CG based on acoustic
+properties only (in fact, via a single sonorant). The
+results present an improvement over classical ML
+algorithms. Hadjidas and V ollmer (2015) present
+2Griko is a Modern Greek dialect spoken in Southern Italy
+(Rohlfs and Sicuro, 1977; Katsoyannou, 1995; Chatzikyri-
+akidis, 2010))arXiv:2308.00802v1  [cs.CL]  1 Aug 2023the Cypriot version of the Multi-CAST corpus, a
+dataset of annotated spoken texts. Lastly, (Karasi-
+mos et al., 2008) present an attempt to provide a
+database with linguistic and meta-linguistic corpora
+based on recorded dialectal material (505 hours of
+recordings).
+3 The varieties
+We collected data from 4 dialects of Modern Greek:
+Cypriot Greek, Pontic Greek, Cretan and Northern
+Greek, plus some data from the official Standard
+Modern Greek (SMG) variety. A few words about
+these varieties are in order.
+3.1 Standard Modern Greek
+Standard Modern Greek (SMG) is the official lan-
+guage of the Greek and Cypriot state. According to
+(Mackridge, 1985) (1985) has its basis in the Pelo-
+ponnese Greek dialects. This can be traced back
+to the Greek war of Independence (1821-9) where
+one of the first areas to be liberated was the Pelo-
+ponnese, as well as the fact that the Peloponnese
+dialects (with the exception of Tsakonian) were the
+dialects closer to the written language. This newly
+formed variety was further enriched by elements of
+the dialects of dominant Greek communities of the
+time, notably Greeks from Istanbul and the Ionian
+islands. Other factors like compulsory education,
+military service, and the the advent of radio and
+television “have made Greece into a melting-pot
+in which speakers of various kinds of Greek have
+gradually sunk their linguistic differenences” as
+Mackridge (1985) notes.
+3.2 Cypriot Greek
+Cypriot Greek is the Greek dialect spoken by Greek
+Cypriots, as well as some Turkish Cypriots. The
+first evidence of Cypriot Greek comes from a le-
+gal text dated in the 14th century (The Assizes).3
+Despite being the native language of most (if not
+all) Cypriot Greeks in both Cyprus and the dias-
+pora, the official language of the Cypriot Greek
+state is SMG (Newton, 1972; Tsiplakou, 2009,
+2014). This means that modern day CG stands in
+a diglossic relationship to SMG (Tsiplakou, 2009,
+2014). Tsiplakou (2009) further shows that this
+diglossic relationship in modern day Cyprus is be-
+tween SMG and an emergent pancypriot Koiné.
+3Note that the presence of Greek in Cyprus dates back to
+the 11-10th century BC (Arcadocypriot). However, Cypriot
+Greek is not an evolution of the Arcadocypriot dialect of
+Ancient Greek but rather evolved from Koiné Greek.Cypriot Greek has a number of distinct features
+compared to SMG. We indicatively mention the
+distinct weak object pronoun positioning system
+(Agouraki, 2001; Chatzikyriakidis, 2012), as well
+as the use of clefts to express wide focus construc-
+tions (Grohmann et al., 2006; Grohmann, 2009).
+3.3 Pontic Greek
+We use the term Pontic Greek (PG from now on)
+to refer to the dialect as it is spoken today in Mod-
+ern day Greece, since a form of Pontic, Romeyka
+Pontic is still spoken today in some villages of Tra-
+bzon and the of area in modern day Turkey (Sitari-
+dou and Chatzikyriakidis, 2012; Sitaridou, 2013;
+Schreiber, 2018). The roots of PG, similarly all
+other Modern Greek dialects (with the exception
+of Tsakonika), can be traced back to Koine Greek,
+i.e. the form of Greek used during the Hellenistic
+years. However, as Mackridge (1987) notes, PG
+came to be markedly distinct to the other Greek
+dialects probably due to the Seljuk invasion of the
+11th century that basically split the Pontus area
+from the other areas of the Byzantine empire.4PG
+spoken in the Pontus region was not a uniform
+dialect but included several sub-dialects. A num-
+ber of classifications have been proposed by the
+years (Papadopoulos, 1955; Triandafyllidis, 1981).
+PG has some interesting divergences from the lin-
+guistic structure as found in SMG. Some of them
+include the topicalization particle pa(Sitaridou and
+Kaltsa, 2014), an across the board enclitic system
+for weak object pronouns (Chatzikyriakidis, 2010),
+and the allowance of multiple wh-fronting among
+other characteristics (Michelioudakis and Sitaridou,
+2016).
+3.4 Cretan Greek
+Cretan Greek is a Greek dialect spoken in the island
+of Crete, also derived from Koine Greek (Mack-
+ridge, 1985). According to traditional classifica-
+tion, the dialect belongs to the south-western di-
+alectal group of Greek dialects (Hatzidakis, 1905).
+Cretan Greek has some compelling features that
+differentiate it among the other Greek dialects. The
+most characteristic one is the substitution of palato-
+alveolars for palatalized velars (Mackridge, 1985).
+The so-called ’Cretan-type’ fronting is a process
+in which the articulation is characterized as ’pre-
+palatal’, i.e. mid-way between a palatal and an
+4PG along with Cappadocian Greek comprise the Asia
+Minor Greek dialectal group.alveolar realization (Manolessou and Pantelidis,
+2012).
+3.5 Kozani/Grevena Greek
+This is the form of Greek as it is spoken in the ar-
+eas of Kozani, Grevena in the northwestern Greece.
+These dialects belong to a bigger group, i.e. that
+of the Northern dialects. These also include the
+dialects spoken in Thessaly and the Northeast
+Aegean, among other places. Some of the character-
+istics of the dialects include the use of prepositional
+genitives to denote possession (Chatzikyriakidis
+et al., 2023) and unstressed mid-vowel raising and
+unstressed high-vowel deletion, among other char-
+acteristics (Ntinas, 2005; Θαβ´ωρης , 1994).
+4 The dataset
+We focused on data that are freely available on
+the web. These include dialectal data from blogs,
+websites, as well as freely available literary texts.
+The first step in the collection process involved
+the identification and collection of urls by native
+speakers of the dialects or people with theoretical
+knowledge of the dialects, where such data can be
+found. We created four working groups, each fo-
+cusing on finding data from the respective dialect
+the group was responsible for. We then developed a
+number of Python scripts that allowed us to extract
+the dialectal text in raw format. We then applied a
+number of basic pre-processing steps, in order to
+clean the data: firstly, we removed empty lines and
+applied a character uniformity command in order
+for each row to have approximately the same num-
+ber of characters (56,73). Moreover, we removed
+special characters, duplicate lines, punctuation, and
+extra white spaces. The final form of the dataset
+is in csv format lined up two columns, one contai.
+Each column ends up with the label of the respec-
+tive dialect. The number of words for each dialect
+category, after the cleaning process, is shown in
+table 1.
+Dialect Number of words
+Standard Modern Greek 6,5m
+Cretan 880k
+Pontic 282k
+Northern 35k
+Cypriot 2,3m
+Table 1: The table shows the number of words for each
+dialect in the dataset.In order to check the validity of collected data,
+we extracted a random sample of 10000 lines for
+each dialect and sent it to native speakers of that
+respective dialect. These were not participants of
+the project. We asked them to evaluate the data
+quality of the sample using a scale from 1 through
+10 (Table 2) using their dialectal intuitions.
+Dialect Avg Score
+Cretan 8
+Pontic 7.5
+Northern 9.5
+Cypriot 7
+Table 2: The table shows the average score of data
+evaluation by native speakers of the respective dialects.
+5 Dialect Identification
+We used the dataset on a Dialect Identification task.
+We tried: a) classic ML algorithms, and b) a neural
+network vanilla model, i.e. a BiLSTM. We used
+both a) and b) on the full imbalanced dataset, but
+also on three balanced datasets, subsets of the orig-
+inal that contain 5k, 20k, and 80k lines for each
+dialect respectively.
+5.1 Classical ML algorithms
+We ran a number of ML algorithms using a simple
+word-gram language model (both 1-gram and 3-
+gram). We see that accuracy for the full dataset
+is quite high, which seems to that the models are
+able to correctly identify distinctive features for the
+dialects and learn to classify them correctly. The
+results are reported below:
+ML Algorithm Score
+Ridge classifier 0.91
+Naive Bayes 0.92
+SVM 0.91
+Table 3: Top-three performing algorithms on the DI task
+In order to investigate the effect of data imbal-
+ance in the classification we created three versions
+of the original dataset with 5k, 20k and 80k lines
+respectively. We present the results of the top three
+performing algorithms for each dataset below:
+We see a steady increase in accuracy for all al-
+gorithms as we add more data. With 80k lines per
+each dialect we get an accuracy of 0.90 for the NB
+model. This is getting close to the performance onDataset/Model Ridge NB SVC
+5k 0.76 0.76 0.75
+20k 0.82 0.81 0.82
+80k 0.89 0.90 0.88
+Table 4: Top three performing algorithms on three bal-
+anced datasets
+the original imbalanced dataset (NB performs 0.94
+accuracy on the full dataset).
+5.2 BiLSTM
+Following the relative success of simple ML algo-
+rithms in the task, we experimented with a more
+elaborate DL model, in particular a vanilla BiL-
+STM model, with an 128 embedding layer, two
+BiLSTM layers (64 and 32 layers respectively), a
+densely connected network with 64 units, relu as
+the activation function and, lastly, a final layer with
+softmax activation. We run the model using only
+two epochs. The results present a very high accu-
+racy of 97% and low loss (approximately 10%). In
+order to check for model overfitting, we performed
+k-fold validation using the same number of epochs.
+The results show a decrease in average accuracy as
+well as an increase in average loss. However, the re-
+sults seem to indicate that the model is generalizing
+well to the training data, even though some over-
+fitting seems to be at play. The results are shown
+in:
+Accuracy Loss
+BiLSTM 0.97 0.1
+k-fold validation 0.935 0.17
+Table 5: Comparison of BiLSTM and k-fold
+We ran the same model on the smaller balanced
+datasets and performed k-fold validation on those
+too:
+Accuracy Loss
+BiLSTM_5000 0.89 0.5
+k-fold_5000 0.9 0.32
+BiLSTM_20k 0.928 0.21
+k-fold_20k 0.922 0.2
+BiLSTM_80k 0.94 0.15
+k-fold_80k 0.936 0.18
+Table 6: Top three performing algorithms for each bal-
+anced dataset6 Error analysis and limitations
+We took a random sample of 20 miss-classified ex-
+amples for each dialect and for each ML model.
+The results are quite interesting. In algorithms
+where performance is quite low, most of the miss-
+classified examples are genuine cases of miss-
+classification, where the algorithm has not man-
+aged to find enough distinctive features to distin-
+guish the dialects. Consider the following example,
+a missclassified example from the SGD algorithm:
+Text: Αυτοί πόρχουν dαν για καμνιά κούπα πιρ-
+νούσαν μ bρουστά τ τουν gαλημέρζαν
+Correct Dialect: northern
+Predicted Dialect: cypriot
+In the above, the classifier clearly cannot distin-
+guish between northern varieties and cypriot, even
+though the example contains typical features of
+northern varieties that do not appear in cypriot
+(front vowel raising and front vowel loss). On the
+other hand, consider the following:
+Text: ότι όλα έχουν τη θέση τους και την αξία
+Correct Dialect: Cypriot
+Predicted Dialect: Greek
+This example represents a miss-classification of
+a different kind. The mistake here is due to in-
+complete cleaning of the dataset. The example in
+question is clearly in Modern Greek that ended up
+in the Cypriot dataset. For example it could be part
+of a response to a blog post written in Cypriot (the
+post) in Standard Greek. In effect, the classifier is
+right here, pointing to incomplete cleaning in this
+case. In future work, we will use this type of error
+analysis based on the DI task to further clean the
+dataset and enhance its validity and reliability.
+A further limitation of our work concerns the
+nature and type of data found in the dataset, in ef-
+fect also connecting to the previous issue of data
+cleaning. We have created a dataset that is coarse-
+grained, in the sense that different varieties of the
+same dialect, different genres\registers\varieties
+in\of the dialect, have collapsed in one category.
+For example, in the case of Cypriot Greek, most
+of the data are collected from blog posts, which
+correspond to a specific text type, whereas in Cre-
+tan, a lot of the data come from translations of
+Ancient Greek tragedies and comedies into Cretan,
+and musical declamations (mantinades). However,
+despite this obvious limitation, we believe that the
+dataset can be used as a first basis to create morefine-grained datasets, where these considerations
+are taken into account. For the moment, what we
+want to offer to the community is a dialectal dataset
+that can be used/extended/modified to be used for
+dialectal NLP tasks.
+7 Conclusion
+We have presented a dataset of Greek dialectal
+data. In particular, we collected freely available
+data from Pontic, Cretan, Northern varieties and
+Cypriot, we performed some slight preprocessing
+and compiled the first dataset of this size that can be
+used for the computational study of Greek dialects.
+We performed a simple Dialect Identification task
+on the dataset. The results point out to the dialects
+having enough distinctive characteristics that can
+be traced even by very simple ML algorithms and
+eventually perform well on the task. A simple
+BiLSTM performs the best beating traditional ML
+agorithms even with small amounts of data. The
+error analysis suggests that a good portion of error
+lies in insufficient data cleaning. We will further
+work on the cleaning based on the error analysis
+results. We aspire this dataset to be the basis for
+further work and tasks on Greek dialectal NLP.
+Acknowledgements
+We want to thank the following people for their help
+with this project: a) Christodoulos Christodoulou
+for kindly giving us access to his corpus of Kozani
+Greek, b) Michalis Sfakianakis for kindly giving
+us access to his translations of numerous ancient
+Greek tragedies and comedies into Cretan Greek,
+and c) postgraduate students Irini Amaniki, Irini
+Giannikouri, Efrosini Skoulataki, Erofili Psaltaki,
+Valentini Mamatzaki, Vassiliki Katsouli and Hara
+Soupiona for their help in the initial stages of iden-
+tifying dialectal data on the net.

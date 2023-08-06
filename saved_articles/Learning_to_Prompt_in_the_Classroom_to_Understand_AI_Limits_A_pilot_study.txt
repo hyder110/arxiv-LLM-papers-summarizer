@@ -1,0 +1,508 @@
+ Submitted to AIXIA 2023 22nd International Conference of the Italian Association for Artificial 
+ Intelligence 6 - 9 Nov, 2023, Rome, Italy 
+ Learning to Prompt in the Classroom to 
+ Understand AI Limits: A pilot study 
+ Emily THEOPHILOU  b  , Cansu KOYUTURK  a  , Mona YAVARI  a  , Sathya BURSIC  a  , Gregor 
+ DONABAUER  a,c  , Alessia TELARI  a  , Alessia TESTA  a  , Raffaele BOIANO  d  , Davinia 
+ HERNANDEZ-LEO  b*  , Martin RUSKOV  e**  , Davide TAIBI  f***  , Alessandro GABBIADINI  a****  , & 
+ Dimitri OGNIBENE  ✝a,g 
+ a  Dept. Psychology, Università degli Studi di Milano Bicocca, Milan, Italy 
+ b  Universitat Pompeu Fabra, Barcelona, Spain 
+ c  University of Regensburg, Regensburg, Germany 
+ d  Politecnico di Milano, Milan, Italy 
+ e  Università degli Studi di Milano, Milan, Italy 
+ f  Istituto per le Tecnologie Didattiche (ITD-CNR), Palermo, Italy 
+ g  Università of Essex, Colchester, United Kingdom 
+ *  davinia.hernandez-leo@upf.edu  , **  martin.ruskov@unimi.it  , ***davide.taibi@itd.cnr.it, 
+ ****alessandro.gabbiadini@unimib.it 
+ ✝  Lead PI,  dimitri.ognibene@unimib.it 
+ Abstract:  Artificial  intelligence's  progress  holds  great  promise  in  assisting  society  in 
+ addressing  health,  climate,  and  other  pressing  societal  issues.  In  particular  Large  Language 
+ Models  (LLM)  and  the  derived  chatbots,  like  ChatGPT,  have  highly  improved  the  natural 
+ language  processing  capabilities  of  AI  systems  allowing  them  to  process  an  unprecedented 
+ amount  of  unstructured  data.  The  consequent  hype  has  also  backfired,  raising  negative 
+ sentiment  even  after  novel  AI  methods’  surprising  contributions  (e.g.  health  and  genetics). 
+ One  of  the  causes,  but  also  an  important  issue  per  se,  is  the  rising  and  misleading  feeling  of 
+ being  able  to  access  and  process  any  form  of  knowledge  to  solve  problems  in  any  domain 
+ with  no  effort  or  previous  expertise  in  AI  or  problem  domain,  disregarding  current  LLMs 
+ limits,  such  as  hallucinations,  limited  understanding,  and  reasoning  limits.  Acknowledging  AI 
+ fallibility  is  crucial  to  address  the  impact  of  dogmatic  overconfidence  in  possibly  erroneous 
+ suggestions  generated  by  LLMs.  At  the  same  time,  it  can  reduce  fear  and  other  negative 
+ attitudes  toward  AI.  This  can  be  achieved  by  performing  extended  AI  literacy  interventions 
+ that  allow  the  public  to  understand  such  LLM  limits  and  learn  how  to  use  them  in  a  more 
+ effective  manner,  i.e.  learning  to  “prompt”.  With  this  aim,  a  pilot  educational  intervention  was 
+ performed  in  a  high  school  with  30  students.  It  involved  (i)  presenting  high-level  concepts 
+ about  intelligence,  AI,  and  LLM,  (ii)  an  initial  naive  practice  with  ChatGPT  in  a  non-trivial 
+ task,  i.e.  creating  a  natural  educational  conversation,  and  finally  (iii)  applying 
+ currently-accepted  prompting  strategies.  Encouraging  preliminary  results  have  been 
+ collected  such  as  students  reporting  (a)  high  appreciation  of  the  activity,  (b)  improved  quality 
+ of  the  interaction  with  the  LLM  during  the  educational  activity,  (c)  decreased  negative 
+ sentiments  toward  AI,  (d)  increased  understanding  of  limitations  and  specifically  (d.i) 
+ unreliability,  (d.ii)  limited  understanding  of  commands  resulting  in  unsatisfying  or  repeating 
+ responses,  (d.iii)  limited  presentation  flexibility.  We  aim  to  study  factors  that  impact  AI 
+ acceptance and to refine and repeat this activity in more controlled settings.  Submitted to AIXIA 2023 22nd International Conference of the Italian Association for Artificial 
+ Intelligence 6 - 9 Nov, 2023, Rome, Italy 
+ 1.  Introduction 
+ Artificial  Intelligence  (AI)  technologies  have  gained  significant  prominence  in  contemporary 
+ society,  permeating  various  facets  of  everyday  life.  AI  is  increasingly  assuming  a  vital  role  in 
+ driving  progress  toward  sustainable  development  worldwide  in  fields  like  healthcare, 
+ education,  climate  action  (Stahl,  2019;  Sirmaçek  et  al.,  2023;  Ognibene  et  al.  2023; 
+ Wakunuma,  2020).  As  an  example,  AI  has  already  contributed  to  tackling  medicine  and 
+ health  issues  by  improving  diagnosis  (Esteva  et  al.,  2017),  developing  new  treatments 
+ (Gupta  et  al.,  2021;  Jumper  et  al.  2021;  Stokes  et  al.  2020),  and  supporting  the  overall  care 
+ process  at  multiple  scales.  It  also  promises  to  help  to  deal  with  the  chronic  lack  of  expert 
+ personnel  that  is  affecting  many  developing  countries  (Yan  et  al.,  2023)  both  through  training 
+ personnel  and  simplifying  the  medical  procedures  (Sirmaçek  et  al.,  2023).  However,  with  all 
+ this  potential  comes  big  responsibility.  While  in  the  medical  domain,  the  critical  lack  of 
+ personnel  reduces  the  importance  of  the  impact  of  the  issue  of  jobs  loss,  several  other 
+ problems  must  still  be  addressed.  First,  limited  AI  literacy  may  limit  the  gain  for  the  countries 
+ where  these  tools  would  be  more  useful.  A  second  issue  is  patient  privacy,  as  the  absence 
+ of  a  transparent  and  reliable  process  in  place  could  lead  health  data  being  used  for 
+ unrelated  applications  of  different  entities,  e.g.  impacting  patient  access  to  job,  insurance, 
+ and  financial  services  (Luxton,  2014).  Care  must  also  be  taken  when  applying  AI  decisions 
+ at  multiple  levels  of  the  healthcare  process  as  they  may  produce  biased  results  (Obermeyer 
+ et  al.,  2019)  resulting  from  biased  objectives  and  datasets.  Moreover,  determining  the 
+ responsibilities  in  case  of  bad  consequences  of  AI  decisions  is  a  complex  topic  that  has 
+ been discussed for decades (Dennet, 2014; Mittelstadt et al., 2016; Ziosi et al., 2023). 
+ With  the  magnitude  of  the  contrasting  positive  and  negative  potential  outcomes  combined  to 
+ the  astonishing  speed  and  complexity  of  the  AI  field,  it  was  to  be  expected  the  rise  of  highly 
+ contrasting  attitudes  toward  AI,  extending  from  enthusiasm  to  phobia.  Despite  positive 
+ outcomes  of  AI  systems,  the  recent  advancements  in  AI  have  also  sparked  fears,  anxiety, 
+ and  negative  attitudes  particularly  when  machines  begin  to  perform  mindful  tasks 
+ traditionally  associated  with  humans  (Gabbiadini  et  al.,  2023;  Dang  &  Liu  2021).  The 
+ introduction  of  Large  Language  Models  (LLM)  like  ChatGPT  to  the  public  may  have  been  the 
+ tipping  point  for  exasperating  AI  attitudes  (Harari,  2018;  Ipsos  MORI,  2017).  LLM  are 
+ machine  learning  models  with  a  high  number  of  parameters  (from  hundreds  of  millions  for 
+ early  models  like  BERT  to  hundreds  of  billions  for  GPT4)  which  are  pre-trained  to  create 
+ lossy  compression  of  large  datasets  through  simple  tasks,  e.g.  complete  a  statement  or 
+ predict  the  next  word,  and  can  perform  a  variety  of  domain-independent  tasks  with  little  or  no 
+ specific  training  and  data  (Zhou  et  al.  2023;  Wei  et  al.  2021;  Novelli  et  al.  2023).  LLM 
+ functioning  is  widely  different  from  cognitive  processes  in  biological  brains  and  several  LLM 
+ limits  and  vulnerabilities  keep  emerging  (Valmeekam  et  al.,  2023;  Zhang  et  al.,  2022; 
+ Mahowald  et  al.,  2023;  Borji,  2023;  Poli  et  al.,  2023;  Xu  et  al.,  2022;  Bishop  2021).  In 
+ particular,  the  tendency  to  make  up  responses  to  factual  questions  when  they  are  not  able  to 
+ respond (Floridi, 2023; Bang et al., 2023). 
+ Notwithstanding  these  limitations,  the  linguistic  capabilities  of  LLM  and  ChatGPT  have  led  to 
+ the  strongest  reactions  comprising  a  letter  signed  by  a  number  of  experts  calling  for  a  stop  of 
+ AI  research  on  large  models  (Bengio  et  al.,  2023).  However,  this  call  has  been  considered 
+ unpractical  or  even  counterproductive  for  democratic  governance  of  these  tools  (Ienca, 
+ 2023;  Novelli  et  al.,2023)  and  was  not  followed  even  by  some  of  its  main  authors  (Murgia  et 
+ al. 2023). However, it still added fuel to the fire of AI phobia and anxiety.  Submitted to AIXIA 2023 22nd International Conference of the Italian Association for Artificial 
+ Intelligence 6 - 9 Nov, 2023, Rome, Italy 
+ Media  representations  have  often  amplified  these  concerns  by  emphasizing  the  negative 
+ consequences  of  AI  and  frequently  depicting  scenarios  involving  killer  robots  (Lemay  et  al., 
+ 2020).  Such  portrayals  contribute  to  the  magnification  of  AI  anxiety.  The  impact  of  this 
+ negative  sentiment  toward  AI  can  be  dramatic,  hindering  trust  and  the  acceptance  and 
+ adoption  of  AI  technologies  and  blocking  the  contributions  they  can  provide.  For  instance, 
+ while  AI  diagnosis  performance  has  reached  or  surpassed  those  of  expert  physicians,  it  will 
+ provide  a  real  clinical  benefit  only  if  physicians  will  take  into  account  its  predictions  (Gaube 
+ et  al.,  2021).  Thus  enabling  healthcare  professionals  to  achieve  the  right  balance  between 
+ trust  and  suspicion  is  crucial  for  achieving  the  full  AI  potential  in  medicine  (Gaube  et  al., 
+ 2021;  Verghese  et  al.,  2018).  The  same  balance  is  crucial  to  not  miss  the  important 
+ opportunities  that  AI  can  provide  in  many  domains  and  that  anxiety-driven  rejection  or  bans 
+ would hinder (Marangunić & Granić, 2015; Ienca, 2023; Novelli et al.,2023). 
+ Understanding  the  causes  of  this  anxiety  is  crucial  for  addressing  these  concerns.  Johnson 
+ and  Verdicchio  (2017)  identified  three  primary  factors  contributing  to  AI  anxiety:  (i)  an 
+ overemphasis  on  AI  programs  without  considering  the  involvement  of  humans,  (ii)  confusion 
+ regarding  the  autonomy  of  computational  entities  and  humans,  and  (iii)  a  flawed 
+ understanding  of  technological  development.  Addressing  these  factors  through  targeted 
+ literacy  interventions  is  crucial  in  alleviating  public  concerns  regarding  AI  advancements. 
+ Positive  experiences  with  AI  (Oh  et  al.,  2018)  and  an  understanding  of  how  they  work  can 
+ shape  positive  attitudes  towards  AI  (Shin,  2021)  thereby  promoting  its  usage  and 
+ acceptance  among  the  public  (Marangunić  &  Granić,  2015;  Choung  et  al.,2022).  Moreover, 
+ by  delving  into  the  inner  workings  of  AI,  individuals  can  develop  critical  perceptions  toward 
+ these  technologies  (Theophilou  et  al.,  2023)  and  become  empowered  to  confidently 
+ embrace them. 
+ Despite  the  growing  familiarity  with  ChatGPT  and  its  capabilities,  there  remains  a  lingering 
+ apprehension  about  the  potential  dominance  of  AI  in  various  aspects  of  society.  Some  initial 
+ concerns  have  also  emerged  regarding  its  potential  impact  on  educational  aspects  (Haque 
+ et  al.,  2022).  Educators,  policymakers,  and  researchers  are  increasingly  voicing  concerns 
+ about  the  use  of  generative  AI  systems  like  ChatGPT  in  educational  settings.  One  major 
+ concern  revolves  around  the  ethical  considerations  related  to  the  use  of  generative  AI 
+ systems  by  students  (Qadir,  2023).  Unethical  practices,  like  using  AI-generated  content 
+ without  appropriate  attribution  or  engaging  in  plagiarism,  pose  challenges  to  academic 
+ integrity  and  raise  questions  about  the  responsibilities  of  both  students  and  educators  in  the 
+ AI  era.  However,  excluding  ChatGPT  from  the  classroom  is  not  a  viable  solution,  as  its 
+ inclusion  presents  a  valuable  opportunity  to  familiarise  students  with  the  capabilities  and 
+ limitations  of  generative  AI  tools.  By  explicitly  incorporating  ChatGPT  into  classroom 
+ activities,  educators  can  provide  students  with  insights  and  strategies  for  its  proper 
+ utilization,  enabling  them  to  effectively  utilize  this  technology  within  a  controlled  and 
+ educational environment. 
+ Students  have  a  positive  view  of  using  ChatGPT  as  an  educational  tool,  valuing  its 
+ capabilities  and  finding  it  helpful  for  study  and  work.  While  acknowledging  its  potential  for 
+ learning,  students  recognize  the  need  for  improvements  and  are  mindful  of  its  limitations 
+ (Shoufan,  2023).  The  utilisation  of  ChatGPT  in  the  classroom  opens  up  opportunities  for 
+ interactive  and  engaging  learning  experiences  and  prepares  students  for  an  increasingly 
+ AI-driven  world.  ChatGPT's  capabilities  in  the  classroom  extend  far  beyond  merely  Submitted to AIXIA 2023 22nd International Conference of the Italian Association for Artificial 
+ Intelligence 6 - 9 Nov, 2023, Rome, Italy 
+ familiarising  students  with  AI,  as  it  demonstrates  remarkable  proficiency  in  covering  diverse 
+ learning  materials,  spanning  from  coding  (Rahman  et  al.,  2023)  and  microbiology  (Das  et  al., 
+ 2023)  to  media-related  topics  (Pavlik,  2023).  However,  an  essential  aspect  of  utilizing  the  full 
+ potential  of  ChatGPT  lies  in  employing  effective  prompting  strategies  (Zamfirescu-Pereira  et 
+ al.,  2023).  Carefully  crafted  prompts  can  guide  ChatGPT's  responses,  leading  to  more 
+ accurate  and  informative  outputs.  This  approach  allows  educators  to  align  the  AI  system's 
+ responses  with  specific  learning  objectives,  resulting  in  more  targeted  and  meaningful 
+ interactions (Koyutürk et al., 2023). 
+ An  important  target  for  AI  literacy  involving  LLM  is  defusing  the  rising  and  misleading  feeling 
+ of  being  able  to  access  and  process  any  form  of  knowledge  to  solve  problems  in  any  domain 
+ with  no  effort  or  previous  expertise  in  AI  or  problem  domain.  This  widespread  phenomenon 
+ stems  from  the  lack  of  literacy  on  the  inherent  limitations  of  current  LLMs,  such  as 
+ hallucinations,  limited  understanding,  and  reasoning  constraints  (Floridi,  2023;  Bang  et  al., 
+ 2023).  By  disregarding  the  boundaries  of  LLMs,  individuals  may  fail  to  recognize  the 
+ potential  risks  and  inaccuracies  that  can  arise  from  relying  solely  on  their  outputs.  The  recent 
+ widespread  acceptance  of  generative  AI  LLM  tools  such  as  ChatGPT,  highlights  the 
+ necessity  for  informative  interventions  that  educate  users  about  realistic  and  comprehensive 
+ understandings  of  LLMs'  capabilities  and  limitations.  Such  interventions  can  encourage 
+ users  to  exercise  critical  thinking  when  interpreting  and  applying  knowledge  generated  by 
+ these models. 
+ Educators  and  researchers  have  been  actively  exploring  and  implementing  diverse 
+ approaches  to  raise  awareness  and  promote  AI  literacy  within  school  environments 
+ (Kandlhofer  et  al.,  2016,  Sánchez-Reina  et  al.,  2021).  Recognizing  the  importance  of  going 
+ beyond  theoretical  aspects,  these  efforts  aim  to  provide  students  with  opportunities  to 
+ expand  their  learning  through  hands-on  experiences  by  incorporating  practical  activities, 
+ projects, and real-world applications of AI (Kandlhofer et al., 2016, Lomonaco et al., 2023). 
+ As  we  embrace  the  new  era  of  accessible  AI  tools,  there  is  a  noticeable  lack  of  research  on 
+ AI  literacy  interventions  utilizing  ChatGPT.  To  address  this  gap  and  build  upon  existing 
+ concerns,  this  study  aims  to  develop  and  evaluate  an  intervention  focused  on  AI  literacy, 
+ providing  hands-on  experience  with  ChatGPT.  The  primary  goal  is  to  assess  the  impact  of 
+ this  intervention  on  adolescents,  exposing  them  to  non-trivial  tasks  with  ChatGPT  to 
+ demonstrate  its  limitations  while  mitigating  fears  and  negative  attitudes  towards  AI.  By 
+ engaging  participants  directly  with  the  ChatGPT  interface,  the  intervention  aims  to  foster  a 
+ deeper  and  more  critical  understanding  of  the  technology  and  its  potential  limitations.  This 
+ study  specifically  focuses  on  introducing  adolescents  to  the  strategy  of  prompting  and 
+ examines  their  perceptions,  emotions,  interaction  evaluations,  and  opinions  toward 
+ ChatGPT.  By  evaluating  the  effectiveness  of  this  educational  approach,  the  study  aims  to 
+ offer  valuable  insights  into  reducing  fear  and  promoting  positive  attitudes  towards  AI  as  well 
+ as  introducing  highly  needed  educational  activities  for  the  classroom  about  the  novel 
+ concepts of prompting and LLMs 
+ 2.  Methodology 
+ 2.1 Participants and study design 
+ A  pilot  study  was  conducted  at  a  high  school  in  Palermo,  Sicily  with  a  sample  size  of  21 
+ students (n = 21; 33.3% male, 66.7% female; Ages 16 to 18, mean age = 16.3, SD = 0.57).  Submitted to AIXIA 2023 22nd International Conference of the Italian Association for Artificial 
+ Intelligence 6 - 9 Nov, 2023, Rome, Italy 
+ The  study  was  conducted  within  a  formal  school  setting  with  students  participating  in  a  two 
+ hour-long  artificial  intelligence  workshop.  Prior  to  the  study  students  were  informed  about  the 
+ research  objectives  and  the  purpose  of  the  workshop  and  were  asked  to  sign  an  electronic 
+ form to provide their consent to their participation in the study. 
+ 2.2 Learning design and study procedure 
+ The  pilot  study  was  conducted  as  an  informative  educational  workshop  on  artificial 
+ intelligence.  The  aim  of  the  workshop  was  to  introduce  students  to  the  topic  of  AI  and 
+ encourage  them  to  explore  and  question  the  capabilities  and  limitations  of  ChatGPT.  The 
+ study  procedure,  depicted  in  Figure  1,  was  designed  to  facilitate  learning  through  active 
+ exploration.  In  particular,  the  educational  learning  plan  saw  two  phases,  the  first  one 
+ introduced  students  to  AI  and  allowed  them  to  freely  explore  the  capabilities  and  limitations 
+ of  ChatGPT  and  the  second  phase  introduced  students  to  techniques  to  enhance  ChatGPTs 
+ capabilities. 
+ Fig 1.  Study design and educational learning plan. 
+ The  study  procedure  consisted  of  several  key  steps.  Firstly,  to  minimise  technical  incidents 
+ influencing  the  results,  students  were  instructed  to  access  the  chatGPT  page  before  they 
+ accessed  the  pre-questionnaire.  After  the  completion  of  the  pre  questionnaire,  the  instructor 
+ proceeded  to  deliver  a  brief  presentation  to  introduce  participants  to  topics  related  to  artificial 
+ intelligence  applications,  large  language  models,  and  human  intelligence  vs  artificial 
+ intelligence.  Students  were  then  provided  with  instructions  for  an  activity  that  involved 
+ utilising  ChatGPT.  During  this  first  activity  students  were  asked  to  instruct  ChatGPT  to  act  as 
+ a  personal  teacher  to  educate  in  regards  to  the  fundamental  concepts  of  democracy.  The  set 
+ of  instructions  included  a  variety  of  key  points  that  the  students  should  have  as  an  outcome 
+ of  their  interaction.  A  few  of  the  highlighted  key  points:  ChatGPT  should  interactively  explain 
+ the  main  concepts  of  democracy  in  a  natural  and  not  boring  way.  It  should  avoid  long 
+ bulleted  lists  and  alternate  brief  explanations  with  questions  addressed  to  the  user. 
+ Moreover,  students  were  provided  with  a  set  of  educational  objectives  the  ChatGPT 
+ interaction would eventually generate. 
+ The  first  ChatGPT  activity  lasted  approximately  20  minutes  and  aimed  to  give  a  first-hand 
+ experience  to  students  in  regards  to  the  limited  ability  of  ChatGPT  to  follow  complex 
+ instructions.  At  its  completion,  the  instructor  proceeded  to  elaborate  the  limits  of  ChatGPT 
+ and  then  introduced  the  concept  of  prompting,  providing  a  few  simple  examples.  After 
+ receiving  this  information,  students  were  given  a  second  opportunity  to  instruct  ChatGPT  to 
+ act  as  a  personal  teacher.  The  task  briefing  was  the  same  as  in  the  first  activity.  At  the  end  of 
+ Submitted to AIXIA 2023 22nd International Conference of the Italian Association for Artificial 
+ Intelligence 6 - 9 Nov, 2023, Rome, Italy 
+ the  activity  students  accessed  the  post-questionnaire  where  they  could  also  upload  their 
+ interaction with ChatGPT. 
+ 2.3 Measures 
+ Perceived  level  of  realistic  and  identity  threat:  To  measure  the  perceived  level  of  realistic 
+ and  identity  threat  generated  by  ChatGPT,  a  set  of  questions  was  adapted  from  the  study  of 
+ Yogeeswaran  and  colleagues  (2016).  The  questions  were  adapted  to  AI  conversational  skills 
+ and  included  items  such  as  “In  the  long  term,  artificial  intelligence  is  a  direct  threat  to  man's 
+ well-being  and  safety”  and  “Recent  progress  in  artificial  intelligence  is  challenging  the  true 
+ essence  of  what  it  means  to  be  a  human  being”.  These  sets  of  questions  were  part  of  both 
+ the  pre  and  post  questionnaires  and  were  rated  on  a  7-point  scale,  with  responses  ranging 
+ from Strongly disagree (1) to Strongly agree (7). 
+ Self-Reported  Emotions  after  interaction:  We  proceeded  to  measure  participants' 
+ emotions  after  their  interaction  with  ChatGPT  using  the  “The  Discrete  Emotions 
+ Questionnaire”  adapted  from  Harmon-Jones  et  al.(2016).  In  particular,  participants  were  then 
+ asked  to  report  the  degree  of  emotions  they  felt  after  the  interaction  with  ChatGPT  (anger, 
+ fear,  disgust,  anxiety,  sadness,  desire,  happiness,  joy)  The  items  were  anchored  with  (1)  not 
+ at all to (7) very much. 
+ Interaction  quality  evaluation  (UX):  Additionally,  in  the  post-questionnaire,  we  proceed  to 
+ collect  data  in  regards  to  the  interaction  quality.  In  particular  the  subscales  of  “Semantic 
+ Differential  Pragmatic  dimension”,  “Semantic  Differential  Hedonic  dimension”,  “Semantic 
+ Differential  Human  likeness”,  and  “Social  presence”  were  used  from  the  Haugeland  et  al 
+ 2022 survey . 
+ Functionality  of  ChatGPT:  Moreover,  in  the  post-questionnaire,  a  set  of  measures  focused 
+ on  evaluating  students'  perception  of  ChatGPTs  functionality  were  included.  In  particular, 
+ items  were  included  to  measure:  (a)  effort  perceived  to  achieve  desired  ChatGPT  behaviour, 
+ after  their  initial  interaction  with  the  AI  tool,  (b)  perceived  interaction  improvement,  after 
+ being  introduced  to  prompting  and  engaging  to  a  second  interaction  with  the  tool,  and  (c) 
+ ChatGPT capabilities. 
+ Open-ended  question:  Lastly,  to  collect  students  opinions  in  regards  to  the  interaction  with 
+ ChatGPT,  the  post-questionnaire  included  three  open-ended  questions  to  collect  students 
+ opinions  and  thoughts  in  regards  to;  (a)  positive  aspects  of  the  interaction,  (b)  negative 
+ aspects of the interaction, and (c) any additional noteworthy thoughts they wished to share. 
+ Besides  the  aforementioned  measures,  we  collected  students'  demographic  data,  their 
+ previous  experiences  with  AI  and  ChatGPT,  and  in  the  post-questionnaire  students  were 
+ requested to paste their ChatGPT chat history. 
+ 2.4 Data analysis 
+ To  code  and  categorise  the  responses  to  open  questions  provided  by  participants,  we  used  a 
+ classical  social  cognition  model,  the  Stereotype  Content  Model  (SCM),  devised  to  describe 
+ the  process  of  impression  formation  of  social  actors  and  groups,  traditionally  of  human 
+ beings  (Fiske  et  al.,  1999;  Fiske  et  al.,  2002).  According  to  this  theory,  humans  form  and 
+ update  their  impression  of  others  based  on  two  fundamental  dimensions:  warmth,  which  Submitted to AIXIA 2023 22nd International Conference of the Italian Association for Artificial 
+ Intelligence 6 - 9 Nov, 2023, Rome, Italy 
+ involves  characteristics  such  as  friendliness,  kindness,  and  trustworthiness  –  and 
+ competence  –  the  ability  to  reach  one’s  goals  effectively.  In  the  last  decade,  this  model  was 
+ applied  to  non-human  agents  like  animals  (Sevillano  &  Fiske,  2016),  brands  (Kervyn  et  al., 
+ 2012),  but  also  robots  (Carpinella  et  al.,  2017),  chatbots  (Khadpe  et  al.,  2020),  and  artificial 
+ intelligence  (McKee  et  al.,  2021),  showing  promising  results.  In  previous  studies  where 
+ people  adopted  warmth  and  competence  to  describe  their  AI  interaction  partner,  they  tend  to 
+ express  more  competence-related  judgments,  and  evaluate  these  agents  as  more 
+ competent  than  warm  (McKee  et  al.,  2021).  This  may  also  depend  on  the  particular  AI 
+ system. 
+ In  this  study,  we  decided  to  adopt  this  approach  which  summarises  social  perception  in  two 
+ main  dimensions.  Some  students’  answers,  though,  were  not  targeting  the  perception  of  the 
+ chatbot  per  se  but  the  whole  educational  activity  and  interaction  with  the  composed  system, 
+ referring  to  issues  like  creating  an  account  or  the  excitement  for  their  first  interaction  with  an 
+ AI.  Consequently,  we  devised  a  third  category  named  “system”  aimed  at  grouping  these 
+ divergent records. 
+ During  the  data  collection  process,  an  attention  check  was  incorporated  into  both  the  pre 
+ and  post-questionnaires.  As  a  result,  it  was  necessary  to  remove  six  participants  from  the 
+ analysis  due  to  their  failure  to  meet  the  attention  check  criteria.  Therefore,  the  final  sample 
+ size for this study consisted of 15 participants. 
+ 3.  Results 
+ Realistic  Threat.  To  create  a  composite  measure  for  realistic  threat,  all  five  items  on  the 
+ scale  were  averaged  together  similar  to  previous  work  (Yogeeswaran  et  al.,  2016; 
+ Gabbiadini  et  al.,  2023).  Using  this  measure  a  dependent  t-test  revealed  significant 
+ differences  (p<0.05)  between  the  pre  (mPre=  4.17,  SD=1.39)  and  post  (mPost=3.73, 
+ SD=1.42)  questionnaires  (Fig  2).  This  suggests  that  participants'  realistic  threat  caused  by  AI 
+ decreased  after  the  intervention.  A  closer  look  into  the  individual  items,  saw  a  significant 
+ decrease  in  participants'  belief  that  AI  is  causing  work  loss  for  men  (mPre=  4.6,  SD=1.05, 
+ mPost=3.3,  SD=1.49,  p<0.05).  However,  participants'  belief  that  AI  will  not  replace  workers 
+ from  their  duties  remained  unchanged  after  the  intervention  (mPre=  3.46,  SD=1.25, 
+ mPost=3.46,  SD=1.68,  p>0.05).  The  remaining  of  the  items  saw  a  non-significant  decrease 
+ after the intervention. 
+ Identity  Threat.  A  composite  measure  was  created  for  identity  threat  by  averaging  all  five 
+ items  from  the  scale  similar  to  previous  work  (Yogeeswaran  et  al.,  2016;  Gabbiadini  et  al., 
+ 2023).  A  dependent  t-test  revealed  a  significant  difference  (p<0.05)  between  the  pre  (mPre= 
+ 4.08,  SD=1.39)  and  post  (mPost=3.57,  SD=1.54)  questionnaires  (Fig  2).  This  finding 
+ indicates  that  participants'  AI  identity  threat  significantly  decreased  after  the  intervention.  A 
+ closer  look  into  the  individual  items,  saw  a  significant  decrease  in  participants'  belief  that 
+ boundaries  between  man  and  machine  are  becoming  less  clear  (mPre=  4.6,  SD=1.29, 
+ mPost=3.73,  SD=1.48,  p<0.05).  Despite  improvements  observed  in  the  post-questionnaire, 
+ no statistically significant differences were identified among the remaining items of the scale.  Submitted to AIXIA 2023 22nd International Conference of the Italian Association for Artificial 
+ Intelligence 6 - 9 Nov, 2023, Rome, Italy 
+ Fig 2.  Perceived level of realistic and identity threat aggregated average values before and 
+ after the intervention. 
+ Self-Reported  Emotions  .  Participants  exhibited  significantly  higher  positive  emotions  after 
+ their  interaction  with  ChatGPT  (mPositive=  3.48,  SD=1.79,  mNegative=  1.35,  SD=0.91, 
+ p<0.05).  Higher  negative  emotion  was  Anger  (m=1.55  ,SD=1.43)  whilst  higher  positive 
+ emotion  was  Serenity  (m=3.65  ,SD=1.63).  Lowest  negative  emotion  was  Sadness  (m=1.2 
+ ,SD=0.52)  and  lowest  positive  emotions  were  both  Desire  (m=3.4  ,SD=1.98)  and  Joy 
+ (m=3.4 ,SD=1.81). Values for all emotions are depicted in Fig 3. 
+ Fig 3. Average values of self-reported emotions after the interaction with ChatGPT. 
+ Interaction  quality  evaluation  (UX).  Under  the  first  subscale  “Perception  of  human 
+ likeness”  students  perceived  the  interaction  with  ChatGPT  more  as  an  interaction  with  a 
+ machine  rather  than  a  human  (m=2.9,  SD=1.51),  unnatural  (m=3.6,  SD=1.87),  and  artificial 
+ (m=3.1,  SD=1.95).  In  the  second  subscale  “Social  Presence”  the  participants  gave  a 
+ substantially  below  average  evaluation  to  the  social  aspects  of  the  interaction  (m=3.5, 
+ SD=1.67).  With  the  highest  rated  item  being  that  the  chatbot  was  efficient  in  responding  to 
+ the  activities  (m=4.6,  SD=1.49)  and  the  lowest  rated  item  being  that  the  chatbot  engaged  in 
+ a  common  task  with  them  (m=2.9,  SD=1.47).  In  the  third  subscale  “Semantic  Differential 
+ Hedonic  dimension”  participants  overall  found  the  experience  enjoyable  (m=4.75,  SD=1.37) 
+ with  the  adjectives  “Elegant,  Good  Quality,  New,  Created  connections,  Innovative, 
+ Submitted to AIXIA 2023 22nd International Conference of the Italian Association for Artificial 
+ Intelligence 6 - 9 Nov, 2023, Rome, Italy 
+ Presentable,  and  Engaging”  receiving  higher  rating  than  their  negative  counter  adjectives.  In 
+ the  final  subscale  “Semantic  Differential  Pragmatic  dimension”  the  interaction  was  found 
+ predictable (m=4.85, SD=1.52) and manageable (m=5.52, SD=1.53). 
+ Functionality  of  ChatGPT.  In  the  first  subscale,  "Effort  perceived  to  achieve  desired 
+ ChatGPT  behaviour"  students'  responses  indicated  a  neutral  stance,  with  no  strong 
+ agreement  or  disagreement  on  average.  Participants  reported  that  achieving  the  desired 
+ behaviour  from  ChatGPT  required  little  effort  (mean  =  3.78,  SD  =  1.62),  somewhat  many 
+ attempts  (mean  =  4.47,  SD  =  1.61),  somewhat  more  attempts  were  needed  to  refine  the 
+ request  (mean  =  4.63,  SD  =  1.77),  and  the  desired  behaviour  required  further  explanation  of 
+ how ChatGPT works (mean = 4.63, SD = 1.53) 
+ After  being  introduced  to  the  prompting  strategies  and  completing  the  second  activity 
+ students  were  asked  to  compare  the  two  interactions.  Compared  to  the  first  attempt, 
+ students  found  the  results  of  the  second  interaction  to  be  better  (mean  =  2.45,  SD  =  1.19), 
+ slightly  more  natural  (mean  =  4.55,  SD  =  1.61),  and  clearer  (mean  =  5.25,  SD  =  1.11). 
+ However  there  was  no  agreement  if  the  interaction  was  passively  repeating  content  or  more 
+ interactive (mean = 4, SD = 1.83). 
+ Finally,  in  regards  to  the  subscale  of  “ChatGPT  capabilities”,  participants  found  ChatGPT 
+ intelligent  rather  than  confused  (mean  =  3,  SD  =  2.01),  intuitive  instead  of  unable  to  adapt  to 
+ requests  (mean  =  3.17,  SD  =  1.99),  understanding  of  their  questions  (mean  =  3.39,  SD  = 
+ 1.77),  knowing  what  they  asked  (mean  =  3.28,  SD  =  1.99),  adapting  to  their  questions  rather 
+ than  repeating  the  same  mistakes  (mean  =  3.67,  SD  =  1.76),  however,  they  reported  the 
+ interactions  as  reading  from  an  encyclopaedia  rather  than  communicating  with  a  human 
+ (mean = 3.67, SD = 1.76). 
+ Open  Questions.  The  dimension  that  was  most  widely  covered  in  the  open  answers  was 
+ competence,  with  the  theme  that  emerged  most  strongly  being  that  ChatGPT  was 
+ responsive  and  provided  answers.  This  theme  was  supported  by  the  responses  of  8 
+ students.  The  answers  were  qualified  as  "immediate"  (P06,  P13),  "correct"  (P09), 
+ "exhaustive"  (P04),  "interesting"  (P10).  A  student  also  observed  that  the  system  was  able  to 
+ provide  summarisations  on  request  (P06).  Another  theme  that  emerged  within  this 
+ dimension  with  the  support  of  5  students  is  the  system's  usefulness.  A  student  commented 
+ that this use of ChatGPT "could be useful for practicality and timing" (P20). 
+ Negative  aspects  of  competence  that  students  commented  on  were  repetitiveness,  both  in 
+ terms  of  them  needing  to  repeat  their  questions  and  ChatGPT  repeating  responses.  These 
+ were  supported  by  the  writing  of  4  students  each.  The  first  one  of  these  was  mentioned  with 
+ comments  along  the  lines  of  "it  started  repeating  the  same  things"  (P06),  and  the  second  - 
+ along  the  lines  of  a  student  saying  they  "had  to  repeat  several  times  to  explain  [themselves] 
+ again  and  more  clearly  the  topics"  (P11).  One  student  also  wrote  that  they  had  "to  repeat  [to 
+ the  system  to]  to  go  slowly  several  times"  (P12).  Another  theme  of  criticism,  related  to  this 
+ need  for  repetition  was  supported  by  5  students,  and  represented  by  writings  stating  that  the 
+ system  "did  not  answer  as  [the  student]  wanted  to  questions"  (P17)  and  "the  chat  was  purely 
+ notionistic" (P01). 
+ When  it  comes  to  the  warmth  dimension,  only  3  students  provided  positive  comments,  giving 
+ a  somewhat  different  spin  to  similar  responses  from  the  competence  dimension.  The  main 
+ difference  being  that  the  focus  in  the  responses  is  not  on  the  system  sharing  its  knowledge,  Submitted to AIXIA 2023 22nd International Conference of the Italian Association for Artificial 
+ Intelligence 6 - 9 Nov, 2023, Rome, Italy 
+ but  on  it  complying  to  students'  requests.  This  is  well  represented  by  a  student  who  wrote 
+ "that  asking  it  to  explain  again  in  a  clearer  way,  it  acceded  and  fulfilled  my  requests"  (P11). 
+ Criticisms  that  fall  within  the  warmth  dimension  were  about  ChatGPT  not  being  "natural" 
+ enough  (P09)  and  not  giving  a  sense  of  "a  conversation  with  a  human"  (P20),  "the  little 
+ feeling  in  the  replies"  (P21),  supported  by  5  students.  More  precisely,  they  suggested  that  it 
+ should  "briefly  answer  the  questions  that  are  asked"  (P09)  and  it  should  not  provide 
+ "answers  that  are  taken  from  an  encyclopedia"  (P10),  both  of  them  also  suggested  it  should 
+ be more human-like. 
+ Finally,  the  third  dimension  that  emerged  was  the  perception  of  the  system.  Positive 
+ comments  concerned  the  possibility  to  interact  with  artificial  intelligence  (supported  by  3 
+ students),  and  as  a  whole  with  a  novel  system  (7  students).  The  two  points  were  brought 
+ together  by  a  student  that  expressed  satisfaction  of  "dealing  with  a  new  reality,  such  as  that 
+ of  artificial  intelligence"  (P03).  One  student  wrote  to  have  found  out  "how  much  artificial 
+ intelligence  can  be  useful  in  daily  life[…]  it  helps  to  save  time  without  being  superficial  in 
+ research"  (P08).  Others  seconded  that  by  writing  that  it  "will  surely  be  used  for  the  future" 
+ (P17).  In  the  majority  of  their  negative  comments  regarding  this  dimension,  students 
+ expressed  views  that  the  system  needs  to  be  improved,  one  saying  that  it's  "still  at  an 
+ embryonic stage" (P02). 
+ 5. Discussion and conclusion 
+ This  study  aimed  to  develop  an  AI  literacy  workshop  using  ChatGPT  to  enhance 
+ adolescents'  understanding  of  AI  limitations  and  mitigate  fears  and  negative  attitudes 
+ towards  AI.  The  intervention  successfully  reduced  adolescents'  fears  related  to  realistic  and 
+ identity  threats  posed  by  AI  advancements.  The  initial  levels  in  the  responses  to  the 
+ corresponding  metrics  demonstrated  the  presence  of  such  a  fear,  similar  to  previous  work 
+ (Gabbiadini  et  al.,  2023).  Our  study  revealed  that  offering  opportunities  for  guided  non-trivial 
+ interactions  with  ChatGPT  can  effectively  reduce  the  fear  associated  with  AI  advancements. 
+ In  particular,  a  significant  decrease  was  noticed  in  the  items  of  fear  of  job  loss  and  belief  in 
+ the  blurring  boundaries  between  humans  and  machines.  This  positive  shift  in  attitudes 
+ indicates  that  the  exposure  of  adolescents  to  generative  AI  capabilities  provided  them  a 
+ better  understanding  of  how  AI  systems  function  and  the  impact  they  may  have  on  various 
+ aspects of society, including the job market and human identity. 
+ Regarding  the  overall  experience,  students  rated  the  interaction  with  ChatGPT  as  enjoyable, 
+ eliciting  positive  emotions  such  as  desire,  serenity,  and  happiness.  In  some  instances, 
+ students  reported  feelings  of  anger,  which  may  be  attributed  to  factors  beyond  the  interaction 
+ with  ChatGPT,  such  as  their  difficulties  during  the  registration  phase  or  the  survey.  This  claim 
+ is further supported by comments students left in the open ended responses. 
+ In  regards  to  evaluating  the  interaction  of  ChatGPT  in  terms  of  human  likeness,  students 
+ perceived  ChatGPT  as  more  of  a  machine  than  a  human-like  entity,  describing  it  as 
+ unnatural  and  artificial  (Koyuturk  et  al.,  2023).  This  finding  was  persistent  in  the  open-ended 
+ answers  with  students  further  describing  their  interactions  with  ChatGPT  as  repetitive.  The 
+ social  presence  perceived  during  the  interaction  was  limited  with  students  reporting  that  the 
+ chatbot  did  not  engage  in  common  tasks  with  them.  However,  despite  these  perceptions, 
+ students found the experience enjoyable and manageable. 
+ When  comparing  the  two  ChatGPT  activities,  the  initial  one  without  prompting  strategies  and 
+ the  second  one  after  being  introduced  to  prompting,  the  students  rated  the  second  Submitted to AIXIA 2023 22nd International Conference of the Italian Association for Artificial 
+ Intelligence 6 - 9 Nov, 2023, Rome, Italy 
+ interaction  with  ChatGPT  clearer,  more  natural  and  better  than  the  initial  attempt.  The 
+ incorporation  of  prompting  strategies  in  the  second  ChatGPT  activity  had  a  profound  impact 
+ on  students'  perceptions  and  evaluations  of  the  overall  interaction.  Highlighting  the 
+ importance  of  providing  users  with  appropriate  guidance  and  education  to  fully  leverage  the 
+ capabilities of AI systems (Zamfirescu-Pereira et al., 2023). 
+ Overall,  the  findings  indicate  that  participants  had  a  positive  view  of  ChatGPT's  capabilities, 
+ appreciating  its  intelligence,  understanding,  and  adaptability  similar  to  previous  work 
+ (Shoufan  et  al.,  2023).  However,  despite  these  positive  evaluations  of  ChatGPT's 
+ capabilities,  participants  perceived  the  interactions  as  more  akin  to  reading  from  an 
+ encyclopaedia  rather  than  engaging  in  human-like  communication  (Koyuturk  et  al.,  2023). 
+ This  suggests  that  while  students  recognized  the  intelligence  and  adaptability  of  ChatGPT, 
+ they  also  acknowledged  a  limitation  in  its  ability  to  emulate  human-like  interactions. 
+ However,  it  is  essential  to  consider  that  this  perception  may  also  be  influenced  by  a  possible 
+ misunderstanding  of  the  question  from  the  students'  point  of  view.  The  novelty  of  interacting 
+ with  ChatGPT  might  have  led  them  to  expect  encyclopaedic-style  answers  to  their  natural 
+ language questions. 
+ Findings  from  the  student  open-ended  responses  provide  further  valuable  insights  into  their 
+ experiences  and  perceptions  of  ChatGPT  in  three  distinct  dimensions:  competence,  warmth, 
+ and  system  perception.  On  a  warmth  level,  it  was  considered  low  while  acceding  to  help  the 
+ user,  however,  this  could  be  part  of  the  alignment  fine  tuning  applied  to  ChatGPT.  Finally,  the 
+ dimension  of  system  perception  received  positive  comments,  centred  around  the  excitement 
+ of  interacting  with  AI.  Students  proceeded  to  share  individual  thoughts  of  how  they  believed 
+ that  AI,  as  represented  by  ChatGPT,  is  likely  to  become  increasingly  valuable  in  various 
+ aspects of daily life and education. 
+ As  any  study  we  report  the  following  limitations.  Our  choice  of  interpretation  model  for  the 
+ open  questions  followed  from  our  data.  The  concise  qualitative  answers  did  not  allow  for  a 
+ fine-grained  classification  like  the  one  proposed  by  Haugeland  et  al.  (2022)  that  we  adopted 
+ in our quantitative interaction quality evaluation. 
+ In  a  naive  parallel  between  these  measures,  the  warmth  dimension  can  efficiently  capture 
+ the  hedonic,  social  presence,  and  human-likeness  dimensions,  while  the  pragmatic  quality 
+ dimension  aligns  with  the  competence  aspect.  However,  it  must  be  noted  that  the  SCM  was 
+ mostly  designed  with  human  actors  and  human-level  linguistics  (Bunt  &  Petukhova,  2023) 
+ and  functional  cognitive  capabilities  in  mind  (Mahowald  et  al.,  2023).  Instead,  Haugeland 
+ and  colleagues  (2022)  propose  measures  that  were  initially  applied  to  classical  chatbots 
+ whose  interaction  capabilities  were  more  restrictive,  e.g.  fixed  agent-led  instead  of 
+ mixed-initiative  dialog.  Those  chatbots  were  designed  to  effectively  complete  a  specific  task 
+ with  a  limited  focus  on  natural  and  versatile  interaction.  Pragmatic  value  for  these  models 
+ usually  refers  to  the  complexity  of  the  task  and  domain  at  hand,  e.g.  acquiring  all  the  data 
+ necessary  from  the  user  and  completing  the  operations  requested.  This  measure  may  not 
+ directly  map  pragmatic  linguistic  skills  (Bunt  &  Petukhova,  2023),  which  were  too  limited  in 
+ most  old  commercial  chatbots.  While  later  UX  chatbot  measures  like  those  of  Haugeland 
+ and  colleagues  (2022)  have  been  applied  to  more  complex  chatbots,  they  don’t  split  clearly 
+ the  perception  of  different  types  of  linguistic  (Bunt  &  Petukhova,  2023)  and  emotional  skills, 
+ which  may  affect  items  present  in  all  four  dimensions:  pragmatic  quality,  hedonic  quality, 
+ human-likeness,  and  social  presence.  SCM  would  instead  collapse  in  the  competence 
+ dimension  both  the  semantic  and  pragmatic  linguistic  skills  while  the  latter  is  domain 
+ independent  and  connected  to  the  social  domain.  The  disagreement  between  these  Submitted to AIXIA 2023 22nd International Conference of the Italian Association for Artificial 
+ Intelligence 6 - 9 Nov, 2023, Rome, Italy 
+ measures  were  often  reflected  by  disagreement  between  the  annotators.  For  example  the 
+ issues  about  repetitiveness  of  responses  or  need  to  repeat  and  reformulate  a  query  were 
+ considered  by  the  majority  as  lack  of  competence,  thus  following  the  selected  SCM 
+ approach,  a  minority  as  social  competence,  following  a  line  of  reasoning  more  inline  with  the 
+ view  of  UX  chatbot  measure.  This  may  explain  the  contrast  between  the  interaction  quality 
+ evaluation  (that  finds  the  system  competent,  and  the  open  ended  answers  analysis  that 
+ presents several negative points on this aspect. 
+ The  UX  chatbot  and  SCM  measures  may  not  be  fully  suited  to  cover  for  both  versatility  and 
+ fragility  of  modern  LLM-based  chatbots  and  in  particular  the  interaction  between  their 
+ broader  but  fallible  capabilities  (Mahowald  et  al.,  2023)  as  the  tendency  to  diverge  into 
+ hallucinations  (Thorp,  2023),  especially  during  complex  natural  conversations  (Koyuturk  et 
+ al.,  2023),  and  the  unnatural  almost  hardwired  safeguard  responses  they  present  (Brundage 
+ et  al.,  2022;  Derner  &  Batistič,2023).  To  get  a  more  detailed  measure  of  users’  perception  of 
+ ChatGPT  skills  we  added  specific  semantic  differential  measures  “Functionality  of  ChatGPT” 
+ that  non  conclusively  suggest  a  positive  perception  of  ChatGPT’s  capabilities  while  being  still 
+ limited  in  terms  of  natural  interaction.  In  our  future  studies,  we  will  extend  the  measures 
+ collected  to  account  for  these  issues,  for  example  adopting  automatic  tools  for  measurement 
+ of semantic and pragmatic precision  (Bunt & Petukhova, 2023). 
+ The  study  was  carried  out  as  a  field  study  within  a  school  environment,  but  encountered 
+ certain  challenges  related  to  the  accessibility  of  the  ChatGPT  website.  Additionally,  in  some 
+ instances,  students  worked  in  pairs  to  complete  the  activity  due  to  malfunctioning  of  some 
+ machines.  While  most  students  reported  improving  quality  of  the  interaction  during  the 
+ activity  only  nine  uploaded  their  in-class  interaction  due  to  technical  issues.  Only  five  out  of 
+ nine  interactions  showed  more  than  three  attempts  to  improve  the  conversation  modifying 
+ the  prompts.  Moreover,  the  number  of  questions  in  the  survey  may  have  tired  the  students 
+ and  affected  their  answers.  It  is  important  to  note  that  this  was  an  exploratory  pilot  study  with 
+ a relatively small sample size necessitates caution in generalising the findings. 
+ In  conclusion,  our  study  suggests  a  significant  impact  of  designing  and  developing  AI  literacy 
+ workshops  with  hands-on  experience  using  ChatGPT.  While  with  a  limited  number  of 
+ participants,  the  intervention  has  shown  to  be  an  effective  approach  in  enhancing 
+ participants'  understanding  of  ChatGPT  limitations  and  capabilities  whilst  also  diminishing 
+ fears  of  identity  and  realistic  threats  caused  by  AI  advancements.  Lastly,  the  study 
+ successfully  introduced  participants  to  the  effective  use  of  prompting  strategies,  enhancing 
+ their interactions with ChatGPT. 
+ To  conclude,  we  highlight  the  need  for  novel  measures  of  the  linguistic  aspects  of  user 
+ interaction  with  LLM  based  chatbots  taking  into  account  their  non-transparent  mechanisms 
+ and limitations as well as deal with large amounts of data (Bunt & Petukhova, 2023). 
+ In  our  future  research  in  this  line  of  inquiry  we  plan  to  replicate  the  study  with  a  larger 
+ sample size, allowing for more comprehensive analyses and exploration for any correlations 
+ Acknowledgements 
+ This work has been partially funded by the Volkswagen Foundation (COURAGE project, no. 95567). 
+ TIDE-UPF also acknowledges the support by AEI/10.13039/501100011033 (PID2020-112584RB-C33, 
+ MDM-2015-0502) and by ICREA under the ICREA Academia programme (D. Hernández-Leo, Serra 
+ Hunter) and the Department of Research and Universities of the Government of Catalonia (SGR 
+ 00930). The authors thanks Marco Marelli for the useful discussions on pragmatic linguistic skills.  Submitted to AIXIA 2023 22nd International Conference of the Italian Association for Artificial 
+ Intelligence 6 - 9 Nov, 2023, Rome, Italy 
+ 

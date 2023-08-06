@@ -1,0 +1,18 @@
+Summary:
+
+The paper proposes a novel two-view knowledge graph embedding model called Concept2Box. It jointly embeds concepts and entities using dual geometric representations: box embeddings for concepts and vector embeddings for entities. The model captures the hierarchical structure and complex relationships of concepts and provides interpretability based on box volumes. It also introduces a new distance metric to bridge the semantics between concepts and entities.
+
+Bullet Points:
+
+- Existing knowledge graph embedding methods often overlook the structural differences between high-level concepts and fine-grained entities.
+- Concept2Box addresses this by jointly embedding concepts using box embeddings and entities using vector embeddings.
+- Box volumes in Concept2Box represent the granularity of concepts and capture complex relationships such as overlap and disjoint.
+- A new distance metric is proposed to measure the distance from a vector to a box, bridging the semantics between concepts and entities.
+- Experimental results on DBpedia and a recipe-related dataset demonstrate the effectiveness of Concept2Box for knowledge graph completion and concept linking tasks.
+- Comparison with other baselines shows that Concept2Box outperforms both single-view and two-view models.
+- The model possesses good generalization ability, as demonstrated by its performance on unknown recipes in the inductive setting.
+- A case study confirms that Concept2Box effectively captures the semantic meanings of concepts and exhibits interpretability based on box volumes.
+- The proposed model is free from social/ethical bias and does not introduce any personal information of customers/sellers.
+- Further research is needed to extend the model's applicability to multilingual knowledge graphs and discover unknown concepts from box embeddings.
+
+Keywords: knowledge graph embeddings, Concept2Box, box embeddings, vector embeddings, hierarchical structure, complex relationships, box volumes, distance metric, knowledge graph completion, concept linking

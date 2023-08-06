@@ -1,0 +1,17 @@
+Summary:
+OpenDelta is an open-source library designed to facilitate the parameter-efficient adaptation of large pre-trained models (PTMs) to downstream tasks. It overcomes the limitations of existing implementations by providing a plug-and-play approach to various delta tuning methods without the need to modify the PTMs' code. The library is simple, modular, and extensible, making it valuable for researchers and practitioners in efficiently adapting PTMs.
+
+Bullet Points:
+- OpenDelta is an open-source library for parameter-efficient adaptation of pre-trained models.
+- The library provides a plug-and-play implementation of various delta tuning methods.
+- It eliminates the need to modify the code of the backbone PTMs, making it compatible with different models.
+- OpenDelta is designed to be simple, modular, and extensible.
+- It offers a comprehensive platform for researchers and practitioners to adapt large PTMs efficiently.
+- The scale of large PTMs poses challenges in adapting to downstream tasks due to high optimization overhead and storage costs.
+- Delta tuning methods update only a small subset of parameters, known as "delta modules", while keeping the backbone model's parameters fixed.
+- Existing implementations of delta tuning have limitations in practicality and flexibility.
+- OpenDelta addresses these limitations by providing a plug-and-play approach and compatibility with different PTMs.
+- The library supports various delta tuning methods, simplifying the adaptation of large PTMs.
+
+Keywords:
+OpenDelta, pre-trained models, parameter-efficient adaptation, downstream tasks, delta tuning, plug-and-play implementation, code modification, compatibility, large PTMs, simplicity, modularity, extensibility.

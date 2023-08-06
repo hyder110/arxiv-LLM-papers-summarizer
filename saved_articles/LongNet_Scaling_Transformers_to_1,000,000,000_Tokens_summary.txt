@@ -1,0 +1,13 @@
+Summary:
+LONGNET is a Transformer variant that can scale sequence length to over 1 billion tokens without sacrificing performance on shorter sequences.
+It introduces dilated attention, which expands the attentive field exponentially as the distance grows.
+LONGNET has advantages such as linear computation complexity, distributed training for long sequences, and seamless integration with existing Transformer-based optimization.
+Experiments show that LONGNET performs well on both long-sequence modeling and general language tasks.
+Keywords: LONGNET, Transformer variant, dilated attention, sequence length scaling, computation complexity, distributed training, long-sequence modeling
+
+Bullet points:
+- LONGNET is a Transformer variant that can scale sequence length to over 1 billion tokens without sacrificing performance.
+- It introduces dilated attention, which expands the attentive field exponentially as the distance grows.
+- LONGNET has advantages such as linear computation complexity and distributed training for long sequences.
+- It can seamlessly integrate with existing Transformer-based optimization.
+- Experiments show that LONGNET performs well on both long-sequence modeling and general language tasks.

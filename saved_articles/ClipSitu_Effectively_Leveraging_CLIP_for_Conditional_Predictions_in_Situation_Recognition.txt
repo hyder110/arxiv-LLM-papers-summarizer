@@ -1,0 +1,467 @@
+ClipSitu: Effectively Leveraging CLIP for Conditional
+Predictions in Situation Recognition
+Debaditya Roy1, Dhruv Verma1,2, and Basura Fernando1,2
+1Institute of High Performance Computing (IHPC), Agency for Science, Technology
+and Research (A*STAR), 1 Fusionopolis Way, #16-16 Connexis, Singapore 138632,
+Republic of Singapore.
+2Centre for Frontier AI Research (CFAR), Agency for Science, Technology and
+Research (A*STAR), 1 Fusionopolis Way, #16-16 Connexis, Singapore 138632,
+Republic of Singapore
+Abstract
+Situation Recognition is the task of generating a structured summary of what is happening
+in an image using an activity verb and the semantic roles played by actors and objects. In
+this task, the same activity verb can describe a diverse set of situations as well as the same
+actor or object category can play a diverse set of semantic roles depending on the situation
+depicted in the image. Hence model needs to understand the context of the image and the
+visual-linguistic meaning of semantic roles. Therefore, we leverage the CLIP foundational model
+that has learned the context of images via language descriptions. We show that deeper-and-wider
+multi-layer perceptron (MLP) blocks obtain noteworthy results for the situation recognition task
+by using CLIP image and text embedding features and it even outperforms the state-of-the-art
+CoFormer, a Transformer-based model, thanks to the external implicit visual-linguistic knowledge
+encapsulated by CLIP and the expressive power of modern MLP block designs. Motivated by
+this, we design a cross-attention-based Transformer using CLIP visual tokens that model the
+relation between textual roles and visual entities. Our cross-attention-based Transformer known
+as ClipSitu XTF outperforms existing state-of-the-art by a large margin of 14.1% on semantic
+role labelling (value) for top-1 accuracy using imSitu dataset. We will make the code publicly
+available.
+1 Introduction
+Situation recognition was first introduced to computer vision in pioneering work [ 34]. Situation
+recognition is an important problem in scene understanding, activity understanding, and action
+reasoning as it provides a structured representation of the main activity depicted in the image. The
+key component in situation recognition is the task of semantic role labeling (SRL). Semantic role
+labeling is complex as the same activity verb may have different functional meanings and purposes
+depending on the context of the image. For example, the verb “spray" has a completely different
+semantic meaning depending on the context as shown in Fig. 1 where the semantic roles such as
+source, substance, destination, and place define the situation. Furthermore, the change in substance
+from spraying grease, hair spray, or perfume in the Fig. 1(b),(c), and (d) change the destination to
+salad,hairorface, yet the visual appearance change in the action of spraying is minimal. Hence,
+semantic role labeling requires a detailed understanding of the event in the image using contextual
+information from the image and how it relates to the linguistic definition of the event in terms of the
+activity (verb) and activity-specific roles.
+Apart from the complexity of activity-specific roles, the activities in situation recognition are
+a mixture of literal and abstract verbs as shown in Fig. 2. In Fig. 2(a) and (b), the situational
+1arXiv:2307.00586v1  [cs.CV]  2 Jul 2023Figure 1: Examples showing the variety of visual images that are described by the situation spraying
+and variety of nouns for the same semantic roles: (a) firefighter spraying water through a hose at
+a fire, (b) person spraying grease into a salad, (c) woman spraying hair spray on hair, (d) woman
+spraying perfume on face
+Figure 2: (a) and (b) show examples of abstract verbs nagging and cramming that require ignoring
+the literal action of eating. (c) and (d) show polar opposite situations of nagging and encouraging
+that are visually similar.
+verbs being described are nagging andcramming though the literal action is eatingwhich is also
+a situational verb. Therefore, the prediction model should sometimes ignore the literal action to
+understand the described situation. Another challenge is identifying the nuanced difference between
+abstract situations shown in Fig. 2(c) and (d) which show nagging andencouraging . Both these
+situations are opposites but visually similar and therefore the model should only concentrate on
+theagent’s gestures (person nagging or providing encouragement) rather than the subject (person
+being nagged or encouraged) who shows similar expressions. The way we humans overcome these
+challenges and understand these situations is based on our experiences from different areas in our
+daily life. Therefore, we propose that these challenges of abstract and nuanced understanding of
+images are better addressed by models that have access to the context from a variety of images and
+their text descriptions.
+Multimodal Foundation Models (MFM) such as CLIP [ 23] and ALIGN [ 11] provide this context as
+they are trained on many millions of image/text pairs to capture cross-modal dependencies between
+images and text. CLIP is an excellent MFM for solving image semantic role labeling tasks as it
+provides a grounded understanding of visual and linguistic information. In [ 7], MFMs such as CLIP
+are shown to be trainable for complex vision and language tasks termed Structured Vision and
+Language Concepts (SVLC). Another way to leverage MFMs is to apply an MLP on top of the image
+encoder in works such as VL-Adapter [ 26], AIM [32], EVL [19] and wise-ft [ 29]. These approaches
+can be applied for predicting the main activity in the image i.e. for image classification [ 29] oraction detection [ 32]. However, semantic role labeling is a conditional classification task that needs
+verb and role along with the image. Therefore, in [ 16], authors convert situation recognition to a
+text-prompt-based prediction problem by fine-tuning a CLIP image encoder with the text outputs
+from a large language model – GPT-3 [ 2] called CLIP-Event. The verbs are ranked using the prompt
+“An image of 〈verb〉” based on image CLIP embeddings. After predicting the verb, each noun is
+predicted using another text prompt “The 〈name 〉is a〈role〉of〈verb〉”, i.e. “The firefighter is an agent
+in spraying”. Even with the world knowledge in GPT-3, CLIP-Event performs worse on semantic
+role labeling than state-of-the-art CoFormer [ 3] which is directly trained on the images. The reason
+is that finetuning CLIP on semantic role labeling is not effective as that dataset imSitu [ 34] is not
+massive containing only 126,102 images yet it contains a massive amount of nouns (11,538) that are
+related to 190 unique roles. Therefore, the mapping between roles and nouns becomes an extremely
+challenging task.
+We show that a well-designed multimodal MLP that consists of a modern MLP block design is
+able to solve semantic role labeling using CLIP embeddings and it even performs the state-of-the-art
+without finetuning the CLIP model. This multimodal MLP is trained on a combination of image and
+text embedding from the verb and the role obtained from the CLIP model. Multimodal MLP predicts
+the entity corresponding to the role using a simple loss function. Motivated by the effectiveness of
+CLIP-based multimodal MLP, we adopt a Transformer encoder to leverage the connection across
+semantic roles in an image. Each semantic role is represented using a multimodal input of image
+and text embedding of the verb and the role. We show that sharing information across semantic
+roles using a Transformer leads to slightly improved performance. Motivated by these two findings,
+we design a cross-attention Transformer to learn the relation between semantic role queries and
+CLIP-based visual token representations of the image to further enhance the connection between
+visual and textual entities. We term this model as ClipSitu XTF and it obtains state-of-the-art
+results for Situation Recognition on imSitu dataset outperforming state-of-the-art CoFormer [ 3] by
+14.1% on top-1 value performance.
+2 Related Work
+Situation Recognition. To understand the relationship between different entities in an image, tasks
+such as image captioning [ 13,15,10], scene graph generation [ 31,5], and human-object interaction
+detection [ 9,18] have been proposed in the literature. Image captioning produces a natural language
+description of actions and entities in the image. Image captions are subjective because annotators
+may emphasize certain entities while others may not. So, it is not easy to evaluate whether all
+the entities involved in the activity have been adequately represented in the caption. Role labeling
+between pairs of entities using scene graphs only describes generic relations between entities that may
+not be with respect to the activity in the image. All these limitations are addressed with a structured
+description of a situation using verbs, roles and entities in [ 34] and an accompanying dataset called
+imSitu. The situational verbs and their roles are obtained based on the meaning of the activity
+in each image from FrameNet [ 8]. The entities for each role are populated using the large object
+dataset ImageNet. Situation recognition is more straightforward to evaluate than captions and the
+relationship between various entities is grounded in the activity. Recently, situation recognition has
+also been extended to videos with the VidSitu dataset [ 24] where each video spans multiple events
+each of which is described using a situational verb, semantic roles, and their nouns. The VidSitu
+dataset is extended with grounded entities in [ 14] while [30] proposes a contrastive learning objective
+framework for video semantic role labeling. We limit the scope of this work to situation recognition
+in images.
+One-stage prediction approaches predict the situational verb from the image and then the
+nouns associated with the roles of those verbs. In [ 34], a conditional random field model is proposed
+that decomposes the task of situation recognition into verb prediction and semantic role labeling
+(SRL). For SRL, they optimize the log-likelihood of the ground-truth nouns corresponding to each
+role for an image over possible semantic role-noun pairs from the entire dataset. In [ 33], a tensor
+decomposition model is used on top of CRF that scores combinations of role-noun pairs. They alsoperform semantic augmentation to provide extra training samples for rarely observed noun-role
+combinations. In [ 20], a predefined order for semantic roles is decided to predict the nouns for an
+image, and a recurrent neural network is used to predict the nouns in that order. Authors in [ 17]
+propose a gated graph neural network (GGNN) to capture all possible relations between roles instead
+of a predefined order as in [ 20]. In [25], a mixture kernel is applied to relate the nouns predicted
+for one role with respect to the noun predicted for another role. These relations provide a prior for
+the GGNN [ 17] to predict nouns for each role. In [ 22], imSitu is extended with grounded entities in
+each image. They propose two models – Independent Situation Localizer (ISL) and Joint Situation
+Localizer (JSL). Both ISL and JSL use LSTMs to predict nouns in a predefined sequential order
+similar to [ 20] while RetinaNet estimates the locations of entities. A transformer encoder-decoder
+architecture is proposed in [ 4] where the encoder captures semantic features from the image for verb
+prediction and the decoder learns the role relations. In [ 12], situational verbs are predicted using a
+CLIP encoder on the image and the detected objects in the image.
+Two-stage prediction approaches introduce an additional stage to enhance the verb prediction
+using the predicted nouns of the roles. In [ 6], transformers are used to predict semantic roles using
+interdependent queries that contain the context of all roles. The context acts as the key and values
+while the verb and the role form the query to predict the noun. They also consider the nouns of
+two predefined roles along with the image to enhance the verb prediction using a CNN. In [ 28],
+a coarse-to-fine refinement of verb prediction is proposed by re-ranking verbs based on the nouns
+predicted for the roles of the verb. CoFormer[ 3] combines ideas from [ 28] and [4] with transformer
+encoder and decoder predicting verbs and nouns, respectively. They add another encoder-decoder to
+refine the verb prediction based on the decoder outputs from the noun decoder.
+3 CLIPSitu Models and Training
+In this section, first, we present how we extract CLIP [ 23] embedding for situation recognition. Then,
+we present three models for Situation Recognition using the CLIP model. Afterward, we present a
+loss function that we use to train and finally, the verb prediction model is presented.
+3.1 Extracting CLIP embedding
+Every image Ihas a situational action associated with it, denoted by a verb v. For this verb v, there
+is a set of semantic roles Rv={r1, r2,···, rm}each of which is played by an entity denoted by its
+noun value N={n1, n2,···, nm}. As shown in Fig. 1, the verb is spraying, and the roles are agent,
+source,substance , anddestination . The corresponding entity noun values for each of the roles are
+firefighter ,hose,water, andfire. We use CLIP [ 23] visual encoder ψv(), and the textual encoder ψt()
+to obtain representations for the image, verb, roles, and nouns denoted by XI,XV,XRvand, XN
+respectively. Here XRv={Xr1, Xr2,···, Xrm}andXN={Xn1, Xn2,···, Xnm}where Xri=ψt(ri)
+andXni=ψt(ni). Similarly, the XI=ψv(I)andXV=ψt(v). Note that all representations
+XI, XV, XriandXnihave the same dimensions.
+3.2 ClipSitu MLP
+Here we present a modern multimodal MLP block design for semantic role labeling for Situation
+Recognition that predicts each semantic role of a verb in an image. We term this method as ClipSitu
+MLP. Specifically, given the image, verb, and role embedding, the ClipSitu MLP predicts the
+embedding of the corresponding noun value for the role. In contrast to what has been done in the
+literature, ClipSitu MLP obtains contextual information by conditioning the information from the
+image, verb, and role embeddings. While the image embedding provides context about the possible
+nouns for the role, the verb provides the context on how to interpret the image situation. For example,
+Fig. 3 shows a crane floating on the dock and lifting something from the water. Specifying that
+the situational verb is floatingimplies that the model should look at the dock and not at the crane.
+Finally, the role input specifies which particular function of the verb floating i.e., medium,place,
+agent, is to be represented.Figure 3: Example of floating with roles and nouns
+Figure 4: Architecture of the three ClipSitu models. We use pooled image embedding from the CLIP
+image encoder for ClipSitu MLP and TF. For ClipSitu XTF, we use embeddings from each patch of
+the image obtained CLIP image encoder. In ClipSitu TF and XTF, all the roles for the verb are
+predicted simultaneously.
+We concatenate the role embedding for each role rito the image and verb embedding to form the
+multimodal input Xiwhere Xi= [XI, Xv, Xri]. Then, we stack lMLP blocks to construct CLIPSitu
+MLP and use it to transform the multimodal input Xito predict the noun embedding ˆXnias follows:
+ˆXni=ϕMLP(Xi). (1)
+InϕMLP, the first MLP block projects the input feature Xito a fixed hidden dimension using a
+linear projection layer followed by a LayerNorm [ 1]. Each subsequent MLP block consists of a Linear
+layer followed by a Dropout layer (with a dropout rate of 0.2), ReLU [ 21], and a LayerNorm as shown
+in Fig. 4(a). We predict the noun class from the predicted noun embedding using a dropout layer
+(rate 0.5) followed by a linear layer which we name as classifier ϕcas
+ˆyni=argmax ϕc(ˆXni) (2)
+where ˆyniis the predicted noun class. We use cross-entropy loss between predicted ˆyniand ground
+truth nouns ynias explained later in Section 3.5 to train the model.
+3.3 ClipSitu TF: ClipSitu Transformer
+The role-noun pairs associated with a verb in an image are related as they contribute to different
+aspects of the execution of the verb. For example in Fig. 1(a), we see that in spraying the role ofdestination is played by fire, and the role of sourceis played by hose. Knowing that the destination is
+fireand the source is hoserestricts the output of mediumto be water as the most plausible. Similarly,
+the role of agentplayed by dock/pier is strongly linked to both water as a medium and ocean/river
+asplace. We extend our ClipSitu MLP model using a Transformer [ 27] to exploit the interconnected
+semantic roles and predict them in parallel. The input to the Transformer is similar to ClipSitu
+MLP (i.e. Xi= [XI, Xv, Xri]), however, we build a set of vectors using {X1, X2,···, Xm}where
+mdenotes the number of roles of the verb. Each vector in the set is further processed by a linear
+projection to reduce dimensions. We initialize a Transformer model ϕTFwith lencoder layers and
+multi-head attention with hheads. Using the Transformer model, we predict the value embedding of
+themroles as output tokens of the transformer
+{ˆXn1,ˆXn2,···,ˆXnm}=ϕTF({X1, X2,···, Xm}). (3)
+Similar to the MLP, we predict the noun classes using a classifier on the value embedding as
+ˆyi=argmax ϕc(ˆXni)where i={1,···, m}as shown in Fig. 4(b).
+3.4 ClipSitu XTF: Cross-Attention Transformer
+Each semantic role in a situation is played by an object located in a specific region of the image.
+Therefore, it is important to pay attention to the regions of the image which has a stronger relationship
+with the role. Such a mechanism would allow us to obtain better noun prediction accuracy. Hence,
+we propose to use the encoding for each patch of the image obtained from the CLIP model. We
+design a cross-attention Transformer called ClipSitu XTF to model how each patch of the image is
+related to every role of the verb through attention as shown in Fig. 4(c).
+Let the patch embedding of an image be denoted by XI,p={X1
+I, X2
+I,···, Xp
+I}where pis
+the number of image patches. These patch embeddings form the key and values of the cross-
+attention Transformer while the verb-role embedding is the query in Transformer. The verb
+embedding is concatenated with each role embedding to form mverb-role embeddings Xvr=
+{[XV;Xr1],[XV;Xr2],···,[XV;Xrm]}. We project each verb-role embedding to the same dimension
+as the image patch embedding using a linear projection layer. Then the cross-attention operator in a
+Transformer block is denoted as follows:
+Q=WQXvr, K=V=WIXI,p
+ˆX=softmaxQKT
+√dKV (4)
+where WQandWIrepresent projection weights for queries, keys, and values and dKis the dimension of
+the key token K. As with ClipSitu TF, we have lcross-attention layers in ClipSitu XTF. The predicted
+output from the final cross-attention layer contains mnoun embeddings ˆX={ˆXn1,ˆXn2,···,ˆXnm}.
+Similar to the transformer in Section 3.3, we predict the noun classes using a classifier on the noun
+embeddings as ˆyi=ϕc(ˆXni)where i={1,···, m}. We call this network ClipSitu XTF.
+3.5 Minimum Annotator Cross Entropy Loss
+It is common to have multiple annotators for the same image and in some instances, annotators may
+not provide the same annotation. Existing approaches [ 6,3] make multiple predictions instead of one
+to tackle this issue. However, this can confuse the network during training as for the same instance
+there are multiple different annotations. The loss function should not penalize a prediction that is
+close to any of the annotators’ ground truth but further away from others. We choose the minimum
+cross-entropy loss for a prediction ˆyiacross the ground truth from all the annotators A={A1,···Aq}
+to train our network
+MAXE = min
+A−CX
+c=1y(Aj)
+i,clog(ˆyi,c)where ∀Aj∈ A (5)
+Here Cdenotes the total number of classes and MAXEstands for Minimum Annotator Cross Entropy
+Loss. To train noun prediction models, we use this modified loss function.3.6 ClipSitu Verb MLP
+Apart from semantic role labeling, the situation recognition performance of a system is also assessed
+on its ability to predict the situational verb correctly from the image. We design a simple MLP with
+CLIP embeddings of the image XIas input called ClipSitu Verb MLP as follows:
+ˆv=ϕV(XI). (6)
+where ϕVcontains llinear layers of a fixed dimension with ReLU activation to predict the situational
+verb. Just before the final classifier, there is a Dropout layer with a 0.5 rate. We train ClipSitu Verb
+MLP with standard cross-entropy loss.
+4 Experiments
+4.1 Evaluation Details
+We perform our experiments on imSitu dataset [ 34] that contains a total of 125k images with 75k
+train, 25k validation, and 25k test images. The metrics used for semantic role labeling are value
+andvalue-all [34] which predict the accuracy of noun prediction for a given role. For a given verb
+with kroles,valuemeasures whether the predicted noun for at least one of kroles is correct. On
+the other hand, value-all measures whether all the predicted nouns for all kroles are correct. A
+prediction is correct if it matches the annotation of any one of the three annotators. The metrics
+value and value-all are evaluated in three settings based on whether we are using ground truth verb,
+top-1 predicted verb, or top-5 predicted verbs. For our model ablation on semantic role labeling, we
+use the ground truth verb setting for measuring value and value-all. As CLIP embeddings are not
+directly geared toward object detection, we have not evaluated the grounding of nouns in this work.
+All experiments are performed on the imSitu dev set unless otherwise specified.
+4.2 Implementation Details
+We use the CLIP model with ViT-B32 image encoder to extract image features unless otherwise
+specified. The input to ClipSitu MLP is a concatenation of the CLIP embeddings of the image, verb,
+and role, each of 512 dimensions leading to 1536 dimensions. For both ClipSitu TF and XTF, we set
+the sequence length to be 6 which refers to the maximum number of roles possible for a verb in imSitu
+following [ 6]. Each verb has a varying number of roles and we mask the inputs that are not required.
+For ClipSitu TF, each input token in the sequence is the concatenated image, verb, and role CLIP
+embedding same as the MLP above which is projected to 512 dimensions using a linear layer. For the
+patch-based cross-attention Transformer (ClipSitu XTF), we obtain the embedding for input image
+patches from CLIP image encoder (ViT-B32 model) which results in 50 tokens ( 224/32×224/32
++ 1 class) of 512 dimensions that are used as key and value. The query tokens are concatenated
+verb and role CLIP embeddings that are projected to 512 dimensions using a linear layer. Unless
+otherwise mentioned, we train all our models with a batch size of 64, a learning rate of 0.001, and an
+ExponentialLR scheduler with Adamax optimizer, on a 24 GB Nvidia 3090.
+4.3 Ablations on hyperparameters for ClipSitu MLP, TF, and XTF
+In Fig. 5, we explore combinations of MLP blocks and the hidden dimensions of each block to obtain
+the best MLP network for semantic role labeling. Increasing the number of MLP blocks and hidden
+dimensions steadily improves performance as the number of unique nouns to be predicted is 11538.
+We train MLP with small to very large hidden dimensions i.e. 128 →16384 which results in a steady
+improvement in both value and value-all. No improvement in value and value-all is seen when we
+increase the layer dimension further to 32768 for 3 MLP blocks which demonstrates that we have
+reached saturation. Our best ClipSitu MLP for semantic role labeling obtains 76.91 for value and
+43.22 for value-all with 3 MLP blocks with each block having 16,384 hidden dimensions which beats
+the state-of-the-art CoFormer [ 3]. The main reason our ClipSitu MLP performs so well on semanticHeads 1 6 4 8
+Layers 1 2 4 6 1 2 4 6 1 2 4 6 1 2 4 6
+ClipSitu TFvalue 75.73 75.78 76.87 24.6875.80 75.95 75.97 18.28 75.71 76.77 75.87 05.20 75.74 75.93 76.07 75.94
+value-all 41.40 41.52 41.84 00.21 41.64 41.60 41.83 00.21 41.43 42.10 41.75 00.00 41.35 41.58 42.97 41.72
+ClipSitu TFvalue 72.70 74.33 75.25 74.3553.11 53.17 53.11 53.16 53.18 53.51 53.45 53.49 53.13 53.44 53.38 53.54
+value-all 36.61 39.11 40.79 39.0616.58 16.64 16.38 16.46 16.50 16.77 16.90 16.97 16.42 16.89 16.85 17.02
+Table 1: Ablation on Transformer hyper-parameters. 1 head with 4 transformer layers is sufficient
+to obtain the best value and value-all performance for ClipSitu XTF. For TF, 1 head and 4 layers
+produces the best value whereas 8 heads and 4 layers produces the best value-all performance.
+Figure 5: Effect of the number of MLP blocks and hidden dimensions on value and value-all. We
+train with very large hidden dimensions such as 8192, 16384, and 32768 to obtain state-of-the-art
+value and value-all results.
+role labeling is our modern MLP block design that contains large hidden dimensions along with
+LayerNorm which have not been explored in existing MLP-based CLIP finetuning approaches.
+We also compare the performance of ClipSitu MLP with the proposed minimum annotator
+cross-entropy loss ( MAXE) versus applying cross-entropy using the noun labels of each annotator
+separately. We find that MAXEproduces better value and value-all performance (76.91 and 43.22)
+compared to cross-entropy (76.57 and 42.88).
+In Tab. 1, we explore the number of heads and layers needed to obtain the best-performing
+architecture for semantic role labeling using ClipSitu TF and XTF. We find that a single head with
+4 transformer layers performs the best in terms of value for both ClipSitu TF and XTF while for
+value-all, an 8-head 4-layer ClipSitu TF performs the best and we use this for subsequent evaluation.
+For both ClipSitu TF and XTF, increasing the number of layers beyond 4 does not yield any
+improvement in value or value-all when using less number of heads (1,2,4). Similarly, for ClipSitu
+XTF, increasing the number of heads and layers leads to progressively deteriorating performance.
+Both of these performance drops can be attributed to the fact that we have insufficient samples for
+training larger Transformer networks [23].
+4.4 Verb and noun prediction with different CLIP Image Encoders
+In Tab. 2, we compare the proposed ClipSitu Verb MLP model against a state-of-the-art CLIP
+finetuning model called weight-space ensembles (wise-ft) [ 29] that leverages both zero-shot and
+fine-tuned CLIP models to make verb predictions. We choose wise-ft for comparison as external
+context from MFMs can be useful in predicting abstract situational verbs as we discussed in Section 1.
+We compare ClipSitu Verb MLP and wise-ft using 4 CLIP image encoders - ViT-B32, ViT-B16,
+ViT-L14, and ViT-L14@336px. The image clip embeddings for ViT-B32 and ViT-B16 are 512
+dimensions and for ViT-L14, and ViT-L14@336px are 768 dimensions. These four encoders represent
+different image patch sizes, different depths of image transformers, and different input image sizes.
+The hidden layers for ClipSitu Verb MLP are all 1024 dimensional. Increasing the number of hidden
+layers does not improve performance for ClipSitu Verb MLP and we obtain the best top-1 and top-5Image
+EncoderVerb ModelHidden
+LayerTop-1 Top-5
+ViT-B32wise-ft [29] - 46.51 74.30
+ClipSitu Verb MLP1 46.69 76.11
+2 46.51 76.08
+3 44.51 74.15
+ViT-B16wise-ft [29] - 48.77 83.45
+ClipSitu Verb MLP1 50.91 89.57
+2 50.83 89.40
+3 48.63 88.55
+ViT-L14wise-ft [29] - 51.51 84.30
+ClipSitu Verb MLP1 56.70 84.61
+2 56.63 84.49
+3 53.80 82.44
+ViT-L14
+@336pxwise-ft [29] - 52.22 82.95
+ClipSitu Verb MLP1 57.86 86.11
+2 56.22 84.55
+3 54.35 82.85
+Table 2: Comparison of ClipSitu Verb MLP and wise-ft [29] with different CLIP Image Encoders.
+Image
+EncoderModelTop-1 Top-5 Ground truth
+value v-all value v-all value v-all
+ViT-B32MLP 45.65 27.06 66.27 37.55 76.91 43.22
+TF 45.67 27.33 66.28 37.98 76.77 42.97
+XTF 44.54 25.94 64.93 35.56 75.25 40.79
+ViT-B16MLP 46.33 28.29 67.37 39.45 77.88 44.78
+TF 46.41 28.65 67.39 39.75 77.23 43.82
+XTF 45.67 27.44 66.09 37.42 75.43 40.58
+ViT-L14MLP 46.46 28.39 67.61 39.71 77.63 43.94
+TF 46.95 29.56 68.19 41.22 78.02 45.25
+XTF 46.95 29.49 68.08 40.61 77.84 44.54
+ViT-L14
+@336pxMLP 46.74 29.06 67.90 40.54 77.93 44.88
+TF 46.97 29.66 68.27 41.41 78.30 45.79
+XTF 47.17 30.06 68.44 41.66 78.49 45.81
+Table 3: Comparison of CLIP Image Encoders on noun prediction task using top-1 and top-5 predicted
+verb from the best-performing Verb MLP model obtain from Tab. 2. All models’ performance
+improves by increasing the number of patch tokens either by reducing patch size (32 →16→14) or
+increasing image size (224 →336). v-all stands for value all.
+verb prediction with a single hidden layer. ClipSitu Verb MLP performs better than wise-ft for all
+image encoders which shows that finetuning on CLIP image features works better than finetuning
+the CLIP image encoder itself for situational verb prediction. Our best performing ClipSitu Verb
+MLP outperforms wise-ft by 5.6% on Top-1 and 3.2% on Top-5 when using the same ViT-L14 image
+encoder.
+Next, we study the effect of using different CLIP image encoders for noun prediction with ClipSitu
+MLP, TF and XTF. We compare ViT-B32, ViT-B16, ViT-L14, and ViT-L14@336px. For ClipSitu
+XTF, the number of image patch tokens used as key and value changes based on patch size and image
+size. We have 197 tokens ( 224/16×224/16+ 1 class token) for ViT-B16, 257 tokens for ViT-L14
+(224/14×224/14+ 1 class token), and 577 tokens for ViT-L14@336px ( 336/14×336/14+ 1 class
+token). For ViT-L14, and ViT-L14@336px image encoders, we obtain 768-dimensional embeddings
+which are projected using a linear layer to 512. To demonstrate the results of different image encoders,
+We choose the best architectures for ClipSitu MLP, TF, and XTF obtained in Section 4.3.
+In Tab. 3, we observe that the value and value-all using ground truth verbs steadily improve for
+all three models as the number of patches increases from 32 to 16 to 14 or the image size increases
+from 224 to 336. For ViT-B32 and ViT-B16, the best performance is obtained by ClipSitu MLP
+but it drops with ViT-L14. On the other hand, the maximum improvement is seen in ClipSitu XTF
+i.e. 5.1% for value-all compared to 1.6% and 2.8% for ClipSitu MLP and TF, respectively. ClipSituSet MethodTop-1 predicted verb Top-5 predicted verb Ground truth verb
+verb value value-all verb value value-all value value-all
+devCRF [34] 32.25 24.56 14.28 58.64 42.68 22.75 65.90 29.50
+CRF w/ DataAug [33] 34.20 26.56 15.61 62.21 46.72 25.66 70.80 34.82
+RNN w/ Fusion [20] 36.11 27.74 16.60 63.11 47.09 26.48 70.48 35.56
+GraphNet [17] 36.93 27.52 19.15 61.80 45.23 29.98 68.89 41.07
+CAQ w/ RE-VGG [6] 37.96 30.15 18.58 64.99 50.30 29.17 73.62 38.71
+ISL [22] 38.83 30.47 18.23 65.74 50.29 28.59 72.77 37.49
+JSL [22] 39.60 31.18 18.85 67.71 52.06 29.73 73.53 38.32
+GSRTR [4] 41.06 32.52 19.63 69.46 53.69 30.66 74.27 39.24
+Kernel GraphNet [25] 43.21 35.18 19.46 68.55 56.32 30.56 73.14 41.68
+SituFormer [28] 44.32 35.35 22.10 71.01 55.85 33.38 76.08 42.15
+CoFormer [3] 44.41 35.87 22.47 72.98 57.58 34.09 76.17 42.11
+ClipSitu MLP
+57.8646.74 29.06
+86.1167.90 40.54 77.93 44.88
+ClipSitu TF 46.97 29.66 68.27 41.41 78.30 45.79
+ClipSitu XTF 47.17 30.06 68.44 41.66 78.49 45.81
+testCRF [34] 32.34 24.64 14.19 58.88 42.76 22.55 65.66 28.96
+CRF w/ DataAug [33] 34.12 26.45 15.51 62.59 46.88 25.46 70.44 34.38
+RNN w/ Fusion [20] 35.90 27.45 16.36 63.08 46.88 26.06 70.27 35.25
+GraphNet [17] 36.72 27.52 19.25 61.90 45.39 29.96 69.16 41.36
+CAQ w/ RE-VGG [6] 38.19 30.23 18.47 65.05 50.21 28.93 73.41 38.52
+ISL [22] 39.36 30.09 18.62 65.51 50.16 28.47 72.42 37.10
+JSL [22] 39.94 31.44 18.87 67.60 51.88 29.39 73.21 37.82
+GSRTR [4] 40.63 32.15 19.28 69.81 54.13 31.01 74.11 39.00
+Kernel GraphNet [25] 43.27 35.41 19.38 68.72 55.62 30.29 72.92 42.35
+SituFormer [28] 44.20 35.24 21.86 71.21 55.75 33.27 75.85 42.13
+CoFormer [3] 44.66 35.98 22.22 73.31 57.76 33.98 75.95 41.87
+CLIP-Event [16] 45.60 33.10 20.10 - - - - -
+ClipSitu MLP
+58.1946.90 29.02
+85.6967.96 40.40 77.95 44.71
+ClipSitu TF 47.20 29.50 68.32 40.95 77.82 44.67
+ClipSitu XTF 47.23 29.73 68.42 41.42 78.52 45.31
+Table 4: Comparison with state-of-the-art on Situation Recognition. The robustness of ClipSitu
+MLP, TF, and XTF is demonstrated by the massive improvement for value and value-all with Top-1
+and Top-5 predicted verbs over SOTA.Model # Parameters
+ClipSitu MLP 580.2M
+ClipSitu TF 20.2M
+ClipSitu XTF 45.3M
+Table 5: Comparison of parameters for MLP, TF and XTF models.
+XTF is able to extract more relevant information when attending to more image patch tokens to
+produce better predictions. To compare noun prediction using top-1 and top-5 predicted verbs, we
+use the best ClipSitu Verb MLP (ViT-L14@336px) from Tab. 2. For both Top-1 and Top-5 predicted
+verbs, we observe a similar trend as the ground truth verb. ClipSitu XTF again shows the most
+improvement in value and value-all to obtain the best performance among the three models across
+ground truth, Top-1 and Top-5 predicted verbs.
+We compare the number of parameters for ClipSitu MLP, TF, and XTF using the ViT-L14-336
+image encoder in Tab. 5. We find that ClipSitu TF is the most efficient followed by ClipSitu XTF.
+The most computationally expensive model is ClipSitu MLP with 12 ×the number of parameters
+of ClipSitu XTF and 29 ×the number of parameters of ClipSitu TF. Therefore, we conclude that
+ClipSitu XTF not only performs the best at semantic role labeling but is also efficient in terms of
+the number of parameters compared to ClipSitu MLP.
+4.5 Comparison with SOTA
+In Tab. 4, we compare the performance of proposed approaches with state-of-the-art approaches on
+situation recognition. We use ViT-L14@336px image encoder for all models – ClipSitu Verb MLP,
+ClipSitu MLP, ClipSitu TF, and ClipSitu XTF. ClipSitu Verb MLP outperforms SOTA method
+CoFormer on Top-1 and Top-5 verb prediction by a large margin of 12.6% and 12.4%, respectively,
+on the imSitu test set, which shows the effectiveness of using CLIP image embeddings over directly
+predicting the verb from the images. The comparison with existing works shows that with a well-
+designed MLP network, ClipSitu MLP outperforms state-of-the-art CoFormer [ 3] in all metrics
+comprehensively. ClipSitu MLP, TF, and XTF also handily outperform the only other CLIP-based
+semantic role labeling method, CLIP-Event [ 16]. ClipSitu XTF performs the best for noun prediction
+based on both the predicted top-1 verb and top-5 verb for value and value-all matrices. ClipSitu
+XTF outperforms state-of-the-art CoFormer by a massive margin of 14.1% on top-1 value and by
+9.6% on top-1 value-all using the Top-1 predicted verb on imSitu test set.
+Qualitative Results In Fig. 6, we compare the qualitative results of ClipSitu XTF with CoFormer.
+ClipSitu XTF is able to correctly predict abstract verbs and role-based nouns where CoFormer falters.
+For abstract verbs such as cramming (Fig. 6(b)), CoFormer focuses on the action of eating and hence
+incorrectly predicts the verb which also makes its noun predictions for the container and theme
+incorrect. On the other hand, ClipSitu XTF correctly identifies the situation as cramming and the
+theme as hotdog which is generally associated with cramming in eating competitions. CoFormer
+predicts the place as table and predicts the verb as dusting (Fig. 6(c)) instead of focusing on the
+action of nagging. Finally, we see in Fig. 6(d) that CoFormer is confused by the visual context of
+kitchen as it predicts stirring instead of identifying the action which is drumming. On the other
+hand, ClipSitu XTF correctly predicts drumming and the tool as drumsticks while still predicting
+the place as the kitchen.
+5 Conclusion
+We propose to leverage CLIP embeddings for semantic role labeling. We show that multimodal
+ClipSitu MLP with large hidden dimensions outperforms the state-of-the-art semantic role labeling
+approach. We propose a ClipSitu XTF model that employs cross-attention between image patchFigure 6: ClipSitu XTF vs. CoFormer [ 3] predictions. green refers to correct prediction while red
+refers to incorrect prediction. ’-’ refers to predicting blank (a noun class) for this role.embeddings from the CLIP image encoder and text embeddings. ClipSitu XTF sets the new state-of-
+the-art in semantic role labeling improving the current results by a large margin of 14.1% on top-1
+value and by 9.6% on top-1 value-all. We also show that our approach of using CLIP embeddings
+is much more effective than finetuning CLIP, given the relatively small size of the imSitu dataset.
+Unlike, VL-Adapter [ 26], AIM [32], EVL [19] and wise-ft [ 29], our models can handle conditional
+inputs to solve Situation Recognition task. Despite the simplicity, our work shows that a traditional
+approach of freeze and finetune can be still relevant when used with modern neural network designs
+especially when using Foundational models.
+Acknowledgment This research/project is supported by the National Research Foundation, Sin-
+gapore, under its NRF Fellowship (Award NRF-NRFF14-2022-0001). Any opinions, findings and
+conclusions or recommendations expressed in this material are those of the author(s) and do not
+reflect the views of the National Research Foundation, Singapore.

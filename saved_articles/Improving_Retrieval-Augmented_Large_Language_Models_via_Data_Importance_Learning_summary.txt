@@ -1,0 +1,26 @@
+Summary:
+The paper introduces an algorithm based on multilinear extension for evaluating the data importance of retrieved data points in retrieval-augmented large language models. The algorithm computes the data importance of data points in the retrieval corpus using the multilinear extension of the model's utility function. Experimental results show that the performance of large language models can be enhanced by pruning or reweighting the retrieval corpus based on the learned weights, without requiring further training. The weights based on multilinear extension can be computed efficiently in practice.
+
+Bullet Points:
+1. Multilinear extension algorithm for evaluating data importance in retrieval-augmented models
+2. Algorithm computes data importance based on the model's utility function
+3. Experimental results show improved performance of large language models with pruning and reweighting
+4. No requirement for further training
+5. Small models augmented with a search engine API outperform larger models
+6. Learned weights based on multilinear extension identify noisy data
+7. Weights help models adapt to new knowledge sources
+8. Efficient computation of weights in practice
+9. Algorithm can handle millions of data points in the retrieval corpus
+10. Source code and experiments available for further exploration
+
+Keywords:
+- Retrieval-augmented models
+- Multilinear extension
+- Data importance
+- Large language models
+- Pruning
+- Reweighting
+- Noisy data
+- Adaptability to new knowledge sources
+- Efficient computation
+- Source code and experiments

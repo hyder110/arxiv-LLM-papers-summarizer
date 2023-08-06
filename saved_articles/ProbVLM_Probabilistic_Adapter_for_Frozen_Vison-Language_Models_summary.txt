@@ -1,0 +1,19 @@
+Summary:
+- ProbVLM is a post-hoc method that estimates the probabilistic distribution of embeddings for frozen vision-language models.
+- It addresses the problem of deterministic embeddings not reflecting the inherent ambiguity in the embedding space.
+- ProbVLM estimates uncertainty in multi-modal embeddings for pre-trained models like CLIP and BLIP.
+- It outperforms other methods in terms of calibration of embedding uncertainties in retrieval tasks.
+- ProbVLM aids in active learning and model selection for VLMs.
+- It visualizes embedding distributions using a large-scale pre-trained latent diffusion model.
+
+Keywords:
+- ProbVLM
+- embeddings
+- frozen vision-language models
+- uncertainty estimation
+- probabilistic adapter
+- calibration
+- retrieval tasks
+- active learning
+- model selection
+- latent diffusion model

@@ -1,0 +1,480 @@
+Trainable Transformer in Transformer
+Abhishek Panigrahi Sadhika Malladi Mengzhou Xia Sanjeev Arora
+Department of Computer Science
+Princeton University
+{ap34,smalladi,mengzhou,arora }@cs.princeton.edu
+Abstract
+Recent works attribute the capability of in-context learning (ICL) in large pre-
+trained language models to implicitly simulating and fine-tuning an internal model
+(e.g., linear or 2-layer MLP) during inference. However, such constructions require
+large memory overhead, which makes simulation of more sophisticated internal
+models intractable. In this work, we propose a new efficient construction, Trans-
+former in Transformer (in short, TINT), that allows a transformer to simulate
+and fine-tune more complex models during inference (e.g., pre-trained language
+models). In particular, we introduce innovative approximation techniques that
+allow a TINTmodel with less than 2 billion parameters to simulate and fine-tune
+a 125 million parameter transformer model within a single forward pass. TINT
+accommodates many common transformer variants and its design ideas also im-
+prove the efficiency of past instantiations of simple models inside transformers. We
+conduct end-to-end experiments to validate the internal fine-tuning procedure of
+TINTon various language modeling and downstream tasks. For example, even with
+a limited one-step budget, we observe TINTfor a OPT-125M model improves
+performance by 4−16% absolute on average compared to OPT-125M . These
+findings suggest that large pre-trained language models are capable of performing
+intricate subroutines. To facilitate further work, a modular and extensible codebase
+for T INT is included1.
+1 Introduction
+Transformers [ 41] have brought about a revolution in language modeling, and scaling model size
+has enabled significant advancements in capabilities [ 5,7]. One such capability [ 45] is in-context
+learning (ICL), where language models “learn” from given training exemplars in the context and
+subsequently predict the label of a test example within a single inference pass.
+Several works [ 1,10,42] propose that ICL occurs when the large (“simulator”) model mimics and
+trains a smaller and simpler auxiliary model —such as a linear or 2-layer MLP model— on the
+in-context data. A crucial limitation of previous works is the large number of parameters needed for a
+simulator to perform such a complex subroutine during its forward pass, which restricts the simulator
+to performing very few training steps on fairly simple models. For example, simulating training of
+a linear layer can require tens of millions of parameters [ 1], and extending the simulator to train a
+larger model would require a simulator with trillions of parameters.
+The current work shows that minor modifications to the standard transformer architecture allow it to
+efficiently simulate and approximately train an internal auxiliary transformer during a single inference
+pass (Section 2). We call our architecture Transformer in Transformer , orTINTin short. We show
+how TINTcan internally simulate and train several popular and capable Transformer models such
+as GPT [ 32], OPT [ 52], and other variants [ 40,35]. In particular, TINTincorporates novel designs
+1https://github.com/abhishekpanigrahi1996/transformer_in_transformer
+Preprint. Under review.arXiv:2307.01189v1  [cs.CL]  3 Jul 2023ForwardModulesLast (ℓth) Backward ModuleForwardModulesForEvaluation……v1v2vK…e1e2e3e4e5eT…ṽ1ṽ2ṽK∂y1∂y2∂y3∂y4∂y5∂yT①Simulatedforwardpass②Backwardsimulationofi-1th layer③Descentsimulationofith layeri-1th BackwardModule(i=ℓ,…,1)ithDescent Module…e1e2e3e4e5eT…v1v2vKInputembeddingseAuxiliarymodel paramsvUpdatedauxiliary modelparamsṽGradientoflosswrt.y∂y①②③①MaskedinputembeddingseFigure 1: The overall structure of TINT. Each Forward, Backward, and Descent module is represented
+using combinations of linear, self-attention, layernorm, and activation layers. The input consists
+of prefix embeddings, that represent relevant auxiliary model parameters in each layer, input token
+embeddings, and a binary prefix mask to separate the train and evaluation segments of the input. The
+auxiliary model parameters are updated in the descent module using the training part of the segment,
+and the updated prefix tokens are transferred to the forward modules via residual connections for
+evaluating the rest of the segment.
+and approximations such as encoding auxiliary weights as prefix embeddings and efficient utilization
+of attention modules for computational parallelism. As a result, TinT with fewer than two billion
+parameters can internally simulate and perform one update on an auxiliary transformer with 125
+million parameters (e.g., GPT-2 orOPT-125 M). The scale and efficiency of our construction are
+crucial to its significance, as it suggests that even transformers of moderate scale can explicitly learn
+from context during inference.
+We validate our approach with end-to-end experiments on many language modeling and downstream
+tasks. Results demonstrate that a TINTmodel constructed to simulate and tune an OPT-125 Mmodel
+leads to a perplexity reduction of 0.3to0.7points in language modeling. Additionally, TINTlearns
+from in-context exemplars in the few-shot setting, resulting in an absolute gain of 12% to16% over
+the auxiliary model. TINTcan also learn from the context tokens of the evaluation inputs in the zero-
+shot setting, leading to an absolute performance improvement of up to 4%when no explicit exemplars
+are provided (Section 3.2). To the best of our knowledge, TINTis the first simulator to undergo such
+a comprehensive end-to-end evaluation on standard language tasks. In contrast, previous studies
+primarily conducted probing tests on transformers pre-trained using synthetic datasets or lacked
+empirical validation [1, 42, 13], likely due to the immense scale required by their constructions.
+2 Our Construction
+TheTINTmodel needs to simulate three operations on the auxiliary model: forward pass, backward
+pass, and gradient update. The auxiliary model is a transformer with four main modules : (1) linear
+layer, (2) attention module, (3) activation function, and (4) layer normalization. Thus TINTmust
+express 3×4, i.e., 12operations, using compositions of the identical four types of modules available
+inTINT. For presentation, we describe TINTforOPT andGPT auxiliary models. The simulation
+details of other variants are in Appendix I.
+2.1 Summary of modifications and their efficiency contributions
+We summarize all of the modifications introduced for efficient simulation. Some improve the
+parameter efficiency of all 12simulated operations, whereas others are specific to certain layers.
+Numbers in parentheses indicate the parameter saving factor when relevant.
+1.Prefix embeddings (5×compared to [ 44,29]): As described in Section 2.2, we use the token
+embeddings of the first few inputs (i.e., the prefix , see Definition 2.1) to represent the relevant
+auxiliary model weights at each layer. All operations use this template to improve the parameter
+efficiency of simulating even simple operations (e.g. linear layers).
+2stack
+——————————————————
+<latexit sha1_base64="J3Zn6LPhorrZQUDu7FXxnKUFcaA=">AAAB7XicbVDLSgNBEOz1GeMr6tHLYBA8hV3xdQx68RjBPCBZwuzsbDJmdmeZ6Q2EkH/w4kERr/6PN//GSbIHTSxoKKq66e4KUikMuu63s7K6tr6xWdgqbu/s7u2XDg4bRmWa8TpTUulWQA2XIuF1FCh5K9WcxoHkzWBwN/WbQ66NUMkjjlLux7SXiEgwilZqdIahQtMtld2KOwNZJl5OypCj1i19dULFspgnyCQ1pu25KfpjqlEwySfFTmZ4StmA9njb0oTG3Pjj2bUTcmqVkERK20qQzNTfE2MaGzOKA9sZU+ybRW8q/ue1M4xu/LFI0gx5wuaLokwSVGT6OgmF5gzlyBLKtLC3EtanmjK0ARVtCN7iy8ukcV7xriqXDxfl6m0eRwGO4QTOwINrqMI91KAODJ7gGV7hzVHOi/PufMxbV5x85gj+wPn8Ac6vj0w=</latexit>...<latexit sha1_base64="J3Zn6LPhorrZQUDu7FXxnKUFcaA=">AAAB7XicbVDLSgNBEOz1GeMr6tHLYBA8hV3xdQx68RjBPCBZwuzsbDJmdmeZ6Q2EkH/w4kERr/6PN//GSbIHTSxoKKq66e4KUikMuu63s7K6tr6xWdgqbu/s7u2XDg4bRmWa8TpTUulWQA2XIuF1FCh5K9WcxoHkzWBwN/WbQ66NUMkjjlLux7SXiEgwilZqdIahQtMtld2KOwNZJl5OypCj1i19dULFspgnyCQ1pu25KfpjqlEwySfFTmZ4StmA9njb0oTG3Pjj2bUTcmqVkERK20qQzNTfE2MaGzOKA9sZU+ybRW8q/ue1M4xu/LFI0gx5wuaLokwSVGT6OgmF5gzlyBLKtLC3EtanmjK0ARVtCN7iy8ukcV7xriqXDxfl6m0eRwGO4QTOwINrqMI91KAODJ7gGV7hzVHOi/PufMxbV5x85gj+wPn8Ac6vj0w=</latexit>...<latexit sha1_base64="J3Zn6LPhorrZQUDu7FXxnKUFcaA=">AAAB7XicbVDLSgNBEOz1GeMr6tHLYBA8hV3xdQx68RjBPCBZwuzsbDJmdmeZ6Q2EkH/w4kERr/6PN//GSbIHTSxoKKq66e4KUikMuu63s7K6tr6xWdgqbu/s7u2XDg4bRmWa8TpTUulWQA2XIuF1FCh5K9WcxoHkzWBwN/WbQ66NUMkjjlLux7SXiEgwilZqdIahQtMtld2KOwNZJl5OypCj1i19dULFspgnyCQ1pu25KfpjqlEwySfFTmZ4StmA9njb0oTG3Pjj2bUTcmqVkERK20qQzNTfE2MaGzOKA9sZU+ybRW8q/ue1M4xu/LFI0gx5wuaLokwSVGT6OgmF5gzlyBLKtLC3EtanmjK0ARVtCN7iy8ukcV7xriqXDxfl6m0eRwGO4QTOwINrqMI91KAODJ7gGV7hzVHOi/PufMxbV5x85gj+wPn8Ac6vj0w=</latexit>...
+<latexit sha1_base64="J3Zn6LPhorrZQUDu7FXxnKUFcaA=">AAAB7XicbVDLSgNBEOz1GeMr6tHLYBA8hV3xdQx68RjBPCBZwuzsbDJmdmeZ6Q2EkH/w4kERr/6PN//GSbIHTSxoKKq66e4KUikMuu63s7K6tr6xWdgqbu/s7u2XDg4bRmWa8TpTUulWQA2XIuF1FCh5K9WcxoHkzWBwN/WbQ66NUMkjjlLux7SXiEgwilZqdIahQtMtld2KOwNZJl5OypCj1i19dULFspgnyCQ1pu25KfpjqlEwySfFTmZ4StmA9njb0oTG3Pjj2bUTcmqVkERK20qQzNTfE2MaGzOKA9sZU+ybRW8q/ue1M4xu/LFI0gx5wuaLokwSVGT6OgmF5gzlyBLKtLC3EtanmjK0ARVtCN7iy8ukcV7xriqXDxfl6m0eRwGO4QTOwINrqMI91KAODJ7gGV7hzVHOi/PufMxbV5x85gj+wPn8Ac6vj0w=</latexit>...Key
+<latexit sha1_base64="eEC4amdouJlx8Pe6yBw8AarbB6M=">AAAB7HicbVBNS8NAEJ34WetX1aOXxSJ4Kon4dSx68VjBtIU2ls120y7dbMLuRCylv8GLB0W8+oO8+W/ctjlo64OBx3szzMwLUykMuu63s7S8srq2Xtgobm5t7+yW9vbrJsk04z5LZKKbITVcCsV9FCh5M9WcxqHkjXBwM/Ebj1wbkah7HKY8iGlPiUgwilbynzreg9cpld2KOwVZJF5OypCj1il9tbsJy2KukElqTMtzUwxGVKNgko+L7czwlLIB7fGWpYrG3ASj6bFjcmyVLokSbUshmaq/J0Y0NmYYh7Yzptg3895E/M9rZRhdBSOh0gy5YrNFUSYJJmTyOekKzRnKoSWUaWFvJaxPNWVo8ynaELz5lxdJ/bTiXVTO787K1es8jgIcwhGcgAeXUIVbqIEPDAQ8wyu8Ocp5cd6dj1nrkpPPHMAfOJ8/M/uOTQ==</latexit>x11
+<latexit sha1_base64="1TijOYbXgZjKIWMFOz7160xC0Ck=">AAAB7HicbVBNTwIxEJ3FL8Qv1KOXRmLiiewSv45ELx4xcYEEVtItXWjotpu2ayQbfoMXDxrj1R/kzX9jgT0o+JJJXt6bycy8MOFMG9f9dgorq2vrG8XN0tb2zu5eef+gqWWqCPWJ5FK1Q6wpZ4L6hhlO24miOA45bYWjm6nfeqRKMynuzTihQYwHgkWMYGMl/6nnPdR65YpbdWdAy8TLSQVyNHrlr25fkjSmwhCOte54bmKCDCvDCKeTUjfVNMFkhAe0Y6nAMdVBNjt2gk6s0keRVLaEQTP190SGY63HcWg7Y2yGetGbiv95ndREV0HGRJIaKsh8UZRyZCSafo76TFFi+NgSTBSztyIyxAoTY/Mp2RC8xZeXSbNW9S6q53dnlfp1HkcRjuAYTsGDS6jDLTTABwIMnuEV3hzhvDjvzse8teDkM4fwB87nDzV/jk4=</latexit>x21
+<latexit sha1_base64="sunhdqFh/Ra4i3nS4L2y6vpOPIc=">AAAB7HicbVBNTwIxEJ3FL8Qv1KOXRmLiiez6fSR68YiJCySwkm7pQkO33bRdI9nwG7x40Biv/iBv/hsL7EHBl0zy8t5MZuaFCWfauO63U1haXlldK66XNja3tnfKu3sNLVNFqE8kl6oVYk05E9Q3zHDaShTFcchpMxzeTPzmI1WaSXFvRgkNYtwXLGIEGyv5T13v4bRbrrhVdwq0SLycVCBHvVv+6vQkSWMqDOFY67bnJibIsDKMcDoudVJNE0yGuE/blgocUx1k02PH6MgqPRRJZUsYNFV/T2Q41noUh7Yzxmag572J+J/XTk10FWRMJKmhgswWRSlHRqLJ56jHFCWGjyzBRDF7KyIDrDAxNp+SDcGbf3mRNE6q3kX1/O6sUrvO4yjCARzCMXhwCTW4hTr4QIDBM7zCmyOcF+fd+Zi1Fpx8Zh/+wPn8ATcDjk8=</latexit>x31
+<latexit sha1_base64="eEC4amdouJlx8Pe6yBw8AarbB6M=">AAAB7HicbVBNS8NAEJ34WetX1aOXxSJ4Kon4dSx68VjBtIU2ls120y7dbMLuRCylv8GLB0W8+oO8+W/ctjlo64OBx3szzMwLUykMuu63s7S8srq2Xtgobm5t7+yW9vbrJsk04z5LZKKbITVcCsV9FCh5M9WcxqHkjXBwM/Ebj1wbkah7HKY8iGlPiUgwilbynzreg9cpld2KOwVZJF5OypCj1il9tbsJy2KukElqTMtzUwxGVKNgko+L7czwlLIB7fGWpYrG3ASj6bFjcmyVLokSbUshmaq/J0Y0NmYYh7Yzptg3895E/M9rZRhdBSOh0gy5YrNFUSYJJmTyOekKzRnKoSWUaWFvJaxPNWVo8ynaELz5lxdJ/bTiXVTO787K1es8jgIcwhGcgAeXUIVbqIEPDAQ8wyu8Ocp5cd6dj1nrkpPPHMAfOJ8/M/uOTQ==</latexit>x11
+<latexit sha1_base64="1TijOYbXgZjKIWMFOz7160xC0Ck=">AAAB7HicbVBNTwIxEJ3FL8Qv1KOXRmLiiewSv45ELx4xcYEEVtItXWjotpu2ayQbfoMXDxrj1R/kzX9jgT0o+JJJXt6bycy8MOFMG9f9dgorq2vrG8XN0tb2zu5eef+gqWWqCPWJ5FK1Q6wpZ4L6hhlO24miOA45bYWjm6nfeqRKMynuzTihQYwHgkWMYGMl/6nnPdR65YpbdWdAy8TLSQVyNHrlr25fkjSmwhCOte54bmKCDCvDCKeTUjfVNMFkhAe0Y6nAMdVBNjt2gk6s0keRVLaEQTP190SGY63HcWg7Y2yGetGbiv95ndREV0HGRJIaKsh8UZRyZCSafo76TFFi+NgSTBSztyIyxAoTY/Mp2RC8xZeXSbNW9S6q53dnlfp1HkcRjuAYTsGDS6jDLTTABwIMnuEV3hzhvDjvzse8teDkM4fwB87nDzV/jk4=</latexit>x21
+<latexit sha1_base64="sunhdqFh/Ra4i3nS4L2y6vpOPIc=">AAAB7HicbVBNTwIxEJ3FL8Qv1KOXRmLiiez6fSR68YiJCySwkm7pQkO33bRdI9nwG7x40Biv/iBv/hsL7EHBl0zy8t5MZuaFCWfauO63U1haXlldK66XNja3tnfKu3sNLVNFqE8kl6oVYk05E9Q3zHDaShTFcchpMxzeTPzmI1WaSXFvRgkNYtwXLGIEGyv5T13v4bRbrrhVdwq0SLycVCBHvVv+6vQkSWMqDOFY67bnJibIsDKMcDoudVJNE0yGuE/blgocUx1k02PH6MgqPRRJZUsYNFV/T2Q41noUh7Yzxmag572J+J/XTk10FWRMJKmhgswWRSlHRqLJ56jHFCWGjyzBRDF7KyIDrDAxNp+SDcGbf3mRNE6q3kX1/O6sUrvO4yjCARzCMXhwCTW4hTr4QIDBM7zCmyOcF+fd+Zi1Fpx8Zh/+wPn8ATcDjk8=</latexit>x31
+ValueMultiheadAttn.⊕
+<latexit sha1_base64="OxNWMMW8gio5nPun+01zUjW0INo=">AAAB7XicbVDLSgNBEOyNrxhfUY9eFoPgKeyKr2PQi8cI5gHJEmZnJ8mY2ZllplcIS/7BiwdFvPo/3vwbJ8keNLGgoajqprsrTAQ36HnfTmFldW19o7hZ2tre2d0r7x80jUo1ZQ2qhNLtkBgmuGQN5ChYO9GMxKFgrXB0O/VbT0wbruQDjhMWxGQgeZ9TglZqdmmk0PTKFa/qzeAuEz8nFchR75W/upGiacwkUkGM6fhegkFGNHIq2KTUTQ1LCB2RAetYKknMTJDNrp24J1aJ3L7StiS6M/X3REZiY8ZxaDtjgkOz6E3F/7xOiv3rIOMySZFJOl/UT4WLyp2+7kZcM4pibAmhmttbXTokmlC0AZVsCP7iy8ukeVb1L6sX9+eV2k0eRxGO4BhOwYcrqMEd1KEBFB7hGV7hzVHOi/PufMxbC04+cwh/4Hz+ALGXjzk=</latexit>···
+<latexit sha1_base64="cuiVbdhe+xmb7Ogb5mH1cDFmtis=">AAACFnicbVC7SgNBFJ2Nrxhfq5Y2g0GwMeyKrzKohWUU84DsGmYnk2TI7IOZu5Kw7FfY+Cs2ForYip1/42ySIiYeGDiccy93zvEiwRVY1o+RW1hcWl7JrxbW1jc2t8ztnZoKY0lZlYYilA2PKCZ4wKrAQbBGJBnxPcHqXv8q8+uPTCoeBvcwjJjrk27AO5wS0FLLPHJ8Aj3PS+7Sh+S65QAbQELiQYod4D5TeFpLW2bRKlkj4HliT0gRTVBpmd9OO6SxzwKggijVtK0I3IRI4FSwtODEikWE9kmXNTUNiD7pJqNYKT7QSht3QqlfAHikTm8kxFdq6Ht6MguhZr1M/M9rxtC5cBMeRDGwgI4PdWKBIcRZR7jNJaMghpoQKrn+K6Y9IgkF3WRBl2DPRp4nteOSfVY6vT0pli8ndeTRHtpHh8hG56iMblAFVRFFT+gFvaF349l4NT6Mz/Fozpjs7KI/ML5+AT8moLM=</latexit>RDaux⇥Daux1sttoken
+<latexit sha1_base64="thyk7dPqNmbhNP1r/EtC4MlWsn0=">AAACGXicbVC7TsMwFHV4lvIqMLJYVEhMJal4jRUwMBZEH1ITIsd1W6vOQ/YNahXlN1j4FRYGEGKEib/BaTuUliNZOjrnXl2f40WCKzDNH2NhcWl5ZTW3ll/f2NzaLuzs1lUYS8pqNBShbHpEMcEDVgMOgjUjyYjvCdbw+leZ33hkUvEwuIdhxByfdAPe4ZSAltyCafsEep6X3KUPSfnatYENICHxIMU2cJ8pPK0dl1O3UDRL5gh4nlgTUkQTVN3Cl90OaeyzAKggSrUsMwInIRI4FSzN27FiEaF90mUtTQOijzrJKFmKD7XSxp1Q6hcAHqnTGwnxlRr6np7McqhZLxP/81oxdC6chAdRDCyg40OdWGAIcVYTbnPJKIihJoRKrv+KaY9IQkGXmdclWLOR50m9XLLOSqe3J8XK5aSOHNpHB+gIWegcVdANqqIaougJvaA39G48G6/Gh/E5Hl0wJjt76A+M71+96aFk</latexit>R2Daux⇥Daux/2<latexit sha1_base64="D+PT0HdVBP9NKFgzR4YTmegMuH0=">AAACBHicbVC5TsNAEF1zhnAZKNNYREhUwY64yggoKAMihxQba73ZJKusD+2OUSLLBQ2/QkMBQrR8BB1/wzpxAQlPGunpvRnNzPMiziSY5re2sLi0vLJaWCuub2xubes7u00ZxoLQBgl5KNoelpSzgDaAAaftSFDse5y2vOFl5rceqJAsDO5gHFHHx/2A9RjBoCRXL9k+hoHnJbfpfXLl2kBHkOB4lB5VU1cvmxVzAmOeWDkpoxx1V/+yuyGJfRoA4VjKjmVG4CRYACOcpkU7ljTCZIj7tKNogH0qnWTyRGocKKVr9EKhKgBjov6eSLAv5dj3VGd2spz1MvE/rxND79xJWBDFQAMyXdSLuQGhkSVidJmgBPhYEUwEU7caZIAFJqByK6oQrNmX50mzWrFOKyc3x+XaRR5HAZXQPjpEFjpDNXSN6qiBCHpEz+gVvWlP2ov2rn1MWxe0fGYP/YH2+QNoYZiY</latexit>RDaux/2
+<latexit sha1_base64="pfOpb8WsWBm0Uqn8im74Fhp8TVM=">AAACA3icbVDLSsNAFJ3UV62vqDvdBIvgqiTF17KoC5dV7AOaGCbTaTt08mDmRlpCwI2/4saFIm79CXf+jZM2C209cOFwzr3ce48XcSbBNL+1wsLi0vJKcbW0tr6xuaVv7zRlGAtCGyTkoWh7WFLOAtoABpy2I0Gx73Ha8oaXmd96oEKyMLiDcUQdH/cD1mMEg5Jcfc/2MQw8L7lN75PqlWsDHUGC41GaunrZrJgTGPPEykkZ5ai7+pfdDUns0wAIx1J2LDMCJ8ECGOE0LdmxpBEmQ9ynHUUD7FPpJJMfUuNQKV2jFwpVARgT9fdEgn0px76nOrOL5ayXif95nRh6507CgigGGpDpol7MDQiNLBCjywQlwMeKYCKYutUgAywwARVbSYVgzb48T5rVinVaObk5Ltcu8jiKaB8doCNkoTNUQ9eojhqIoEf0jF7Rm/akvWjv2se0taDlM7voD7TPH+7amF8=</latexit>R2Daux
+Query
+<latexit sha1_base64="PGhSx5KLsEvjaIy6kRzifp7yMt0=">AAAB9XicbVDLSgMxFL3js9ZX1aWbYBFclYn4WhbduKxgH9BOSybNtKGZzJBkLGXof7hxoYhb/8Wdf2OmnYW2HggczrmXe3L8WHBtXPfbWVldW9/YLGwVt3d29/ZLB4cNHSWKsjqNRKRaPtFMcMnqhhvBWrFiJPQFa/qju8xvPjGleSQfzSRmXkgGkgecEmOlbickZugH6Xjaw13cK5XdijsDWiY4J2XIUeuVvjr9iCYhk4YKonUbu7HxUqIMp4JNi51Es5jQERmwtqWShEx76Sz1FJ1apY+CSNknDZqpvzdSEmo9CX07maXUi14m/ue1ExPceCmXcWKYpPNDQSKQiVBWAepzxagRE0sIVdxmRXRIFKHGFlW0JeDFLy+TxnkFX1UuHy7K1du8jgIcwwmcAYZrqMI91KAOFBQ8wyu8OWPnxXl3PuajK06+cwR/4Hz+AFjSkmw=</latexit>w11<latexit sha1_base64="bkCORPljh6VgQU7MONrKd+LuLuM=">AAAB9XicbVDLSsNAFL2pr1pfVZduBovgqiTF17LoxmUF+4A2LZPppB06mYSZiaWE/ocbF4q49V/c+TdO0iy09cDA4Zx7uWeOF3GmtG1/W4W19Y3NreJ2aWd3b/+gfHjUUmEsCW2SkIey42FFORO0qZnmtBNJigOP07Y3uUv99hOVioXiUc8i6gZ4JJjPCNZG6vcCrMeen0znA6dfG5QrdtXOgFaJk5MK5GgMyl+9YUjigApNOFaq69iRdhMsNSOczku9WNEIkwke0a6hAgdUuUmWeo7OjDJEfijNExpl6u+NBAdKzQLPTKYp1bKXiv953Vj7N27CRBRrKsjikB9zpEOUVoCGTFKi+cwQTCQzWREZY4mJNkWVTAnO8pdXSatWda6qlw8XlfptXkcRTuAUzsGBa6jDPTSgCQQkPMMrvFlT68V6tz4WowUr3zmGP7A+fwBaVpJt</latexit>w21<latexit sha1_base64="Clqf7y03xI4KBJzh9jvV+rFMjdM=">AAAB9XicbVC7TsMwFL0pr1JeAUYWiwqJqUp4jxUsjEWiD6lNK8d1WquOE9kOVRX1P1gYQIiVf2Hjb3DaDNByJEtH59yre3z8mDOlHefbKqysrq1vFDdLW9s7u3v2/kFDRYkktE4iHsmWjxXlTNC6ZprTViwpDn1Om/7oLvObT1QqFolHPYmpF+KBYAEjWBup2wmxHvpBOp723O55zy47FWcGtEzcnJQhR61nf3X6EUlCKjThWKm268TaS7HUjHA6LXUSRWNMRnhA24YKHFLlpbPUU3RilD4KImme0Gim/t5IcajUJPTNZJZSLXqZ+J/XTnRw46VMxImmgswPBQlHOkJZBajPJCWaTwzBRDKTFZEhlphoU1TJlOAufnmZNM4q7lXl8uGiXL3N6yjCERzDKbhwDVW4hxrUgYCEZ3iFN2tsvVjv1sd8tGDlO4fwB9bnD1vakm4=</latexit>w31
+<latexit sha1_base64="HKNNu92N2/kMvPV/O8VlEmMZZq8=">AAAB9XicbVDLSsNAFL2pr1pfVZduBovgqiTF17LoxmUF+4A2LZPppB06mYSZiaWE/ocbF4q49V/c+TdO0iy09cDA4Zx7uWeOF3GmtG1/W4W19Y3NreJ2aWd3b/+gfHjUUmEsCW2SkIey42FFORO0qZnmtBNJigOP07Y3uUv99hOVioXiUc8i6gZ4JJjPCNZG6vcCrMeen0zng1rfGZQrdtXOgFaJk5MK5GgMyl+9YUjigApNOFaq69iRdhMsNSOczku9WNEIkwke0a6hAgdUuUmWeo7OjDJEfijNExpl6u+NBAdKzQLPTKYp1bKXiv953Vj7N27CRBRrKsjikB9zpEOUVoCGTFKi+cwQTCQzWREZY4mJNkWVTAnO8pdXSatWda6qlw8XlfptXkcRTuAUzsGBa6jDPTSgCQQkPMMrvFlT68V6tz4WowUr3zmGP7A+fwBaWJJt</latexit>w12<latexit sha1_base64="EwxIItqadZpnFqmdHsyWH5UQjU0=">AAAB9XicbVDLSsNAFL2pr1pfVZduBovgqiTF17LoxmUF+4A2LZPppB06mYSZiaWE/ocbF4q49V/c+TdO0iy09cDA4Zx7uWeOF3GmtG1/W4W19Y3NreJ2aWd3b/+gfHjUUmEsCW2SkIey42FFORO0qZnmtBNJigOP07Y3uUv99hOVioXiUc8i6gZ4JJjPCNZG6vcCrMeen0zng1q/NihX7KqdAa0SJycVyNEYlL96w5DEARWacKxU17Ej7SZYakY4nZd6saIRJhM8ol1DBQ6ocpMs9RydGWWI/FCaJzTK1N8bCQ6UmgWemUxTqmUvFf/zurH2b9yEiSjWVJDFIT/mSIcorQANmaRE85khmEhmsiIyxhITbYoqmRKc5S+vklat6lxVLx8uKvXbvI4inMApnIMD11CHe2hAEwhIeIZXeLOm1ov1bn0sRgtWvnMMf2B9/gBb3JJu</latexit>w22<latexit sha1_base64="xFmm75Slb2bMMW9j9cBwsTqvFAY=">AAAB9XicbVDLTgIxFL2DL8QX6tJNIzFxRWYQH0uiG5eYyCOBgXRKBxo6nUnbkZAJ/+HGhca49V/c+Td2YBYKnqTJyTn35p4eL+JMadv+tnJr6xubW/ntws7u3v5B8fCoqcJYEtogIQ9l28OKciZoQzPNaTuSFAcepy1vfJf6rScqFQvFo55G1A3wUDCfEayN1OsGWI88P5nM+pXeRb9Yssv2HGiVOBkpQYZ6v/jVHYQkDqjQhGOlOo4daTfBUjPC6azQjRWNMBnjIe0YKnBAlZvMU8/QmVEGyA+leUKjufp7I8GBUtPAM5NpSrXspeJ/XifW/o2bMBHFmgqyOOTHHOkQpRWgAZOUaD41BBPJTFZERlhiok1RBVOCs/zlVdKslJ2r8uVDtVS7zerIwwmcwjk4cA01uIc6NICAhGd4hTdrYr1Y79bHYjRnZTvH8AfW5w9dYJJv</latexit>w32
+<latexit sha1_base64="CwdxfBTxtKPZ11JJnOg6RR6D9uw=">AAAB/3icbVDLSsNAFL2pr1pfUcGNm2ARXJVEfC2LunBZwT6grWEynbRDJ5MwM1FLzMJfceNCEbf+hjv/xkmbhbYeGDiccy/3zPEiRqWy7W+jMDe/sLhUXC6trK6tb5ibWw0ZxgKTOg5ZKFoekoRRTuqKKkZakSAo8BhpesOLzG/eESFpyG/UKCLdAPU59SlGSkuuudMJkBp4fnKfusmlm6D4IU1vHdcs2xV7DGuWODkpQ46aa351eiGOA8IVZkjKtmNHqpsgoShmJC11YkkihIeoT9qachQQ2U3G+VNrXys9yw+FflxZY/X3RoICKUeBpyeztHLay8T/vHas/LNuQnkUK8Lx5JAfM0uFVlaG1aOCYMVGmiAsqM5q4QESCCtdWUmX4Ex/eZY0DivOSeX4+qhcPc/rKMIu7MEBOHAKVbiCGtQBwyM8wyu8GU/Gi/FufExGC0a+sw1/YHz+AMuWlp0=</latexit>w1Daux<latexit sha1_base64="qyryFYHPBZVZNBuBL9OKS95+aks=">AAAB/3icbVDLSsNAFL3xWesrKrhxM1gEVyUpvpZFXbisYB/QxjCZTtqhkwczE7XELPwVNy4UcetvuPNvnLRdaOuBgcM593LPHC/mTCrL+jbm5hcWl5YLK8XVtfWNTXNruyGjRBBaJxGPRMvDknIW0rpiitNWLCgOPE6b3uAi95t3VEgWhTdqGFMnwL2Q+YxgpSXX3O0EWPU9P73P3PTSTXHykGW3FdcsWWVrBDRL7AkpwQQ11/zqdCOSBDRUhGMp27YVKyfFQjHCaVbsJJLGmAxwj7Y1DXFApZOO8mfoQCtd5EdCv1Chkfp7I8WBlMPA05N5Wjnt5eJ/XjtR/pmTsjBOFA3J+JCfcKQilJeBukxQovhQE0wE01kR6WOBidKVFXUJ9vSXZ0mjUrZPysfXR6Xq+aSOAuzBPhyCDadQhSuoQR0IPMIzvMKb8WS8GO/Gx3h0zpjs7MAfGJ8/zRqWng==</latexit>w2Daux<latexit sha1_base64="sGh5tC3Z2FChoJ12D91gLmW5EnM=">AAAB/3icbVC7TsMwFL3hWcorgMTCYlEhMVUJ77ECBsYi0YfUlshxndaq85DtAFXIwK+wMIAQK7/Bxt/gtBmg5UiWjs65V/f4uBFnUlnWtzEzOze/sFhYKi6vrK6tmxubdRnGgtAaCXkomi6WlLOA1hRTnDYjQbHvctpwBxeZ37ijQrIwuFHDiHZ83AuYxwhWWnLM7baPVd/1kvvUSS6dBMcPaXp76Jglq2yNgKaJnZMS5Kg65le7G5LYp4EiHEvZsq1IdRIsFCOcpsV2LGmEyQD3aEvTAPtUdpJR/hTtaaWLvFDoFyg0Un9vJNiXcui7ejJLKye9TPzPa8XKO+skLIhiRQMyPuTFHKkQZWWgLhOUKD7UBBPBdFZE+lhgonRlRV2CPfnlaVI/KNsn5ePro1LlPK+jADuwC/tgwylU4AqqUAMCj/AMr/BmPBkvxrvxMR6dMfKdLfgD4/MHzp6Wnw==</latexit>w3Daux<latexit sha1_base64="PGhSx5KLsEvjaIy6kRzifp7yMt0=">AAAB9XicbVDLSgMxFL3js9ZX1aWbYBFclYn4WhbduKxgH9BOSybNtKGZzJBkLGXof7hxoYhb/8Wdf2OmnYW2HggczrmXe3L8WHBtXPfbWVldW9/YLGwVt3d29/ZLB4cNHSWKsjqNRKRaPtFMcMnqhhvBWrFiJPQFa/qju8xvPjGleSQfzSRmXkgGkgecEmOlbickZugH6Xjaw13cK5XdijsDWiY4J2XIUeuVvjr9iCYhk4YKonUbu7HxUqIMp4JNi51Es5jQERmwtqWShEx76Sz1FJ1apY+CSNknDZqpvzdSEmo9CX07maXUi14m/ue1ExPceCmXcWKYpPNDQSKQiVBWAepzxagRE0sIVdxmRXRIFKHGFlW0JeDFLy+TxnkFX1UuHy7K1du8jgIcwwmcAYZrqMI91KAOFBQ8wyu8OWPnxXl3PuajK06+cwR/4Hz+AFjSkmw=</latexit>w11
+<latexit sha1_base64="bkCORPljh6VgQU7MONrKd+LuLuM=">AAAB9XicbVDLSsNAFL2pr1pfVZduBovgqiTF17LoxmUF+4A2LZPppB06mYSZiaWE/ocbF4q49V/c+TdO0iy09cDA4Zx7uWeOF3GmtG1/W4W19Y3NreJ2aWd3b/+gfHjUUmEsCW2SkIey42FFORO0qZnmtBNJigOP07Y3uUv99hOVioXiUc8i6gZ4JJjPCNZG6vcCrMeen0znA6dfG5QrdtXOgFaJk5MK5GgMyl+9YUjigApNOFaq69iRdhMsNSOczku9WNEIkwke0a6hAgdUuUmWeo7OjDJEfijNExpl6u+NBAdKzQLPTKYp1bKXiv953Vj7N27CRBRrKsjikB9zpEOUVoCGTFKi+cwQTCQzWREZY4mJNkWVTAnO8pdXSatWda6qlw8XlfptXkcRTuAUzsGBa6jDPTSgCQQkPMMrvFlT68V6tz4WowUr3zmGP7A+fwBaVpJt</latexit>w21
+<latexit sha1_base64="Clqf7y03xI4KBJzh9jvV+rFMjdM=">AAAB9XicbVC7TsMwFL0pr1JeAUYWiwqJqUp4jxUsjEWiD6lNK8d1WquOE9kOVRX1P1gYQIiVf2Hjb3DaDNByJEtH59yre3z8mDOlHefbKqysrq1vFDdLW9s7u3v2/kFDRYkktE4iHsmWjxXlTNC6ZprTViwpDn1Om/7oLvObT1QqFolHPYmpF+KBYAEjWBup2wmxHvpBOp723O55zy47FWcGtEzcnJQhR61nf3X6EUlCKjThWKm268TaS7HUjHA6LXUSRWNMRnhA24YKHFLlpbPUU3RilD4KImme0Gim/t5IcajUJPTNZJZSLXqZ+J/XTnRw46VMxImmgswPBQlHOkJZBajPJCWaTwzBRDKTFZEhlphoU1TJlOAufnmZNM4q7lXl8uGiXL3N6yjCERzDKbhwDVW4hxrUgYCEZ3iFN2tsvVjv1sd8tGDlO4fwB9bnD1vakm4=</latexit>w31
+<latexit sha1_base64="HKNNu92N2/kMvPV/O8VlEmMZZq8=">AAAB9XicbVDLSsNAFL2pr1pfVZduBovgqiTF17LoxmUF+4A2LZPppB06mYSZiaWE/ocbF4q49V/c+TdO0iy09cDA4Zx7uWeOF3GmtG1/W4W19Y3NreJ2aWd3b/+gfHjUUmEsCW2SkIey42FFORO0qZnmtBNJigOP07Y3uUv99hOVioXiUc8i6gZ4JJjPCNZG6vcCrMeen0zng1rfGZQrdtXOgFaJk5MK5GgMyl+9YUjigApNOFaq69iRdhMsNSOczku9WNEIkwke0a6hAgdUuUmWeo7OjDJEfijNExpl6u+NBAdKzQLPTKYp1bKXiv953Vj7N27CRBRrKsjikB9zpEOUVoCGTFKi+cwQTCQzWREZY4mJNkWVTAnO8pdXSatWda6qlw8XlfptXkcRTuAUzsGBa6jDPTSgCQQkPMMrvFlT68V6tz4WowUr3zmGP7A+fwBaWJJt</latexit>w12
+<latexit sha1_base64="EwxIItqadZpnFqmdHsyWH5UQjU0=">AAAB9XicbVDLSsNAFL2pr1pfVZduBovgqiTF17LoxmUF+4A2LZPppB06mYSZiaWE/ocbF4q49V/c+TdO0iy09cDA4Zx7uWeOF3GmtG1/W4W19Y3NreJ2aWd3b/+gfHjUUmEsCW2SkIey42FFORO0qZnmtBNJigOP07Y3uUv99hOVioXiUc8i6gZ4JJjPCNZG6vcCrMeen0zng1q/NihX7KqdAa0SJycVyNEYlL96w5DEARWacKxU17Ej7SZYakY4nZd6saIRJhM8ol1DBQ6ocpMs9RydGWWI/FCaJzTK1N8bCQ6UmgWemUxTqmUvFf/zurH2b9yEiSjWVJDFIT/mSIcorQANmaRE85khmEhmsiIyxhITbYoqmRKc5S+vklat6lxVLx8uKvXbvI4inMApnIMD11CHe2hAEwhIeIZXeLOm1ov1bn0sRgtWvnMMf2B9/gBb3JJu</latexit>w22
+<latexit sha1_base64="xFmm75Slb2bMMW9j9cBwsTqvFAY=">AAAB9XicbVDLTgIxFL2DL8QX6tJNIzFxRWYQH0uiG5eYyCOBgXRKBxo6nUnbkZAJ/+HGhca49V/c+Td2YBYKnqTJyTn35p4eL+JMadv+tnJr6xubW/ntws7u3v5B8fCoqcJYEtogIQ9l28OKciZoQzPNaTuSFAcepy1vfJf6rScqFQvFo55G1A3wUDCfEayN1OsGWI88P5nM+pXeRb9Yssv2HGiVOBkpQYZ6v/jVHYQkDqjQhGOlOo4daTfBUjPC6azQjRWNMBnjIe0YKnBAlZvMU8/QmVEGyA+leUKjufp7I8GBUtPAM5NpSrXspeJ/XifW/o2bMBHFmgqyOOTHHOkQpRWgAZOUaD41BBPJTFZERlhiok1RBVOCs/zlVdKslJ2r8uVDtVS7zerIwwmcwjk4cA01uIc6NICAhGd4hTdrYr1Y79bHYjRnZTvH8AfW5w9dYJJv</latexit>w32<latexit sha1_base64="CwdxfBTxtKPZ11JJnOg6RR6D9uw=">AAAB/3icbVDLSsNAFL2pr1pfUcGNm2ARXJVEfC2LunBZwT6grWEynbRDJ5MwM1FLzMJfceNCEbf+hjv/xkmbhbYeGDiccy/3zPEiRqWy7W+jMDe/sLhUXC6trK6tb5ibWw0ZxgKTOg5ZKFoekoRRTuqKKkZakSAo8BhpesOLzG/eESFpyG/UKCLdAPU59SlGSkuuudMJkBp4fnKfusmlm6D4IU1vHdcs2xV7DGuWODkpQ46aa351eiGOA8IVZkjKtmNHqpsgoShmJC11YkkihIeoT9qachQQ2U3G+VNrXys9yw+FflxZY/X3RoICKUeBpyeztHLay8T/vHas/LNuQnkUK8Lx5JAfM0uFVlaG1aOCYMVGmiAsqM5q4QESCCtdWUmX4Ex/eZY0DivOSeX4+qhcPc/rKMIu7MEBOHAKVbiCGtQBwyM8wyu8GU/Gi/FufExGC0a+sw1/YHz+AMuWlp0=</latexit>w1Daux
+<latexit sha1_base64="qyryFYHPBZVZNBuBL9OKS95+aks=">AAAB/3icbVDLSsNAFL3xWesrKrhxM1gEVyUpvpZFXbisYB/QxjCZTtqhkwczE7XELPwVNy4UcetvuPNvnLRdaOuBgcM593LPHC/mTCrL+jbm5hcWl5YLK8XVtfWNTXNruyGjRBBaJxGPRMvDknIW0rpiitNWLCgOPE6b3uAi95t3VEgWhTdqGFMnwL2Q+YxgpSXX3O0EWPU9P73P3PTSTXHykGW3FdcsWWVrBDRL7AkpwQQ11/zqdCOSBDRUhGMp27YVKyfFQjHCaVbsJJLGmAxwj7Y1DXFApZOO8mfoQCtd5EdCv1Chkfp7I8WBlMPA05N5Wjnt5eJ/XjtR/pmTsjBOFA3J+JCfcKQilJeBukxQovhQE0wE01kR6WOBidKVFXUJ9vSXZ0mjUrZPysfXR6Xq+aSOAuzBPhyCDadQhSuoQR0IPMIzvMKb8WS8GO/Gx3h0zpjs7MAfGJ8/zRqWng==</latexit>w2Daux
+<latexit sha1_base64="sGh5tC3Z2FChoJ12D91gLmW5EnM=">AAAB/3icbVC7TsMwFL3hWcorgMTCYlEhMVUJ77ECBsYi0YfUlshxndaq85DtAFXIwK+wMIAQK7/Bxt/gtBmg5UiWjs65V/f4uBFnUlnWtzEzOze/sFhYKi6vrK6tmxubdRnGgtAaCXkomi6WlLOA1hRTnDYjQbHvctpwBxeZ37ijQrIwuFHDiHZ83AuYxwhWWnLM7baPVd/1kvvUSS6dBMcPaXp76Jglq2yNgKaJnZMS5Kg65le7G5LYp4EiHEvZsq1IdRIsFCOcpsV2LGmEyQD3aEvTAPtUdpJR/hTtaaWLvFDoFyg0Un9vJNiXcui7ejJLKye9TPzPa8XKO+skLIhiRQMyPuTFHKkQZWWgLhOUKD7UBBPBdFZE+lhgonRlRV2CPfnlaVI/KNsn5ePro1LlPK+jADuwC/tgwylU4AqqUAMCj/AMr/BmPBkvxrvxMR6dMfKdLfgD4/MHzp6Wnw==</latexit>w3Daux<latexit sha1_base64="PhI3r/LZa+9TIu2xbUepgSHqUIg=">AAACAHicbZDLSsNAFIZPvNZ6i7pw4WawCK5KIt6WRTcuK9gLtCFMppN26GQSZiZiCdn4Km5cKOLWx3Dn2zhtI2jrDwMf/zmHOecPEs6Udpwva2FxaXlltbRWXt/Y3Nq2d3abKk4loQ0S81i2A6woZ4I2NNOcthNJcRRw2gqG1+N6655KxWJxp0cJ9SLcFyxkBGtj+fZ+N8J6EIRZK0c/+JD72rcrTtWZCM2DW0AFCtV9+7Pbi0kaUaEJx0p1XCfRXoalZoTTvNxNFU0wGeI+7RgUOKLKyyYH5OjIOD0UxtI8odHE/T2R4UipURSYzvGOarY2Nv+rdVIdXnoZE0mqqSDTj8KUIx2jcRqoxyQlmo8MYCKZ2RWRAZaYaJNZ2YTgzp48D82TqntePbs9rdSuijhKcACHcAwuXEANbqAODSCQwxO8wKv1aD1bb9b7tHXBKmb24I+sj29ZC5bp</latexit>Wxt
+<latexit sha1_base64="1u74K12jdBXtUZ5YfG+0DIwLSPI=">AAAB9XicbVDJSgNBFHzjGuMW9eilMQiewoy4HYNePEYwCyST0NPpSZr0LHS/UcOQ//DiQRGv/os3/8aeZA6aWNBQVL3Hqy4vlkKjbX9bS8srq2vrhY3i5tb2zm5pb7+ho0QxXmeRjFTLo5pLEfI6CpS8FStOA0/ypje6yfzmA1daROE9jmPuBnQQCl8wikbqdgKKQ89PnyY97Dq9Utmu2FOQReLkpAw5ar3SV6cfsSTgITJJtW47doxuShUKJvmk2Ek0jykb0QFvGxrSgGs3naaekGOj9IkfKfNCJFP190ZKA63HgWcms5R63svE/7x2gv6Vm4owTpCHbHbITyTBiGQVkL5QnKEcG0KZEiYrYUOqKENTVNGU4Mx/eZE0TivOReX87qxcvc7rKMAhHMEJOHAJVbiFGtSBgYJneIU369F6sd6tj9nokpXvHMAfWJ8/wG2SsA==</latexit>x1t
+<latexit sha1_base64="9n2lVRx6M1xN34ewO6M81VOvaYQ=">AAAB9XicbVDLSsNAFL2pr1pfVZdugkVwVZLia1l047KCfUBfTKaTduhkEmZu1BL6H25cKOLWf3Hn3zhps9DWAwOHc+7lnjleJLhGx/m2ciura+sb+c3C1vbO7l5x/6Chw1hRVqehCFXLI5oJLlkdOQrWihQjgSdY0xvfpH7zgSnNQ3mPk4h1AzKU3OeUoJF6nYDgyPOTp2kfe5V+seSUnRnsZeJmpAQZav3iV2cQ0jhgEqkgWrddJ8JuQhRyKti00Ik1iwgdkyFrGypJwHQ3maWe2idGGdh+qMyTaM/U3xsJCbSeBJ6ZTFPqRS8V//PaMfpX3YTLKEYm6fyQHwsbQzutwB5wxSiKiSGEKm6y2nREFKFoiiqYEtzFLy+TRqXsXpTP785K1eusjjwcwTGcgguXUIVbqEEdKCh4hld4sx6tF+vd+piP5qxs5xD+wPr8AcHxkrE=</latexit>x2t
+<latexit sha1_base64="h2/GtNjyN5PNr+SKZLw2Uvxg/cY=">AAAB9XicbVDJSgNBFHwTtxi3qEcvjUHwFGbcj0EvHiOYBbLR0+lJmvQsdL9Rw5D/8OJBEa/+izf/xp5kDppY0FBUvcerLjeSQqNtf1u5peWV1bX8emFjc2t7p7i7V9dhrBivsVCGqulSzaUIeA0FSt6MFKe+K3nDHd2kfuOBKy3C4B7HEe/4dBAITzCKRuq2fYpD10ueJj3snvaKJbtsT0EWiZOREmSo9opf7X7IYp8HyCTVuuXYEXYSqlAwySeFdqx5RNmIDnjL0ID6XHeSaeoJOTJKn3ihMi9AMlV/byTU13rsu2YyTannvVT8z2vF6F11EhFEMfKAzQ55sSQYkrQC0heKM5RjQyhTwmQlbEgVZWiKKpgSnPkvL5L6Sdm5KJ/fnZUq11kdeTiAQzgGBy6hArdQhRowUPAMr/BmPVov1rv1MRvNWdnOPvyB9fkDw3WSsg==</latexit>x3t
+<latexit sha1_base64="1u74K12jdBXtUZ5YfG+0DIwLSPI=">AAAB9XicbVDJSgNBFHzjGuMW9eilMQiewoy4HYNePEYwCyST0NPpSZr0LHS/UcOQ//DiQRGv/os3/8aeZA6aWNBQVL3Hqy4vlkKjbX9bS8srq2vrhY3i5tb2zm5pb7+ho0QxXmeRjFTLo5pLEfI6CpS8FStOA0/ypje6yfzmA1daROE9jmPuBnQQCl8wikbqdgKKQ89PnyY97Dq9Utmu2FOQReLkpAw5ar3SV6cfsSTgITJJtW47doxuShUKJvmk2Ek0jykb0QFvGxrSgGs3naaekGOj9IkfKfNCJFP190ZKA63HgWcms5R63svE/7x2gv6Vm4owTpCHbHbITyTBiGQVkL5QnKEcG0KZEiYrYUOqKENTVNGU4Mx/eZE0TivOReX87qxcvc7rKMAhHMEJOHAJVbiFGtSBgYJneIU369F6sd6tj9nokpXvHMAfWJ8/wG2SsA==</latexit>x1t
+<latexit sha1_base64="9n2lVRx6M1xN34ewO6M81VOvaYQ=">AAAB9XicbVDLSsNAFL2pr1pfVZdugkVwVZLia1l047KCfUBfTKaTduhkEmZu1BL6H25cKOLWf3Hn3zhps9DWAwOHc+7lnjleJLhGx/m2ciura+sb+c3C1vbO7l5x/6Chw1hRVqehCFXLI5oJLlkdOQrWihQjgSdY0xvfpH7zgSnNQ3mPk4h1AzKU3OeUoJF6nYDgyPOTp2kfe5V+seSUnRnsZeJmpAQZav3iV2cQ0jhgEqkgWrddJ8JuQhRyKti00Ik1iwgdkyFrGypJwHQ3maWe2idGGdh+qMyTaM/U3xsJCbSeBJ6ZTFPqRS8V//PaMfpX3YTLKEYm6fyQHwsbQzutwB5wxSiKiSGEKm6y2nREFKFoiiqYEtzFLy+TRqXsXpTP785K1eusjjwcwTGcgguXUIVbqEEdKCh4hld4sx6tF+vd+piP5qxs5xD+wPr8AcHxkrE=</latexit>x2t
+<latexit sha1_base64="h2/GtNjyN5PNr+SKZLw2Uvxg/cY=">AAAB9XicbVDJSgNBFHwTtxi3qEcvjUHwFGbcj0EvHiOYBbLR0+lJmvQsdL9Rw5D/8OJBEa/+izf/xp5kDppY0FBUvcerLjeSQqNtf1u5peWV1bX8emFjc2t7p7i7V9dhrBivsVCGqulSzaUIeA0FSt6MFKe+K3nDHd2kfuOBKy3C4B7HEe/4dBAITzCKRuq2fYpD10ueJj3snvaKJbtsT0EWiZOREmSo9opf7X7IYp8HyCTVuuXYEXYSqlAwySeFdqx5RNmIDnjL0ID6XHeSaeoJOTJKn3ihMi9AMlV/byTU13rsu2YyTannvVT8z2vF6F11EhFEMfKAzQ55sSQYkrQC0heKM5RjQyhTwmQlbEgVZWiKKpgSnPkvL5L6Sdm5KJ/fnZUq11kdeTiAQzgGBy6hArdQhRowUPAMr/BmPVov1rv1MRvNWdnOPvyB9fkDw3WSsg==</latexit>x3tFigure 2: TINTsimulates the forward pass of a linear layer as a H-head ( H= 6 here) attention
+layer, with parameters of the auxiliary model as the key, the encodings of input tokens as the query,
+and the positional one-hot vector of the prefix embeddings as the value. We omitted the identical
+transformation for key, query, and value matrices for simplicity.
+2.Hsim-split linear operations (Hsim×): In Section 2.3, we parallelize expensive linear operations
+in T INT using Hsim-split operations.
+3.Linear attention : We use linear attention modules to perform the forward, backward, and gradient
+operations for an auxiliary model linear layer. Softmax attention also suffices but requires more
+parameters and incurs an approximation error (Theorem 2.5). We use softmax attention modules
+to simulate the auxiliary model attention modules in T INT .
+4.First order gradients (4×): We use the first-order term of the gradient for the layer normalization
+and activations layers (Section 2.4).
+5.Gradients only through value vectors in attention (5×): We only use the gradients of the value
+vectors of the attention module to backpropagate to previous layers (Section 2.5). We show that
+under certain conditions this approximation can be arbitrarily accurate (Theorem 2.13).
+6.Parameter sharing (3×or4×): We save 3×parameters by applying the same forward module
+inTINTto simulate the query, key, and value computation of the auxiliary model’s self-attention
+module (Section 2.6). Similarly, we divide the feedforward layer in the auxiliary model into 4 sub-
+layers and save 4×parameters by employing a single T INT module to simulate the computation
+of each sub-layer.
+We focus on the parameter-efficient modules of our model and defer the complete formal construction
+to the appendix. For illustration, we ignore the bias parameters here but discuss them in the appendix.
+Notation: LetDdenote the embedding dimension for a token and Tdenote the length of an input
+sequence. Hdenotes the number of attention heads. With the exception of contextual embeddings, we
+use subscripts to indicate if the quantity is from TINTmodel or from the auxiliary model. For example,
+Dauxrefers to the embedding dimension and Dsimrefers to TINTmodel embedding dimension. For
+contextual embeddings, we use e(ℓ)
+t∈RDsimto denote activations in TINTandx(ℓ)
+t∈RDauxto
+denote activations in the auxiliary model, where ℓis the layer and tis the sequence position. When
+convenient, we drop the superscript that represents the layer index and the subscript that represents
+the position index. For a matrix A,ajrefers to its jth row, and for any vector b,bjrefers to its jth
+element. T INT uses one-hot position embeddings {pTINT
+i∈RTsim}i≤Tsim.
+2.2 Operating on an auxiliary model with prefix embeddings
+The straightforward way to simulate the forward pass of the auxiliary model would be to store its
+weights in the simulator’s weights and run a forward pass as usual. However, this gives the simulator
+no way to update the weights of the auxiliary model, since the simulator cannot modify its own
+weights during a forward pass. The only way to update the auxiliary model weights is by storing
+them in model activations that can be accessed and modified over the course of a forward pass.
+Wei et al. [44], Perez et al. [29] model the simulator after a Turing machine. Each simulator token
+embedding e(ℓ)
+t∈RDsimacts as a workspace for operations. Weights and intermediate computations
+are copied between the workspace and memory using attention modules. Memory space can either be
+3allocated in a token embedding, thereby increasing the embedding size Dsim[1], or passed into the
+model as additional context tokens, thereby increasing the simulator’s input sequence length Tsim.
+Both strategies increase the size of the construction, and using attention modules for copy operations
+results in a drastic scaling. For example, if Daux= 768 , a dot product with weight w∈R768, i.e.
+⟨w,x(ℓ)
+t⟩, requires at least 8.7million parameters in the simulator2.
+Alternatively, storing memory as context tokens and allowing the attention modules to attend to those
+tokens removes the need for copying operations [ 13]. Then, a dot product with weight w∈R768, i.e.
+⟨w,x(ℓ)
+t⟩, requires 1.7million parameters only. However, naively inserting the parameters as tokens
+again causes a drastic scaling, since the attention module grows quadratically with the sequence
+length Tsim. According to this approach, we define prefix embeddings inTINT, which contain only
+the relevant auxiliary parameters at each layer.
+Definition 2.1 (Prefix Embeddings) .We use {v(ℓ)
+j}K
+j=1to denote the Kprefix embeddings at the
+ℓth layer in TINTmodel. Prefix embeddings contain quantities (e.g., auxiliary model weights or
+simulated intermediate activations) needed for each simulation.
+Figure 1 illustrates TINT. Using prefix embeddings allows us to (1) parallelize operations between the
+auxiliary weights and the intermediate activations across Hsimattention heads, (2) keep the embedding
+dimension Dsimrelatively small, and (3) choose between sharing the auxiliary model across input
+sequences or resetting the auxiliary model to its original state after each input sequence. We control
+the number of prefix embeddings Kby designing each layer’s prefix to only contain the required
+auxiliary parameters for the relevant simulated operation. Stacking multiple tokens per embedding
+allows us to efficiently parallelize across multi-head attention (Section 2.3). Residual connections
+propagate updated auxiliary model parameters to later layers of TINT. This strategy results in a
+tradeoff between the true context length that T INT can operate on and the resulting model size.
+2.3 Stacking in prefix-tokens, Hsim-split linear operations and Linear attention
+We motivate three parameter-efficient techniques using a Daux×Dauxlinear layer as a case study.
+The linear layer is applied token-wise, so we consider a single position twithout loss of generality.
+Definition 2.2 (Linear layer) .For a weight W∈RDaux×Daux, a linear layer takes x∈RDauxas input
+and outputs y=Wx .
+Stacking: Letwidenote the ith row of W, so we must compute ⟨wi,xt⟩for all i∈[Daux]. To
+do so, the TINTinput embedding etmust contain xtin its first Dauxcoordinates. We provide the
+weights {wi}as prefix embeddings {vj}(Definition 2.1). As a first attempt, we might simply put
+eachwiin its own vivector, which means we would need K=Dauxprefix embeddings at the start
+of the sequence. For GPT-2, Daux= 768 , so placing each weight as an individual prefix embedding
+will not allow the TINTto accept many standard language context tokens, and the complexity of
+attention modules in the TINTwill grows quadratically with input length. To avoid such inefficiencies,
+we stack Sweights on top of each other to form each prefix embedding vi.Sdrives a trade-off
+between the embedding dimension of the TINT,Dsim:=DauxS, and the context length to the TINT
+,Tsim:=K+Taux. We set S= 4.
+Attention Module: We can now use a self-attention module of TINTto perform the dot product
+between the rows of the weights and the input. We modify the usual attention layer to also include
+the one-hot position embeddings {pTINT
+i∈RTsim}i≤Tsim. Here, we illustrate the self-attention layer
+with a single attention head and defer the definition of a multi-head attention layer to Definition B.1.
+Definition 2.3 (TINTself-attention with single head) .For parameters {WTINT
+Q,WTINT
+K,WTINT
+V∈
+RDsim×Dsim},{Wp
+Q,Wp
+K,Wp
+V∈RDsim×Tsim}, the self-attention layer with single attention head
+and a function fattn:RTsim→RTsimtakes a sequence {bet∈RDsim}t≤Tsimas input and outputs
+{eet∈RDsim}t≤Tsim, such that
+eet=X
+j≤Tsimat,jvj, where at,j=fattn(Kqt)j,
+qt=WTINT
+Qbet+Wp
+Qpt,kt=WTINT
+Kbet+Wp
+Kpt,vt=WTINT
+Vbet+Wp
+Vptfor all t≤Tsim,
+2The copy attention will require 1.7million parameters, while the dot product with a feedforward module
+(following [1]) will require >7million parameters.
+4andK∈RTsim×Dsimis the key matrix defined with its rows as {kt}t≤Tsim.
+qt,kt,vtare referred to as the query, key, and value vectors at position t, and at,jis referred to as
+the attention score between tokens at position tandj.fattncan be either linear or softmax functions,
+and the corresponding layers are referred to as linear and softmax self-attention respectively.
+Remark 2.4.In order to compute and backpropagate the loss during inference, the self-attention layers
+inTINTneed to be non-causal on the first few tokens of the input.3Bidirectional attention is used
+inTINTmodules performing backpropagation on auxiliary self-attention layers (Section 2.5). For
+gradient updates, the prefix embeddings depend on the gradients in the token embeddings. Explicit
+masks apply bidirectional attention to the input.
+TINTLinear Forward module: A first attempt would be to use different attention heads to operate
+on different rows; however, this only uses Sattention heads whereas large Transformers usually have
+many more heads. Moreover, the output from the multi-head attention would need to be reorganized
+before it could be reduced efficiently via summation. Such rearranging requires constructing a
+Dsim×Dsimlinear layer.
+We instead parallelize across more attention heads and ensure the resulting output can easily be
+compiled to produce the matrix-vector product. The key idea is that we shard each individual weight
+intoS′parts. We set SandS′such that Hsim=S×S′, effectively computing dot products using all
+the attention heads available to the T INT . Please see Figure 2.
+Hsim-split linear operations: The output resulting from the attention module has shape
+(Dsim/H sim)×Hsimand is sparse. In order to complete linear forward pass, we need to sum and
+aggregate the appropriate terms to form a Dsim-length vector with Wx in the first Dauxcoordinates.
+Straightforwardly summing along rows or columns results in the incorrect terms being aggregated,
+since the model was sharded. Rearranging the entire matrix to ensure that there are no such conflicting
+terms summed requires an additional Dsim×Dsimlinear layer. But we can save a factor Hsimin
+the number of parameters via efficient operations that leverage the local structure of the attention
+output. We space out the results across the Dsim/H simrows and then sum along the Hsimcolumns
+to get the desired Dsim-length vector. This requires D2
+sim/H sim+DsimHsimparameters. Please see
+Appendix C.1 for more details.
+Note that this methodology of leveraging local structure is also useful in compressing the constructions
+for other linear operations in the TINT, e.g. the TINT’s backpropagation modules of Layer
+Normalization and activation operations (Appendices E and F).
+Linear Attention: The above construction uses a linear attention mechanism instead of the canonical
+softmax. In the following theorem, we show that any linear attention module with bounded entries
+can be approximated by softmax attention with a few additional parameters. To avoid accumulating
+such errors, we continue to use linear attention in TINTin place of softmax attention, wherever
+necessary.
+Theorem 2.5 (Informal, c.f. Theorem B.2) .For any ϵ >0,B > 0, and a linear attention module
+withHattention heads and bounded parameters, there exists a softmax attention module with 2Hsim
+attention heads and 4×additional parameters, such that on every sequence of inputs with norm
+bounded by B, the output sequences of the softmax attention and the linear attention differ by O(ϵ)
+at each position.
+2.4 First order gradients for layer normalization
+Below, we show that computing exact gradients for layer normalization is expensive, so we efficiently
+approximate backpropagation by computing the dominating term.
+Definition 2.6. [Layer Normalization] Define a normalization function f:Rd→Rdthat performs
+f(x) = (x−µ)/σ, where µandσare the mean and standard deviation of x, respectively. Then,
+layer normalization with parameters γ,b∈RDauxtakes as input x∈RDauxand outputs y∈RDaux,
+which is computed as z=f(x),y=γ⊙z+b.
+3Similar prefix models have been developed in [33, 23].
+5Definition 2.7. [Exact Gradient for Layer Normalization] Using notations in Definition 2.6, given the
+gradient of the loss w.r.t the output of the Layer Normalization ∂y, backpropagation computes ∂xas
+∂x= (∂z−Daux−1DauxX
+i=1∂zi− ⟨∂z,z⟩z)/σ ∂ z=γ⊙∂y
+The exact backpropagation operation is expensive because computing ⟨∂z,z⟩zrequires a sequential
+operation involving at least two MLP layers, so we approximate it with a first-order Taylor expansion,
+which we formally prove is entry-wise close to the true gradient.
+Definition 2.8. [ϵ-approximate Layer Normalization Gradient] With notations defined above, this
+layer takes ∂y,x∈RDauxas input and outputs c∂x=1
+ϵ(f(x+ϵγ⊙∂y)−f(x)).
+Theorem 2.9 (Informal, c.f. Thm E.1) .With bounded ℓ2-norms of x,∂y,γ,b,∂x−c∂x
+∞≤ O(ϵ).
+A first-order approximation can only be close to the gradient with symmetric Jacobian. Hence, we
+cannot apply such an approximation to backpropagate the linear and self-attention layers. We use a
+TINTmodule with 2 linear layers, separated by Group Normalization [ 48], to compute c∂x, leading to
+a4×parameter reduction compared to computing the exact gradient.
+2.5 Gradient backpropagation through values in self-attention in the auxiliary
+For simplicity, we present the results for a self-attention layer with a single attention head and defer
+multi-head attention to the appendix (Appendix D). The self-attention in the auxiliary model is similar
+to that of the T INT (Definition 2.3) but does not use a position vector.
+Definition 2.10 (Auxiliary model softmax self-attention) .A self-attention layer with parameters
+{WQ,WK,WV}takes a sequence {xt}t≤Tauxand outputs a sequence {yt}t≤Taux, such that
+yt=X
+jat,jvj, withat,j= softmax( Kqt)j,qt=WQxt,kt=WKxt,vt=WVxt,
+for all t≤Taux, andK∈RTaux×Dauxdefined with rows {kt}Taux
+t=1.
+Definition 2.11 (Exact gradient for softmax self-attention) .Given the gradients of the loss w.r.t the
+output sequence {∂yt}T
+t=1, backpropagation computes {∂xt}T
+t=1, with
+∂xt=W⊤
+Q∂qt+W⊤
+K∂kt+W⊤
+V∂vt, ∂ vt=X
+jaj,t∂yj,
+∂qt:=X
+jat,j((∂yt)⊤vj)[kj−X
+j′at,j′kj′], ∂ kt:=X
+jat,j((∂yt)⊤(vj−X
+j′at,j′vj′))qj
+for all t≤Taux, withK∈RTaux×Dauxdefined with rows {kt}Taux
+t=1.
+The computation of ∂qt:=P
+jat,j((∂yt)⊤vj)[kj−P
+j′at,j′kj′](and similarly ∂kt) requires at
+least 2 self-attention layers and an MLP layer , since we must compute and multiply attention scores
+at,jand(∂yt)⊤vjbefore computing ∂qt. Thus, we only update the self-attention using the gradients
+w.r.t.vt.
+Definition 2.12 (Approximate Self-Attention Backpropagation) .With the notations defined above,
+this layer takes a sequence {∂yt∈RDaux}t≤Tauxand{xt∈RDaux}t≤Tauxas input and outputs
+{c∂xt}t≤T, withc∂xt=W⊤
+V∂vt, where ∂vt=P
+jaj,t∂yj.
+We formally show that when the attention head for each position pays a lot of attention to a single
+token (i.e., behaves like hard attention [ 29]),c∂xtis entry-wise close to ∂xtfor all t. Computing
+{c∂xt}T
+t=1instead of {∂xt}T
+t=1induces a 5×parameter reduction.
+Theorem 2.13 (Informal, c.f. Theorem D.5) .If on input sequence {xt}t≤Taux, the attention scores
+areε-close to a hard-attention at each position, then for all t,∥∂xt−c∂xt∥ ≤ O (ε).
+Bidirectional prefix attention: Computing ∂vtis similar to computing yt, except that the attention
+scores are transposed due the chain rule being applied to a causal auxiliary model: tokens must attend
+to gradients of future tokens during backpropagation. Therefore, this module requires a bidirectional
+attention mask in order to compute the self-attention gradients.
+62.6 Parameter sharing in the T INT
+Consider the self-attention layer(Section 2.5). The relevant TINTmodule performs linear operations
+withWQ,WK,WVto compute query, key, and value vectors at each position t(Definition 2.2) and
+hence can be simulated with the Linear Forward module (Section 2.3). We additionally leverage
+parameter sharing to apply a single Linear Forward module for each of the three computations, chang-
+ing only the prefix embeddings to correspond to WQ,WK, orWV. Applying the same structure to
+feed-forward linear layers results in a 4×reduction in the number of necessary modules (Appendix H).
+3 Experiments
+Our approach provides constructions for diverse variants of pre-trained language models. Table 1
+highlights many types of modules and the required size and computation for each. The size of a
+constructed model is influenced by various factors, including the number of layers, and embedding
+dimension in the auxiliary. We demonstrate the effectiveness of constructed models through language
+modeling and in-context learning tasks. We evaluate the T INT construction on OPT-125 Mmodel.
+Table 1: Number of parameters of TINTfor the forward, backward, and gradient update operations
+on various modules. For simplicity, we have ignored biases in the following computation. We
+setHsim= 12 forOPT-125M andHsim= 16 for the other models, Dsim= 4Dauxfor all the
+models, and Tsim=Taux+K, with Taux= 2048 forOPT models, and K=Daux/4.Q= 4Qsplit+
+3TsimDsim/H sim, where Qsplit=1
+Hsim(Dsim)2+HsimDsim, denotes the number of parameters in a
+TINT Linear Forward module (Section 2.3).
+Module Size
+Module Name Forward Backward Descent Total
+Linear layer Q Q Q 3Q
+Layer norms Q Q + 2DsimHsim Q 3Q+ 2DsimHsim
+Self-Attention 2Q 2Q 2Q 6Q
+Activation Qsplit 2DsimHsim 0 Qsplit+ 2DsimHsim
+Self-Attention block 4Q 4Q+ 2DsimHsim 4Q 12Q+ 2DsimHsim
+Feed-forward block 3Q 3Q+ 4DsimHsim 3Q 9Q+ 4DsimHsim
+Transformer block 7Q 7Q+ 6DsimHsim 7Q 21Q+ 6DsimHsim
+Transformer 7QL+LQsplit (7Q+ 6DsimHsim)L 7QL (21Q+ 6DsimHsim)L
+OPT-125 M 0.4B 0.4B 0.4B 1.2B
+OPT-350 M 1.2B 1.1B 1.1B 3.4B
+OPT-1.3 B 3.7B 3.6B 3.5B 10.8 B
+OPT-2.7 B 7.4B 7.2B 7.2B 21.8 B
+Table 2: Language modeling results on WIKITEXT-103 . We use 30%,50%,70% and90% of
+sequences for training in dynamic eval and TINTand the rest of the sequence for evaluation. TINT
+improves upon the auxiliary model perplexities by 0.3−0.7absolute on average. The small perplexity
+difference between the TINTand dynamic evaluation suggests that the approximations introduced
+in the descent algorithm (Sections 2.4 and 2.5) have minimal impact on T INT ’s performance.
+GPT2 OPT-125m
+Training portion 30% 50% 70% 90% 30% 50% 70% 90%
+VANILLA MODEL 25.6 24.9 24.5 23.3 29.6 28.8 28.0 28.0
+DYNA. EVAL 24.9 24.0 23.5 22.2 29.0 28.2 27.4 27.4
+TINT 25.1 24.3 23.8 22.6 29.3 28.4 27.5 27.4
+3.1 Experimental Setup
+Tasks: To verify that our construction performs valid internal tuning, we perform experiments in
+language modeling and many downstream tasks in zero-shot and few-shot settings. For language
+7Review:goes	to	absurd	lengths.Sentiment:	NegativeExample	1Review:	contains	no	wit	,	only	labored	gags.Sentiment:	NegativeExample	2Review:	the	greatest	musiciansSentiment:	PositiveExample	3Review:goes	to	absurd	lengths.Sentiment:	NegativeReview:	contains	no	wit	,	only	labored	gags.Sentiment:	NegativeReview:	the	greatest	musiciansSentiment:PositiveExample	1Figure 3: This illustration showcases different settings in few-shot learning ( k= 3) using TINT. The
+Single mode (left) has one example for each input, and the auxiliary model is updated with a batch of
+inputs. The Multi. mode (right) concatenates all examples to form a single input. For Label loss ,
+only underlined label words are used for internal training, while full context loss includes all tokens.
+modeling, we use the WIKITEXT -103 [24] dataset. Furthermore, we evaluate our construction on
+7text classification tasks, namely SST-2 [38], MR [ 27], CR [ 17], MPQA [ 47], Amazon Polarity
+[53], AGNews [ 53], and Subj [ 28]. Our methodology draws inspiration from dynamic evaluation
+[19], where a segment of the input sequence is used to update the auxiliary model, and the remaining
+portion is used to assess the updated auxiliary model’s performance.
+Model: We evaluate a TINTmodel that tunes an OPT-125 Mpre-trained model internally. We
+compare with the vanilla OPT-125 Mmodel and its dynamic evaluation variant. We employ the
+domain-based calibration approach [16] to mitigate label bias from OPT-125 M.
+Settings: We explore the following settings in downstream tasks: 1) Single and Multi.: We finetune
+the auxiliary model using either a single example or concatenated examples (ICL-style) within each
+input; 2) Label loss and full-context loss: We finetune on the loss either from only label words or the
+entire context (Figure 3). We evaluate both zero-shot and few-shot settings, using the context of the
+evaluation example and 32 training examples for internal learning respectively.
+3.2 Verification of T INT
+In language modeling (Table 2), the perplexity decreases with the utilization of TINT, especially as
+the training proportion increases. For downstream tasks (Table 3), we observe that explicit internal
+training within TINTsurpasses vanilla zero-shot evaluation and in-context learning, even with a
+limited budget of a single forward pass. Moreover, TINTachieves a performance comparable to
+dynamic evaluation, indicating that the approximations made during its construction largely preserve
+its effectiveness for fine-tuning. Though calibration may not always be beneficial in every setting,4
+we observe that the efficacy of TINTremains comparable to dynamic evaluation. Additionally, we
+find that TINToutperforms or is on par with its similar-sized pre-trained model ( OPT-1.3 B) except in
+the calibrated few-shot setting, suggesting that the pre-trained models could benefit from a similar
+internal training procedure. Please refer to Appendix J for more details on experiments.
+4 Related Work
+Interpretability: One area of study, known as mechanistic interpretability, reverse-engineers the
+algorithms simulated by these models [ 12,26,43,25,8]. These works aim to understand local
+patterns, e.g. activation and attention patterns, to get insight into overall behavior. Another research
+direction aims to use declarative programs to describe and compile transformer models, enabling
+interpretable comprehension of their functioning [46, 21].
+Transformers as Turing Machines: Several recent works have aimed to understand the expressivity
+of transformers. Perez et al. [29] [31] showed that Transformers with hard attention are Turing
+complete, with Wei et al. [44] showing statistically meaningful transformer constructions for Turing
+machines, taking statistical learnability into account. In 2.2, we point out that this scheme often
+results in gigantic constructions. To understand the behavior of moderate transformer architectures,
+4Such inconsistencies in the calibration method have been observed in previous works [5].
+8Table 3: Zero-shot and few-shot in-context learning results across 7downstream tasks. All the
+few-shot results are averaged over three training seeds. TINTconsistently surpasses its auxiliary
+model and achieves comparable performance to dynamic evaluation. TINToutperforms auxiliary
+models by 3−4%and12−16% absolute points on average in 0-shot and 32-shot experiments
+respectively. TINTperforms competitively with a similar-sized pre-trained model ( OPT-1.3 B) in both
+0-shot and 32-shot settings. We show the standard deviation for few-shot settings in parentheses.
+Model k Subj AGNews SST2 CR MR MPQA Amazon Avg.
+Without Calibration
+OPT-125 M 0 64.0 66 .0 70 .5 64 .5 71 .0 68 .0 76 .5 68 .6
+OPT-1.3 B 0 59.0 55 .5 54 .0 50 .5 52 .5 74 .0 57 .0 57 .5
+OPT-125 M DYNA .EVAL 0 71.0 67 .0 79 .5 71 .5 70 .0 68 .0 85 .5 73 .2
+OPT-125 MTINT 0 67.5 66.0 76.5 69.0 76.0 70.5 78.5 72.0
+OPT-125 M 32 58.7(4.9) 33.7(8.4) 50.8(1.2)51.3(1.9) 50.0(0.0) 54.3(2.5)55.0(6.7)50.5(1.9)
+OPT-1.3 B 32 74.2(6.1) 71.3(5.3) 89.8(3.6)71.5(4.5) 68.3(6.1) 81.7(3.3)70.3(9.9)75.3(0.4)
+OPT-125 M DYNA .EVAL 32 78.0(1.4) 66.7(1.6) 71.5(1.4)73.7(3.3) 72.0(0.0) 80.7(0.6)79.8(0.2)74.6(2.7)
+OPT-125 MTINT 32 82.3(2.7) 69.3(0.9) 73.7(0.8)75.7(1.9) 72.3(1.2) 83.2(1.0)78.2(0.2)76.4(0.7)
+With Calibration
+OPT-125 M 0 64.0 66 .0 53 .0 54 .5 52 .5 55 .5 58 .0 57 .6
+OPT-1.3 B 0 73.5 61 .5 57 .5 53 .0 54 .5 79 .5 61 .0 62 .9
+OPT-125 M DYNA .EVAL 0 62.5 66 .0 60 .5 53 .5 54 .0 56 .5 74 .5 61 .1
+OPT-125 MTINT 0 64.0 66.0 56.5 59.0 53.5 62.0 66.5 61.1
+OPT-125 M 32 83.5(2.4)40.7(10.4)50.8(0.8)67.7(4.1)57.7(10.8)79.2(8.4)56.0(8.1)62.2(2.7)
+OPT-1.3 B 32 51.8(1.9) 66.2(3.1) 93.7(1.0)82.8(2.8) 91.3(1.9) 83.5(2.5)92.0(2.9)80.2(0.7)
+OPT-125 M DYNA .EVAL 32 87.2(0.2) 67.2(0.6) 72.8(5.9)73.3(2.6) 66.7(7.4) 81.5(3.7)70.3(2.1)74.1(2.9)
+OPT-125 MTINT 32 85.3(1.9) 67.3(0.6) 71.8(3.8)70.7(1.9) 63.7(0.2) 83.5(1.6)77.5(1.2)74.3(1.4)
+other works have investigated specific classes of algorithms, e.g. bounded-depth Dyck languages [ 50],
+modular prefix sums [ 2], adders [ 25], regular languages [ 4], and sparse logical predicates [ 11]. Liu
+et al. [22] provide a unified theory on understanding automata-like mechanisms within transformers.
+Transformers as Fast Weight Programmers (FWPs): FWPs enable input-dependent weight updates
+during inference. Ba et al. [3]show a connection between self-attention and FWPs. Schlag et al. [36],
+Irie et al. [18] show that self-attention layers can update parameters of linear and recurrent networks
+during input processing. Clark et al. [9]propose Fast Weights Layers (FWL), a component added
+to a frozen pre-trained model that can be efficiently fine-tuned as the model processes the sequence.
+Alternative Explanations for ICL: A complementary direction is to explain ICL in the Bayesian
+framework. Xie et al. [49] model pretraining data as a mixture of HMMs and cast ICL identifying one
+of these mixture components. Hahn and Goyal [14] improved upon this work by modeling language
+using a compositional grammar, and propose ICL as a recombination of those compositional opera-
+tions. On the other hand, careful experiments in Chan et al. [6]show that several data distributional
+properties (e.g. Zipf’s law) drive the in-context ability of trained transformers.
+5 Conclusion
+TINTpresents a parameter-efficient construction capable of simulating gradient descent on an internal
+transformer model over the course of an inference pass. Using fewer than 2 billion parameters it
+can simulate fine-tuning a 125 million parameter transformer (e.g., GPT-2) internally, dramatically
+reducing the scale required by previous works by several orders of magnitude. Experiments in lan-
+guage modeling and in-context learning demonstrate that the approximations designed for efficiency
+purposes preserve the fine-tuning ability of T INT .
+The approximations and architectural modifications in TINThave potential value for future archi-
+tectural development and applications such as pre-training and instruction tuning. Additionally, our
+work emphasizes the ability of moderate-scale architectures to encode intricate subroutines, enabling
+the training of advanced auxiliary models during inference. This has implications for interpretability
+and AI alignment research.
+While our work represents a significant improvement over previous simulations in terms of auxiliary
+model complexity, similar to prior research in this area, our insights into existing pre-trained models
+9are limited. Furthermore, we have not yet examined potential biases that may arise in the auxiliary
+models due to one-step gradient descent. We plan to investigate these aspects in future work.

@@ -1,0 +1,174 @@
+Instructed to Bias: Instruction-Tuned Language Models
+Exhibit Emergent Cognitive Bias
+Itay Itzhak1, Gabriel Stanovsky2, Nir Rosenfeld1, Yonatan Belinkov1
+1Technion – Israel Institute of Technology
+2School of Computer Science and Engineering, The Hebrew University of Jerusalem
+itay1itzhak@gmail.com ,
+{nirr, belinkov}@technion.ac.il ,gabriel.stanovsky@mail.huji.ac.il
+Abstract
+Recent studies show that instruction tuning
+and learning from human feedback improve
+the abilities of large language models (LMs)
+dramatically. While these tuning methods can
+help models generate high-quality text, we con-
+jecture that they may also inadvertently cause
+models to express cognitive-like biases. Our
+work provides evidence that fine-tuned mod-
+els exhibit biases that were absent or less pro-
+nounced in their pretrained predecessors. We
+examine the extent of this phenomenon in three
+cognitive biases: the decoy effect, the certainty
+effect, and the belief bias—all of which are
+known to influence human decision-making
+and reasoning. Our findings highlight the pres-
+ence of these biases in various models, espe-
+cially those that have undergone instruction tun-
+ing, such as Flan-T5, GPT3.5, and GPT4. In
+this, our work constitutes a step toward compre-
+hending cognitive biases in instruction-tuned
+LMs, which is crucial for the development of
+more reliable and unbiased language models.1
+1 Introduction
+Advanced fine-tuning methods, like instruction tun-
+ing (IT) and reinforcement learning from human
+feedback (RLHF), have been recently recognized
+as essential paradigms for improving the alignment
+of language models (LMs) with human objectives
+(Ouyang et al., 2022; Bai et al., 2022). Although
+widely adopted (Zhou et al., 2023), the specific
+cases in which IT and RLHF enhance model be-
+havior to resemble human behavior, and the mech-
+anisms involved in this process, remain unclear.
+In this research, we delve into the impact of
+IT and RLHF techniques on decision-making and
+reasoning in LMs. Recent studies highlighted to
+some extent cognitive-like biases in pretrained LMs
+(Binz and Schulz, 2022; Dasgupta et al., 2022)
+and instruction-tuned models (Hagendorff et al.,
+1We will release our data and code publicly.
+In both examples Option A has a higher expected utility
+Choose between:
+Option A –
+  $2400 with a 33% chance,
+  $2500 with a 66% chance,
+  $0 with a 1% chance.
+Option B –
+  $2400 for sure.
+Which would you choose?Treatment
+Choose between:
+Option A –
+  $2500 with a 33% chance,
+  $0 with a 67% chance
+Option B –
+  $2400 with a 34% chance,
+  $0 with a 66% chance.
+Which would you choose?Control
+Option A Option A Option B Option B
+Figure 1: Example tasks from certainty effect dataset,
+for the control condition (left) and treatment condition
+(right), along with typical answers from humans and
+instruction-tuned models, both of which are biased.
+/uni00000026/uni00000048/uni00000055/uni00000057/uni00000044/uni0000004c/uni00000051/uni00000057/uni0000005c/uni00000003/uni00000028/uni00000049/uni00000049/uni00000048/uni00000046/uni00000057/uni00000013/uni00000011/uni00000013/uni00000013/uni00000011/uni00000014/uni00000013/uni00000011/uni00000015/uni00000013/uni00000011/uni00000016/uni00000013/uni00000011/uni00000017/uni00000013/uni00000011/uni00000018/uni00000013/uni00000011/uni00000019/uni00000013/uni00000011/uni0000001a/uni00000025/uni0000004c/uni00000044/uni00000056/uni00000003/uni00000036/uni00000046/uni00000052/uni00000055/uni00000048/uni0000002f/uni00000030/uni00000003/uni0000000b/uni00000027/uni00000044/uni00000059/uni0000004c/uni00000051/uni00000046/uni0000004c/uni0000000c
+/uni0000002f/uni00000030/uni0000000e/uni0000002c/uni00000051/uni00000056/uni00000057/uni00000055/uni00000058/uni00000046/uni00000057/uni00000003/uni0000000b/uni00000027/uni00000044/uni00000059/uni0000004c/uni00000051/uni00000046/uni0000004c/uni00000010/uni00000013/uni00000013/uni00000015/uni0000000c
+/uni0000002f/uni00000030/uni0000000e/uni0000002c/uni00000051/uni00000056/uni00000057/uni00000055/uni00000058/uni00000046/uni00000057/uni0000000e/uni00000035/uni0000002f/uni0000002b/uni00000029/uni00000003/uni0000000b/uni00000027/uni00000044/uni00000059/uni0000004c/uni00000051/uni00000046/uni0000004c/uni00000010/uni00000013/uni00000013/uni00000016/uni0000000c
+Figure 2: Bias scores of different GPT3 and GPT3.5
+models on the certainty effect dataset. Similar to human
+choice behavior, instruction-tuned models (DaVinci-
+002 and DaVinci-003) tend to prefer certain outcomes
+over alternatives that yield higher expected rewards but
+have some level of risk. In contrast, the pretrained
+model (’DaVinci’) shows no such bias.
+2022). We build upon these insights and go further
+in investigating the implications of IT and RLHF
+interventions on LMs’ cognitive-like behavior.
+We inspect three well-researched and fundamen-arXiv:2308.00225v1  [cs.AI]  1 Aug 2023Bias Control Treatment
+DecoyBelow you will find three phone brands.
+Which one would you choose?
+Brand 1 - price is $130, quality rating is 40.
+Brand 2 - price is $350, quality rating is 60.
+Answer: Brand 1.Below you will find three phone brands.
+Which one would you choose?
+Brand 1 - price is $130, quality rating is 40.
+Brand 2 - price is $350, quality rating is 60.
+Brand 3 - price is $438, quality rating is 60.
+Answer: Brand 2.
+CertaintyChoose between:
+Option A - $4000 with a 20% chance,
+$0 with an 80% chance.
+Option B - $3000 with a 25% chance,
+$0 with a 75% chance.
+What is your choice?
+Answer: Option A.Choose between:
+Option A - $4000 with an 80% chance,
+$0 with a 20% chance.
+Option B - $3000 with certainty.
+What is your choice?
+Answer: Option B.
+BeliefDetermine if the following argument is
+logically valid -
+All zint are thade.
+Some thade are snaff things.
+Conclusion: Some zint are snaff things.
+Answer: This argument is invalid.Determine if the following argument is
+logically valid -
+All diamonds are gems.
+Some gems are transparent things.
+Conclusion: Some diamonds are
+transparent things.
+Answer: This argument is valid.
+Table 1: Illustrative examples of the three evaluated Biases. Red text indicates disruptive elements fueling the bias.
+Blue text represents control responses unhindered by bias, while green text denotes treatment responses influenced
+by bias. The decoy effect in the first row presents a scenario where two prize options are compared, the certainty
+effect in the second row involves selecting products with varying prices and quality measurements, and the belief
+bias in the third row entails evaluating the validity of logical syllogisms. In the certainty effect and decoy Effect, the
+model is tasked with choosing its preferred option, whereas in the belief bias, the model determines the conclusion’s
+validity. Each bias is evaluated using a control and a treatment datasets. A shift in choice patterns is anticipated
+from model predictions on samples transitioning from the control dataset to the treatment.
+tal biases: the decoy effect (Huber et al., 1982),
+the certainty effect (Kahneman, 1979), and belief
+bias (Evans et al., 1983). These biases reflect basic
+inconsistencies in human decision-making (decoy
+and certainty effects) and fallacies in logical reason-
+ing (belief bias) that are both prevalent, persistent,
+and consequential (Berthet, 2022; Acciarini et al.,
+2021).
+The conventional approach to studying cognitive
+biases in humans is to design simple experiments
+that elicit from human subjects either judgments or
+decisions that reflect a target bias. Many of these
+experiments involve question answering; Figure 1
+shows an example of questions used in such exper-
+iments, illustrating how the responses of subjects
+can suggest biased behavior. To study cognitive-
+like biases in LMs, our approach relies on adapting
+classic human experiments to an LM setting. To-
+wards this, we create experimental dataset using
+semi-automatic generated decision tasks: First, for
+each bias, we manually create an array of appropri-ate task templates containing flexible numeric and
+textual place-holder variables. Then, for a range of
+value and sets of alternatives, we generate a large
+collection of unique textual prompts, which we
+then use as queries to LMs. Following the classic
+experimental paradigm, in each experiment we par-
+tition the generated data into a ‘control’ dataset and
+a ’treatment’ dataset, and define and measure the
+bias of a given LM as the average difference of its
+choices between the two data sets.
+Within this setup, we empirically evaluate the
+degree of bias exhibited by several pretrained LMs,
+and compare them to their corresponding fine-
+tuned variants. Our findings indicate that applying
+IT or RLHF tuning either introduces cognitive-like
+biases into text generation, or amplifies these bi-
+ases if they already exist. For example, Figure 2
+presents an evaluation of the certainty effect on
+the GPT3 and GPT3.5 models, showing that the
+IT-tuned LMs present a bias that was not found in
+the pretrained LM.Given that fine-tuned models are typically con-
+sidered to be superior, our results point to an im-
+portant limitation of tuning based on instructions
+or human feedback. Fine-tuned models are also
+often regarded as potentially less biased , such as
+in domains like gender or race, since they can be
+explicitly trained to avoid these biases or having
+personal p

@@ -1,0 +1,429 @@
+The Inner Sentiments of a Thought
+Chris Gagne1,2,*and Peter Dayan1,3
+1MPI for Biological Cybernetics, T ¨ubingen, Germany
+2Research Division, Hume AI, New Y ork, USA
+3University of T ¨ubingen, T ¨ubingen, Germany
+*christopher.gagne@tuebingen.mpg.de
+ABSTRACT
+Transformer-based large-scale language models (LLMs) are able to generate highly realistic text. They are duly able to express,
+and at least implicitly represent, a wide range of sentiments and color, from the obvious, such as valence and arousal to the
+subtle, such as determination and admiration. We provide a first exploration of these representations and how they can be used
+for understanding the inner sentimental workings of single sentences. We train predictors of the quantiles of the distributions
+of final sentiments of sentences from the hidden representations of an LLM applied to prefixes of increasing lengths. After
+showing that predictors of distributions of valence, determination, admiration, anxiety and annoyance are well calibrated, we
+provide examples of using these predictors for analyzing sentences, illustrating, for instance, how even ordinary conjunctions
+(e.g., “but”) can dramatically alter the emotional trajectory of an utterance. We then show how to exploit the distributional
+predictions to generate sentences with sentiments in the tails of distributions. We discuss the implications of our results for the
+inner workings of thoughts, for instance for psychiatric dysfunction.
+Introduction
+How do sentences do affective work? That is, how do sentences, with their complex syntax and semantics, toy with our
+expectations in order to pack an emotional punch? How could we generate new sentences that are finely pitched at a particular
+strength of sentiment? Equally, what does someone’s choice of sentences reveal about their psychological state? If even the
+idiosyncratic choice of innocuous function words (e.g., pronouns) can be used to predict affective states, from the momentary to
+the more long lasting, such as depression1, how much more might be encoded in the detailed affective topography of someone’s
+utterances?
+Until recently, we have lacked access to the inner semantic and syntactic content of sentences required to perform fine-
+grained, automatic analyses of their emotional dynamics, and thus answer these questions. However, the advent of large-scale
+pretrained language models (LLMs)2–4has dramatically altered the scene. The hidden activities in these models as they
+‘read’ text have been used as representations to predict, with incredible accuracy, a wide range of linguistic features, from the
+parts-of-speech of individual words to logical entailment of adjacent utterances. They have been used to perform various tasks
+like question-answering, text-retrieval, sentiment analysis, and document clustering5, 6. And of course, they have been used to
+generate uncannily human-like sentences, paragraphs, (bad) limericks, and even articles. This has led to a flurry of papers trying
+to understand how LLMs work, the linguistic information encoded their hidden activities (or attention weights)7, 8, and whether
+they ‘understand’ language9–11(or even reason)12, 13like we do. Comparatively less emphasis has been placed on the other
+direction – using LLMs to understand how text, on a micro-level, can be used to convey information like emotional sentiment.
+Here we take initial steps in this direction. We use LLMs to provide an embedding space for the state within an utterance,
+and train models to predict from this the quantiles of the distribution of the endratings of emotionally relevant sentiments. The
+evolution of the resulting quantile predictions in new sentences tells us how the sentence is moving in high and low-dimensional
+emotion space – showing clearly, for instance, how the conjunction “but” can suddenly reverse the sentiment or cue the
+imminent rise of more subtle emotional tones. Equipped with predictive distributions of emotion, we then demonstrate how to
+generate text that targets particular affective quantiles, in a method that relates to long-run risk-sensitive choice. Although many
+recent methods (finetuning, prompting, etc.) have been developed to alter the writing style of LLMs14–22, our method uniquely
+provides fine-grained control over particular quantiles for a wide range of emotional sentiments.
+1arXiv:2307.01784v1  [cs.CL]  4 Jul 2023Results
+Predicting distributions of sentiment
+Our testbed is the abundant, and often emotionally-charged, discourses of people on Reddit23. We first extract the hidden states
+of a large-scale language model (we chose the comparatively venerable GPT-24for availability and computational practicality)
+applied to 2 million sentences. We then train a set of smaller models to predict the quantiles of the distributions of the end ratings
+for these sentences along several different emotionally-relevant dimensions: positive and negative valence, determination,
+admiration, annoyance, and anxiety. A separate model was trained for each of these dimensions. We chose these dimensions to
+highlight the applicability of our method to both low-dimensional (i.e., valence and arousal) and high-dimensional models of
+emotion. The end ratings were obtained automatically using other language models24, 25, which had been fine-tuned to predict
+human emotional judgements of short whole utterances.
+As depicted in Figure 1, the quantile models are provided with the hidden states from GPT-2 for each token, and are trained
+using Monte Carlo methods and quantile regression26–28to predict the distribution of endscores. Scores are only provided at
+the end of the sentence, and therefore the quantile model must predict how the sentence might end for each prefix (i.e., at each
+token position). For some common prefixes, such as “I think this is . . . ”, the model encounters an empirical distribution of
+different possible end scores in the dataset (Figure 1; top right) and can learn to approximate it. For other prefixes, the model
+may only see a single example and its score, and therefore must learn to generalize across utterances with similar emotional
+potentials. The model generates a trajectory of predicted quantiles across the successive tokens (Figure 1; top left). Observe
+how the width of the predicted valence distribution varies throughout the sentence, reaching a maximal width at the token
+“such”, and then collapses around a single (correct) predicted score by the end as the final sentiment is certain. As seen in the
+figure, the quantile model can capture bi- and multi-modal predictions.
+Figure 1. Training a model to predict distributions of valence and emotion throughout a sentence. Tokenized sentences
+from Reddit are fed into a large language model (lower left), and the hidden states at each token are used to predict the
+quantiles (upper left) of the distribution of end scores. End scores are provided by a sentiment model (or emotion classification
+model) applied to the full sentence. Quantile regression is used to train the model on the prefixes of increasing lengths (e.g., “I”,
+“I think”, etc) using the empirical distribution of end scores for sentences starting with those prefixes, and therefore the model is
+able generate a trajectory of predicted quantiles across successive tokens. The empirical distribution of valence scores and
+examples for the prefix “I think this is” are shown on the right. The marginal distribution (i.e., the scores across all sentences) is
+shown inverted and underneath. Empirical distributions and predictions for the other emotions are shown in Figure 2.
+2/28Model calibration
+To evaluate the accuracy of the predicted quantiles, we use 1M validation sentences that were unseen during training. We
+first assess global (marginal) calibration by calculating the percentages of end scores that fall below each of the predicted
+quantiles, aggregated across all sentences. For a perfectly calibrated model, the end scores would fall below the α-quantile
+exactly α-% of the time, regardless of the fact that the quantile predictions correspond to different sentences and different
+prefixes within a sentence. In Supplemental Figure S5, we show that the models are highly accurate, with calibration curves
+barely deviating from the identity line and with a maximum absolute deviation less than 1% for valence and between 2-7%
+for the four emotions, which have much sparser empirical distributions of end scores (Supplemental Figure S4). The models
+are well-calibrated even at the start of the sentence, meaning that they can accurately predict the distribution a dozen or more
+words ahead (since the median sentence length is 15). As an alternative to Monte Carlo methods, we also investigated temporal
+difference (TD) learning for training the quantile models28; however, the resulting models were more poorly calibrated, with a
+maximum absolute deviation of 9% for valence (see Methods for more details).
+We also compared the models’ predicted quantiles to the empirical distributions of end scores for frequently occurring
+prefixes. Figure 2a contains several representative examples, which are organized according to the mean (columns) and variance
+(rows) of the predicted distribution. The model predictions for these prefixes closely match the quantiles of the empirical
+distributions of end valence scores, despite these distributions differing considerably from the marginal distribution (shown in
+Figure 1 and Supplemental Figure S4). This demonstrates the model’s ability to capture distributions of non-trivial shapes,
+from those that are highly skewed (e.g., “Thank you . . . ”) to those that are more bimodal (e.g., “This is the . . . ”). Furthermore,
+note that although these examples were hand-selected, their estimation error (average maximum deviation between quantile
+sets) does not differ to that of the top 1000 most frequently occurring prefixes.
+In Figure 2b, we plot examples for each emotion, showing large positive shifts in the distribution for phrases such as “I will
+. . . ” (for determination), “I appreciate . . . ” (for admiration), “The problem is . . . ” (for annoyance), and “I’m having . . . ” (for
+anxiety). Note that the marginal distributions, shown in lighter color beneath each example, are much more skewed for these
+four emotions than for valence – and yet the models are still able to make accurate predictions. This means that quantiles could
+also be estimated for other semantic characteristics that have sparse distributions, such as toxicity or conversational topic29.
+The evolution of emotional sentiment across a sentence
+Next, we explore how the predicted distributions evolve throughout a sentence. As paradigmatic examples, we look at the case
+of the conjunction “but” and common intensifiers, such as “really” and “extremely”.
+Conjunctions that reverse expectations
+The typical function of the word “but” is to present contrast or exception. For the case of emotions, we are also all too familiar
+with its role in suddenly reversing our expectations, as in the example, “I’d love to chat, but . . . ”. In Figure 3a, we show this
+effect brought to life, for four different sentences. In two cases (top row), the predicted valence rises (or dips) to an extreme
+value before swinging to the opposite valence at the word “but”; with the outermost quantile (5th or 95th), however, anticipating
+this potential turnabout. For the other two cases, the valence starts at nearly the same neutral level prior to the word “but”, but
+then rises or falls depending on the preceding context.
+To show this effect on aggregate, we plot the median predicted sentiment at the word “but” against the preceding sentiment,
+for the validation sentences (Figure 3b; the four red encircled points are the examples from panel a). A significant deviation
+away from the identity line shows how often these sentiment reversals occur. These data also reveal that many occurrences
+of the word “but” are characterized by a transition from neutral to either positive or negative valence (like the bottom two
+examples in panel a). To show that these model predictions are also accurate, we performed a separate calibration analysis
+for the quantiles of “but”. This had a maximum absolute error of 1.8% across quantiles, confirming the accuracy of these
+predictions.
+The word “but” can also signal more subtle shifts in the expression of other emotions. We demonstrate this again by way of
+example, in Figure 3c. Here, the word “but” signals rising determination for a sentence starting with hardship (e.g., “Some days
+are really hard, but . . . ”) and rising admiration when the preceding text is socially critical (e.g., “Sometimes he isn’t very good,
+but . . . ”). The reverse predictions, however, are not made, pointing to the specificity of the models, even for two related and
+positive emotional sentiments.
+Words that widen the distribution
+A benefit of predicting the whole distribution of emotional sentiments, rather than simply their expected value, is that one can
+analyze differences in the level of uncertainty about how a sentence might end. Thus, we next turn to identifying locations in a
+sentence at which the variance peaks – that is, places where the sentiment is poised to become more extreme, but the direction
+of change is not yet known. We used the absolute value of the difference between the 25th and 75th quantiles as a measure of
+variance, and scanned the validation sentences for local maximums. Three examples are shown in Figure 4a, with the peaks
+3/28Figure 2. Model predictions match empirical distributions for short prefixes. (a) The predicted quantiles for several
+example prefixes are plotted against the empirical quantiles (evaluated using24, 25) from the validation sentences for valence;
+examples are organized according to the mean and variance of the distribution to show the model’s flexibility. (b) Emotion
+scores have much sparser and more skewed marginal distributions (shown inverted underneath) than valence; nevertheless the
+predicted quantiles match the empirical distributions well. The error (average maximum deviation) between the empirical and
+estimated quantiles for these examples is 0.14, and it is 0.1 for the top 1000 most often occurring prefixes, demonstrating the
+representativeness of these examples.
+in variance and the phrases that precede them highlighted in red. For each of these examples (“It makes me . . . ”, “I am so
+. . . ”, and “it was extremely . . . ”), it is clear that a judgment is pending, but what that may be is completely opaque. After the
+variance and the envelope of quantiles expands, it typically collapses, and the predicted valence drops or rises as the ambiguity
+around sentiment is resolved.
+Context-sensitive predictions for variance could also be used enhance traditional lexicon-based analyses for the use of
+extreme language, which might simply count the occurrences of common intensifiers, such as the words “really” or “extremely”.
+Tokens associated with peak variance in our analysis (defined as the top 1% of maximum variances across sentences), indeed
+include these words and many others (Figure 4b). However, this set also includes more colloquial intensifiers, such as “honestly”,
+“pretty”, and “seriously”, whose role as such will likely strongly depend on context. In Supplemental Table 1, we list common
+English intensifiers from Wikipedia30and statistics associated their predicted variances in the validation set. Roughly half of
+these words occur at peaks in variance (i.e., top 1% of variances), and the other half have either only slightly lower maximal
+variance or occur very infrequently in our data.
+4/28Figure 3. The expectation-reversing effects of the conjunction “but”. (a) Predicted quantile trajectories for four partially
+completed sentences show how the word “but” reverses the sentiment for preceding text, which can be of positive, negative or
+neutral valence. (b) The predicted valence for the preceding text (x-axis) and for the word “but” (y-axis) are shown for these
+four examples (red encircled points) against a backdrop of validation sentences. The significant deviation of these points away
+from the identity line shows the prevalence of this sentiment-reversing effect. To confirm that the transitions from neutral to
+positive or negative valence were also accurate (i.e., the cloud of points at center), a calibration analysis (showing a maximum
+absolute error of 1.8%) was performed. (c) The word “but” can also anticipate more subtle emotions, such as determination and
+admiration, depending on the preceding context.
+5/28Figure 4. Variance in the distribution of sentiment across tokens. (a) Sentences were scanned for locations at which the
+variance peaks (measured as the absolute value of the difference between the 25th and 75th quantiles), revealing words and
+phrases that predict strong changes in sentiment but do not indicate the direction of change. (b) The 40 words that occur most
+often at these peaks in variance include many textbook intensifiers, such as “so”, “really”, and “extremely”, as well more
+colloquial ones, such as “honestly” and “genuinely”; these words are sorted by the percentage of their (overall) occurrences that
+are associated with peak variance. These context-sensitive predictions for variance could enhance traditional lexicon-based
+analyses for the use of extreme language.
+6/28Generating text from the tails of a distribution
+Having demonstrated the predictive capabilities of the quantile models, we next turn to whether these can be used steer a
+language model to write in a way that is more positive, negative, or emotionally colored.
+Generating text from a large language model operates, in its most basic form, by mapping partially completed text to
+a probability distribution over possible next tokens and then sampling one of these tokens. We intervene on this process
+by adjusting these probabilities, so that tokens that predict (and engender) certain emotions are more likely to be selected.
+This means that if we want, for instance, to generate text from the lower α-quantile (which we denote by α−) of a prompt’s
+distribution, we would increase the probability for tokens that have a more negative set of predicted quantiles and decrease the
+probability for tokens that have a more positive set. More specifically, we re-weight the next-token probabilities proportional
+to the amount of each next token’s predicted distribution (i.e., the number of predicted quantiles) that falls below the target
+α-quantile. Sampling from these re-weighted probabilities then provides a principled way of generating sentences that reside
+within the lower α-tail of the prompt (for more details, see Methods). To generate sentences above the(1−α)-quantile (which
+we denote by α+), we reverse the values of the quantiles.
+We provide a schematic example of this procedure in Figure 5. Here, the initial α−, for the prompt “I think this is”, is set to
+0.05 (to sample from the extreme lower tail). The next possible tokens include “the”, “going”, “just”, “wrong”, “too”, and
+“great”, and each is assigned a probability by the language model. To re-weight these probabilities, we look at the estimated
+quantiles for each next token, and upweight/downweight those tokens depending on if they have more/fewer of their quantiles
+(i.e., more/less probability mass) below the α−-quantile of the prompt’s distribution. “Wrong”, “just” and “too” are upweighted
+because they have more negative valence distributions, while “great” and “there” are downweighted because they have more
+positive distributions. The next token is then sampled according to the re-weighted probabilities and the process is repeated.
+To demonstrate the effectiveness of this method, we use the trained quantile models along with GPT-2 to complete five
+prompts (“I think this is”, “This week is really busy,”, “I”, “Yesterday I went to school and”, “My kids”) with varying degrees
+of negativity or emotional tones. In Figure 5b, we show how lowering α−generates sentences from increasingly negative lower
+tails of the valence distribution. For values of α−less than 1, the majority of the generated distribution lies below the target
+quantile (vertical black dashed line) with only a small percentage of sentences with scores above that value. In Figure 5c, we
+setα+=0.05(for the upper tail) and sample according to each of the emotional models; here, we can see that the distributions
+are strongly shifted to the right relative to the distribution of sentences generated from an unbiased process (shown inverted and
+underneath; α=1.0); however, sampling sentences from an extreme quantile for these sparse emotion distributions proved to
+be more difficult than for valence, with the quantile targeting being imperfect.
+In Figure 6, we show example sentences from each of the models (with α−orα+set to 0.05) and color the text to show
+the re-weighted probabilities for each token. As expected, the model chooses to upweight words that have a clear valence or
+emotional tone, such as “sorry” and “mistake”, and at the opposite end of the spectrum “exciting” and “amazed”. However,
+because the model is predictive, it also upweights words and phrases that are less obviously valenced, but which make the
+target sentiment or emotion more likely to occur. Some of these are predictive because of their semantics, such as “test results”
+for anxiety, “sky” for admiration or “gym” for determination, and others for their grammatical role, such as “not”, “and”, and
+“very”. Indeed, the word “but” plays a critical role in the generation of the positive emotions. Finally, there are also phrases,
+such as “this is my day” for determination or “this is the point” for annoyance, which convey emotions idiomatically (and
+subtly), but are nevertheless able to be exploited by the model. More examples are shown in Supplemental Figures S6-S10.
+7/28Figure 5. Steering a large language model to write more emotionally. (a) We intervene on the normal text generation
+process (of a large language model) by re-weighting the next token probabilities using their predicted sentiment quantiles.
+Tokens more likely to produce sentences below a target quantile are upweighted (shown in red) and tokens less likely to
+produce sentences below that quantile are downweighted (shown in blue). (b) Setting the target quantile to lower values of α−
+(which corresponds to the lower tail) produces a higher concentration of negatively valenced utterances than the unbiased
+language model ( α=1.0); more positively valenced text can also be produced by reversing the applicable tail for α(not shown
+here). The black dashed vertical lines correspond to the target α-quantiles calculated from unbiased language model’s
+distribution; note that most of the generated sentences fall below the target for each α−<1. (c) Using the four emotion models
+and a target of α+=0.05for the upper tail produces text with much higher scores along each respective emotional dimension
+relative to the unbiased model (shown inverted and underneath, α=1.0). Each distribution contains 500 generations,
+aggregated across five different prompts.
+8/28Figure 6. Examples of emotional text generated. Color is used to show re-weighted token probabilities; bright red indicates
+upweighting by more than 1.5x (dark red means greater than 1.1x) and bright blue means downweighting by less than 66%
+(dark blue means less than 80%). The prompt is highlighted in green. Sentences for negative valence were sampled from the
+lower tail ( α−=0.05), while sentences from other five emotional categories are sampled from the upper tail ( α+=0.05).
+These examples were handpicked to show the linguistic diversity in what the model chooses to reweight. However, more
+examples for each sentiment are shown in Supplemental Figures S6-S10.
+9/28Discussion
+In this paper, we demonstrated how large language models can provide a novel lens onto the inner structure and emotional
+dynamics of sentences. We developed a method for training a model to predict, word-by-word, the quantiles of a distribution of
+the final emotional sentiments of text, and validated these predictions on unseen sentences. We then showed how the trajectories
+of the predicted quantiles capture the intuitive emotional effects of conjunctions (i.e., “but”) and intensifiers (e.g., “really” and
+“so”). Finally, we used the quantile models to encourage GPT-2 to write more emotionally colorful sentences from specific
+quantiles of a distribution.
+Training quantile models and using them to generate text is related to a number of recent trends in machine learning
+and natural language processing. Predicting a distribution rather than a single value for sentiment is related to distributional
+reinforcement learning, which estimates distributions of future rewards in addition to the expected value and then optimizes for
+some aspect of that distribution; indeed, using quantile regression to predict end scores can be viewed as a Monte Carlo (also
+known as TD(1) in the reinforcement learning literature31) version of the learning algorithm used in previous work27, 28and
+sampling tokens from the re-weighted probabilities can be seen as a basic form of risk-“aware” control. For quantile estimation,
+we found that Monte-Carlo methods produced better calibrated models than temporal difference methods such as TD(0). We
+speculate that this may be due to the need of TD(0) to pass predictive information backwards through every token, which could
+be susceptible to tokens with lower quality hidden state representations. For control, we showed how a language model can
+be steered to generate from either the lower or upper tail of a distribution by reweighting next-token probabilities according
+their predicted quantiles. However, it is also possible to optimize for other aspects of the predicted distributions, for instance,
+generating in a way that avoids (rather than targets) the lower tail. This could be useful for reducing the amount of toxic content,
+when paired with a toxic comment classifier32. A simple approach for this would be to re-weight next token probabilities
+according to 1- αinstead of α, though future work would needed to explore this and other risk-sensitive approaches to text
+generation more fully.
+Our method for text generation is also related to several recent methods from NLP that re-weight the next-token probabilities
+to encourage language models to generate text with particular characteristics. For example,14–16use lightweight discriminative
+classifiers to heuristically bias the next-token logits. Other work17–20estimates Q-value functions, which like our quantile
+models are forward-looking, to steer text generation (again via probability re-weighting). However, none of this prior work has
+tried to estimate distributions of future characteristics (i.e., sentiment) and target particular quantiles (which is why we do not
+compare directly with these methods); moreover, many of the probability re-weighting techniques are heuristic, as opposed to
+the principled re-weighting scheme we develop. This also contrasts with prompting, which while often effective at generating
+text with certain characteristics, is largely conducted on a trial-and-error basis.
+Other methods for controlled text generation involve re-training large language models. One well-known approach is to use
+control codes during pretraining33(or finetuning34) to write in different styles or about different topics. There is also a recent
+trend of reinforcement learning with human feedback (RLHF)21, 22, which uses a model trained on human feedback to provide
+‘end’ scores, and using finetuning via policy gradient to optimize for these scores. Predicting end scores via a separate (quantile)
+model and probability re-weighting can be seen as a model-based variant of this approach. Finally, the most closely related
+work is35, conducted contemporaneously, which uses finetuning and conditioning on a special tokens to generate from one of
+five quantiles. An interesting future path would be to explore the differences between conditional pretraining or finetuning
+and online probability-reweighting methods, such as ours. The latter involve more computation at inference but avoid the
+need to re-train large language models, which is becoming increasingly difficult to do as the scale of these models increases.
+Using smaller models to guide larger ones also allows for easier mixing and matching between control tasks and LLMs, for
+instance using BERT (110M parameters) to predict the accuracy of BlenderBot (2.7B parameters) and reduce the number of
+over-confidently expressed falsehoods36. More work is needed, however, to know the domains in which smaller models can be
+used to guide larger ones effectively (and the domains in which richer representations of larger models are truly needed).
+Generation aside, predictive quantile models may be useful for analyzing text in a wide variety of ways, complementing
+the long tradition of lexical analysis, use of word-embeddings, and more recently the use of contextualized embeddings. Our
+analyses of conjunctions (i.e., “but”) and intensifiers (e.g., “really”, “so”) are only a starting point. One could search for
+collections of phrases with unique emotional dynamics using unsupervised methods, such as time-series motif analyses or
+clustering. Features of the emotional quantile trajectories, such as variance, could also be used to augment more traditional
+lexicon-based analyses1, in, for instance, quantifying extreme language. They could also provide insights into the workings
+of humor. Word-by-word level features, like variance, and aggregate features, like the α-quantiles that individuals favor, can
+also be used to compare writing from different sources. In the Supplemental Information, we provide an example the latter
+by inverting our text-generation process to infer the most likely alpha value for each sentence. Averaging alpha values across
+sentences, we observe a slight pessimism bias in posts made by Reddit users who self-report depression relative to those
+from healthy control users. We also use this method to score excerpts from well-known speeches and books, highlighting the
+dominant emotion in each text (e.g., determination in the "We shall fight on the beaches" speech delivered by Winston Churchill,
+10/28Figure S1). Analyses like these, as well as those based on other aggregate features, including the posterior distributions
+over the values of alpha, could be used for the sake of understanding the style of individuals (famous writers, or newspaper
+outlets), analyzing historical trends37, or identifying the characteristics of effective therapeutic language38. Moreover, predictive
+models could be estimated for other semantic characteristics, such as a forward-looking version of the topic classifier used to
+analyze the narrative arc of short dialogs or scripts29. Note that forward-looking models (like the ones we explore here) differ
+from classification methods (which view the whole text), and could be an alternative to feature importance methods such as
+attention-weight analysis, SHAP39, 40or LIME41for highlighting important words; moreover, forward looking models reveal
+how predictions for end-scores change as information is added, mirroring the dynamics of human expectations as we read.
+A relevant (albeit difficult) next direction would be to develop methods for predicting the emotional arc of text at longer
+time-horizons – conducting the same sort of analyses and generations at the scale of paragraphs, sections, chapters and beyond.
+Relatedly, one could attempt to predict the longer-run destination of a person’s thought (or at least the sentiment thereof) based
+on the words so far said. Although this would be undoubtedly difficult for most situations, there may be contexts in which
+repeatable patterns might be expected, e.g. in the context of psychotherapy. If successful, this could be used to flag cognitive
+biases42, 43(e.g., use of absolute language like “always”, etc.), which although they are relatively neutral in themselves, can
+nevertheless lead perniciously to more extreme (and often) negative thoughts. This could be done real-time during telehealth
+therapy sessions or retrospectively as patients and therapists review previous conversations.
+In recent work44, we also explored a connection between worry and risk aversion in an abstract (and very simplified)
+computational model, which presented worry as a form of model-based (offline) planning aimed at mitigating (bad) outcomes
+from the lower α-quantile of a distribution. In this model, the process of worrying involves upweighting the probabilities (in an
+internal cognitive model) for the lower α-tail of the possible outcomes and the states that precede them, and then designing
+contingency plans to avoid these scenarios. Since worry is often thought to be mediated by verbal thought (i.e., language), it
+would be useful to develop a verbal version of this model, using a large language model and next-token probability weighting,
+to model phenomena such as the forms of catastrophizing evident in ’what if’ chains-of-thought45.
+One major limitation of our work is that we use a state-of-yesterday’s-art language model (GPT-2 large), which pales
+in comparison to the recent and much larger, but unfortunately inaccessable, models such as Chinchilla46, Lambda47, and
+ChatGPT22. Indeed, generation from GPT-2 (even without re-weighting) tended to produce run-on sentences and flaunt standard
+grammatical convention (e.g., using comma splices). The quantile models were also sometimes ‘jumpy’ for rare or unusual
+tokens or text, despite the very good marginal calibration for common prefixes. A second limitation is that the quantile models
+rely on the underlying scoring algorithms applied to the dataset employed. For some of the emotions that we did not report
+here, the algorithm was rather shallow, overly emphasizing a small subset of words. Furthermore, the Reddit dataset appears
+to be a poor source for capturing the range of certain emotions. Finally, both the end sentiment model and emotion classifier
+were trained to predict the probability of the text containing that sentiment or emotion (as judged by a human rater) and
+therefore do not directly capture the intensity of emotional expression. Nevertheless, our method and demonstrations stand as a
+proof-of-principle, and we expect only improvements with models of increased scale and predictive capabilities.
+Methods
+Datasets and text preprocessing
+Text used for training the quantile models was combined from several sources: SMHD23, Social IQ48, Positive Psychology
+Frames49, and sentences generated from GPT-24. The largest source was the SMHD dataset, which contains posts to Reddit
+between January 2006 and December 2017 (inclusive). A random subset of posts from the full dataset was sampled, split
+into sentences, and then grouped into a training set (2M sentences) and a validation set (1M sentences). The SMHD also
+includes labels for each Reddit user for whether they self-reported a psychiatric diagnosis (e.g., depression) or whether they
+were recruited as a healhy control. We also included 30k sentences from the Social IQ dataset, 13k sentences from the Positive
+Reframes dataset, and 60k sentences generated from GPT-2 in response to short prompts, such as “I woke up early.”, “I made
+dinner” etc. These additional sentences were added out of convenience and originally intended for analyses unrelated to the
+current work. They were also divided into train and validation sets.
+Sentences were extracted from longer segments of text using Spacy’s NLP “sentencizer”50. Sentences that were fewer than 5
+words or those contained special punctuation characters, such as pipes (“|”), new line characters (“\r”, “\n”), colons, parentheses,
+and brackets were excluded. Sentences were therefore only punctuated by a period, a question mark or an exclamation mark.
+This was done to limit the number of run-on utterances in the dataset.
+Prior to training the quantile models, the data was tokenized using the GPT-2 tokenizer implemented by Huggingface
+and sentences were truncated to 32 tokens for computational reasons; this resulted in only about 7% of the sentences being
+truncated. Again for computational efficiency, the token embeddings for each sentence were extracted from the final layer of
+GPT-2 large and saved to disk prior to fitting the quantile models.
+11/28Pretrained models
+The large version of GPT-24(with 774M parameters), implemented using code from Huggingface, was used to extract text
+embeddings and to generate text. Positive and negative valence scores were provided by a version of RoBERTa finetuned on
+tweets from the TweetEval sentiment dataset24. This model outputs separate probabilities for negative and positive valence,
+however we combined these by multiplying by -1 and 1 (respectively) and summing to form a single scale, which varied
+continuously between -1 to 1. Scores for the other emotions were provided by a version of BERT that was finetuned on short
+English comments (3-30 tokens long) posted to Reddit and rated by human annotators for emotional content. The emotion
+model, provided by Hume AI, is an improved version of that used in previous work25, retrained using approximately 5x
+more data and roughly double the number of emotional categories (53 instead of 27). Scores ranged between 0 to 1 for each
+emotion and represent the probability that a human rater would label a piece of text with that emotion. The top two principal
+components of these emotional scores correspond approximately to the dimensions of ‘valence’ and ‘arousal’ that are central
+to the circumplex model of affect51–54(Supplemental Figure S2). For our analyses, we focused on two positive emotions
+(determination and admiration) and two negative emotions (anxiety and annoyance). These were selected based on the linguistic
+diversity of the sentences receiving high scores for that emotion.
+Quantile models
+Separate quantile models were used to predict the distributions of endscores for valence, determination, admiration, annoyance,
+and anxiety. For each token xtin a sentence, a quantile model outputs ten equally-spaced quantiles between α=0.05and
+α=0.95. The model’s predictions, denoted by qα(xt|x<t;θ), are also conditioned on the preceding text x<tthrough the hidden
+states of the large language model, which are provided as input.
+Each quantile model consisted of single hidden layer with 100 hidden units (whose parameters are denoted by θ). The input
+dimension was 1280, corresponding to GPT-2 large’s hidden state size for a single token, and the output dimension was 10,
+corresponding to the number of quantiles used (5%, 15%, . . . , 95%). Each network had 130k parameters, which is substantially
+smaller than GPT-2 (at 774M parameters). A tanh or sigmoid transformation was applied to the output depending on if the
+model was being trained on positive and negative valence ([-1,1]) or emotions ([0,1]).
+Given a sentence xand an end score ysampled from the training dataset, the parameters θfor a quantile model were
+updated by performing gradient descent on the following Huber quantile loss26–28:
+L(θ) =∑
+α∑
+tρH
+α 
+y−qα(xt|x<t;θ)
+,ρH
+α(u) =| 1u<0−α|H(u)
+Where ρH
+αis an asymmetric weighting function that penalizes underestimation errors ( y>qα) with a weight of αand
+overestimation error ( y<qα) with a weight of 1−α, and 1is an indicator function which takes on the value 1 if the condition
+in the subscript is true and the value 0 otherwise. To make the loss smooth at zero, the function His applied to the estimation
+errors, where H(x)is 0.5x2if|x| ≤kand(|x|−0.5k)kotherwise. We set k=0.001.
+Batches of 20 sentences were used to train the model, with the order of the sentences randomized at the start of each epoch.
+The models were trained for 25 epochs and evaluated periodically on a 100k-sentence subset of the validation dataset. Adam55
+was used with an initial learning rate of 1e-4; the learning rate was also decayed by half each time the validation loss plateaued
+for two consecutive epochs. The quantile models at the end of training were used for all analyses. The training and validation
+curves are plotted in Supplemental Figure S3.
+Temporal difference methods
+As an alternative, we also experimented with using temporal difference methods, specifically TD(0), to train the quantile
+models27, 28. Instead of using the end scores as the target for the quantile predictions of each token, the predicted distributions
+for the next token were used. This was accomplished by substituting qα′(xt+1|x<t+1;θ)with yin the equation for the quantile
+loss and additionally summing over all pairwise combinations of α′andα(see27, 28for more details). Note that using quantile
+regression directly on the end scores ycan be viewed as a Monte Carlo (TD(1)) version of distributional temporal difference
+methods28. However, using this method resulted in quantile models that were more poorly calibrated, with an maximum
+absolute error of 9% for valence.
+Model calibration
+1M validation sentences were used for global calibration. For each sentence, the end score (valence or emotion) was compared
+to the predicted quantiles at each token position. If the end score fell below a predicted quantile, a 1 was stored, otherwise a 0
+was stored. Averaging across all sentences gives the empirical probability that the end score falls below the quantile of a certain
+level. An accurately estimated α-quantile would mean that the end scores fell below that quantile α-% of the time. Quantiles
+were calibrated separately for each token position; the number of sentences used for each position differed, because sentences
+12/28shorter than the token position analyzed were naturally excluded. The results of the calibration are shown in Supplemental
+Figure S5.
+Generating text for specific α-quantiles
+Text generation in many large language models, like GPT-2, is autoregressive. Given a partially completed sentence x<t(and
+prompt xp), the LLM outputs a probability distribution over possible next tokens p(xt|x<t,xp). A single token xtis sampled
+from this distribution and is then fed back into the model as input for the next step.
+To generate more positively or negatively valenced text, or text with a specific emotional tone, we reweight these next-token
+probabilities using the (valence or emotion) quantiles predicted for each token. More specifically, our goal is to generate
+sentences from below a prespecified α-quantile of a prompt xp’s distribution. To do so, we adjust the next-token probabilities to
+be:
+p′(xt|x<t,xp)∝αxtp(xt|x<t,xp)
+Where the weight αxtcorresponds to the proportion of each next token’s predicted distribution that resides below the
+α-quantile of prompt’s distribution qα(xp). These weights are estimated by linearly interpolating the value for αxtsuch that its
+corresponding quantile equals the target quantile, i.e. such that qαxt(xt|x<t,xp) =qα(xp)for each next token. Normalization
+is also applied to ensure that the reweighted probabilities sum to one. For intuition, consider a next token whose predicted
+distribution is entirely above the target quantile. This would be assigned a weight of 0, because it does not contribute to the
+lower α-tail of the prompt’s distribution, and selecting it would make generating sentences from that lower tail impossible
+(given perfectly accurate predictions). Conversely, a token whose predicted distribution is entirely below the target quantile
+(i.e., within the target area) would be assigned a weight of 1 (and its probability would be unaltered). To generate sentences
+from above the (1−α)-quantile, the same procedure is applied to quantiles that are multiplied by -1. We denote the lower tail
+using α−and the upper tail using α+.
+After the next token is sampled from the reweighted probabilities, the process is repeated by comparing the distributions for
+the next set of possible tokens to the target quantile of the prompt distribution. Probability re-weighting is done after truncating
+the distribution using top-p (with p=0.95) and top-k (k=50) sampling. This was done to reduce the probability that extremely
+rare or odd tokens are selected and to increase computational speed. The temperature parameter was set to 1.
+Further details for text generation
+Text was generated from the model until a period token was chosen or a maximum sequence length of 40 tokens was reached.
+For both the unbiased and biased models many generation runs failed to self-terminate before the maximum sequence length.
+For the unbiased GPT-2 model ( α=1.0), 79/500 utterances did not terminate. For the negative-valence model, this number
+was 77/500 (for α−=0.5), 113/500 (for α−=0.25), and 111/500 (for α−=0.05). For the positive-valence model it was
+79/500 (for α+=0.5), 82/500 (for α+=0.25), and 74/500 (for α+=0.05). For the emotion models at α+=0.05, it was
+67/500 (determination), 79/500 (admiration), 91/500 (anxiety), and 130/500 (annoyance).
+In general, GPT-2 size language models are known to have issues with repetition and run-on sentences56, 57. This issue is
+likely also exacerbated by using very simple prompts, which do not indicate how long the sentence should be. However, given
+that the quantile models were trained on short sentences (<32 tokens), we opted for shorter prompts to keep the quantile models
+in-distribution. Aside from using a larger language model, this problem could also potentially be mitigated by longer prompts
+or adjusting the temperature parameter. As the current work aims merely to demonstrate the validity of this approach, we will
+leave these explorations for future work.
+Data availability
+The primary dataset we used to train our models, SMHD23, was obtained from Georgetown University with permission to use
+but not to share, in order to protect user privacy. We therefore cannot make this dataset available. However, scripts used to
+process the data and train the models will be included in the project’s Github repository.
+Acknowledgements
+CG and PD are funded by the Max Planck Society. PD is also funded by the Alexander von Humboldt Foundation. The
+authors would like to thank Alan Cowen and Hume AI for kindly providing access to the language model that was used to
+emotionally score text. We would also like to thank Christian Adam, Y-Lan Boureau, Marc Bellemare, and Marcel Binz for
+helpful comments on an earlier version of this manuscript.
+13/28Author contributions statement
+C.G. and P.D. conceived the experiments and analyses; C.G. conducted the experiments; C.G. and P.D. wrote and reviewed the
+manuscript.
+Additional information
+Competing interests: The author(s) declare no competing interests.

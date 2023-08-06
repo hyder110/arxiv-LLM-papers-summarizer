@@ -1,0 +1,428 @@
+SKILLS -IN-CONTEXT PROMPTING : UNLOCKING
+COMPOSITIONALITY IN LARGE LANGUAGE MODELS
+Jiaao Chen∗, Xiaoman Pan, Dian Yu, Kaiqiang Song, Xiaoyang Wang, Dong Yu & Jianshu Chen†
+Tencent AI Lab, Bellevue, WA 98004
+ABSTRACT
+We consider the problem of eliciting compositional generalization capabilities in large language
+models (LLMs) with a novel type of prompting strategy. Compositional generalization empowers
+the LLMs to solve problems that are harder than the ones they have seen (i.e., easy-to-hard gen-
+eralization), which is a critical reasoning capability of human-like intelligence. However, even the
+current state-of-the-art LLMs still struggle with this form of reasoning. To bridge this gap, we
+propose skills-in-context (SKiC) prompting, which instructs LLMs how to compose basic skills to
+resolve more complex problems. We find that it is crucial to demonstrate both the skills and the com-
+positional examples within the same prompting context. With as few as two examplars, our SKiC
+prompting initiates strong synergies between skills and their composition capabilities. Notably, it
+empowers LLMs to solve unseen problems that require innovative skill compositions, achieving
+near-perfect generalization on a broad range of challenging compositionality tasks. Intriguingly,
+SKiC prompting unlocks the latent potential of LLMs, enabling them to leverage pre-existing inter-
+nal skills acquired during earlier pretraining and alignment stages, even when these skills are not
+explicitly presented in the prompting context. This results in the capability of LLMs to solve unseen
+complex problems by activating and composing these internal competencies.
+1 Introduction
+Pre-trained large language models (LLMs) have achieved great success in solving natural language processing (NLP)
+tasks (Brown et al., 2020; Radford et al., 2019; Smith et al., 2022; Chowdhery et al., 2022; Lewkowycz et al., 2022;
+Sanh et al., 2021; Wei et al., 2021; Mishra et al., 2022; Chung et al., 2022; Ouyang et al., 2022; OpenAI, 2023). When
+the size of the model continuously scales up, LLMs exhibit strong zero-shot and few-shot performance on a wide range
+of NLP tasks (Brown et al., 2020; Wei et al., 2021; Chowdhery et al., 2022; Zhou et al., 2022; Wang et al., 2022a; Li
+et al., 2022; Wang et al., 2022b; Kojima et al., 2022; Shi et al., 2022; Magister et al., 2022; Ho et al., 2022; Nye et al.,
+2021; Dua et al., 2022; OpenAI, 2023) — a salient behavior characterized by the scaling law (Kaplan et al., 2020;
+Hoffmann et al., 2022) and emergent abilities (Wei et al., 2022a). However, LLMs still struggle with compositional
+generalization, i.e., the ability to use existing known skills to solve more complex problems than they have seen before
+(i.e., “easy-to-hard” generalization) (Zhou et al., 2022; Dziri et al., 2023). In this paper, we will focus on developing
+a prompting strategy for LLMs that can effectively unlock their generic compositional generalization capabilities.
+Ideally, if an LLM has already learned a rich set of skills, it should be able to solve any problem whose solutions are
+composable from these skills. To unlock such great potential, the key is to teach the LLMs how to use these skills to
+construct a solution to any unseen, more difficult problem. Towards this goal, there have been a series of prompting
+strategies being developed to improve the reasoning and compositionality capabilities. Notably, chain-of-thought
+(CoT) prompting (Wei et al., 2022b) significantly improves the reasoning performance of LLMs by demonstrating
+how to approach a complex problem through a sequence of simple and basic steps. Follow-ups such as Least-to-Most
+prompting (Zhou et al., 2022) and decomposed prompting (Khot et al., 2022) propose a two-stage strategy, which first
+decomposes the original problem into a set of subproblems, and then solve and combine each of them sequentially.
+Although these methods significantly boost the performance over standard prompting in solving many challenging
+∗Affiliated with Georgia Institute of Technology. This work is done during internship at Tencent AI Lab.
+†Correspondence to: Jiaao Chen <jiaaochen@gatech.edu >, Jianshu Chen <jianshuchen@global.tencent.com >.arXiv:2308.00304v1  [cs.CL]  1 Aug 2023A P REPRINT
+compositional generalization tasks, they still cannot perform systematic generalization well enough over problems that
+are significantly harder than the ones they have seen. Moreover, least-to-most prompting and decomposed prompting
+are restricted to solving a certain class of tasks, where each problem can be decomposed as a sequence of subproblems.
+And for problems with general computation graphs (Dziri et al., 2023), it is generally less intuitive, if not possible, to
+construct the prompting exemplars.
+In this paper, we develop an effective one-stage prompting strategy, named SKills-in-Context (SKiC) prompting, to
+unlock the general compositional generalization capability in LLMs. The key insight is to teach the LLM to explicitly
+ground each of its reasoning steps on the (more elementary) skills. Specifically, the SKiC prompt is constructed from
+three main blocks. The first block contains the skills that LLMs may need to use in order to solve a more complex
+problem, which include both descriptions of the skills and the instructions (with a few examples) on how to use them.
+The second part consists of a few (generally two in most of our cases) examplars that demonstrate how to explicitly
+compose these into a solution to a more complex problem. The last part is the problem to be solved. Interestingly,
+with both the skills and their explicit compositions presented in the context, the LLMs successfully learn how to
+ground each reasoning step on the knowledge and skills that they have already mastered, yielding the desirable general
+compositional generalization capabilities. Notably, unlike the Least-to-Most or decomposed prompting, our proposed
+approach is a one-stage prompting method, without the need to call LLMs multiple times. Therefore, it can be easily
+used in a plug-and-play manner, as the CoT prompting and the standard prompting.
+We evaluate our proposed SKiC prompting on a wide range of challenging compositional generalization tasks. Our
+experiments show that SKiC prompting achieves state-of-the-art performance on all of these benchmarks, and it even
+achieves near-perfect generalization on unseen harder problems on some of the datasets. Moreover, the improvement
+margins compared to the previous methods are significant. For example, SKiC outperforms previous state-of-the-art
+prompting strategies on unseen longer cases by 16.3% on last-letters (Zhou et al., 2022), 25.5% on adding, 45.0% on
+multiplication (Dziri et al., 2023),9.93% on Commaqa-E (Khot et al., 2021), and 36.0% on dynamic programming
+(Dziri et al., 2023). Notably, our results on GSM8K further reveal that SKiC prompting allows the LLMs to generalize
+to problems where the skills are not presented in the prompting context. It clearly demonstrates that SKiC prompting
+unleashes strong synergies between skills and their composition capabilities, which teaches LLMs to use the internal
+skills of LLMs not explicitly presented in the context, but acquired through earlier pre-training and alignment stages.
+2 Methodology
+2.1 Motivation
+Recent progress in LLMs has demonstrated strong capabilities in solving various NLP tasks (Brown et al., 2020;
+Radford et al., 2019; Smith et al., 2022; Chowdhery et al., 2022; Lewkowycz et al., 2022; Sanh et al., 2021; Wei et al.,
+2021; Mishra et al., 2022; Chung et al., 2022; Ouyang et al., 2022). However, they usually suffer from generalizing
+to more complex problems that require LLMs to compose different capabilities (Zhou et al., 2022) from the examples
+they have seen, i.e., compositional generalization or “easy-to-hard” generalization. This discrepancy is mainly due to
+the lack of the ability to compose basic skills to solve more difficult problems (Dziri et al., 2023), which is natural
+for humans in problem solving. Empowering language models with the ability to compose the skills that they have
+seen to solve more complex tasks is important to mirror human intelligence and to reach superintelligence. To this
+end, this work introduces a novel prompting strategy, Skills-in-Context (SKiC) prompting, to teach language models
+composing elementary skills to solve problems for better compositional generalization.
+2.2 Skills-in-Context Prompting
+Skills-in-context prompting facilitates compositional generalization by explicitly instructing language models to utilize
+basic skills to solve complex problems.3A SKiC prompt consists of two major parts:
+• Illustrations of the basic skills that are needed to solve complex problems, including the description of the
+skills and the instruction on how to use them (with few-shot examplars).
+• Examples of how to compose basic skills into solutions to complex problems.
+An example is shown in Figure 1. The language model is first provided with several basic skills such as getting the
+last letter of one word followed by several examples introduced to illustrate the process of utilizing these basic skills
+to answer the complex problem. For example, to take the last letter of a series of words, language models need to use
+3The term “basic skills” within SKiC prompting are not necessarily atomic skills. Rather, they could be any skills (e.g., a
+composite skill by itself) that serve as the foundational blocks for tackling more complex problems.
+2A P REPRINT
+Figure 1: Skills-in-Context Prompting. The prompt consists of three building blocks: (i) the (basic) skills for solving
+a complex task, (ii) (few-shot) examples of how to compose the skills to solve the complex problems, and (iii) the
+problem to be solved. The few-shot demonstration examples for the skills are omitted above for brevity. The above
+prompt will be fed into an LLM to generate the output — see Table 18 for an example of the output. Note that the
+compositional examplars demonstrate how to ground the reasoning steps onto the basic skills (highlighted in colors).
+the “words tolist” skill to first add the asked words to a list and then use the “last letter” skill to iteratively obtain the
+last letter of each word.
+In practice, to design SKiC prompts for different tasks, we first go through a few (less than 10) complex problems
+and summarize the common skills used to solve these problems. For example, we find that “words tolist” skill and
+“last letter” skill are commonly used to solve the last-letter-concatenation task. Based on the discovered skills used, we
+design the prompt to illustrate these basic skills together with examples. Then we design the prompts to teach models
+how to explicitly compose these basic skills to solve the problem, as shown in Figure 1. We leave the exploration of
+automatically generating task-specific prompts for future work.
+Comparison to previous prompting strategies Figure 2 visualizes the differences between our proposed SKiC
+prompting and the previous related prompting methods. Different from Chain-of-Thoughts prompting, our SKiC
+prompting provides explicit grounding on the basic skills for reasoning steps towards final answers. Compared to
+recent prompting methods for handling compositional problems such as Least-to-Most prompting (LtM) (Zhou et al.,
+2022) and Decomp (Khot et al., 2022), our SKiC is superior in several dimensions: (i) Our SKiC prompting is more
+general to solve extended sets of problems. Previous decomposing-based approaches like LtM and Decomp usually
+solve complex problems in a two-stage fashion by first decomposing the problem into a linear sequence of subproblems
+and then solving them sequentially. However, many of the tasks that have complex computation graphs such as
+multiplication and dynamic programming problems (Dziri et al., 2023) cannot be easily and fully decomposed in one
+stage, which makes it hard to apply these decomposition-based approaches. (ii) The decomposition operation can also
+be viewed as one basic skill in our SKiC prompt (for example, we view the decomposition operation as one of the
+skills in the question-answer task in Table 12). (iii) SKiC solves the complex problems in a single stage, which could
+alleviate the error propagation compared to decomposition-based approaches that require multiple distinct stages.
+Due to the one-stage nature, our SKiC prompting can replace other one-stage strategies such as the CoT and the
+standard promptings in a plug-and-play manner. And it can also be easily combined with other (orthogonal) prompting
+techniques such as self-consistency (Wang et al., 2022a) and Progressive-Hint Prompting (Zheng et al., 2023) to further
+boost the performance.
+3 Experiments
+In this section, we show the superior compositional capabilities of our SKiC prompting by evaluating it on symbolic
+manipulation (Wei et al., 2022b; Zhou et al., 2022; Khot et al., 2022), arithmetic operation (Dziri et al., 2023), question
+3A P REPRINT
+Figure 2: The building blocks of different prompting strategies. Blue cells stand for different intermediate steps,
+green cells denote the answers to the asked question, and red cells refer to the provided skills in our Skills-in-Context
+prompting. A block of several cells represents one distinct stage in a two-stage prompting strategy (e.g., problem
+decomposition stage in the Least-to-Most prompting). Standard prompting provides only labeled examplars in the
+context. Chain-of-Thoughts prompting further provides a step-by-step rationale preceding the answer. Decomposed
+prompting is a two-stage prompting method, which first breaks the questions into sub-problems, and then utilizes
+standard or Chain-of-Thoughts prompting to solve each sub-problem sequentially to derive the final answer. Least-to-
+Most prompting adopts a two-stage strategy: it first generates multiple questions in an easy-to-hard manner, and then
+sequentially answers each of them until solving the original question. In contrast, our Skills-in-Context prompting is a
+simple one-stage prompting, which places both the (basic) skills and the demonstrations of how to compose them into
+solutions within the same prompt context. This teaches the LLM how to explicitly and adeptly ground each reasoning
+step onto the skills (illustrated in dashed lines), which unleashes strong synergies between skills and composition
+capabilities in LLMs, leading to strong compositionality over unseen harder problems.
+answering (Khot et al., 2022), dynamic programming (Dziri et al., 2023), and math reasoning (Wei et al., 2022b; Zhou
+et al., 2022) tasks.
+3.1 Symbolic Manipulation: Last Letters
+Following Zhou et al., we first assess the compositionality in LLMs through the last-letter-concatenation task. For a
+given list of words, the LLM needs to generate an output that is the concatenation of the last letter from each word
+in the list. We compare our SKiC with zero/few-shot standard prompting (4-shot) (Brown et al., 2020), CoT (Wei
+et al., 2022b) and Least-to-Most prompting (LtM) (Zhou et al., 2022) on different large language models, including
+LLAMA-65B (Touvron et al., 2023), text-davinvi-0034(Brown et al., 2020; Ouyang et al., 2022), and ChatGPT5.
+And we evaluate them on different subsets of testing problems that include 1, 2, 4, 6, 8, 10, 12 words6, respectively.
+The examplars in all the prompts are constructed from the cases with 1 or 2 words. Therefore, the evaluations on the
+test subsets with 1, 2 words are in-distribution and the ones on 4, 6, 8, 10, 12 words are out-of-distribution.
+A SKiC prompt contains the skills and two examples of how to compose these skills as shown in Table 6 and Table 7.
+The model is given the needed skills such as putting the given words to a list and getting the last letter of one word,
+and then two examples of how to compose these skills to take the last letters of two given words.
+The results are reported in Table 1. We observe that standard zero/few-shot prompting generalizes poorly on the
+testing problems that are harder than the examplars in the prompting context. For example, 4-shot standard prompting
+only achieves 10% accuracy with text-davinci-003 when solving testing problems that involves 12 words. Chain-of-
+Thoughts and Least-to-Most prompting improve the overall performance but still degrade quickly over longer inputs.
+4https://platform.openai.com/playground?mode=complete
+5https://chat.openai.com/
+6From https://github.com/first20hours/google-10000-english/tree/master .
+4A P REPRINT
+Table 1: Accuracy of different prompting methods on different evaluation subsets of the last-letter-concatenation task.
+The testing problems with 1 and 2 words are in-distribution evaluation, while the ones with 4∼12words are (harder)
+out-of-distribution evaluations.
+Model Prompting #-shots 1 2 4 6 8 10 12
+LLAMA-65Bzero-shot 0 0 0 0 0 0 0 0
+4-shots 4 72.0 66.0 50.0 26.0 10.0 6.0 0
+CoT 4 76.0 70.0 58.0 42.0 30.0 26.0 20.0
+LtM 4 76.0 72.0 66.0 50.0 46.0 36.0 25.0
+SKiC 2 81.0 97.0 77.0 59.0 56.0 48.0 36.0
+text-davinci-003zero-shot 0 0 0 0 0 0 0 0
+4-shots 4 99.0 97.0 89.0 68.0 45.0 27.0 10.0
+CoT 4 100.0 99.0 90.0 75.0 52.0 39.0 31.0
+LtM 4 100.0 99.0 94.0 90.0 87.0 84.0 80.0
+SKiC 2 100.0 100.0 100.0 100.0 100.0 99.0 98.0
+ChatGPTzero-shot 0 99.0 98.0 93.0 88.0 84.0 80.0 77.0
+4-shots 4 100.0 100.0 95.0 92.0 90.0 86.0 85.0
+CoT 4 100.0 100.0 97.0 95.0 92.0 88.0 85.0
+LtM 4 100.0 100.0 99.0 95.0 92.0 92.0 88.0
+SKiC 2 100.0 100.0 100.0 100.0 100.0 100.0 100.0
+Our Skills-in-Context prompting significantly boosts the accuracy in all the test cases especially when there are more
+input words — it achieves nearly perfect generalization to harder problems with text-davinvi-003 and ChatGPT. This
+suggests that by showing the basic skills and teaching the models how to use the skills (with just twoexamples), our
+designed Skills-in-Context prompting achieves better compositionality.
+3.2 Arithmetic Operation
+Following Dziri et al., we evaluate the compositional capabilities on two arithmetic operation tasks: addition and
+multiplication. These two tasks involves complicated composition over skills such as one-digit addition or multipli-
+cation, carry over, concatenation and etc.(Dziri et al., 2023), making it difficult especially for long form addition or
+multiplication. We compare our Skills-in-Context prompting (SKiC) with zero/few-shot standard prompting (Brown
+et al., 2020) and Chain-of-Thoughts prompting (CoT) (Wei et al., 2022b) on different foundation models including
+LLAMA-65B, text-davinvi-003, and ChatGPT. We exclude the Least-to-Most prompting (Zhou et al., 2022) as it is
+difficult to design linear problem decomposition for addition or multiplication task. We also include text-davinci-003
+finetuned with scratchpad method (Nye et al., 2021; Dziri et al., 2023) on the multiplication task for comparison.
+Addition We construct different subsets of testing problems, which ask to output the sum of two numbers with
+2,3,4,5,6,7 digits, respectively. The given in-context examplars are only constructed to demonstrate the addition of
+two numbers with 2-digits or 3-digits. Consequently, the results for 4,5,6,7-digits summation are out-of-distribution
+evaluation. We show our Skills-in-Context prompting for the addition task in Table 8 and Table 9, where show the
+skills and one compositional examplar, respectively. We first present the basic skills like extracting digits from a
+number and then show the model how to use these skills to add two numbers with two examples. The results are
+shown in Table 2. Even though large language models such as text-davinci-003 and ChatGPT can perform well in
+adding smaller numbers in zero-shot and few-shots settings, they often fail to add larger numbers accurately such
+as adding two 7-digits numbers. Chain-of-Thoughts prompting does not improve the capability significantly. When
+utilizing our proposed Skills-in-Context prompting, there are consistent performance improvements on all the models
+(gaining over 68.9% improvements on 7-digits summation with text-davinci-003 compared to baselines) and even
+achieve 100% accuracy with ChatGPT. This again highlights the importance of jointly presenting the models with
+skills and how to use these skills within the same prompt context for better compositional generalization.
+Multiplication Next, we evaluate the compositional generalization performance on the multiplication task. Specif-
+ically, we construct different subsets of evaluation problems that ask for the product of two numbers with 2,3,4,5
+digits, respectively. The given in-context examplars in all the prompts are constructed to demonstrate 2-digit and
+3-digit multiplications. Therefore, the results for 4,5-digits multiplications measure the compositional generalization
+to unseen harder problems. The construction of our Skills-in-Context prompting is shown in Table 10 and Table 11,
+which illustrate the skills and the compositional examplar, respectively. The evaluation results are reported in Table 3.
+All the models with standard prompts or Chain-of-Thoughts prompts can not handle the multiplication, especially for
+5A P REPRINT
+Table 2: Accuracy of different prompting methods on the task of adding two numbers with different digits (2,3,4,5,6,7).
+The prompting examplars are constructed to demonstrate the addition between two numbers with 2 or 3 digits. There-
+fore, the results for adding numbers with 4∼7digits measure the desirable compositional generalization capabilities
+over harder problems. †denotes our method.
+Model Prompting #-shots 2 3 4 5 6 7
+LLAMA-65Bzero-shot 0 58.0 40.5 22.5 8.0 0 0
+4-shots 4 64.5 46.5 28.0 10.0 0 0
+CoT 4 60.0 52.5 24.0 12.0 1.0 0
+SKiC† 2 82.5 74.5 66.5 52.0 38.0 22.0
+text-davinci-003zero-shot 0 100.0 100.0 98.0 87.5 74.5 54.0
+4-shots 4 100.0 100.0 98.0 92.0 80.5 58.5
+CoT 4 100.0 100.0 92.0 68.5 42.0 38.0
+SKiC† 2 100.0 100.0 99.0 98.0 99.0 98.5
+ChatGPTzero-shot 0 100.0 100.0 100.0 92.0 86.5 78.0
+4-shots 4 100.0 100.0 100.0 94.0 90.5 83.5
+CoT 4 100.0 100.0 98.5 90.0 87.5 80.0
+SKiC† 2 100.0 100.0 100.0 100.0 100.0 100.0
+Table 3: Accuracy of different prompting methods on the task of multiplying two numbers with different digits
+(2,3,4,5). The prompting examplars are constructed to demonstrate how to multiply two numbers with 2 or 3 dig-
+its. Therefore, the results for multiplying numbers with 4 and 5 digits measure the compositional generalization
+capability over harder problems. †stands for our method.
+Models Prompting #-shots 2 3 4 5
+LLAMA-65Bzero-shot 0 28.0 17.0 0 0
+4-shots 4 24.0 18.0 0 0
+CoT 4 22.0 21.0 0 0
+SKiC† 2 50.0 42.0 12.0 8.0
+text-davinci-003zero-shot 0 76.0 14.5 0 0
+4-shots 4 82.0 18.0 0 0
+CoT 4 86.0 20.5 2.0 0
+finetuned 0 99.0 55.0 1.0 0.0
+SKiC† 2 100.0 58.0 42.5 36.0
+ChatGPTzero-shot 0 99.0 55.0 1.0 0
+4-shots 4 99.0 58.0 1.0 0
+CoT 4 99.0 54.5 13.0 2.0
+SKiC† 2 100.0 82.0 72.0 48.5
+larger number (e.g., 0% accuracy for ChatGPT when multiplying two 5-digits numbers). After explicit showing the
+models with the necessary skills to compute the product of two numbers as well as the detailed process of composing
+these skills, our SKiC prompting significantly improve the multiplication accuracy. It highlights the superiority of our
+prompting approach to tackle compositional and out-of-distribution testing cases. Our error analysis reveals that most
+of the errors in SKiC prompting are caused by missing the multi-digit addition capability (Table 8 and Table 9), which
+can be incorporated as a basic skill in the prompting context. When equipped with such extra skills, ChatGPT with
+SKiC can achieves 100% accuracy for both 2-digit and 3-digit multiplications.7
+3.3 Long-Context Question Answering: CommaQA-E
+To evaluate the compositional generalization in the reading comprehension setting, following Khot et al., we evaluate
+different prompting strategies on CommaQA-E(Khot et al., 2021). For given facts of a set of synthetically generated
+entities, the models need to answer the multi-hop questions which are composed of multiple reasoning steps, e.g.,
+What movies have people from the country Stridery acted in? . Besides the standard zero/few-shot prompting (Brown
+7Further extending it to more digits will require longer context window of the language models.
+6A P REPRINT
+et al., 2020) and the Chain-of-Thoughts prompting (CoT) (Wei et al., 2022b), we also compare our Skills-in-Context
+(SKiC) prompting to Decomp prompting8(Khot et al., 2022). We evaluate the results on different foundation models:
+LLAMA-65B, text-davinvi-003, and ChatGPT. The construction of the SKiC prompting for CommaQA-E is described
+in Tables 12 and 13, which show the skills and the examplars of how to compose the skills, respectively. Notably, both
+the ability to break down complex questions into simple ones and the operation to answer each simple questions are
+also treated as (basic) skills — see Table 12. However, different from the multi-stage prompting strategies like least-
+to-most or DECOMP prompting, such basic skills and the examplars to demonstrate how to use the skills (Table 13)
+are placed in the same prompt context. Consequently, the LLM is able to flexibly apply the question decomposition
+skill and simple question answering skills to reach the final answer within 1-stage of prompting. The results on the
+CommaQA-E dataset are summarized in Table 4 (measured in Exact Match). We could observe that, with multiple
+stages for question decomposition and answerings, Decomp improves the performance over few-shots prompting and
+chain-of-thoughts prompting. Nevertheless, our SKiC prompting further boosts the accuracy of answering composi-
+tional questions by making predictions in one single stage. That is, it decomposes the question and answering them
+within one context using the provided skills in a more flexible and grounded manner, which could make different sim-
+ple question answering help each other and might avoid error propagation. For an example in Figure 5, errors made in
+early stages in Decomp prompting result in wrong predictions while our SKiC prompting accurately answer different
+questions in one context. This is a further manifestion of the advantage of concurrently demonstrating the skills and
+their compositions for unleashing the compositionality of LLMs.
+Table 4: Performance of different prompting methods on Commaqa-E datasets (measured in Exact Match). The
+column of “Comp. Gen” reports the results on the new (unseen) compositional questions from the compositional
+generalization split. †denotes our method.
+Model Prompting #-shots Test Comp. Gen
+LLAMA-65Bzero-shot 0 12.0 16.3
+4-shots 4 15.0 24.6
+CoT 4 27.0 30.8
+Decomp 12 32.0 40.4
+SKiC† 2 44.0 52.0
+text-davinci-003zero-shot 0 34.0 26.8
+4-shots 4 42.0 33.5
+CoT 4 44.0 38.2
+Decomp 12 58.0 66.6
+SKiC† 2 66.0 74.8
+ChatGPTzero-shot 0 42.0 30.6
+4-shots 4 47.0 40.3
+CoT 4 55.0 46.4
+Decomp 12 64.0 73.5
+SKiC† 2 70.0 80.8
+3.4 Dynamic Programming
+We then further evaluate the compositional generalization capabilities of Skills-in-Context (SKiC) prompting in solv-
+ing a classic dynamic programming problem (Dziri et al., 2023): Given a sequence of integers, find a subsequence
+with the highest sum, such that no two numbers in the subsequence are adjacent in the original sequence. We com-
+pare our SKiC prompting (SKiC) with standard zero/few-shot prompting (Brown et al., 2020), and Chain-of-Thoughts
+prompting (CoT)9(Wei et al., 2022b) on different LLMs (text-davinvi-003, ChatGPT and GPT4). In addition, we also
+compare with the baseline of finetuned text-davinci-003 with scratchpad from (Dziri et al., 2023). Likewise, we eval-
+uate them on different subsets of testing instances with sequence length of 4, 5, 6, 7, 8, respectively.10The in-context
+examplars are constructed with sequence length of 4 and 5. Therefore, the testing subsets with sequence length of 4
+and 5 are in-distribution evaluation and the ones with length 6, 7, and 8 are for out-of-distribution evaluation. The
+construction of SKiC prompt is characterized in Tables 14 and 15, which show the skills and their compositions ex-
+amplars, respectively. Specifically, in the SKiC prompt, the models are presented with the skills to get the length of a
+8Reproduced using the original code from: https://github.com/allenai/DecomP/tree/main
+9The reasoning steps are constructed based on the scratchpad prompts used in Dziri et al. (2023).
+10The numbers are within the range [-5,5]
+7A P REPRINT
+Table 5: Accuracy of different prompting methods on the dynamic programming task with input sequence lengths
+being 4,5,6,7,8, respectively. The in-context examplars for all the prompts are constructed with sequence lengths
+of 4 and 5. Therefore, the results for sequence lengths of 6,7,8 measures the out-of-distribution generalization to
+increasingly harder problems. †denotes our method.
+DP Prompting #-shots 4 5 6 7 8
+text-davinci-003zero-shot 0 10.5 4.0 4.0 0 0
+4-shots 4 32.5 18.0 10.0 4.0 0
+CoT 4 58.0 22.0 15.0 8.0 2.0
+finetuned 0 100.0 100.0 22.0 14.0 8.0
+SKiC† 2 78.0 62.5 54.5 48.0 42.5
+ChatGPTzero-shot 0 18.0 10.0 6.0 4.0 0
+4-shot 4 44.5 18.0 10.0 4.0 0
+CoT 4 82.5 76.0 72.0 64.0 55.5
+SKiC† 2 98.0 96.0 95.0 94.0 92.0
+GPT4zero-shot 0 58.0 42.5 35.5 28.0 12.0
+4-shots 4 76.5 70.5 58.0 55.0 42.0
+CoT 4 94.0 91.0 88.0 83.5 72.0
+SKiC† 2 100.0 100.0 100.0 99.0 98.0
+Figure 3: The accuracy of different prompting techniques on GSM8K tasks (using different LLMs).
+list, find the max number for a given list and add two single digit numbers, followed by two compositional examplars
+about how to compose these skills to solve the dynamic programming problems with sequence length 4 and 5. Table 5
+shows the results (measured in accuracy). Compared to the previous prompting techniques such as Chain-of-Thoughts,
+our proposed SKiC again achieve the best performance, with a large improvement margin on the out-of-distribution
+compositionality (e.g., improving the accuracy by a large margin of 40.5%using text-davinci-003 for sequence length
+of8). In addition, compared to the finetuned text-davinci-003 with scratchpad, SKiC prompting is also significantly
+better in the out-of-distribution regime, although its performance at the in-distribution regime is worse.11Notably, with
+a stronger foundation model (i.e., GPT-4), SKiC prompting even achieves near perfect generalization ( 98%), which
+also improves significantly over CoT by 26%. By including in the prompts the basic skills to extract the length of a list
+and find the maximum number in a given list, the models are instructed to reason and resolve problems on the ground
+of these basic skills. Consequently, it performs the reasoning steps more accurately and could generalize better to the
+harder examples by following similar patterns to compose the basic skills.
+3.5 Math Reasoning
+In this section, we further evaluate whether our SKiC prompting could allow LLMs to generalize beyond the skills
+provided in the prompt and learns to use the skills and knowledge that are acquired through earlier pretraining and
+alignment stages. Specifically, we apply our Skills-in-Context prompting to GSM8K (Cobbe et al., 2021), which
+11This is expected as the it is finetuned directly on input sequences with length 4 and 5, while our method is not finetuned at all.
+8A P REPRINT
+Figure 4: Distributions of different types of errors in Multiplication, Question Answering and GSM8K tasks.
+requires multiple math related skills to solve complex math world problems. For this task, since it is infeasible to
+enumerate all the needed skills to solve all the problems in GSM8k, our SKiC prompt will only include limited skills
+together with constructed compositional examplars to teach the LLMs how to use them. The skill sets and one example
+of how to compose these skills to solve a math problem are shown in Tables 16 and Table 17, respectively. In practice,
+we provide the model with 8 examples. We compare our SKiC with Chain-of-Thoughts prompting (CoT) (Wei et al.,
+2022b), Least-to-Most prompting (LtM) (Zhou et al., 2022), ComplexCot (Fu et al., 2022) and PHP (Zheng et al.,
+2023) on different large language models (i.e., text-davinvi-003, ChatGPT and GPT4). We evaluate the accuracy on
+the GSM8K test set. The results on GSM8K test set are shown in the Figure 312. Even with incomplete skill set
+in our SKiC prompts, we still observe a significant accuracy boost compared to previous state-of-the-art prompting
+methods across all foundation models (even better than multi-stage methods such as PHP which modify and correct
+the predictions through multiple rounds). Significantly, we observe several intriguing cases of generalization: (i)
+the generated reasoning steps effectively utilize the provided skills that are not demonstrated in the compositional
+examples (see Table 25 for an example), (ii) the generated reasoning steps successfully employ skills that are not
+included in the prompts but may exist within the pre-trained knowledge of the LLM (see Table 26 and 27 for examples).
+These discoveries suggest that, with SKiC prompting, LLMs can be taught to use the skills provided in the context as
+well as from their pre-existing internal (pretrained) knowledge to solve math problems via compositionality.
+3.6 Error Analysis
+We further perform error analysis on the tasks that are still far away from achieving (nearly) perfect generalization
+when applying SKiC prompting on ChatGPT — multiplication, question answering, and GSM8K. For each task, we
+randomly sample 50 error cases (Zhou et al., 2022) and conduct an examination of the types of errors involved. We
+summarize five types of common errors: (i) seen basic skills: errors arise due to a lack of mastery of the skills in
+context, (ii) unseen basic skills: errors caused by the absence of necessary skills in context, particularly when these
+skills do not exist in the pre-trained knowledge of the LLM, (iii) incorrect composition: errors of incorrect composition
+or reasoning using the basic skills, (iv) incorrect copying: copying or merging errors between different steps, (v) others:
+other errors such as incorrect ground truth labels in the test set.
+Their distributions are visualized in Figure 4. We observe that (i) the most common errors arise from unseen basic skills
+(for example, 83% of the errors in the Multiplication task are due to the absence of the skill to add large numbers),
+(ii) a lack of mastery of the basic skills leads to more errors when there are more complex or more basic skills to
+be used (for example, the question decomposition capability in the CommaQA-E task is generally a complex skill,
+and the GSM8K dataset requires more basic skills), (iii) incorrect composition is a major error type for tasks that
+require more complex reasoning steps such as GSM8K (e.g., 45% of the errors are due to incorrect reasoning steps
+such as misinterpreting the questions or incorrectly reasoning about the questions), (iv) copying errors become more
+prevalent when there are more reasoning steps with longer context, and (v) math reasoning generally requires a wider
+12The results are re-implemented with the provided prompts by the original works. Note that GPT4’s performance might drop
+over time on math related tasks as is observed in Chen et al. (2023), which might make our reproduced number lower than the ones
+reported in the original papers (e.g., PHP results with GPT-4).
+9A P REPRINT
+variety of skill compositions, and the way of composition varies significantly from one problem to another, making
+it considerably harder to master the appropriate skill composition for each problem. Therefore, there are several key
+directions to further improve SKiC: (1) providing the model with high-quality basic skills and illustrations to improve
+the execution quality of these basic skills, (2) expanding the range of task-related basic skills to prevent errors caused
+by unseen skill, (3) providing more examples of how to compose basic skills, especially for more complex tasks, and
+(4) utilizing better foundation models that can avoid copying errors in long context and that have a more extensive set
+of well-mastered skills in their pre-existing pretrained knowledge.
+4 Related Work
+There has been a long history of studies on compositional generalization (Lake & Baroni, 2018; Jia & Liang, 2016;
+Andreas, 2019; Lake & Baroni, 2018; Ouyang et al., 2023; Keysers et al., 2020; Chen et al., 2020; Dziri et al., 2023;
+SHAO et al., 2023; Saparov & He, 2022; Nye et al., 2021; Welleck et al., 2022; Dong et al., 2019; Schwarzschild
+et al., 2021). Different types of approaches have been developed to solve compositional generalization. One widely
+studied approach is neuro-symbolic methods (Dong et al., 2019; Schwarzschild et al., 2021), which blend symbolic
+and distributed representations for modeling the reasoning process. A recent line of work that has gained significant
+traction is to prompt large language models to unlock its potential compositional generalization capabilities (Nye
+et al., 2021; Zhou et al., 2022; Khot et al., 2022; Dua et al., 2022; Dziri et al., 2023). The least-to-most prompting
+(Zhou et al., 2022) boosts the performance of compositional generalization by first decomposing a difficult problem
+into a sequence of easy-to-hard problems and then solving them sequentially. Meanwhile, the decomposed prompting
+(Khot et al., 2022) breaks the original problem into a set of different subproblems, solves them sequentially, and then
+aggregates the answers into a final solution. In spite of the significant improvement compared to previous works,
+the performance of these approaches still degrade quickly over increasingly harder testing problems. Moreover, their
+applications are limited to a class of problems that can be decomposed into a set of subproblems. For more general
+complex problems, where the subproblems are highly nested (e.g., the ones shown in Dziri et al. (2023)), it becomes
+quite challenging to construct the prompts and the examplars. Unlike these multi-stage prompting methods, which
+require multiple calls of the LLM inference process, our proposed Skills-in-Context prompting is a simple one-stage
+strategy that can be used in a plug-and-play manner to replace existing standard or chain-of-thought prompting.
+5 Conclusion
+In this work, we propose an effective prompting technique, Skills-in-Context (SKiC) prompting, to unlock composi-
+tional generalization abilities in LLMs. Specifically, SKiC prompts consist of two major building blocks: the basic
+skills that are needed for solving the problems, and the examplars of how to compose these skills into solutions for
+complex problems. Significant improvements on symbolic manipulation, arithmetic operation, question answering,
+dynamic programming, and math reasoning tasks demonstrate that our SKiC prompting technique is highly effective
+in unleashing the compisitionality in LLMs. Notably, with SKiC prompting, the LLMs could generalize beyond the
+skills provided in the prompting context and learns to activate the skills and knowledge that are acquired through
+earlier pretraining and alignment stages for solving unseen complex problems.

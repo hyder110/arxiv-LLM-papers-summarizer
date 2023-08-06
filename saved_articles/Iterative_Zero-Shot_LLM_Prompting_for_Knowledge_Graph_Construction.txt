@@ -1,0 +1,117 @@
+ITERATIVE ZERO-SHOT LLM P ROMPTING FOR KNOWLEDGE
+GRAPH CONSTRUCTION
+Salvatore Carta
+Department of Mathematics
+and Computer Science
+University of Cagliari
+Palazzo delle Scienze, Via Ospedale,
+72, 09124, Cagliari, Italy
+salvatore@unica.itAlessandro Giuliani,
+Department of Mathematics
+and Computer Science
+University of Cagliari
+Palazzo delle Scienze, Via Ospedale,
+72, 09124, Cagliari, Italy
+alessandro.giuliani@unica.it
+Leonardo Piano
+Department of Mathematics
+and Computer Science
+University of Cagliari
+Palazzo delle Scienze, Via Ospedale,
+72, 09124, Cagliari, Italy
+leonardo.piano@unica.itAlessandro Sebastian Podda
+Department of Mathematics
+and Computer Science
+University of Cagliari
+Palazzo delle Scienze, Via Ospedale,
+72, 09124, Cagliari, Italy
+sebastianpodda@unica.it
+Livio Pompianu
+Department of Mathematics
+and Computer Science
+University of Cagliari
+Palazzo delle Scienze, Via Ospedale,
+72, 09124, Cagliari, Italy
+livio.pompianu@unica.itSandro Gabriele Tiddia
+Department of Mathematics
+and Computer Science
+University of Cagliari
+Palazzo delle Scienze, Via Ospedale,
+72, 09124, Cagliari, Italy
+sandrog.tiddia@unica.it
+ABSTRACT
+In the current digitalization era, capturing and effectively representing knowledge is crucial in most
+real-world scenarios. In this context, knowledge graphs represent a potent tool for retrieving and
+organizing a vast amount of information in a properly interconnected and interpretable structure.
+However, their generation is still challenging and often requires considerable human effort and
+domain expertise, hampering the scalability and flexibility across different application fields. This
+paper proposes an innovative knowledge graph generation approach that leverages the potential of the
+latest generative large language models, such as GPT-3.5, that can address all the main critical issues
+in knowledge graph building. The approach is conveyed in a pipeline that comprises novel iterative
+zero-shot and external knowledge-agnostic strategies in the main stages of the generation process.
+Our unique manifold approach may encompass significant benefits to the scientific community. In
+particular, the main contribution can be summarized by: (i) an innovative strategy for iteratively
+prompting large language models to extract relevant components of the final graph; (ii) a zero-shot
+strategy for each prompt, meaning that there is no need for providing examples for “guiding” the
+prompt result; (iii) a scalable solution, as the adoption of LLMs avoids the need for any external
+resources or human expertise. To assess the effectiveness of our proposed model, we performed
+experiments on a dataset that covered a specific domain. We claim that our proposal is a suitable
+solution for scalable and versatile knowledge graph construction and may be applied to different and
+novel contexts.arXiv:2307.01128v1  [cs.CL]  3 Jul 2023Iterative Zero-Shot LLM Prompting...
+1 Introduction
+Nowadays, the world is experiencing an unprecedented transformation since the development of recent generative
+large language models (LLMs). The capability of such AI systems, like GPT-3.5, in analyzing, processing, and
+comprehending a considerable amount of human language leads to rapid and strong improvements in several application
+fields. LLMs are changing the way of accessing, ingesting, and processing information. Indeed, they can enable humans
+to interact easily with machines, which can receive and understand the users’ queries expressed in natural language and
+generate coherent, reliable, and contextually relevant responses represented in a proper natural language format. The
+impact of LLMs transcends pure language processing. Indeed, they may lay the foundations for a not-distant future
+where the interaction and cooperation between humans and machines represent the primary strategy for innovation
+and progress. In this scenario, the potential of LLMs may revolutionize all real-world domains, e.g., technological
+applications, healthcare, or creative industries like music composition or even art. Like classical Machine Learning
+algorithms, which are trained on large datasets to provide predictions given a specific input [ 21], LLMs are trained on
+vast written language datasets to predict natural language elements following a given input textual query (i.e., a prompt ),
+such as a question, instruction or statement. LLMs can generate a remarkable variety of outputs depending on the given
+prompt. Therefore, LLM prompting assumes a central role, and researchers are ever more focused on exploiting their
+potential to devise innovative algorithms and tools and improve knowledge in various domains. LLM prompting can be
+leveraged to enhance various Machine Learning tasks, as the principal strength is the ability to generate high-quality
+synthetic data reducing the manual effort in collecting and annotating data. Indeed, by composing well-formulated
+prompts, LLMs can be highly valuable in supporting the devising of models in many scenarios, e.g., in generating
+creative content (like stories or poems) [ 20], Information Retrieval (where users can request information on specific
+topics) [5], problem-solving [28], or text summarization [29].
+Notwithstanding the general encouraging performance of LLMs, their usefulness is still not optimal or under investiga-
+tion in several areas. In this context, this paper aims to provide an innovative approach to knowledge representation,
+which plays an essential role in many real-world scenarios, transforming how the information is collected, organized,
+processed, and used. In particular, we focus on a novel method for creating suitable Knowledge Graphs (KGs), that
+have been demonstrated to be extremely valuable across several industries and domains. KGs organize information in a
+proper graph structure, where nodes represent entities and edges represent relations between entities. Each node and
+edge may be associated with properties or attributes, providing further details or metadata. KGs are powerful tools for
+capturing and representing knowledge appropriately that hold considerable advantages:
+• they can infer and integrate information from heterogeneous sources, e.g., structured databases, unstructured
+text, or web resources;
+•they can capture both explicit and implicit knowledge. Explicit information is directly represented in the KG
+(e.g., “Joe Biden is the president of the USA”), whereas the implicit knowledge can be inferred by exploring
+the graph and finding relevant patterns and paths, allowing to discover new insights;
+• they allow a straightforward and effective query and navigation of information.
+KGs are widely applied in many domains, e.g., in recommender systems [ 8], semantic search [ 27], healthcare and
+clinical tools [1], or finance [12].
+Although significant improvements have been made in graph construction, creating a complete and comprehensive
+KG in an open-domain setting involves several challenges and limitations. For example, the lack of established large
+annotated datasets for relation extraction, which arises from the absence of a rigorous definition of what constitutes a
+valid open-domain relational tuple, leads to the development of relation extraction tools using heterogeneous datasets,
+which tend to work well on their trained dataset but are prone to produce incorrect results when used on different genres
+of text [ 19]. Moreover, the open-domain implementations of the complementary tasks of Named Entity Recognition
+and Entity Resolution are understandably less performing than their closed-domain counterparts, and they also suffer
+from the lack of well-established toolkits and comprehensive knowledge bases.
+To overcome the aforementioned limitations, our insight is to rely on LLMs to support the construction of KGs. Indeed,
+their ability to analyze and generate human-like text at a large scale can be instrumental in knowledge representation.
+We deem that LLMs can enhance the KG generation in the main stages of the process, e.g., in extracting entities and
+relations, disambiguation, or textual inference. In particular, relying on LLM prompting may be a key point of KG
+generation. By composing an appropriate prompt, LLMs can efficiently process structured and unstructured text and
+transform it into KG components. A well-formed prompt can lead to extract relevant entities, relationships, and types.
+Summarizing, we present a novel approach for KG construction based on extracting knowledge with the support of an
+iterative zero-shot (i.e., without the need for any examples and fine-tuning) LLM prompting. In particular, a sequence of
+appropriate prompts is used iteratively on a given set of input documents to extract relevant triplets and their attributes
+2Iterative Zero-Shot LLM Prompting...
+for composing a KG. Subsequently, supported by a further prompting strategy, we defined a proper entity/predicate
+resolution method for resolving the entity/relations co-

@@ -1,0 +1,476 @@
+Exploring Continual Learning for Code Generation Models
+Prateek Yadav1∗, Qing Sun2†, Hantian Ding2, Xiaopeng Li2, Dejiao Zhang2,
+Ming Tan2, Xiaofei Ma2, Parminder Bhatia2, Ramesh Nallapati2,
+Murali Krishna Ramanathan2, Mohit Bansal1,3, Bing Xiang2
+University of North Carolina, Chapel Hill1, AWS AI Labs2, Amazon Alexa AI3
+{praty, mbansal }@cs.unc.edu
+{qinsun, dhantian, xiaopel, dejiaoz, mingtan, xiaofeim,
+parmib, rnallapa, mkraman, mobansal, bxiang }@amazon.com
+Abstract
+Large-scale code generation models such as
+Codex and CodeT5 have achieved impressive
+performance. However, libraries are upgraded
+or deprecated very frequently and re-training
+large-scale language models is computation-
+ally expensive. Therefore, Continual Learning
+(CL) is an important aspect that remains under-
+explored in the code domain. In this paper,
+we introduce a benchmark called CODETASK-
+CLthat covers a wide range of tasks, includ-
+ing code generation, translation, summariza-
+tion, and refinement, with different input and
+output programming languages. Next, on our
+CODETASK-CL benchmark, we compare pop-
+ular CL techniques from NLP and Vision do-
+mains. We find that effective methods like
+Prompt Pooling (PP) suffer from catastrophic
+forgetting due to the unstable training of the
+prompt selection mechanism caused by stark
+distribution shifts in coding tasks. We ad-
+dress this issue with our proposed method,
+Prompt Pooling with Teacher Forcing (PP-TF),
+that stabilizes training by enforcing constraints
+on the prompt selection mechanism and leads
+to a 21.54% improvement over Prompt Pool-
+ing. Along with the benchmark, we estab-
+lish a training pipeline that can be used for
+CL on code models, which we believe can
+motivate further development of CL meth-
+ods for code models. Our code is available
+at https://github.com/amazon-science/codetask-
+cl-pptf.
+1 Introduction
+Code generation models (Nijkamp et al., 2022b;
+Wang et al., 2021b; Le et al., 2022; Fried et al.,
+2022) can increase the productivity of program-
+mers by reducing their cognitive load. These mod-
+els require significant computation to train as they
+∗Work conducted during an internship at Amazon
+†Corresponding author qinsun@amazon.com
+TrainTask 1 Task 2 Task 3 InferenceTrain
+: Example Query : (Key , Prompt) pair : Shared (Key , Prompt) pairFigure 1: We show the process of prompt selection
+for Prompt Pooling with Teacher Forcing when learn-
+ing multiple tasks sequentially. First, we initialize the
+prompt pool with (key, prompt) pairs (denoted by rect-
+angles). Next, each (key, prompt) pair is assigned to
+either a single task or is shared by two tasks (denoted
+by colors). When learning Task 1 (green color), we
+obtain the query (green circle) for a given example and
+select the top-k (k=2 here) pairs from the assigned (key,
+prompt) pairs, highlighted in the figure. These selected
+pairs are then trained for the example. A similar pro-
+cess is followed for subsequent tasks. During inference,
+we remove task assignments and select the top-k pairs
+across all the pairs.
+have billions of parameters trained on terabytes
+of data. Hence, they are trained once and are
+then used repeatedly for several downstream ap-
+plications. However, as software development con-
+stantly evolves with new packages, languages, and
+techniques (Ivers and Ozkaya, 2020), it is expen-
+sive to retrain these models. Therefore, it is essen-
+tial to continually improve these models to avoid
+errors, generate optimized code, and adapt to new
+domains and applications.
+We explore continual learning (CL) (Ring, 1998;
+Thrun, 1998) abilities of code-generation models
+and aim to improve them. Specifically, we present a
+CODETASK-CL benchmark for code-based CL and
+aim to train a model on sequentially presented tasks
+with different data distributions without suffering
+from catastrophic forgetting (CF) (McCloskey and
+Cohen, 1989). This occurs when the model overfitsarXiv:2307.02435v1  [cs.LG]  5 Jul 2023the current task, resulting in a decline in perfor-
+mance on previously learned tasks.
+Given the lack of CL benchmarks for the code
+domain, we create a benchmark called CODETASK-
+CLusing existing datasets. It consists of tasks like
+code completion (Iyer et al., 2018, 2019; Clement
+et al., 2020), code translation (Chen et al., 2018;
+Lachaux et al., 2020), code summarization (Wang
+et al., 2020a,b), and code refinement (Tufano et al.,
+2019). This benchmark presents a new and chal-
+lenging scenario as it necessitates the adaptation
+of the model to varying input and output program-
+ming languages. Along with this benchmark, we
+also present a training framework to easily apply
+CL methods to code generation models.
+Next, we evaluate the effectiveness of popular
+CL methods from NLP and Vision domains in the
+context of code generation models. We consider
+prompting methods (Wang et al., 2022b; Li and
+Liang, 2021a) and experience-replay (De Lange
+et al., 2019) due to their good performance for
+pre-trained models (Wu et al., 2022a). We also
+experiment with Prompt Pooling (PP) (Wang et al.,
+2022c), an effective prompting-based method for
+CL in the vision domain. Our results show that
+Prompt Pooling suffers from catastrophic forget-
+ting on our proposed CODETASK-CL benchmark
+because of the complex distribution shift from
+varying input and output programming languages
+across tasks. With further investigation, we find
+that the unconstrained prompt selection mecha-
+nism leads to an unstable training problem. To
+address this, we propose our method Prompt Pool-
+ing with Teacher Forcing (PP-TF ), which imposes
+constraints on prompt selection during training
+by assigning certain prompts to fixed tasks dur-
+ing training (see Figure 1). This results in stable
+training and better performance. Interestingly, we
+find when a replay buffer is available, the simple
+experience-replay (De Lange et al., 2019) method
+outperforms other CL methods and achieves perfor-
+mance similar to a multitask baseline (Crawshaw,
+2020) where all tasks are provided at once.
+In summary, our contributions include: (1) being
+the first study on CL for code generation tasks, (2)
+establishing a benchmark and a novel pipeline that
+supports CL for code generation to motivate future
+work, (3) identifying and addressing the unstable
+training issue of Prompt Pooling through our pro-
+posed method PP-TF, and (4) discussion on the best
+CL methods to use in different use cases.2 Related Work
+Code Generation Models. Code generation and
+language modeling for source code is an emerging
+research field experiencing active growth. Several
+model architectures have been examined recently,
+including encoder-only models (Feng et al., 2020;
+Guo et al., 2020), encoder-decoder models (Ahmad
+et al., 2021; Wang et al., 2021b), and decoder-only
+models (Nijkamp et al., 2022b; Chen et al., 2021;
+Nijkamp et al., 2022a). However, none of these
+models have been studied in the context of contin-
+ual learning.
+Continual Learning. There are various meth-
+ods for Continual Learning (CL) and they fall into
+three categories: Regularization ,Replay , and pa-
+rameter isolation methods. Regularization meth-
+ods(Kirkpatrick et al., 2017; Zenke et al., 2017;
+Schwarz et al., 2018) assign importance to model
+components and add regularization terms to the
+loss function. Replay methods (De Lange et al.,
+2019; Rebuffi et al., 2017; Lopez-Paz and Ranzato,
+2017; Chaudhry et al., 2018) retain a small mem-
+ory buffer of data samples and retrain them later to
+avoid catastrophic forgetting (CF). Parameter iso-
+lation methods , such as prompting-based methods
+(Wang et al., 2022b,a; Li and Liang, 2021a; Liu
+et al., 2021; Qin and Eisner, 2021), introduce or
+isolate network parameters for different tasks. For
+a more comprehensive overview of all CL meth-
+ods, we refer the reader to Delange et al. (2021);
+Biesialska et al. (2020).
+To the best of our knowledge, there are currently
+no studies or benchmarks for CL on code gener-
+ation models. Therefore, we evaluate the effec-
+tiveness of prompting (Wang et al., 2022b; Li and
+Liang, 2021a) and experience replay (Chaudhry
+et al., 2018; Buzzega et al., 2020) based methods,
+which have demonstrated strong performance in
+CL on large pretrained models (Raffel et al., 2020).
+We do not consider regularization methods as they
+are not effective in continually learning large-scale
+pretrained models (Wu et al., 2022b). Next, we
+discuss our proposed benchmark and methods.
+3 C ODE TASK-CL Benchmark
+We present the CODETASK-CL benchmark to as-
+sess the CL abilities of code generation models. We
+also provide a novel training pipeline that can be
+used to continually train and evaluate code genera-
+tion models. All of the datasets used to create theCODETASK-CL benchmark are available under the
+MIT license and more details on the dataset splits
+and input-output domains are in Table 2.
+3.1 Coding Tasks
+Code Generation aims to generate a code snippet
+from a natural language description. We use the
+CONCODE dataset (Iyer et al., 2018) which is a
+collection of tuples that consist of natural language
+descriptions, code environments, and code snippets,
+obtained from approximately 33,000 Java projects
+on GitHub. The objective of the study is to gen-
+erate class member functions utilizing the natural
+language descriptions and class environment.
+Code Summarization aims to generate a summary
+for a piece of code. We use the CodeSearchNet
+dataset (Husain et al., 2019), which consists of six
+programming languages (Python, Java, JavaScript,
+PHP, Ruby, and Go). The data for this task consists
+of the first paragraph of each documentation.
+Code translation refers to the transformation of a
+program written in a particular programming lan-
+guage into another language while maintaining its
+functionality. We use the Java →C# dataset com-
+piled by Lu et al. (2021) that provides pairs of code
+that perform the same tasks.
+Code Refinement aims to improve the code by fix-
+ing bugs within the code automatically. We use the
+dataset provided by Tufano et al. (2019) consisting
+of pairs of faulty and corrected Java functions.
+3.2 Evaluation
+Next, we define the metrics used to evaluate a
+model continually on these datasets. We follow Lu
+et al. (2021) and evaluate each task using BLEU
+(Papineni et al., 2002). We follow (Chaudhry et al.,
+2018) to continually evaluate model’s performance.
+We measure the average BLEU after learning all
+the tasks as, <BLEU> =1
+NPN
+k=1bN,k, where N
+is the total number of tasks and bi,jrepresents the
+BLEU score on task jafter learning task i. Addi-
+tionally, we report the average forgetting metric,
+denoted by <Forget>, to assess the model’s ability
+to retain performance on previously learned tasks.
+This metric is calculated as the average difference
+between the maximum accuracy obtained for each
+tasktand its final accuracy, given by <Forget> =
+1
+N−1PN−1
+t=1(max k∈1,...,N−1bk,t−bN,t).4 Prompt Pooling With Teacher Forcing
+Prompt Pooling (Wang et al., 2022c) is a highly
+effective technique that possesses two key benefits.
+Firstly, the number of prompts required does not
+increase linearly with the number of tasks. Sec-
+ondly, the prompts within the pool can be utilized
+across multiple tasks, thereby enabling the reuse of
+previously acquired knowledge. These abilities are
+advantageous in real-world scenarios, particularly
+when a model needs to be continually adjusted to
+accommodate a large number of users/tasks.
+In Prompt Pooling (PP), a set of learnable
+prompts P={Pi}M
+i=1are defined and shared by
+multiple tasks. We follow Wang et al. (2022c) and
+utilize a query and key-matching process to select
+the prompts for each task. This process has four
+steps: (1) a learnable key, represented as ki∈Rd,
+is defined for each prompt, resulting in a prompt
+pool of the form {(ki, Pi)}M
+i=1; (2) a query func-
+tionq(x)is defined, which takes an input xfrom
+a given task and produces a query vector qx∈Rd;
+(3) the top- kkeys are selected based on the cosine
+similarity between the query qxand all the key vec-
+tors{ki}M
+i=1; (4) we obtain the final input vector
+xpby pre-pending the example xwith the prompts
+corresponding to the selected keys. Then xpis
+fed into the pre-trained model fand we minimize
+the following loss function to only optimize the
+selected prompts and the corresponding keys while
+keeping the pre-trained model fixed.
+L=LLM(xp, y) +λX
+ksi∈Kssim(q(x), ksi) (1)
+whereLLMis the language modeling loss, yis the
+target sequence given the input x,Ksis the set of
+selected keys from Step (3) above.
+The query-key mechanism described above is
+an Expectation-Maximization (EM) (Moon, 1996)
+procedure. Given an example, we first select the
+top-kkeys based on the cosine similarity (E-Step)
+and then train these selected keys to pull them
+closer to the query (M-Step). The training is sta-
+ble when all tasks are jointly learned. However,
+in the CL context, tasks are sequentially trained
+which makes training unstable. Hence, we propose
+Prompt Pooling with Teacher Forcing (PP-TF) that
+removes the E-Step by assigning each {(ki, Pi)}
+pair to fixed tasks and only performs the M-Step of
+optimizing the keys. To encourage knowledge shar-
+ing, we allow a few {(ki, Pi)}pairs to be shared
+across tasks (see Figure 1). With these assign-
+ments/constraints in place, when training on task t,Method ( ↓) Replay [5k] Code Gen. Code Trans. Code Summ. Code Ref. <BLEU Test> <BLEU Val> <Forget Val>
+Sequential FT ✗ 6.42 2.76 3.13 77.75 22.52 22.44 39.64
+MTL ✗ 32.24 74.87 14.69 79.23 50.26 49.25 -
+Individual FT ✗ 38.61 83.34 14.32 77.73 53.50 52.68 -
+Shared Prompts ✗ 0.63 6.75 0.37 78.5 21.56 21.71 30.33
+Shared Prompts + ER ✓ 13.82 45.87 14.36 78.64 38.17 36.93 8.46
+Task Specific Prompts ✗ 22.93 65.37 14.57 78.81 45.42 44.56 0.00
+Prompt Pooling (PP) ✗ 2.41 7.47 2.62 78.67 22.79 23.10 27.43
+Prompt Pooling (PP) + ER ✓ 16.33 50.96 13.13 78.71 39.78 38.47 6.41
+PP + Teacher Forcing ✗ 24.28 59.37 14.15 79.50 44.33 43.10 1.68
+CodeT5 + ER ✓ 32.92 77.94 11.74 78.43 50.26 49.03 2.22
+Table 1: BLEU scores on the test set for the individual tasks and average BLEU ( ↑) and Forgetting ( ↓) metrics after
+sequentially learning Code Generation →Code Translation →Code summarization →Code Refinement Tasks.
+we use teacher forcing to select top- kprompts that
+are assigned to the task. Thus, for learning task t,
+our loss function becomes,
+L=LLM(xp, y) +λX
+ksi∈Ks∩Ktsim(q(x), ksi)(2)
+where, Ktdenotes the prompts assigned to task
+tfor teacher forcing. As training progresses, the
+queries and keys learn to align in a stable manner,
+while also allowing for information sharing among
+tasks through the shared prompts. During inference,
+we discard the assignment for (key, prompt) pair
+and use cosine similarity to select the top- kpairs
+across the whole pool.
+5 Experiments
+We focus on the scenario of known task identities
+for continual learning. This is commonly the case
+in code-related domains and task identities can also
+be determined through input and output analysis in
+certain situations. In the field of NLP and Vision,
+methods utilizing experience replay and prompting
+have been highly effective for CL on large pre-
+trained models (Wang et al., 2022c, 2021a; Wu
+et al., 2022a). Moreover, regularization methods
+are shown to not work well in conjunction with
+pre-trained models (Wu et al., 2022a), and hence,
+we skip them from our study. Next, we present
+these methods along with some baseline methods.
+5.1 Baselines
+Sequential Finetuning (Yogatama et al., 2019)
+updates all model parameters for every incoming
+task in a sequential manner. This approach has
+been shown to suffer from catastrophic forgetting
+and serves as a lower bound for CL methods.
+Individual Models (Howard and Ruder, 2018) fine-
+tune a separate models for each new task. This is
+considered an upper bound for CL methods.Multitask Learning (Crawshaw, 2020) simulta-
+neously learns multiple tasks at once, without ex-
+periencing distribution shift, resulting in a strong
+performance. For multitask learning, we prepend
+the task descriptors to the input and follow Wang
+et al. (2021b) to ensure balanced sampling across
+tasks with varying dataset sizes.
+Shared Prompt Tuning (SP) defines Msoft con-
+tinuous prompts (Li and Liang, 2021b) which are
+added and fine-tuned for each example from all
+tasks. They are trained via gradient descent while
+keeping the pretrained model’s parameters fixed.
+Task Specific Prompt Tuning (TSPT) defines a
+total of Msoft continuous prompts (Li and Liang,
+2021b) that are divided across Ntasks, resulting in
+⌊M
+N⌋task-specific prompts.
+Experience Replay (ER) (Riemer et al., 2019)
+involves maintaining a memory buffer Bof exam-
+ples from the previous task. The buffer randomly
+stores an equal number of samples from each past
+task and is used to retrain the model at later stages.
+Moreover, as several of the other methods outlined
+in this study can benefit from ER, we also include
+results with and without the utilization of ER.
+5.2 Main Results
+5.2.1 Task-CL Experiments
+We use CodeT5 model (Wang et al., 2021b) as our
+pre-trained model when learning the CODETASK-
+CLbenchmark. In Table 1, we report results for
+a single run on the methods described above and
+their ER variants. For more implementation details
+and hyperparameters used please refer to Appendix
+A.1. First, we find that the popular prompt pooling
+demonstrates catastrophic forgetting with a test
+BLEU score of 22.79%. Even when using ER
+with PP the performance is 39.78% which is still
+much worse than other methods. In contrast, PP
++ TF even without ER outperforms PPandPP +(a) At Initialization
+ (b) After CodeGen
+ (c) After CodeTrans
+ (d) After CodeSumm
+ (e) After CodeRef
+Figure 2: We plot the evolution of keys during the training process along with the fixed queries when sequentially
+learning, Code Generation →Code Translation →Code summarization →Code Refinement Tasks.
+ERby 21.54% and 4.55% respectively. Moreover,
+our results show that the CodeT5 + ER method
+which finetunes the full CodeT5 model with ER
+performs the best with an average test BLEU
+score of 49.21%. Please refer to Appendix A.3
+for experiments on the effect of buffer size on
+performance.
+Discussion: We find that task-specific prompts
+are more effective than other prompting-based CL
+methods. However, due to their high storage re-
+quirements that scales linearly with the number of
+tasks, this approach is not feasible for large-scale
+applications where the model needs to be adapted
+for a large number of users or tasks. In contrast, a
+memory buffer might be available due to privacy
+concerns (Yoon et al., 2021) in many situations. In
+such cases, the PP-TF is the recommended method.
+Given these findings, we believe that the current
+Prompt Pooling based methods can be further im-
+proved in order to reuse knowledge across tasks.
+5.2.2 Training Instability of Prompt Pooling
+To show the root of catastrophic forgetting in
+prompt pooling, we evaluate how queries and keys
+align in the representation space after learning each
+task. To do so, we first select a subset of 5k training
+samples from four tasks resulting in 20k examples.
+We utilize a fixed codeT5 encoder as our query
+function that encodes provided examples to obtain
+queries. These queries remain unchanged during
+training and the keys are initialized using the data.
+We then use principal component analysis (PCA)
+(Pearson, 1901) on the queries and keys to obtain
+the first three principal components and plot them.
+After learning each task, we repeat the PCA step
+on the fixed queries and the updated prompt keys.
+From Figure 2, we observe before the training
+starts, the keys (represented by red crosses) are
+evenly distributed among the queries of differenttasks. However, after completing the training on
+the first task (CodeGen), most of the keys move
+toward the queries associated with that CodeGen
+(denoted by orange stars). This indicates that the
+prompts corresponding to these keys were primar-
+ily used for the CodeGen task and were trained
+by it. As a large portion of the prompts from the
+pool are utilized during the training of the Code-
+Gen task, there are no key vectors available for
+allocation to the second task (CodeTrans). As a
+result, when learning the CodeTrans, some keys
+used for the previous task are pulled toward Code-
+Trans’s queries and the corresponding prompts are
+updated. As each subsequent task is introduced,
+the key vectors are dynamically adjusted to align
+with the current task’s queries, leading to a unsta-
+ble process of matching in which updates to the
+key-prompt pairs are frequently in conflict with
+the previous tasks. Hence leading to catastrophic
+forgetting on the previous tasks.
+6 Conclusion
+In conclusion, we have introduced a novel bench-
+mark, CODETASK-CL, tailored to cover a broad
+spectrum of tasks in the code domain, aiming to
+fuel advancements in Continual Learning (CL) for
+large-scale code generation models. Our study un-
+derscores the shortfalls of popular CL methods
+like Prompt Pooling when applied to coding tasks,
+predominantly due to catastrophic forgetting. How-
+ever, we demonstrate that our proposed method,
+Prompt Pooling with Teacher Forcing (PP-TF), can
+effectively mitigate this issue, leading to a signif-
+icant improvement of 21.54% over the baseline.
+Furthermore, we establish a comprehensive train-
+ing pipeline catering to CL on code models. We
+believe that our contributions, both in the form
+of the CODETASK-CL benchmark and the PP-TF
+method, will ignite further exploration and innova-tion in CL techniques specifically designed for the
+dynamic and evolving realm of code generation.
+Limitations
+This work primarily focuses on evaluating the ef-
+ficacy of existing continual learning (CL) meth-
+ods for code generation models. It is important to
+note that many of these methods were specifically
+designed for natural language processing or com-
+puter vision domains and may not directly transfer
+to the code generation domain. Nevertheless, we
+have made efforts to identify and address any is-
+sues encountered during our analysis. It should
+be acknowledged, however, that the scope of our
+work is limited by the selection of methods and the
+benchmark used. While we have utilized the most
+popular CL methods from various categories, there
+may be methods that have not been included in this
+study due to their inefficacy in natural language
+processing or computer vision tasks but may be ef-
+fective in code generation. As such, we encourage
+further research within the community to explore
+the potential of CL methods for code-generation
+models.
+Acknowledgment
+We thank Amazon for the Amazon Post-Internship
+Fellowship award that supported Prateek during
+this work. We also thank all the reviewers for their
+feedback on the paper.

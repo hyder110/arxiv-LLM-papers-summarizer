@@ -1,0 +1,26 @@
+Summary:
+The paper introduces Alberti, a multilingual pre-trained language model for poetry analysis. The scarcity of tools for automatically analyzing and scanning poems limits the computational analysis of poetry, especially in multilingual settings. Alberti was trained on a corpus of over 12 million verses from 12 languages through domain-specific pre-training. The model outperformed other transformers-based models and achieved state-of-the-art results for German in stanza type classification and metrical pattern prediction tasks.
+
+Bullet points:
+1. The computational analysis of poetry is hindered by the lack of tools for automatic analysis and scanning.
+2. Alberti is a multilingual pre-trained language model for poetry analysis.
+3. Domain-specific pre-training (DSP) was used to train Alberti on a corpus of over 12 million verses from 12 languages.
+4. Alberti outperformed other transformers-based models in stanza type classification and metrical pattern prediction tasks.
+5. The model demonstrates the feasibility and effectiveness of DSP in the poetry domain.
+6. Multilingual tools for scansion and poetic language analysis enable large-scale examinations of poetry traditions.
+7. Alberti allows researchers to compare and contrast different poetic forms, structures, and devices across languages and cultures.
+8. Multilingual poetry analysis requires a deep understanding of diverse linguistic and cultural traditions.
+9. Expertise in multiple languages is necessary to accurately navigate the intricacies of each poetic tradition.
+10. Translation and interpretation pose complex challenges in multilingual poetry analysis.
+
+Keywords:
+1. Natural Language Processing
+2. Multilingual Language Models
+3. Poetry
+4. Stanzas
+5. Scansion
+6. Computational Analysis
+7. Alberti
+8. Domain-Specific Pre-training
+9. Poetry Analysis
+10. Multilingualism

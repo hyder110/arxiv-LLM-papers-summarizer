@@ -1,0 +1,23 @@
+Summary:
+- The paper proposes a new efficient construction called Transformer in Transformer (TINT) that enables a transformer to simulate and fine-tune more complex models during inference.
+- TINT incorporates innovative approximation techniques that allow a TINT model with fewer parameters to simulate and fine-tune a larger transformer model within a single forward pass.
+- TINT can accommodate popular transformer variants and improve the efficiency of simple models inside transformers.
+- Experimental results show that TINT improves performance in language modeling and downstream tasks.
+- TINT is the first simulator to undergo a comprehensive end-to-end evaluation on standard language tasks.
+- The paper introduces modifications to the standard transformer architecture to efficiently simulate and approximate training on an internal auxiliary transformer.
+- The modifications include prefix embeddings, efficient utilization of attention modules, and encoding auxiliary weights.
+- These modifications contribute to parameter efficiency and enable TINT to learn from context during inference.
+- The paper validates the approach through experiments on language modeling tasks, demonstrating improved performance compared to the auxiliary model.
+- A modular and extensible codebase for TINT is provided to facilitate further work.
+
+Keywords:
+- Transformer in Transformer (TINT)
+- in-context learning (ICL)
+- pre-trained language models
+- efficient construction
+- approximation techniques
+- parameter efficiency
+- prefix embeddings
+- attention modules
+- auxiliary transformer
+- language modeling

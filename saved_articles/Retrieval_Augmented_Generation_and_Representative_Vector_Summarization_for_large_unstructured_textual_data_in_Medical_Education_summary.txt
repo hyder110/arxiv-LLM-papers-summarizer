@@ -1,0 +1,15 @@
+Title: Retrieval Augmented Generation and Representative Vector Summarization for Large Unstructured Textual Data in Medical Education
+
+Summary:
+- Large Language Models (LLMs) are powerful but they can produce inaccurate answers. Retrieval Augmented Generation (RAG) mitigates this by using a non-parametric knowledgebase.
+- RAG-assisted summarization is important but challenging. RAG-assisted Representative Vector Summarization (RVS) is introduced to generate summaries using representative text chunks.
+- RVS selects a pre-defined number of representative chunks from a vector database and applies a combined abstractive and extractive summarizing workflow.
+- The model can identify keywords and create visual representations of the document using word clouds and scatter plots.
+- docGPT is a implemented document intelligence program that uses RVS and RAG.
+- The workflow includes retrieval of text from unstructured sources and embedding them in a vector space for similarity search.
+- Summarization involves quantization of the vector space, selecting representative chunks, and generating keywords.
+- Evaluation shows that docGPT generates more targeted and accurate answers compared to other models.
+- RVS was tested on medical reference books but can be applied to other domains as well.
+
+Keywords:
+- AI for Medicine, Representative Vectors, Retrieval Augmented Generation, Large Language Models, Summarization, Knowledgebase, Vector Database, RVS, RAG, docGPT.

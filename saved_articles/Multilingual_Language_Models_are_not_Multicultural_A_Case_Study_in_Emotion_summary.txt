@@ -1,0 +1,17 @@
+Summary:
+This paper investigates whether multilingual language models (LMs) reflect cultural variations in emotion. The study finds that LMs are Anglocentric and reflect Western norms, even when responding to prompts in other languages. Emotion embeddings from LMs are anchored to English, and the generated texts do not align with the cultural norms of non-English languages. The results suggest that multilingual LMs lack cultural awareness and do not successfully learn the culturally appropriate nuances of emotion.
+
+Bullet Points:
+1. Multilingual LMs, such as XLM-RoBERTa and ChatGPT, are Anglo-centric and reflect Western norms even when responding to prompts in other languages.
+2. LMs do not successfully learn the culturally appropriate nuances of emotion.
+3. Emotion embeddings from LMs are anchored to English, causing them to disregard subtle differences in emotion expression across cultures.
+4. There is not a perfect one-to-one mapping between languages for emotion words and their meanings and usages.
+5. Implicit and explicit alignment during LM training causes non-English emotion embeddings to align with English emotions.
+6. GPT-3 completions do not reflect cultural differences in Pride and Shame between the US and Japan.
+7. GPT-3.5 and GPT-4 completions do not adapt to account for cultural variation in emotion when prompted in non-English languages.
+8. English completions are more culturally aware than completions in non-English languages.
+9. Future research should focus on developing non-English language models and evaluating the cultural awareness of LMs on different benchmarks.
+10. The study acknowledges limitations such as the analysis of a limited number of languages and variations within each cultural group.
+
+Keywords:
+Multilingual language models, emotion, cultural variation, Anglocentric, Western norms, embeddings, alignment, Pride, Shame, cultural sensitivity.

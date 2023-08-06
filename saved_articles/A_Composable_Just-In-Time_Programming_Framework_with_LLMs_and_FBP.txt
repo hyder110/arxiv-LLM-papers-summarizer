@@ -1,0 +1,264 @@
+XXX- X-XXXX- XXXX -X/XX/$XX.00 ©20XX IEEE  A Composable Just -In-Time Programming 
+Framework with LLMs and FBP  
+ 
+Andy Vidan   
+Composable Analytics, Inc.  
+Cambridge, MA USA  
+andy@composableanalytics.com  
+ Lars Fiedler   
+Composable Analytics, Inc.  
+Cambridge, MA USA  
+lars@composableanalytics.com
+Abstract — This paper introduces a computing framework that 
+combines Flow -Based Programming (FBP) and Large Language 
+Models (LLMs) to enabl e Just -In-Time Programming (JITP). 
+JITP empowers users, regardless of their programming expertise, 
+to actively participate in the development and automation process by leveraging their task -time algorithmic insights. By seamlessly 
+integrating LLMs into the  FBP workflow, the framework allows 
+users to request and generate code in real -time, enabling dynamic 
+code execution within a flow -based program. The paper explores 
+the motivations, principles, and benefits of JITP, showcasing its 
+potential in automating t asks, orchestrating data workflows, and 
+accelerating software development. Through a fully implemented 
+JITP framework using the Composable platform, we explore 
+several examples and use cases  to illustrate the benefits of the 
+framework in data engineering, data science and software 
+development.  The results demonstrate how the fusion of FBP and 
+LLMs creates a powerful and user-centric computing paradigm.   
+Keywords —just -in-time programming , large language models , 
+flow-based programming;  
+I. INTRODUCTION  
+In the ever -evolving landscape of software development, 
+traditional approaches often struggle to keep up with dynamic 
+user requirements. To address this challenge, we introduce the 
+concept of Just -In-Time Programming (JITP) and develop a 
+JITP computing framework by integrating Flow -Based 
+Programming (FBP) and Large Language Models (LLMs). This paper  explores the motivations, principles, and benefits of JITP, 
+showcasing its potential for orchestrating complex data workflows, building task automa tion processes and developing 
+software solutions. We demonstrate a fully implemented JITP framework using the Composable DataOps Platform [1] and 
+show that flow -based programming techniques and large 
+language models provide a powerful framework for end- users to 
+implement algorithms during task execution . 
+To motivate and provide context for Just -In-Time 
+Programming, we first consider Just -In-Time Analytics. Just- In-
+Time Analytics is an approach that focuses on providing end-users with the ability to query and interrogate data directly to 
+build analytical pr oducts that contain timely and relevant 
+insights. It involves the real -time analysis of data and the 
+delivery of actionable information precisely when it is needed 
+during their decision -making processes. By minimizing delays 
+and optimizing data processing and delivery, Just -In-Time 
+Analytics enables users to make informed decisions based on up-to-date and contextually appropriate information.  Just-In-Time Analytics has demonstrated the value of real -
+time insights in data analysis, empowering organizations to 
+make timely and informed decisions. This success highlights the 
+potential for a similar concept in programming. Traditional 
+programming methods often require extensive upfront planning 
+and design, which may not align with the dynamic nature of user 
+tasks. Just -In-Time Programming aims to bridge this gap by 
+allowing users to implement algorithms during task execution, aligning software functionality with immediate needs.  
+Just-In-Time Programming is centered around empowering 
+users to actively engage in pr ogramming and task automation 
+during task execution, rather than relying solely on pre -designed 
+software solutions  [2]. In this paradigm, the user takes on a 
+central role, irrespective of their programming expertise or 
+experience level. Whether a novice us er or an experienced 
+programmer, individuals can benefit from a  JITP approach.  
+For novice users, JITP offers a user -friendly and accessible 
+entry point into programming. It enables them to recognize 
+algorithmic opportunities and implement computing soluti ons in 
+real-time, without the need for extensive prior programming 
+knowledge. By embracing JITP, novices can leverage their domain expertise and insights gained during task execution to 
+create software solutions tailored to their specific needs without 
+being constrained by the limitations of pre -designed software.  
+Experienced programmers can also find value in JITP as it 
+provides them with a more interactive and dynamic 
+programming experience. Instead of following a linear and predetermined development proc ess, they can embrace the 
+flexibility and agility of JITP to rapidly prototype, test, and 
+refine their algorithms during task execution. This real -time 
+feedback loop allows programmers to fine -tune their code based 
+on immediate results and user requirement s, leading to more 
+efficient and effective solutions. Additionally, experienced 
+programmers can leverage JITP to explore innovative approaches, as they have the capability to envision and 
+implement complex algorithms on the fly.  
+Regardless of the user ’s programming expertise, JITP 
+empowers individuals to be actively involved in the 
+development process, aligning it with their specific goals and 
+requirements. By placing the user at the forefront, JITP fosters a more inclusive computing environment, bridging t he gap 
+between users and developers. It encourages users to embrace their algorithmic insights, regardless of their programming background, and provides them with the tools and capabilities to transform these insights into functional and practical software  
+solutions.  
+II. JUST-IN-TIME PROGRAMMING PARADIGM  
+Computing paradigms, such as procedural, object -oriented 
+and functional programming, represent different approaches or 
+models for solving computational problems  [3]. These 
+paradigms provide a conceptual framework and guidelines for 
+structuring and organizing the development of software systems. They define the fundamental principles, methodologies, and 
+patterns that shape how computations are performed and how problems are solved within a specific paradigm. Deve lopers 
+often choose a computing framework and paradigm based on the specific requirements of their software projects, the nature of the 
+problem being solved, and the desired trade -offs in terms of 
+performance, scalability, maintainability, and ease of 
+deve lopment.  
+Just-In-Time Programming takes a task -oriented focus, 
+where users concentrate on tasks (and their subtasks), with task 
+completion as the primary goal  [2]. During task execution, users 
+envision algorithms to complete subtasks and improve 
+efficiency . JITP enables the immediate implementation of these 
+algorithms, leveraging the user ’s insights and enhancing task 
+completion in real -time.  
+JITP offers the following benefits as a computing paradigm:  
+1) Dynamic and Adaptive Computing: JITP addresses the 
+limitations of pre -designed software by enabling users to 
+develop and program tasks while they are in progress. This 
+dynamic and adaptive nature allows for real -time adjustments 
+to meet evolving requirements, making computing more responsive and aligned with im mediate user needs. JITP 
+leverages user insights and domain expertise, resulting in tailored solutions that optimize task completion efficiency . 
+2) User Empowerment : JITP places the user at the center of 
+the programming process. Whether the user is a novice or an 
+experienced programmer, JITP enables individuals to recognize 
+algorithmic opportunities during task execution and implement them just in time. This user -centric approach empowers non-
+programmers to augment software engineers and reduces the reliance on dedicated software development teams, fostering a 
+more inclusive and efficient computing environment . 
+3) Increased Productivity : By developing, implementing 
+and automating potential computer subtasks during task execution, JITP significantly enhance s productivity. JITP 
+allows users to capitalize on their algorithmic insights 
+immediately, resulting in faster and more efficient task 
+completion . 
+4) Improved Task Understanding and Innovation: JITP 
+encourages users to gain a deeper understanding of their tas ks 
+and subtasks. By actively engaging with the programming process during task execution, users become more aware of the underlying algorithms and automation possibilities within their domain. This heightened understanding can lead to innovative solutions,  as users are more likely to identify new approaches 
+and optimize existing ones based on their firsthand experience . 5) Flexibility and Adaptability : JITP thrives in 
+environments characterized by rapidly changing requirements and dynamic task execution. As ta sks evolve or new insights 
+emerge, users can quickly modify and extend their implemented algorithms to accommodate these changes, fostering a flexible and agile computing framework.  
+6) Rapid Prototyping and Iterative Development : JITP 
+supports rapid prototypi ng and iterative development. Users 
+can experiment with different algorithms and automation strategies on the fly, testing their effectiveness and refining them iteratively. This iterative development process allows for continuous improvement, reducing the  time between idea 
+conception and deployment. JITP ’s inherent modularity 
+facilitates easy integration and replacement of components, enabling efficient prototyping and experimentation.  
+7) Enhanced Error Detection and Debugging: JITP 
+provides the opportunity f or immediate error detection and 
+debugging. Since users are actively involved in the programming process, they can quickly identify and address 
+issues as they arise, minimizing the impact on task completion . 
+ 
+Just-In-Time Programming (JITP) represents a us er-centric 
+computing paradigm, empowering users to implement 
+algorithms and develop tasks during task execution. By 
+embracing JITP, users gain the ability to leverage algorithmic 
+insights in real -time, resulting in increased productivity, 
+flexibility, and innovation.  
+III. J
+UST-IN-TIME PROGRAMMING COMPUTING FRAMEWORK  
+For JITP to achieve mainstream adoption, it is important to 
+develop a framework that provides a structured approach to 
+building software applications and can accommodate any 
+required computation, as it must be responsive to any user input. 
+Here, we demonstrate that integration of flow -based 
+programming techniques and large language models  provide an 
+ideal JITP computing framework.  
+Flow -Based Programming (FBP) offers a structured, 
+modular and reactive workflow model that aligns well with the 
+dynamic nature of task execution and algorithm implementation  
+[4,5]. Similarly, Large Language Models (LLMs) allows for the 
+expressive capacity to represent and manipulate any computable function  [6]. The combinatio n of FBP and LLMs allows us to 
+define a general -purpose, Turing -complete programming 
+environment . 
+A. Principles of Flow -Based Programming 
+Flow -Based Programming is a programming paradigm that 
+focuses on the flow of data between components, emphasizing modular ity, reusability, and reactive processing. In FBP, the 
+execution of a program is driven by the flow of data, rather than 
+being strictly controlled by a predefined sequence of operations.  
+The key principles of FBP include:  
+1) Component -Based Design : FBP encourages breaking 
+down a system into smaller, self -contained components. These 
+components have well -defined inputs and outputs, facilitating 
+modularity, code reuse, and easy maintenance.  2) Data Streams and Connections : FBP emphasizes the 
+flow of data streams between components. Components can 
+receive input data, process it, and produce output data that is 
+then passed to downstream components. The connections between components define the flow of data, allowing for flexible and reactive execution . 
+3) Async hronous and Reactive Execution: FBP promotes 
+an asynchronous and reactive execution model. Components 
+react to incoming data, processing it as soon as it becomes 
+available, enabling real -time responsiveness and dynamic task 
+adaptation . 
+ 
+The integration of Flow -Based Programming (FBP) within 
+the JITP framework offers several benefits that enhance task -
+time development:  
+1) Modularity and Reusability: FBP’ s component -based 
+design fosters modularity and code reusability. Components 
+can be easily connected and comb ined, allowing users to create 
+flexible and scalable solutions. This modularity also enables incremental development and iterative improvements, aligning well with the JITP approach.  
+2) Dynamic Task Adaptation : FBP’s reactive execution 
+model enables component s to react to incoming data in real-
+time. This flexibility allows for dynamic task adaptation, where the solution can adjust and respond to changing task requirements or data inputs. JITP leverages this adaptability to accommodate evolving user needs and a lgorithmic insights 
+during task execution.  
+3) Scalability and Parallelism : FBP inherently supports 
+parallel processing and scalability. By leveraging the flow of data between components, tasks can be distributed across multiple processing units, improving per formance and 
+efficiency. This scalability is particularly beneficial when dealing with computationally intensive tasks or large datasets . 
+4) Visualization and Debugging : FBP frameworks often 
+provide visual representations of the data flow and component connec tions, facilitating visualization and debugging of the 
+automation solution. This visual feedback enhances user 
+understanding and aids in identifying and resolving issues during algorithm implementation . 
+B. Large Language Models  
+Large Language Models (LLMs) ar e advanced artificial 
+intelligence (AI) models designed to understand and generate 
+human language  [7,8,9 ]. These models, built using deep learning 
+techniques, have been trained on vast amounts of text data from diverse sources such as books, articles, and websites. LLMs 
+excel at tasks such as natural language understanding, text 
+generation, translation, summarization, and have found applications in a wide range of domains, including chatbots, 
+virtual assistants, content generation, language translation, 
+content filtering, and more  [10]. 
+LLMs can also be extensively trained on diverse code 
+repositories and documentation, so that the models acquire an 
+understanding of programming syntax, structures, and patterns  
+[11]. LLMs can therefore generate software code by leveraging their language processing capabilities and knowledge of 
+programming concepts. When tasked with generating software 
+code, LLMs can take high -level instructions or prompts 
+provided by users and generate corresponding code snippets or 
+even compl ete programs. They can analyze the context, infer the 
+desired functionality, and generate code that aligns with the 
+specified requirements.  
+LLMs can be considered Turing complete  [12]. While LLMs 
+are not specifically designed for general -purpose computation 
+like traditional programming languages, they possess the underlying capability to simulate other Turing- complete 
+system s given enough time and resources. This property stems 
+from the expressive capacity of LLMs to represent and manipulate information in the form of text sequences. In the context of JITP, LLMs provide the required “back- end” for a 
+Turing complete JITP environment by responding to user 
+requests, generating code in real time, and seamlessly 
+integrating the code within the rest of the (flow -based) 
+execution.  
+Integrating Large Language Models (LLMs) with Flow -
+Based Programming (FBP) can create a powerful framework for 
+Just-In-Time Programming (JITP), combining the capabilities 
+of advanced language models with the modul ar and reactive 
+workflow of FBP. LLMs leverage their language understanding 
+and code generation capabilities to enable users to express their algorithmic insights and automate tasks in real time. Flow -based 
+programming, with its visual representation of ta sks and data 
+flow, provides the overall structured approach by facilitating the 
+incorporation of dynamically generated code into the overall 
+execution workflow.  
+C. Framework Implementation Strategy  
+To develop an effective JITP framework , we integrate  LLMs 
+with FBP in the following way, taking into account certain 
+considerations.  
+1)  Identify Task -Specific LLMs : Begin by identifying the 
+LLMs that are most relevant to the specific task domain. Select 
+LLMs that align with the programming language or task requirement s to enhance the JITP capabilities . 
+2) Define LLM Components : Next, define LLM 
+components within the FBP framework and design the 
+components to encapsulate the complexity of interacting with the LLMs and provide a simple interface for other components to utilize .These components encapsulate the interactions with 
+LLMs, such as sending input text, retrieving generated code or responses, and managing the LLM state.  
+3) Establish Data Flow : Design the data flow between the 
+LLM components and other components within t he FBP 
+framework. Determine the input data required by the LLM component, such as task descriptions, code snippets, or user instructions. Define the outputs from the LLM components, such as generated code, text responses, or relevant suggestions . 
+4) Enable Re active Execution : Leverage the reactive 
+execution model of FBP to trigger LLM interactions based on incoming data or events. For example, when a user provides a task description or requests assistance, the relevant LLM component can be triggered to generat e code that is then subsequently executed. Ensure that the LLM components are 
+reactive and responsive to changes in data inputs, enabling dynamic JITP capabilities . 
+5) Handle LLM State Management : LLMs often have a 
+limited context window, meaning they may not  have full access 
+to the entire task history. To overcome this limitation, consider incorporating mechanisms to manage the state of the LLMs. This can involve maintaining a context buffer or session 
+management to provide relevant contextual information to the 
+LLM component during task execution.  
+6) Visualize and Debug LLM Interactions : Utilize 
+visualization and debugging tools provided by the FBP 
+framework to monitor the interactions with LLM components. This enables users to understand the flow of data, identify potential bottlenecks, and troubleshoot any issues related to LLM interactions. Visualization tools can also aid in interpreting LLM -generated outputs and ensuring they align 
+with the desired outcomes . 
+7) Iterate and Improve : Continuously iterate on the LLM 
+integration within the JITP framework based on user feedback, task requirements, and performance evaluation. Refine the LLM components, data flow, and reactive execution to optimize the JITP experience. Incorporate user p

@@ -1,0 +1,241 @@
+arXiv:2307.01659v1  [astro-ph.SR]  4 Jul 2023Pre-main sequence stars
+Evgeni H. Semkov1
+Institute of Astronomy and National Astronomical Observat ory, Bulgarian Academy of
+Sciences, Soﬁa, Bulgaria
+esemkov@astro.bas.bg
+(Dissertation summary. Accepted on 31.05.2023)
+1 Introduction
+The dissertation presents result from study of Pre-main seq uence (PMS) stars
+that are in the earliest stages of stellar evolution. These y oung stellar objects
+are still in the process of formation, and the energy they emi t is produced only
+by gravitational contraction. The main results were obtain ed with the tele-
+scopes at the National Astronomical Observatory Rozhen, as well as with the
+use of archival photographic observations and spectral obs ervations obtained in
+collaboration with colleagues from abroad. Our results are obtained by study-
+ing the photometric and spectral variability of PMS stars. O ur main goal is to
+study the processes of star formation, the formation of circ umstellar disks, the
+structure of the circumstellar environment and the interac tion of the star-disk
+system. The results of our research have been published in 65 scientiﬁc papers
+that have been cited over 300 times.
+The photometric and spectral variability of PMS stars is of g reat impor-
+tance for modeling star formation processes. On the one hand , photometric
+variability allows us to easily detect young objects, since they are character-
+ized by rapid variability and in many cases with large amplit udes. On the other
+hand, stars form in groups and are physically located in the s ame geometric
+space, and several variable objects that are at approximate ly the same stage of
+evolution can be observed simultaneously. Comparing star s ystems of diﬀerent
+ages can be used to trace the stages of stellar evolution.
+2 Photometric and spectral variability as a method to study
+physical processes in PMS stars
+The physical processes taking place during the formation of stars are extremely
+important for the next stages of their evolution. The ﬁnal ma ss of stars accu-
+mulates gradually, and accretion from the circumstellar di sk can take several
+million years. Meanwhile, the disk is replenished by circum stellar matter left
+over from the formation of the protostar’s core. About half t he mass of newly
+formed stars is accreted by the time they become observable i n the optical
+region as PMS stars. This process takes place during episode s of enhanced
+accretion, when the accretion rate from the circumstellar d isk increases by 2-
+3 orders of magnitude over hundreds of years (Hartmann &Kenyon 1996).
+Circumstellar disc masses are typically less than 1 %of the stellar mass, and
+the disc cannot replenish rapidly with new portions of circu mstellar matter.
+Therefore, outbursts resulting from increased accretion p robably recur every
+few thousand years.
+Bulgarian Astronomical Journal 39, 20232 E. Semkov
+In the era of all-sky photometric monitoring conducted at mu ltiple wave-
+lengths, the literature is replete with reports of recorded objects with large-
+amplitude photometric variability. Automated techniques have been developed
+to identify bursts of young stellar objects in real time, usi ng machine learning
+eﬀorts to distinguish them from other similar events. But due to the wide va-
+riety of variability patterns in PMS stars, these objects do not have distinct
+light curve patterns that are similar from object to object. Therefore, many
+variable phenomena may turn out to be unclassiﬁed cases. The reason is that
+diﬀerent physical mechanisms can cause variability with si milar amplitudes
+and time scales. High-resolution spectra are needed to prob e the physical state
+of the circumstellar disc and accretion processes. They all ow us to distinguish,
+for example, between FUor outbursts and other types of varia bility of similar
+amplitudes (Semkov &Peneva 2011).
+In the optical and near-infrared ranges, the spectra of youn g stars provide
+the main information about the temperature of the gas envelo pe. For PMS
+stars that have low accretion rates, the optical and infrare d spectra typically
+show a stellar photosphere in absorption. As the accretion r ate increases, the
+star’s spectrum is dominated by emission components, so it b ecomes impos-
+sible to separate the photospheric absorption component. I n extremely strong
+outbursts, with very high accretion rates, implying a very h igh luminosity of
+the star, the observed spectrum becomes that of the hot inner disk, which is
+in absorption, i.e. spectrum of a hot supergiant.
+Another main research method that complements spectral obs ervations is
+interferometry in the near and mid-infrared regions, which allows very precisely
+to determine the parameters of circumstellar disks. This te chnique can help
+to reveal the relationship of the structure of the inner part of the disc with
+the reasons that give rise to the outbursts. Such photometri c and spectral
+monitoring of the youngest protostars, which show signs of e nhanced accretion,
+is not yet possible, and this complicates the study of the phy sics of accretion.
+The possibility of spectral observations is improving with the development of
+observational methods, but the necessary information abou t the most obscured
+or deeply embedded young stellar objects is still very insuﬃ cient.
+A third very important method of studying PMS stars is the stu dy of
+archival spectral and photometric data. Studying the histo ry of variable ob-
+jects can contribute signiﬁcantly to explaining the causes of various forms of
+variability, such as outbursts, eclipses, or periodic phen omena of variability. It
+is also important to study the variability over the entire av ailable range of the
+electromagnetic spectrum and to look for correlation betwe en the processes in
+the individual areas.
+3 FU Ori and EX Lupi type of outbursts
+The registered objects that have shown eruptions of the FUor or EXor type
+are relatively small in number. In many cases, it is still dis puted exactly what
+type of outburst was observed. And there are also cases where an object is
+reported as a FUor or EXor, based on just a few observations, a nd then turns
+out to actually be another type of object altogether, such as a long-period
+variable star or an eclipsing system. The total number of kno wn PMS stars in
+which large-amplitude outbursts have been observed is seve ral dozen. There
+are several publications in which an attempt has been made to present a list ofPre-main sequence stars 3
+objects classiﬁed as FUor stars. For example, the paper by Re ipurth&Aspin
+(2010) presents a list of 10 FUor objects and 10 FUor-like obj ects that have
+some FUor spectral and photometric characteristics but out burst have not
+been observed. In the paper of Audard et al. (2014), a list con taining 10 FUor
+objects and 16 FUor-like objects is presented. And in the pap er by Connelley
+&Reipurth (2018), a list of 14 FUors and 10 FUor-like objects i s presented.
+A comparison of these and similar papers shows that there is n o consensus on
+the classiﬁcation of FUor type of objects. Some objects in on e publication are
+classiﬁed as FUors and in another as FUor-like objects.
+Any case where a large-amplitude outburst of a PMS star is obs erved raises
+the question: FUor or EXor? (Ibryamov &Semkov 2021). The main diﬀerences
+between these two types are the spectral (the presence or abs ence of certain
+spectral lines, their proﬁles and intensity) and photometr ic properties (the
+duration and amplitude of the burst and the shape of the light curve). The
+spectral variability is explained by the diﬀerent sizes of t he star and circum-
+stellar envelope: the absorption regions are signiﬁcantly larger than the star
+itself, but the expanding circumstellar envelope is also si gniﬁcantly larger than
+the absorption regions around the disc.
+Strong photometric variability at maximum brightness is ty pical of EXors
+but not for FUors. However, similar short-term dips in brigh tness have been
+recorded for several FUor objects. One of the most famous suc h events was
+the minimum in the light curve of V1515 Cyg in 1980, a sharp dec rease in
+brightness of about 1.5 mag. ( Bband) for several months. This minimum in
+the brightness of V1515 Cyg is explained by obscuration from dust material
+ejected from the star (Kenyon et al. 1991). A short dip in brig htness (0.4 mag.
+inIband) in the light curve of the FUor object V733 Cep was observ ed in
+2009 (Peneva et al. 2010). Evidence for a strong brightness v ariability ( ∆V=1.2
+mag.) during the time of maximum light during the period from 1986 to 1992
+is documented in our photometric study of another FUor objec t V1735 Cyg
+(Peneva et al. 2009).
+The large-amplitude variability of FUors may result from th e superposi-
+tion of the two processes, variable accretion rate and time v ariable extinction
+(Semkov &Peneva 2012). In recent papers, such a scenario has been used to
+explain the brightness variability of two objects with char acteristics intermedi-
+ate between FUors and EXors V1647 Ori (Aspin et al. 2009, Aspi n 2011) and
+V2492 Cyg (Hillenbrand et al. 2013, K´ osp´ al et al. 2013). Th e time variable
+extinction appears to be characteristic not only of some Her big Ae/Be stars
+(UXor type variables), but also a common phenomenon during t he evolution
+of all types of PMS stars. In the case of FUor object V582 Aur (S emkov et
+al. 2013), we have direct evidence from multicolor photomet ry indicating the
+presence of dust around the star.
+One possible cause of the variable accretion could be fragme ntation of the
+circumstellar disk. Since FUor phenomenon is likely to be re peatable, it is as-
+sumed that almost every protostar goes through several epis odes of enhanced
+accretion, in which the initial mass of the star increases. S tamatellos et al.
+(2012) suggest that periods of episodic increased accretio n may have triggered
+the initial fragmentation of the circumstellar disc. In the early stages of stel-
+lar evolution, disk fragmentation is not possible and accre tion onto the stellar
+surface is assumed to proceed at a constant rate. After sever al episodic in-4 E. Semkov
+creases in the accretion rate, the circumstellar disk gradu ally fragments and
+thus prevents new outbursts of FUor type, or at least changes their parame-
+ters. Therefore, it can be assumed that the outbursts of FUor s, during diﬀerent
+periods of the stellar evolution, can vary in amplitude, dur ation and shape of
+the light curve, caused by the diﬀerent fragmentation state of the disk. Strong
+accretion bursts can also trigger a mechanism to form planet s of various masses
+inside the circumstellar disk.
+The photometric data we collected conﬁrm the diversity in th e shape and
+type of light curves of FUor objects. Our knowledge of the pro cesses occur-
+ring during FUor type of outbursts is still incomplete, and m ore data need to
+be collected from regular photometric and spectral monitor ing. Attempts to
+classify FUor objects based on their photometric propertie s have so far been
+unsuccessful due to the small number of objects of this type. A comparison of
+the light curves of known FUors show that they are very diﬀere nt from each
+other and very rarely repeated. Even the ﬁrst three ’classic al’ FUors (FU Ori,
+V1057 Cyg and V1515 Cyg) show very diﬀerent rates of brightne ss increase and
+decrease (Clarke et al. 2005). The variety of light curves in creases even more
+with the number of well-studied FUors, to which our work also contributes.
+As a rule, the light curves of FUors are usually asymmetric, w ith a rapid
+increase and gradual decrease in brightness. Some objects s how a very rapid
+increase in brightness over several months or a year, such as FU Ori, V1057
+Cyg and V2493 Cyg (Semkov et al. 2010, 2012, 2021b, Clarke et a l. 2005,
+Kopatskaya et al. 2013). But in other cases, such as V1515 Cyg, V1735 Cyg,
+V733 Cep and V900 Mon, the brightness increase can last for se veral years and
+even reach 20-30 years (Clarke et al. 2005, Peneva et al. 2009 , 2010, Semkov
+et al. 2021a). Usually, the decline in brightness takes seve ral decades and is
+very likely to reach a century. But there are objects where a re latively rapid
+decrease in brightness is observed. For example, V960 Mon, w here the bright-
+ness decreases by 2 mag. in Vband over a period of about ﬁve years (Takagi et
+al. 2020). In our study of the FUor object V582 Aur, we have obs erved three
+deep minimums of the star’s brightness of about 3 mag. ( Rband), separated
+by periods of about ﬁve years (Semkov et al. 2013, ´Abrah´ am et al. 2018).
+But there are also objects that for long periods of time, pract ically do not
+change their brightness, as in the cases of V1735 Cyg (Peneva et al. 2009)
+and Parsamian 21 (Semkov &Peneva 2010). In this respect, the light curve
+of the FUor object V733 Cep is unique, with its roughly symmet rical shape
+(Peneva et al. 2010). This variety of photometric propertie s strongly supports
+the assumption that FUor objects are not a homogeneous group and that the
+causes of this phenomenon may be several mechanisms of a diﬀe rent nature
+(Vorobyov et al. 2021).
+4 Eclipses of UX Ori type
+The results of our observations of PMS stars strongly sugges t that UXor type
+of variability is a widespread phenomenon (Semkov et al. 201 5, 2019). It is
+typical not only of Herbig Ae/Be stars and T Tauri stars from ea rly spectral
+types, but also of T Tauri stars of late spectral types and sta rs with relatively
+lower masses (Semkov et al. 2017). This result can be explain ed by the low
+eﬃciency of star formation where most of the mass of molecula r clouds doesPre-main sequence stars 5
+not participate in star formation. This matter remains in th e vicinity of the
+protostars, in a number of cases forming inhomogeneous dust clouds moving
+in orbit around them. Light curves over long periods of obser vations provide
+strong evidence that the deep minimums in the brightness of G M Cep is caused
+by obscuration of the star by circumstellar dust structures (Semkov &Peneva
+2012).
+The inhomogeneity of the dust clouds may indicate an advance d evolution
+of the protoplanetary disk in the transition from micron-si zed dust particles
+to the formation of kilometer-sized planetesimals (Chen et al. 2012). Accre-
+tion, combined with viscous light scattering, heats the cir cumstellar disk of
+the young stellar object. As accretion slows and the size of t he dust particles
+grows, the disk becomes passive, in the sense that the dust ab sorbs starlight,
+heats up and re-radiates in the infrared region. It can be arg ued that both the
+light transit time and the observed obscurations by dust par ticles provide a
+reasonable model of the absorbing medium. Around the stars t here is a region
+with dimensions of several tens of astronomical units, form ing a circumstellar
+disk, which is in the form of a ring or a spiral structure. This region is tens of
+AU from the star and consists mostly of particles around 10 µm or larger.
+5 Weak line T Tauri stars, classical T Tauri stars and Herbig
+Ae/Be stars
+The most common variability in T Tauri and Herbig Ae/Be stars i s periodic or
+aperiodic variability with small amplitudes. In many cases , more than one type
+of variability can be observed on the same star. Periodic var iability in most
+cases is explained by the presence of spots of reduced temper ature, which are
+located on the star surface. The presence of such spots, by an alogy with the
+Sun, is the result of magnetic activity. By examining the ampl itude of the
+observed variability, we can determine the intensity of the magnetic ﬁeld and
+the location of the spots. The results obtained for some of th e objects in this
+dissertation show that such cool spots can persist for sever al years, as we do
+not observe a change in ephemeris, or a large change in amplit ude, between
+individual rotation periods (Poljanˇ ci´ c Beljan et al. 2014 , Ibryamov et al. 2015).
+Large-amplitude periodicity in PMS stars is usually observ ed in very few
+cases and is usually associated with the presence of hot spot s due to accretion
+from the circumstellar disk. Usually, instabilities in the disc lead to the for-
+mation of a ﬂow directed towards the surface of the star and or iented along
+the magnetic ﬁeld lines. Spots on the stellar surface that ha ve a decreased or
+increased temperature can migrate along the stellar coordi nates and change
+their area and temperature. This process is demonstrated by examples of sev-
+eral T Tauri stars with weak lines in the IC 348 region, for whi ch periodicity
+is available, but the light curves for diﬀerent rotation per iods have a diﬀerent
+shape (Nordhagen et al. 2016). Based on our observations, we w ould not be
+able to register such a change in the shape of the light curve, and the programs
+we used would show a lack of periodicity. The reason is that ou r data do not
+have a dense coverage of several hours of observations on con secutive nights,
+but are scattered over long periods of time.
+Acknowledgments: This work was partly supported by the Bulgarian Scien-
+tiﬁc Research Fund of the Ministry of Education and Science u nder the grants6 E. Semkov
+DN 08-1/2016 and DN 18-13/2017. The authors thank the Direct or of Skinakas
+Observatory Prof. I. Papamastorakis and Prof. I. Papadakis for the award of
+telescope time. This research has made use of the NASA’s Astr ophysics Data
+System Abstract Service, the SIMBAD database and the VizieR c atalogue
+access tool, operated at CDS, Strasbourg, France.
+References
+´Abrah´ am, P., K´ osp´ 

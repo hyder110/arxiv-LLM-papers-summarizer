@@ -1,0 +1,19 @@
+Summary:
+- The paper presents an automated data-collection pipeline using convolutional neural networks (CNN) and large language models (LLM) to extract tabular data from peer-reviewed literature.
+- The pipeline was applied to 74 reports published between 1957 and 2014, extracting experimentally-measured oxidation potentials for 592 organic molecules.
+- The trained machine learning models reached prediction errors similar to experimental uncertainty.
+- The pipeline was used to estimate oxidation potentials of around 132,000 small organic molecules from the QM9 data set.
+- Analysis of the predictions suggests that aliphaticity increases the oxidation potential of an organic molecule, while an increase in the number of heavy atoms lowers it.
+- The pipeline offers significant reductions in human labor for manual data collection and exemplifies the automation of scientific research.
+
+Keywords:
+1. Automated data extraction
+2. Convolutional neural network
+3. Large language model
+4. Oxidation potentials
+5. Machine learning models
+6. QM9 data set
+7. Aliphaticity
+8. Heavy atoms
+9. Scientific research
+10. Automation

@@ -1,0 +1,12 @@
+Summary: 
+- This paper discusses the challenges and risks associated with Large Language Models (LLMs) and explores the idea of incorporating a "citation" mechanism to address these concerns.
+- LLMs like ChatGPT and PaLM have shown great potential but come with risks such as intellectual property and ethical concerns.
+- The authors propose that adding citations to LLMs can enhance content transparency, verifiability, and accountability.
+- Implementing a citation mechanism in LLMs is complex due to the internalization of information and the need to cite both non-parametric and parametric content.
+- The paper suggests that incorporating a hybrid system combining LLMs with information retrieval systems can be a potential solution for citing non-parametric content.
+- Determining when to provide citations in LLMs is challenging and context-dependent, and requires a commitment to knowledge integrity and ethical norms.
+- The technical challenge of citing parametric content in LLMs is addressed by training models with source identifiers to link specific information back to its original sources.
+- Potential pitfalls of implementing citations in LLMs include over-citation, sensitive information dissemination, and citation bias.
+- The paper presents these challenges and pitfalls as areas for future research to develop responsible and accountable LLMs.
+
+Keywords: Large Language Models, cit

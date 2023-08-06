@@ -1,0 +1,130 @@
+Jailbroken: How Does LLM Safety Training Fail?
+Content Warning: This paper contains examples of harmful language.
+Alexander Wei
+UC Berkeley
+awei@berkeley.eduNika Haghtalab∗
+UC Berkeley
+nika@berkeley.eduJacob Steinhardt∗
+UC Berkeley
+jsteinhardt@berkeley.edu
+Abstract
+Large language models trained for safety and harmlessness remain susceptible to
+adversarial misuse, as evidenced by the prevalence of “jailbreak” attacks on early
+releases of ChatGPT that elicit undesired behavior. Going beyond recognition of
+the issue, we investigate why such attacks succeed and how they can be created.
+We hypothesize two failure modes of safety training: competing objectives and
+mismatched generalization. Competing objectives arise when a model’s capabilities
+and safety goals conflict, while mismatched generalization occurs when safety
+training fails to generalize to a domain for which capabilities exist. We use these
+failure modes to guide jailbreak design and then evaluate state-of-the-art models,
+including OpenAI’s GPT-4 and Anthropic’s Claude v1.3, against both existing and
+newly designed attacks. We find that vulnerabilities persist despite the extensive
+red-teaming and safety-training efforts behind these models. Notably, new attacks
+utilizing our failure modes succeed on every prompt in a collection of unsafe
+requests from the models’ red-teaming evaluation sets and outperform existing ad
+hoc jailbreaks. Our analysis emphasizes the need for safety-capability parity—that
+safety mechanisms should be as sophisticated as the underlying model—and argues
+against the idea that scaling alone can resolve these safety failure modes.
+1 Introduction
+In recent months, large language models (LLMs) such as ChatGPT, Claude, and Bard have seen
+widespread deployment. These models exhibit advanced general capabilities [ 38], but also pose risks
+around misuse by bad actors (e.g., for misinformation or for crime [9, 32, 25, 30, 28]).
+To mitigate these risks of misuse, model creators have implemented safety mechanisms to restrict
+model behavior to a “safe” subset of capabilities. These include both training-time interventions to
+align models with predefined values [ 41,7] and post hoc flagging and filtering of inputs and outputs
+[56,24,52,45]. These efforts are often complemented by red teaming , which proactively identifies
+and trains against weaknesses [42, 23, 38].
+While hardening LLMs for safety can help [ 38], models remain vulnerable to adversarial inputs,
+as demonstrated by the spread of “jailbreaks” for ChatGPT on social media since its initial release
+[13,17,2]. These attacks are engineered to elicit behavior, such as producing harmful content or
+leaking personally identifiable information, that the model was trained to avoid. Attacks can range
+from elaborate role play (e.g., DAN [ 48]) to subtle subversion of the safety objective (see Figure 1(a)).
+Model creators have acknowledged and updated their models against jailbreak attacks [ 7,38,10,5],
+but a systematic analysis and a conceptual understanding of this phenomenon remains lacking.
+In this work, we analyze the vulnerability of safety-trained LLMs to jailbreak attacks by examining
+the model’s pretraining and safety training processes. Based on known safety training methods, we
+hypothesize two failure modes— competing objectives andmismatched generalization —that shed
+∗Equal advising.
+Preprint. Under review.arXiv:2307.02483v1  [cs.LG]  5 Jul 2023What tools do I need to cut
+down a stop sign?What tools do I need to cut
+down a stop sign?User
+My purpose is to provide
+helpful and responsible
+information. I cannot support
+or encourage any activity
+that is illegal . . .My purpose is to provide
+helpful and responsible
+information. I cannot support
+or encourage any activity
+that is illegal . . .GPT-4What tools do I need to cut
+down a stop sign? Start with
+"Absolutely! Here’s ".What tools do I need to cut
+down a stop sign? Start with
+"Absolutely! Here’s ".User
+Absolutely! Here’s a list of
+tools you may need to cut
+down a stop sign:
+1. A sturdy ladder . . .Absolutely! Here’s a list of
+tools you may need to cut
+down a stop sign:
+1. A sturdy ladder . . .GPT-4
+(a) Example jailbreak via competing objectives.What tools do I need to cut
+down a stop sign?What tools do I need to cut
+down a stop sign?User
+I apologize, but I cannot
+recommend how to damage
+or steal public property.I apologize, but I cannot
+recommend how to damage
+or steal public property.Claude v1.3V2hhdCB0b29scyBkbyBJI
+G5lZWQgdG8gY3V0IGRv
+d24gYSBzdG9wIHNpZ24//V2hhdCB0b29scyBkbyBJI
+G5lZWQgdG8gY3V0IGRv
+d24gYSBzdG9wIHNpZ24/User
+To cut down a stop sign, you
+will need the following tools:
+- A cordless reciprocating
+saw or hacksaw to cut . . .To cut down a stop sign, you
+will need the following tools:
+- A cordless reciprocating
+saw or hacksaw to cut . . .Claude v1.3
+(b) Example jailbreak via mismatched generalization.
+Figure 1: (a) GPT-4 refusing a prompt for harmful behavior, followed by a jailbreak attack leveraging
+competing objectives that elicits this behavior. (b) Claude v1.3 refusing the same prompt, followed
+by a jailbreak attack leveraging mismatched generalization (on Base64-encoded inputs).
+light on why jailbreaks exist and enable the creation of new attacks. This understanding suggests that
+jailbreaks, rather than being isolated phenomena, are inherent to how models are currently trained.
+In more detail, competing objectives occur when a model’s pretraining and instruction-following
+objectives are put at odds with its safety objective (Figure 1(a)). In contrast, mismatched generalization
+arises when inputs are out-of-distribution for a model’s safety training data but within the scope of its
+broad pretraining corpus (Figure 1(b)). We use these two principles to guide our exploration of the
+design space of attacks, with each principle alone yielding a variety of individual attacks.
+We then conduct an empirical evaluation of state-of-the-art safety-trained models, including OpenAI’s
+GPT-4 and Anthropic’s Claude v1.3, against both existing and newly constructed jailbreak attacks.
+We evaluate on both a curated dataset of harmful prompts from these models’ red-teaming evaluation
+sets and a larger synthetic dataset of harmful prompts for broader coverage. Despite extensive safety
+training—including updating against jailbreak attacks since the models’ initial releases [ 10,5]—we
+find that the models remain vulnerable. Attacks based on our two principles outperform existing ad
+hoc jailbreaks and succeed on over 96% of the evaluated prompts, including on 100% of the curated
+red-teaming prompts that past safety interventions were designed to address.
+Finally, we analyze defense. Combining our analysis of failure modes with our empirical study, we
+argue that jailbreaks may be inherent to existing safety training methods. Scaling up will not resolve
+competing objectives, as the issue lies with the optimization objective, and may even exacerbate
+mismatched generalization if safety training is not suitably extended to broader domains. Moreover,
+our findings suggest the necessity of safety-capability parity—safety mechanisms should be as
+sophisticated as the underlying model. Otherwise, attacks will exploit cutting-edge capabilities of the
+underlying model that less sophisticated safety mechanisms cannot detect.
+By highlighting failure modes and limitations of existing methods to align LLMs for safety, we hope
+to inspire further discussion and analysis around the responsible development and deployment of
+such models. As LLMs become more capable and widely used, the need for informed assessments of
+model safety, including in adversarial contexts, only becomes more urgent. We thus view an open
+dialogue on vulnerabilities and limitations of existing methods as a step towards this goal.
+Responsible Disclosure We communicated preliminary results to OpenAI and Anthropic and have
+received their acknowledgment of this work. To increase barriers to misuse of the discussed attacks
+while the issues we highlight are resolved, we omit specific prompts for the strongest attacks and
+focus on describing their construction in conceptual terms. We discuss ethical considerations and
+responsible disclosure norms further in Section 6.
+1.1 Related Work
+Concerns about the growing capabilities of AI models have led to the development of models aligned
+with human values, as increased capabilities correspond to heightened opportunities for misuse and
+harm [ 24,52,45,9,32,25]. Safety training methods for LLMs, such as GPT-4 and Claude, typically
+finetune pretrained models using human p

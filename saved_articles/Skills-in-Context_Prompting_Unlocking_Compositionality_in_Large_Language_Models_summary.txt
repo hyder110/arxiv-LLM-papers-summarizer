@@ -1,0 +1,29 @@
+Summary:
+
+This paper introduces a new prompting strategy called Skills-in-Context (SKiC) prompting to unlock compositional generalization capabilities in large language models (LLMs). SKiC prompting provides explicit instructions on how to compose basic skills to solve more complex problems. The key insight is to teach LLMs how to ground each reasoning step on the knowledge and skills they have already mastered. The experiments demonstrate that SKiC prompting achieves near-perfect generalization on a wide range of challenging compositionality tasks and enables LLMs to leverage pre-existing internal skills acquired during earlier pretraining stages.
+
+Bullet points:
+
+- SKiC prompting is a new strategy to unlock compositional generalization in large language models (LLMs).
+- SKiC instructs LLMs on how to compose basic skills to solve complex problems.
+- Demonstrating both the skills and the compositional examples within the same context is crucial for effective prompting.
+- SKiC prompting initiates strong synergies between skills and their composition capabilities.
+- SKiC prompting enables LLMs to solve unseen problems that require innovative skill compositions.
+- SKiC prompting leverages pre-existing internal skills acquired during earlier pretraining stages.
+- SKiC prompting achieves near-perfect generalization on a broad range of challenging compositionality tasks.
+- SKiC prompting outperforms state-of-the-art prompting strategies on various tasks.
+- SKiC prompting can be easily used in a plug-and-play manner.
+- Further improvements can be made by providing high-quality skills and additional examples of how to compose them.
+
+Keywords:
+
+- Skills-in-Context prompting
+- Compositional generalization
+- Large language models
+- Reasoning capabilities
+- Skill compositions
+- Pretraining
+- Synergies between skills
+- Challenging compositionality tasks
+- Plug-and-play
+- Prompting strategies

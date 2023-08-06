@@ -1,0 +1,16 @@
+Robots That Ask For Help: Uncertainty Alignment
+for Large Language Model Planners
+Allen Z. Ren1,2, Anushri Dixit1, Alexandra Bodrova1, Sumeet Singh2, Stephen Tu2,
+Noah Brown2, Peng Xu2, Leila Takayama2, Fei Xia2, Jake Varley2, Zhenjia Xu2,
+Dorsa Sadigh2, Andy Zeng2, Anirudha Majumdar1,2
+1Princeton University,2Google DeepMind
+Abstract: Large language models (LLMs) exhibit a wide range of promising capabil-
+ities — from step-by-step planning to commonsense reasoning — that may provide
+utility for robots, but remain prone to confidently hallucinated predictions. In this work,
+we present KNOW NO, which is a framework for measuring and aligning the uncer-
+tainty of LLM-based planners such that they know when they don’t know and ask for
+help when needed. KNOW NObuilds on the theory of conformal prediction to provide
+statistical guarantees on task completion while minimizing human help in complex
+multi-step planning settings. Experiments across a variety of simulated and real robot
+setups that involve tasks with different modes of ambiguity (e.g., from spatial to numeric
+uncertainties, from human p

@@ -1,0 +1,862 @@
+arXiv:2308.00229v1  [cs.SE]  1 Aug 2023Prompts Matter: Insights and Strategies for Prompt
+Engineering in Automated Software Traceability
+Alberto D. Rodriguez
+College of Engineering
+University of Notre Dame
+Notre Dame, Indiana
+arodri39@nd.eduKatherine R. Dearstyne
+College of Engineering
+University of Notre Dame
+Notre Dame, Indiana
+kdearsty@nd.eduJane Cleland-Huang
+College of Engineering
+University of Notre Dame
+Notre Dame, Indiana
+JaneClelandHuang@nd.edu
+Abstract —Large Language Models (LLMs) have the potential
+to revolutionize automated traceability by overcoming the chal-
+lenges faced by previous methods and introducing new possib il-
+ities. However, the optimal utilization of LLMs for automat ed
+traceability remains unclear. This paper explores the proc ess of
+prompt engineering to extract link predictions from an LLM.
+We provide detailed insights into our approach for construc ting
+effective prompts, offering our lessons learned. Addition ally, we
+propose multiple strategies for leveraging LLMs to generat e
+traceability links, improving upon previous zero-shot met hods
+on the ranking of candidate links after prompt reﬁnement.
+The primary objective of this paper is to inspire and assist
+future researchers and engineers by highlighting the proce ss of
+constructing traceability prompts to effectively harness LLMs for
+advancing automatic traceability.
+Index Terms —automated software traceability, large language
+models, prompt engineering
+I. I NTRODUCTION
+The challenges of automating traceability have been well
+documented over the past two decades [1], [15], [18], [25];
+however, achieving satisfactory degrees of accuracy acros s di-
+verse datasets has been an ongoing challenge [9], [13] that h as
+inhibited its adoption in industry. The release of the Googl e’s
+BERT model [11] in 2018 introduced new possibilities for
+the ﬁeld, transforming the once far off dream of automatic
+traceability into a reality for projects in common domains
+[16], [17]. However, despite these improvements, challeng es
+such as highly-technical domain-speciﬁc terminology, low data
+availability for training, and lack of interpretability me ant
+that automated tracing continued to under-perform in many
+projects and domains where trace links were still delivered at
+low degrees of accuracy [8], [19]. In the present day, large
+language models (LLMs), such as GPT3 and Claude [2], [4],
+offer the promise of further transformation in automated tr ace-
+ability, eliminating many of these problems and introducin g
+new possibilities for the ﬁeld. However, as of yet, there is
+no clear direction on how best to utilize LLMs for automated
+traceability.
+When we began the work for this paper, our initial aspiration
+was to discover the “silver bullet” prompt for automated
+traceability. Similar to previous approaches [1], [16], [1 7], the
+“silver bullet” would discern true candidate links from fal se
+ones across all projects and circumstances. While we identi ﬁeda prompting approach that performed well across multiple
+projects, we concluded that the optimal prompting strategy
+depends on factors like available resources, the model bein g
+used, and the targeted usage scenario. Different LLMs exhib it
+distinct strengths and weaknesses and may require differen t
+prompts to achieve desired outcomes on the same data sets;
+compounding this, variance across versions of the same base
+model can alter performance on the same task [5]. More-
+over, top-performing models can be cost-prohibitive to man y
+engineers and researchers. Despite LLMs’ capabilities, hi gh
+variability persists across projects, prompts, and parame ters.
+Therefore, by bringing attention to some of the obstacles
+we encountered while crafting out prompts, we hope to make
+researchers and practitioners aware of potential pitfalls when
+employing the models for traceability related tasks. Rathe r
+than merely showcase top results, we have chosen to elaborat e
+on the process we followed to construct our prompts with the
+goal of inspiring other engineers who may wish to identify a
+prompt that best suits their needs.
+In this paper, we seek to shed light on the following
+questions:
+1) Do LLMs possess knowledge necessary for tracing
+projects with technical domain-speciﬁc vocabularly?
+2) Can LLMs provide reasonable explanations for their
+decisions?
+3) If so, can these explanations be utilized to improve
+prompts?
+4) Can reasoning be used to improve responses?
+5) How can LLMs be leveraged to generate software trace-
+ability links?
+While much future work is needed in this area, we hope
+to aid future researchers and engineers by highlighting the
+process of constructing traceability prompts for leveragi ng
+LLMs effectively to advance automatic traceability.
+II. R ELATED WORK
+Effective automated software traceability has many beneﬁt s
+for software engineering, and several approaches have ther e-
+fore been proposed to address its challenges. In recent year s,
+the emergence of LLMs, such as GPT-3 and Claude, has shown
+promise for automating software traceability and mitigati ng
+the limitations of previous methods. In this section, we dis cussTABLE I
+DATASETS
+Project Name Description Artifacts Children Candidates Tr ue
+CM1 [15]The requirements for an instrument a part
+of NASA’s Metric Data Program (MDP).High-Level Requirements →Low-Level
+Requirements53 265 13
+iTrust [21]Open-source electronic health record sys-
+tem. Created at North Carolina State Uni-
+versity as a part of a software engineering
+course.Requirements →Java Classes 227 1135 13
+Dronology [10]A system for managing the navigation of
+UA Vs and their communication to the ground
+control station.NL: Requirements →Design Deﬁnitions 99 495 4
+PL: Design Deﬁnitions →Java Classes 458 2290 48
+Describes the artifact types in each dataset, the number of c hildren per query, the resulting candidate links across all queries, and how many of those
+candidates were true links. Dronology is split into two data sets, DronologyNL and DronologyPL, to focus on traces betwe en natural language artifacts and
+between natural language and programming language artifac ts respectively.
+the relevant works that have explored the use of large langua ge
+models and the subjectivity of trace establishment in the
+context of software traceability.
+Early work in automated traceability relied on classical
+natural language processing (NLP) techniques such as the
+vector space model (VSM) and latent semantic indexing
+(LSI) to establish traceability links between software art ifacts
+based on their textual similarity [1], [3]. In the 2010s, dee p
+learning techniques such as long short-term memory network s
+(LSTMs) and gated recurrent units (GRUs) were applied
+to improve traceability performance. Researchers used the se
+neural networks to learn distributed representations of so ftware
+artifacts and match them based on semantic similarity [13].
+Around 2018, pretrained language models and transformers
+revolutionized the ﬁeld. Models like Google’s BERT allowed
+researchers to generate contextualized embeddings of soft ware
+artifacts and achieve state-of-the-art results in automat ed trace-
+ability tasks [16], [17]. Transformer language models then
+grew exponentially larger and more powerful, culminating i n
+GPT-3 and models with hundreds of billions of parameters.
+GPT-3 demonstrated human-level language understanding wi th
+175 billion parameters, achieving startling ﬂuency and few -
+shot learning capabilities [4], [7], [24]. GPT-4 continues to
+push the limits of LLMs, scoring in the top 10% of the BAR
+exam [22].
+In the domain of software engineering, efforts have been
+made to leverage large language models for various software
+engineering tasks including code generation, summarizati on,
+and enhancement [6], [27]. Although prompt-engineering is
+a relatively new area of exploration, some prior work has
+been done on how best to instruct models for various tasks.
+Researchers have identiﬁed different prompt patterns and
+techniques that tend to produce the best results - many of
+which are employed in this paper [12], [29]. Additionally,
+prompt engineers have crafted prompts for a variety of tasks ,
+including classiﬁcation [14], [20] and ranking [23], both o f
+which we utilize in this paper.
+However, there has not been extensive evaluation of the
+potential for large language models in automated software
+traceability. To address this gap, we conducted a prelimina ryinvestigation using Claude, an LLM developed by Anthropic,
+to predict trace links between software artifacts. We outli ned
+our two approaches for trace link prediction: classiﬁcatio n and
+ranking. The evaluation of our approaches will be discussed
+in the following section.
+III. E XPERIMENTAL SETUP
+For the preliminary investigation reported in this paper, w e
+analyzed three software engineering datasets: CM1, iTrust , and
+Dronology. We selected these datasets to span natural langu age
+and programming language artifacts as well as diverse appli -
+cation domains (embedded systems, healthcare, UA Vs).
+For each dataset, we selected only a subset of its data to
+use in our study in order to increase the depth of our analysis ,
+reduce run-time, and decrease cost. To select the links, we
+ﬁrst calculated the number of children artifacts traced to e ach
+parent and then identiﬁed the minimum, maximum and median
+number of links. Using these categories, we identiﬁed ﬁve
+parent artifacts: one with the fewest child links, three wit h
+the median number of child links, and one with the maximum
+number of child links. In cases where multiple parent artifa cts
+tied for the minimum, median, or maximum, we randomly
+sampled from those tied parents. This allowed us to create a
+set of trace queries that were representative of the project ’s link
+distribution of its trace queries. Table I describes the sel ected
+queries for each system noting the parent and child types, th e
+number of potential trace links (candidates), and the numbe r
+of those links that were actually true.
+Prior to the start of our experiments, we tested Ope-
+nAI’s text-davinci-003 model for predicting trace links, and
+found that, while it required slightly different prompts, i t had
+comparable capabilities to Anthropic’s Claude instant mod el
+(claude-instant-v1 ). Due to its lower cost and increased speed,
+we selected Claude for the remainder of our experiments.
+We also explored utilizing embeddings to compute similar-
+ity scores between artifacts, similar to the original Vecto r
+Space Model (VSM) approaches [1]. We examined the ada-
+embedding model developed by OpenAI ( text-embedding-ada-
+002), however, the results obtained from this investigation di d
+not show a signiﬁcant advantage over VSM. Therefore, we
+decided to leverage the generative capabilities of the mode lsfor trace link predictions within this paper. Nevertheless , we
+acknowledge the need for future endeavors to conduct a more
+comprehensive analysis of the advantages and disadvantage s
+associated with utilizing embeddings for generating trace links.
+Additionally, we obtained summaries of all code artifacts t o
+use in our experiments. We accomplished this by prompting
+the model to provide a several sentences focusing on the high -
+level functionality of the code. Although this removed some
+information, the resulting summaries contained most of the
+relevant details and reduced the number of tokens required
+for each tracing prompt.
+For our ﬁrst approach, we prompted the model to classify
+every source and target artifact pair. Each prompt followed
+a similar format, consisting primarily of a question and in-
+structions to answer ‘yes’ or ‘no’, followed by the content
+of the source artifact numbered as ‘1’ and the target artifac t
+numbered as ‘2’. When a prompt directly referenced the sourc e
+or target in the question, it used (1) to indicate the source
+or (2) to indicate the target, corresponding to the numbers
+of the artifact content (e.g., “Is (1) related to (2)?”). Eac h
+question was posed such that an answer of ‘yes’ was indicativ e
+of a link between the answers, while ‘no’ indicated that the
+artifacts were not linked. The resulting candidate links ar e
+then evaluated against the ground truth links using common
+classiﬁcation metrics such as precision and recall.
+Precision is the ratio of the number of correctly identiﬁed
+relevant trace links to the total number of trace links ident iﬁed
+by the system. Recall, on the other hand, measures the ratio o f
+the correctly identiﬁed relevant trace links to the total nu mber
+of relevant trace links in the system. This is shown below
+where TP is the true positives, FP is false positives, and FN
+is false negatives.
+Precision =TP
+TP+FPRecall=TP
+TP+FN
+For our ranking approach, we prompted the model to rank
+all targets for each source artifact. In this case, the model was
+given the content of the source artifact and the ID and body of
+each target, separated by newlines. The model was instructe d
+to return the artifact IDs in the order of relevance (from mos t
+to least) in a comma delimited list. Given the non-determini stic
+nature of responses from each model, there were times when
+the model neglected to include some artifact IDs. This probl em
+was unique to the ranking task, as the model correctly output
+yes and no each time for the classiﬁcation task. In these case s
+we randomly appended the missing ids to the end of the list
+for our evaluation. We calculate the Mean Average Precision
+of these rankings to showcase their performance. It provide s
+a measure of the effectiveness of the ranking algorithm in
+identifying relevant trace links between software artifac ts. To
+calculate MAP, the precision is computed at different level s of
+recall. The average precision is then calculated as the aver age
+of the precision values at each recall level. Finally, the me an
+of the average precision values across trace queries is take n
+to obtain the MAP score. The equation for MAP is obtainedby taking the mean of the average precision values across
+different queries or datasets:
+MAP=1
+NN/summationdisplay
+i=1Average Precisioni
+whereNis the number of queries or datasets.
+Throughout our process of generating trace-links, we have
+several conversations with the model to test its prior knowl -
+edge, understand its responses, and to brainstorm potentia l
+prompts and improvements to prompts. We include many
+of these in our paper. It is important to note that these
+exchanges occurred independently - the model could not ref-
+erence previous conversations when responding to subseque nt
+questions or when making new traceability classiﬁcations.
+Each conversation represented an isolated context, rather than
+a continuing thread. This methodology enabled us to system-
+atically probe the model’s knowledge without reliance on pr ior
+memorization.
+IV. A NALYSIS AND PROMPT DISCOVERY
+Due to space constraints, we focus our analysis on our
+prompt engineering process for the CM1 dataset. While we
+followed a similar prompting process with other datasets, w e
+found that many of the challenges we faced were exempliﬁed
+in CM1. We speciﬁcally chose CM1 to focus on because it has
+posed a unique challenge to researchers in the past [16], [17 ].
+In the end, we show the performance of our best approach
+on all the datasets to highlight that many of the lessons we
+learned from CM1 were transferable to the other datasets as
+well.
+A. Domain-speciﬁc Knowledge
+Before running trace-link prediction with the models, we
+ﬁrst wanted to understand what prior knowledge the model
+had about the system being evaluated. Previously, BERT mod-
+els often required extensive pre-training on domain-speci ﬁc
+documentation to interpret the vocabulary within a project
+[16], [17]. CM1, in particular, includes a myriad of jargon
+and acronyms that have long presented a challenge to previ-
+ous methods of automatic traceability [15], [26]. Since one
+strength of LLMs is their ability to perform well without
+any training [4], [22], we wanted to explore whether Claude
+possessed enough prior knowledge to succeed on the CM1
+dataset. To do this, we had the following conversation with i t
+about one of the CM1 artifacts containing a large number of
+acronyms.
+Human: What does this artifact mean?
+The DPU-TMALI shall utilize SCM-DCI-SR, along with
+ERRNO provided by DPU-DCI to decode errors and place
+them on an error queue for DPU-CCM.Assistant : ... Some guesses at the meaning:
+DPU may stand for Data Processing Unit ... SCM-
+DCI-SR seems to be some kind of protocol or interface
+used for communication between DPU-TMALI and DPU-DCI.
+ERRNO is a standard way for software components
+to return error codes. So DPU-DCI seems to be providing
+error codes to DPU-TMALI ... DPU-TMALI is receiving error
+data from DPU-DCI, decoding or interpreting those errors,
+and then queuing them up to be sent to DPU-CCM.
+DPU-CCM seems to be a component that is receiving error
+data, perhaps for monitoring purposes...
+As shown in the conversation above, the model was able
+to leverage its general knowledge to reason about what each
+component did from only the artifact content. Although we
+did not extensively investigate the model’s knowledge of ea ch
+acronym or vocabulary word in the dataset, this example show s
+that Claude can interpret the meaning of complex acronyms
+in some cases where previous models could not without ﬁne-
+tuning [16], [17].
+B. Classiﬁcation Prompt Discovery
+Next, we began the process of creating a prompt to use for
+our trace link prediction. As discussed previously, we prov ide
+highlights only for our experiments with CM1 but performed
+a similar analysis across datasets. Results for each prompt can
+be found in Table II. Our initial prompt for the model was
+general:
+Human: Is (/one.pnum) related to (/two.pnum)? Answer ‘yes’ or ‘no’.
+The content of the two artifacts was included in the prompt
+following the format explained in Section III. On CM1, this
+prompt resulted in the model correctly identifying 6 out of 1 3
+links and mispredicting 27 of the 225 true negative links as
+positive links for precision of 18% and recall of 46%.
+In order to understand why the prompt failed on over half of
+the true links, we randomly selected one of the false negativ es
+and prompted the model to explain why it responded ‘no’ for
+the link. For reference, the artifacts in the link are shown i n
+Table IV in the row for Link #1.
+Assistant : ...The ﬁrst paragraph is very high level, while the
+second paragraph goes into more technical implementation
+details. If they were related, you would expect a more
+consistent level of technical depth...
+Inspired by this response, we inserted “Ignoring the differ -
+ent abstraction levels of the artifacts...” before our ques tion.
+Interestingly, this link was correctly predicted when we us ed
+the modiﬁed prompt. Throughout our experiments, this would
+be a re-occurring problem where the model often failed to
+predict links between artifacts with different levels of de -
+tails/abstractions. We therefore began instructing it to i gnore
+abstraction levels in many of our following prompts. When
+we re-ran this modiﬁed prompt on the dataset, it correctly
+identiﬁed 7 out of the 13 links (one more than before) but also
+predicted 86 false positives. We again prompted it to explai n
+its decision for one of the remaining false negatives (Link # 2in IV). Its response and our subsequent questioning are show n
+below:
+Assistant : ...while there is a small overlap in the error
+handling mention, the main substance and purposes of
+the artifacts are distinct. I would still assess them as not
+strongly related...
+Human: Would there be a traceability link between artifact /one.pnum
+and /two.pnum?
+Assistant : There could potentially be a weak traceability
+link between the two artifacts based on the minor overlap
+in error handling/queueing...
+We found that asking it directly if the artifacts were linked
+received a better response, and further prompting revealed that
+Claude had a relatively robust understanding of traceabili ty,
+thus we decided to update our prompt as follows:
+Human: Is there a traceability link between (/one.pnum) and (/two.pnum)?
+We suspected that this prompt would be more speciﬁc,
+potentially eliminating some of the false positives, and th is
+was indeed the case with Claude only predicting one false
+positive. However, it now correctly identiﬁed only 4 of the
+13 links. This time when questioned about why it incorrectly
+believed Link #3 (Table IV) was un-traced, Claude’s confusi on
+seemed to come from it not realizing the artifacts were talki ng
+about the same system:
+Assistant : ...The ﬁrst requirement mentions speciﬁc
+tasks...that need to report heartbeats, while the second
+requirement talks about tasks in general without specifyin g
+which tasks. So it’s not clear if the tasks mentioned in the
+ﬁrst requirement are the same as those referred to in the
+second...
+We found this to be another common point of confusion
+for Claude so we updated our prompt to include “Below are
+artifacts from the same software system” at the start of our
+prompt.
+Human: Below are artifacts from the same software
+system. Is there a traceabilty link between (/one.pnum) and (/two.pnum)?
+With this additional information, Claude identiﬁed all of
+the project trace-links but wrongly predicted 98 negative l inks
+to be positive. Since Claude now mistakenly believed many
+artifacts were linked, we randomly selected a false positiv e
+(Link #4 in Table IV) to investigate further. This lead us to
+gain the following insight into the misprediction:
+Assistant : Yes, there is a traceability link between (/one.pnum) and
+(/two.pnum). (/one.pnum) mentions that the DPU-TMALI places errors on an
+error queue for the DPU-CCM.
+(/two.pnum) describes the error collection and reporting
+mechanism of the DPU-CCM, speciﬁcally referring to
+enqueueing errors.
+So (/two.pnum) provides an implementation detail for the
+error queueing functionality brieﬂy mentioned in (/one.pnum).
+Therefore, there is a traceability link between these two
+artifacts in the software system.We found nothing in Claude’s response to be inherently
+wrong, so we speculated that the mistake came not from
+a misunderstanding but rather from a misalignment between
+Claude and the tracers of CM1 on what should be considered
+a trace-link. Thus, we began to generate prompts that focuse d
+on the speciﬁc relationships between the requirements and
+regulations of CM1.
+Human: Below are artifacts from the same software
+system. Ignoring different levels of abstraction, can (/two.pnum) b e
+decomposed from (/one.pnum)? Answer ‘yes’ or ‘no’.
+This led to the model identifying 8 of the trace links with
+only 14 false positives. These missed trace links seemed to
+result from a confusion surrounding the model’s understand ing
+of decomposition, where the model believed that no new
+information could be added to a decomposed requirement. Thi s
+was indicated by its response below for Link #1:
+Assistant : ... So (/two.pnum) contains new information that cannot
+be derived or decomposed from (/one.pnum) alone. The answer is
+’no’.
+Replacing the question with “does (2) fulﬁll (1)?” resulted
+in the model missing 7 links for a similar reason, including
+Link #1 again:
+Assistant : ...(/two.pnum) lacks critical details and scope needed to
+conclusively fulﬁll (/one.pnum)...
+Despite missing 7 links, the model was able to correctly
+rule out all but 3 true negatives. Although both of these
+prompts were too restrictive (i.e. not all the true links wer e
+captured), they seemed to align Claude with at least some of
+the relationships established in CM1 as indicated by its suc cess
+at eliminating false links.
+Some other prompts we tried included:
+1.are (1) and (2) part of the same feature and share
+functionality?
+2.does (2) implement system functionality from (1)?
+3.are (1) and (2) dependent on the same system capability?
+where each prompt began with “Below are artifacts from the
+same software system. Ignoring different levels of abstrac tion”
+and concluded with ”Answer ‘yes’ or ‘no’.” Each subsequent
+prompt successfully predicted one more positive link than t he
+one before, but led to an increasing number of false positive s
+ranging from 28 all the way to 48 for #3.
+Our ﬁnal prompt of this structure was a combination of
+several previous prompts that had shown promise:
+Human: Below are artifacts from the same software
+system. Ignoring different levels of abstraction, can (/two.pnum) b e
+one of the hierarchical decompositions of (/one.pnum)? Consider
+whether (/two.pnum) implements a part of (/one.pnum).
+By adding “one of the hierarchical” and “a part of”, we
+hoped to make the prompt less restrictive so that the model
+would allow new information to be added to decomposed
+artifacts. This time the model correctly predicted all but o ne
+true link. Its 44 false positives still fell short of our goal ofless than 20 but were signiﬁcantly less than the 98 returned i n
+the previous approach that achieved these high levels of rec all.
+C. Introduction of Chain-of-Thought Reasoning
+As our prompt evolved, we saw improvements in the
+model’s link-prediction abilities, but the results were st ill
+falling short of our goals. It seemed evident that we needed t o
+approach the task differently. As a result, we decided to bre ak
+down the task into steps to aid the model in reasoning about
+the relationship between the artifacts before arriving at a ﬁnal
+decision. This process, known as ”chain of thought”, has pre -
+viously shown to be effective in helping LLMs solve complex
+tasks [28]. To test the impact of incorporating reasoning in to
+the process, we reran our original prompt with this addition al
+step at the beginning of the prompt:
+Human: You are working on a software system and are
+given a high-level requirement and a low-level requirement .
+Your job is to determine if they are traced. Give one reason
+why (/one.pnum) might be related to (/two.pnum) enclosed in <related>
+</related>and one reason why (/one.pnum) might be un-related
+to (/two.pnum) enclosed in <unrelated > </unrelated >but ignore
+levels of abstraction. Then based on these reasons, do you
+think (/one.pnum) is related to (/two.pnum)? Answer should be ’yes’ or ’no’
+enclosed in <answer> </answer>.
+Having it enclose each separate response in xml tags
+allowed us to easily parse its answer despite the added
+complexity. An example of the model’s response for link #5
+in Table IV is shown below:
+Assistant :<related>Both specify requirements related to
+processing commands within a certain time </related>
+<unrelated >Requirement /one.pnum speciﬁes a time constraint
+while requirement /two.pnum provides a general description of a
+command and control subsystem </unrelated > <an-
+swer>yes</answer>
+Recall increased by nearly 50% while precision rose by
+14%. With the added reasoning step, the model missed only
+1 true link and misidentiﬁed just 25 false positives. With
+both questions (1) and (3) from Table II, the introduction of
+incremental reasoning helped the model ﬁnd a higher portion
+of the true connections in the data. Due to time constraints, we
+were unable to test the reasoning on the remaining questions
+but we believe this is an interesting avenue for future work.
+Encouraged by this initial success, we decided to have
+the model answer each of our questions as intermediate
+steps before ﬁnally determining whether the artifacts were
+related. We hoped this approach would help the model explore
+different ways in which the artifacts could be connected. It
+also allowed us to use a simple ranking system in which more
+‘yes’ responses would increase the likelihood that the arti facts
+were linked. By quantifying the model’s degree of support fo r
+a relationship through the ranking system, we could evaluat e
+not just whether it predicted a link but also how conﬁdent it
+was in that prediction based on the reasoning exhibited in it s
+responses.Human: I am giving you two software artifacts from a sys-
+tem. Your job is to determine if there is a traceability link.
+Answer whether (/two.pnum) implements a part of (/one.pnum) with yes or
+no enclosed in <implements > </implements >. Answer
+whether (/two.pnum) is a hierarchical decomposition of (/one.pnum) with yes
+or no enclosed in <decomposed > </decomposed >.
+Answer whether (/two.pnum) fulﬁlls (/one.pnum) with yes or no enclosed in
+<fulﬁlls> </fulﬁlls>. Answer whether (/two.pnum) and (/one.pnum) are part
+of the same feature and shares functionality with yes or
+no enclosed in <feature> </feature>. Answer whether
+(/two.pnum) and (/one.pnum) are dependent on the same system capability
+with yes or no enclosed in <capability > </capability >.
+Use your answers to give one reason why (/one.pnum) might be
+related to (/two.pnum) enclosed in <related> </related>and
+one reason why (/one.pnum) might be un-related to (/two.pnum) enclosed in
+<unrelated > </unrelated >Now answer is (/one.pnum) related to
+(/two.pnum) with yes or no enclosed in <traced> </traced>.
+D. Ranking Prompt Discovery
+Despite not outperforming other classiﬁcation prompts,
+ranking the artifacts by the number of ‘yes’ and ‘no’ an-
+swers, did provide the opportunity to establish a threshold
+retrospectively, allowing us to categorize items based on t he
+strength of the model’s prediction instead of relying on a
+single yes/no choice. This, combined with Claude’s new 100k
+context window, inspired us to experiment with an entirely
+new strategy.
+For our next experiment, we gave Claude the following
+instructions:
+Human: # Task
+Rank all related artifacts from most to least related to the
+source.
+Source: [SOURCE ARTIFACT]
+# Artifacts
+<artifact>
+<id>...</id>
+<body>...</body>
+</artifact>
+# Instructions
+Rank the artifact bodies from most to least relevant to the
+source. Provide the ranked artifacts as comma delimited
+list of artifact ids where the ﬁrst element relates to the
+source the most and the last element does so the least.
+By providing the model with more context about the system
+in the prompt and allowing it to compare all targets when
+making its decision, we hoped to see a performance boost.
+Unfortunately, the task was not as simple as we had hoped,
+and we, like previous researchers, identiﬁed another nuanc e
+with the prompts - order matters [23]. When we presented
+the target artifacts in a random order, performance was bare ly
+above random; however, ordering artifacts that were more
+likely to be linked at the top, delivered signiﬁcantly highe r
+performance. It seemed that unless there was some pattern
+already established, the task would overwhelm the model.
+Because of this, we decided to rank the target artifacts base d
+on their VSM similarity to the source. Then, we presented the
+model with targets in this order. With this initialization, the
+model improved upon the original VSM ranking. Furthermore,
+While discussions throughout the paper have focused on the
+CM1 dataset, we applied this approach to the three other
+datasets presented in Table I and report results for all four
+datasets in Table III.E. Summary of Results
+Overall, our results demonstrated that the ranking task cou ld
+be a useful approach to automated traceability, but it may
+require additional steps and further prompt reﬁnement to re ach
+the necessary performance. In the future, we plan to explore
+ways of decomposing the overall task into simpler, incremen tal
+steps to reduce complexity for the model as we did for the
+classiﬁcation task. It should also be noted that the ranking
+task necessitated a large context window, which may pose
+a challenge for certain open-source models. Consequently,
+classiﬁcation remains a valuable alternative when ranking is
+infeasible. Furthermore, classiﬁcation opens up avenues f or
+diverse applications of traceability, such as “trace views ” that
+we discuss further in Section VI.
+V. T HREATS TO VALIDITY
+While this initial study provides promising evidence that
+prompt engineering can enhance LLMs for software trace-
+ability tasks, several threats could limit the validity of o ur
+ﬁndings. First, we evaluated only three open-source projec ts
+and only provide a detailed analysis of one, limiting the
+generalization of our ﬁndings. However, we selected projec ts
+that spanned multiple domains, artifact types, and sizes to
+improve generalizability. We also constructed trace queri es
+that were representative of their parent distribution. Sec ond,
+existing traceability datasets are typically incomplete, as truly
+considering every candidate link in a project grows O(n2)with
+the number of artifacts. The LLMs identiﬁed potential missi ng
+traces, but we could not fully validate their accuracy witho ut
+a project expert. Third, our study used a limited set of LLMs
+which may not represent the full space of the current state-
+of-the-art. However, we chose the leading LLMs from our
+initial explorations with publicly available commercial m odels.
+Clearly, there are many extension to this study considering
+more datasets, different LLMs, and other prompt engineerin g
+methods. We leave the full exploration of the problem space t o
+future work and focus on showing the potential these models
+have towards advancing automated software traceability.
+VI. C ONCLUSIONS AND FUTURE DIRECTIONS
+Throughout our experiments, we addressed multiple ques-
+tions and derived several key takeaways regarding using LLM s
+for trace-link prediction.
+A. Key Takeaways
+•Small modiﬁcations to prompts can lead to signiﬁcant
+differences in model outputs, emphasizing the importance
+of carefully crafting prompts.
+•The performance of a given prompt in comparison to
+alternative phrasings can vary across datasets and models,
+though some general techniques like chain-of-thought
+reasoning tend to produce a more consistent performance.
+•LLMs frequently identify different artifact relationship s
+by than those selected by human tracers. Prompts should
+specify the targeted usage of the traceability links (e.g.TABLE II
+CLASSIFICATION METRICS FOR CM1 P ROMPTS
+ID Prompt Precision Recall TP TN FP FN
+1 Is (1) related to (2)? 18% 46% 6 225 27 7
+32.4% 92.3% 12 227 25 1
+2 Ignoring the different abstraction levels of the artifacts , is (1) related to (2)? 17% 54% 7 218 34 6
+3 Is there a traceability link between (1) and (2)? 80% 31% 4 251 1 9
+40% 46.2% 6 243 9 7
+4 Below are artifacts from the same software system, is there a traceability link between (1)
+and (2)?12% 100% 13 154 98 0
+5 Below are artifacts from the same software system. Ignoring different levels of abstraction,
+can (2) be decomposed from (1)?36% 62% 8 238 14 5
+6 Below are artifacts from the same software system. Ignoring different levels of abstraction,
+does (2) fulﬁll (1)?67% 46% 6 249 3 7
+7 Below are artifacts from the same software system. Ignoring different levels of abstraction,
+are (1) and (2) part of the same feature and share functionali ty?32% 54% 7 237 15 6
+8 Below are artifacts from the same software system. Ignoring different levels of abstraction,
+does (2) implement system functionality from (1)?22% 77% 10 216 36 3
+9 Below are artifacts from the same software system. Ignoring different levels of abstraction,
+are (1) and (2) dependent on the same system capability?19% 85% 11 204 48 2
+10 Below are artifact from the same software system. Ignoring d ifferent levels of abstraction,
+can (2) be one of the hierarchical decompositions of (1)? Con sider whether (2) implements
+a part of (1).22% 92% 12 208 44 1
+11 Combining all questions and chain-of-thought reasoning. 37.9% 84.6% 11 234 18 2
+Rows in gray use chain-of-thought to make their ﬁnal trace cl assiﬁcations.
+change impact analysis, hierarchical composition) to bet-
+ter align the model’s output with the desired outcome.
+•Specifying the targeted usage has the additional beneﬁt
+of opening the door for creating different trace views - a
+possible advantage over purely similarity-based methods.
+•Requiring models to show intermediate reasoning steps
+boosts performance on some tasks and builds in explana-
+tions into the decision making process. This is useful to
+both to those establishing the trace links and those using
+them.
+•List ranking style prompts are highly sensitive to the order
+of artifacts presented in the prompt. This variability was
+mitigated by pre-sorting by VSM scores.
+•Overall, carefully tailored prompts are needed to harness
+the versatility of LLMs for the task of traceability and
+to produce outputs that are consistent with the goals of
+traceability engineers and researchers.
+Throughout this process, one of our biggest takeaways
+was how minor adjustments to prompts could have dramatic
+impacts on the results. Subtle changes, such as pluralizing
+TABLE III
+MEAN AVERAGE PRECISION OF RANKED TARGET ARTIFACTS
+Dataset Ranking by VSM Ranking by VSM + LLM
+CM1 70.7% 79.4%
+iTrust 44.5% 44.2%
+Dronology (NL) 82.9% 100%
+Dronology (PL) 23.2% 30.8%words, interchanging prepositions, or reordering phrases , could
+alter the outcomes. These ﬁndings underscore the inherent
+challenge of engineering robust prompts. In future researc h,
+we aim to explore strategies that mitigate such variability
+and delve into the effectiveness of different prompts acros s
+different models.
+Further, due to the limited number of trace queries we
+analyzed per dataset as well as our integration of chain-of-
+thought, we were able to review trace predictions in depth.
+Interestingly, we were often surprised by the strength of ma ny
+false positives, forcing us to re-think the accurate and com plete
+nature of these datasets. Reviewing predictions for even ou r
+smallest subset (265 combinations) became an arduous task.
+In reality, industrial projects range from 50K to 500K poten tial
+trace links, making it extremely challenging to have comple te
+and standardized tracing practices. However, examining th e
+predictions of a few selected trace links may still provide t race-
+ability experts with the insights they need to reﬁne prompts
+in a way that improves performance across the project.
+B. Do LLMs possess knowledge necessary for tracing projects
+with domain-speciﬁc vocabulary?
+Our conversations with Claude revealed that it contained
+sufﬁcient knowledge to draw many correct conclusions about
+the CM1 system, irrespective of the acronyms or jargon used.
+Furthermore, we were able to obtain high MAP scores without
+performing any additional pre-training. Nevertheless, we plan
+to experiment with pre-training in the future to see if it can
+provide a performance boost. Additionally, we hope to test
+the model’s knowledge on a wider range of datasets. It isimportant to note that since the datasets in this paper were
+all publicly available at the time of the model’s creation, w e
+cannot eliminate the possibility that the model had previou s
+exposure to them. Thus, we are particularly interested to se e
+how the model performs on an entirely new dataset.
+C. Can LLMs provide reasonable explanations for their deci-
+sions?
+By probing the model to elicit explanations for many of
+its mispredictions, we found that it could provide an in-dep th
+analysis of its decision. Whether or not these explanations
+are accurate reﬂections of the reasoning behind the model’s
+decision is beyond the scope of this paper, but we did ﬁnd
+that when we adjusted the prompts based on the model’s
+explanation, we were often able to change its answer.
+D. If so, can these explanations be utilized to improve
+prompts?
+The ability to alter the model’s decision by using its
+explanations proved to be a useful tool for improving prompt s.
+Engaging in conversations with the model enabled an in-
+creased understanding of its interpretation of a given prom pt,
+facilitating an iterative approach to reﬁne prompts. Gradu ally
+adjusting the prompts in this way can be used to ﬁnd a prompt
+that better aligns the model’s understanding with the objec tives
+of the tracer.
+E. Can reasoning be used to improve responses?
+By asking the model to formally articulate its thinking in
+response to probing questions, the model was able to make
+a more well-informed ﬁnal judgment about the relationship
+between the artifacts in the classiﬁcation. This also offer s
+the advantage of allowing the task to be broken down into
+smaller pieces, where the model ﬁrst evaluates the relation ship
+between the artifacts and then makes a ﬁnal decision. Furthe r,
+chain-of-thought reasoning has the potential to improve th e
+ranking task and should be evaluated in future work.
+F . How can LLMs be leveraged to generate software trace-
+ability links?
+In our experiments, we explored two different tasks which
+could be used to predict trace links from pairs of software
+artifacts: classiﬁcation and ranking. While ranking allow s for a
+nuanced expression of conﬁdence in a prediction, classiﬁca tion
+offers the advantage of needing a smaller context window
+and enables the discovery of diverse relationship types. By
+adapting our prompts to describe various relationships, we
+captured distinct links. For instance, when inquiring whet her
+two artifacts were part of the same feature, we discovered
+different links than when asking if they shared functionali ty.
+This can be used to present multiple “views” of traceability ,
+where each view highlights different relationships within the
+system. This may be particularly valuable for change propa-
+gation where the prompt can focus on determining whether a
+modiﬁcation to one artifact necessitates a change in the oth er.
+Additionally, multiple prompts may be combined to capturethe many different relationships present in the project. Th is
+presents an avenue for future investigation.
+An alternative way in which LLMs can be used for trace
+link prediction is by comparing the similarity of artifact
+embeddings. As mentioned previously, we opted not to explor e
+this method in this paper, but future works might beneﬁt from
+comparing this approach to those discussed in this paper.
+G. Concluding Remarks
+Overall, our experiments demonstrated that large language
+models show promise for tracing software systems. As op-
+posed to previous approaches for automated traceability, L LMs
+can perform well without pre-training and are able to offer
+detailed explanations of their decisions. These explanati ons
+are not only useful for helping an engineer make an informed
+decision about a trace-link but can guide the process of
+selecting an appropriate prompt for the tracing task. Throu gh
+iterative prompt reﬁnement, the models can be used to classi fy
+trace links and establish a diverse set of relationships bet ween
+project artifacts. The models are also capable of ranking ta rget
+artifacts based on how related they are to a source artifact,
+albeit with aid from VSM. Ranking can allow engineers to
+sift through a prioritized list of candidate links and poten tially
+reducing the review time required.
+While this paper showcases the power of LLMs for trace-
+ability, it also highlights many of the lingering challenge s in
+engineering effective prompts for the models. Careful tail oring
+of prompts can help to reach high performance for each projec t
+but this was ultimately a time-consuming task that may not
+always be feasible. Although the community might one day
+discover a ”silver bullet” prompt, a more practical path for ward
+may be to identify common patterns that make prompts most
+effective for certain projects and tracing objectives. Dis cov-
+ering such patterns could enable partially automating this
+process so that it can be seamlessly integrated into current
+traceability workﬂows. There remains much future work that
+must be done to gain a comprehensive understanding of how
+LLMs can best be utilized to enhance the ﬁeld of traceability .
+ACKNOWLEDGEMENT
+The work in this paper has been partially funded by USA
+National Science Foundation Grants # SHF-1901059, SHF-
+1909007, and PFI-TT-2122689.TABLE IV
+INVESTIGATED LINKS
+ID Source Target
+1 The DPU-CCM shall
+implement a mechanism
+whereby large memory loads
+and dumps can be
+accomplished incrementally.Memory Upload and Download Handling Data can be uploaded to s everal types of locations,
+including:
+•DRAM
+•EEPROM
+•Hardware registers
+•EEPROM ﬁlesystem
+The D-MEM-DAT-UPLD command speciﬁes the target location. I f the destination is the EEPROM
+ﬁlesystem, a ”block number” is provided in lieu of a memory ad dress, which is used by the DPU
+FSW to formulate a ﬁlename of the form eefs1:DPU blk.## , where ## is the block number. In
+this case, once the entirety of the uploaded data is received by the DPU FSW, the uploaded data
+is then written to that ﬁle in the EEPROM ﬁlesystem. If a ﬁle al ready exists with that name, it
+is overwritten. The EEPROM ﬁlesystem can be reinitialized u sing the command D-MEM-DISK-
+INIT.
+2 The DPU-TMALI shall utilize
+SCM-DCI-SR, along with
+ERRNO provided by
+DPU-DCI to decode errors
+and place them on an error
+queue for DPU-CCM.Control and Monitoring the CCM Control Task initializes the DPU FSW. It is the responsibility
+of the CCM Control Task to establish a successful boot. It doe s so by blocking on temporary
+semaphores, each with a 5 second timeout, after spawning the SCU Interface Task and the CCM
+Command Task. If both of these tasks report a successful init ialization by giving the semaphore,
+the CCM Control Task toggles the BC INDEX parameter in EEPROM to indicate a successful
+boot. If either task does not report a successful initializa tion, the CCM Control Task disables
+the watchdog strobe to effect a reboot of the DPU. The rationa le for selecting the successful
+initialization of these two tasks as the deﬁnition of a succe ssful boot is that the DPU FSW
+requires these tasks, as a minimum, to establish ground cont act and provide commandability.
+Once this initialization is complete, the task blocks on a bi nary semaphore which is given by the
+SCUI Command ISR upon arrival of the 1 Hz Clock Message. In the event a Clock Message does
+not arrive, the semaphore will time out after 1.5 seconds. Th e CCM Control Task remains alive
+to create and transmit DPU housekeeping at the appropriate i ntervals, perform various periodic
+processing tasks, and to process memory dump commands. The ﬁ nal call to ccmErrEnq() is
+performed in order that if an error occurs in an interrupt ser vice routine, a global variable is set
+to the value of the errno which is then enqueued into the Error /Event Queue as part of this task’s
+normal processing. The DPU-CCM shall collect a TASK HBEAT from DPU-SCUI, DPU-CCM,
+DPU-DCX, DPU-TMALI, and DPU-DPA. Non-responsive tasks wil l be reported in DPU HK.
+3 The DPU-CCM shall collect a
+TASK HBEAT from
+DPU-SCUI, DPU-CCM,
+DPU-DCX, DPU-TMALI, and
+DPU-DPA . Non-responsive
+tasks will be reported in
+DPU HK.Control and Monitoring Every time the CCM Control executes, it calls ccmPerProcess() to handle
+periodic processing responsibilities. Such responsibili ties include analog to digital conversion
+updates, DPU task monitoring, ICU heartbeat message produc tion, and watchdog strobe. The
+ccmHealthChk() function, called by ccmPerProcess() veriﬁ es the execution of other tasks by
+monitoring the amount of time that has elapsed since each tas k last reported. Other tasks report
+their execution to the CCM Control Task by calling the functi on, ccmTaskReport(), providing
+their task index. Each task has an expected execution freque ncy, and if a task does not execute
+as expected, an error is reported in DPU housekeeping. If the Command Dispatch Task fails to
+report for an extended period, the DPU will execute a reboot, since it is impossible to command
+the DPU if this task is not executing, otherwise it will strob e the watchdog.
+4 The DPU-TMALI shall utilize
+SCM DCI SR, along with
+ERRNO provided by
+DPU-DCI to decode errors
+and place them on an error
+queue for DPU-CCM.Error Collection and Reporting The ccmErrEnq() function tr acks the last error reported and its
+frequency of occurrence. Once an error code has been reporte d it becomes the previously reported
+error code maintained by ccmErrEnq(). A repetition count is then incremented for each subsequent,
+consecutively reported, identical instance of this previo usly reported error. If this error code is
+reported more than once in one high-rate housekeeping repor ting period, then a special error,
+Sccm ERR REPEAT is enqueued with the repetition count for the error en coded in the least
+signiﬁcant byte. This mechanism effectively reduces the po tential for housekeeping telemetry to
+become ﬂooded with a single repeated error.
+5 The DPU-CCM shall process
+real-time non-deferred
+commands within B ms of
+receipt from the ICU or the
+SCU.The Command and Control CSC provides the core command and con trol functionality for the
+system. It includes tasks for initializing the system at boo tup, scheduling housekeeping data
+generation, monitoring other tasks, executing periodic ta sks, and receiving and dispatching real-
+time commands. It maintains data structures for system stat e, commands, errors and events.REFERENCES
+[1] G. Antoniol, G. Canfora, G. Casazza, A. De Lucia, and E. Me rlo,
+“Recovering traceability link

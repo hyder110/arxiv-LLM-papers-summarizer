@@ -1,0 +1,26 @@
+Summary:
+In this paper, the authors propose a new benchmark dataset called KORC (Knowledge Oriented Reading Comprehension) for deep text understanding. The dataset addresses two major limitations of existing benchmarks: limited knowledge coverage and narrow answer space. KORC has two advantages: broad knowledge coverage and flexible answer format. The dataset is constructed using documents from Wikipedia and knowledge from Wikidata. Various baseline models are evaluated on KORC, and the results indicate that deep text understanding is still a challenging task.
+
+Bullet Points:
+1. KORC is a new benchmark dataset for deep text understanding.
+2. Existing benchmarks have limitations in knowledge coverage and answer format.
+3. KORC addresses these limitations by using massive knowledge bases and labels in knowledge bases as answers.
+4. The dataset is constructed using documents from Wikipedia and knowledge from Wikidata.
+5. Different baseline models are evaluated on KORC, and the strongest baseline achieves 52.8% average P-ACC and 55.8% average P-F1.
+6. Performance drops from in-distribution to out-of-distribution test sets, indicating the need for models that can generalize to different query triples.
+7. Cross-evaluation results show that KORC-H (human annotation) brings more sophisticated deep text understanding skills to models.
+8. Error analysis reveals that relations with fewer questions are more difficult to answer.
+9. Ablation study shows that documents and anonymous entity names are important for answering questions in KORC.
+10. Future work includes extending KORC to more complicated knowledge and designing skillful reader models.
+
+Keywords:
+- Knowledge oriented reading comprehension
+- Deep text understanding
+- Benchmark dataset
+- Knowledge coverage
+- Answer format
+- Wikipedia
+- Wikidata
+- Baseline models
+- In-distribution
+- Out-of-distribution

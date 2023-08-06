@@ -1,0 +1,790 @@
+Parameter-Efficient Fine-Tuning of LLaMA for the Clinical Domain
+Aryo Pradipta Gema1Luke Daines2Pasquale Minervini1Beatrice Alex1,3
+1School of Informatics, University of Edinburgh2Usher Institute, University of Edinburgh
+3Edinburgh Futures Institute, University of Edinburgh
+{aryo.gema, luke.daines, p.minervini, b.alex}@ed.ac.uk
+Abstract
+Adapting pretrained language models to novel
+domains, such as clinical applications, tradi-
+tionally involves retraining their entire set of
+parameters. However, this approach is increas-
+ingly proven to be impractical owing to the
+substantial computational requirements asso-
+ciated with training such large language mod-
+els. To address this issue, Parameter-Efficient
+Fine-Tuning (PEFT) techniques offer a vi-
+able solution by selectively fine-tuning a small
+subset of additional parameters, significantly
+reducing the computational requirements for
+domain adaptation. In this study, we pro-
+pose Clinical LLaMA-LoRA, a PEFT adapter
+layer built upon the open-sourced LLaMA
+model. Clinical LLaMA-LoRA is trained us-
+ing clinical notes obtained from the MIMIC-
+IV database, thereby creating a specialised
+adapter designed for the clinical domain. Ad-
+ditionally, we propose a two-step PEFT frame-
+work which fuses Clinical LLaMA-LoRA with
+Downstream LLaMA-LoRA, another PEFT
+adapter specialised for downstream tasks. We
+evaluate this framework on multiple clinical
+outcome prediction datasets, comparing it to
+clinically trained language models. Our pro-
+posed framework achieves a state-of-the-art
+AUROC score averaged across all clinical
+downstream tasks. We observe substantial im-
+provements of 6-9% AUROC score in the large-
+scale multilabel classification tasks, such as
+diagnoses and procedures classification.
+1 Introduction
+Large Language Models (LLMs) have consistently
+achieved state-of-the-art performance across vari-
+ous NLP tasks. However, while these models ex-
+hibit impressive generalisation abilities, they often
+struggle to perform in specialised domains such as
+clinical applications, primarily due to the absence
+of domain-specific knowledge. The complexity of
+medical terminology and the presence of incom-
+plete sentences in clinical notes contribute to this
+Downstream
+task #1Downstream
+task #2
+Original LM Domain Clinical DomainPretrained
+LLM 
+Clinical
+LLaMA-LoRADownstream
+LLaMA-LoRAFigure 1: An illustration of the proposed two-step PEFT
+framework. Clinical LLaMA-LoRA fine-tunes the pre-
+trained LLaMA to the clinical domain. Downstream
+LLaMA-LoRA further fine-tunes the domain-adapted
+model to downstream clinical tasks.
+challenge (Lehman and Johnson, 2023). Unfor-
+tunately, studies have indicated that even LLMs
+pretrained with datasets comprising biomedical
+publications still exhibit suboptimal performance
+when applied to downstream clinical applications,
+particularly when compared to LLMs pretrained
+with clinical notes (Alsentzer et al., 2019; Li et al.,
+2022; Yang et al., 2022). This observation suggests
+that there are intrinsic nuances specific to the clini-
+cal context that can only be effectively captured if
+LLMs undergo pretraining using clinical datasets.
+The current approach of adapting pretrained
+LLMs to the clinical domain typically involves
+fine-tuning the entire model parameters (Alsentzer
+et al., 2019; Peng et al., 2019; van Aken et al., 2021;
+Michalopoulos et al., 2021; Lehman and Johnson,
+2023). However, due to the rapid increase in the
+size of LLMs, such a practice demands extensive
+computational resources, which may not be readily
+accessible to all researchers. Consequently, this
+challenge will further exacerbate the disparity be-
+tween the resource-rich and resource-constrained
+research institutions (Ruder et al., 2022).arXiv:2307.03042v1  [cs.CL]  6 Jul 2023To address the substantial computational de-
+mands, studies have proposed various Parameter-
+Efficient Fine-Tuning (PEFT) techniques. These
+techniques present a practical solution by fine-
+tuning a small subset of additional parameters
+while keeping the remaining pretrained parameters
+fixed. As a result, this strategy significantly alle-
+viates the computational burden while achieving
+comparable performance to that of full fine-tuning.
+In this study, we propose a two-step PEFT frame-
+work (see Figure 1). Firstly, we introduce Clinical
+LLaMA-LoRA, a Low-Rank Adaptation (LoRA,
+Hu et al., 2022) PEFT adapter built upon the open-
+source Large Language Model Meta AI (LLaMA)
+(Touvron et al., 2023). Then, we introduce Down-
+stream LLaMA-LoRA, which is trained on top
+of the pretrained Clinical LLaMA-LoRA. Down-
+stream LLaMA-LoRA is specifically designed for
+clinical downstream tasks. The fusion of the two
+adapters achieves state-of-the-art performance in
+clinical NLP downstream tasks while considerably
+reducing the computational requirements. This
+study presents the following contributions:
+•We introduce Clinical LLaMA-LoRA, a PEFT-
+adapted version of the LLaMA model tailored
+specifically for the clinical domain.
+•We provide comparisons of multiple PEFT tech-
+niques in terms of language modelling perfor-
+mance based on perplexity score, shedding light
+on the optimal PEFT techniques for the clinical
+domain-adaptive pretraining.
+•We introduce Downstream LLaMA-LoRA, built
+on top of Clinical LLaMA-LoRA and tailored
+specifically for the clinical downstream tasks.
+•We evaluate the proposed mixture of Clinical
+LLaMA-LoRA and Downstream LLaMA-LoRA
+on downstream clinical datasets and tasks. Our
+proposed framework showcases improvements in
+AUROC scores over the existing clinical LLMs.
+2 Background
+2.1 Biomedical Large Language Models
+General-domain LLMs continue to face challenges
+when confronted with domain-specific tasks. The
+complexity associated with the requisite domain
+knowledge is recognised as a significant fac-
+tor (Ling et al., 2023), particularly within thebiomedical domain. Consequently, numerous stud-
+ies have attempted to adapt LLMs specifically for
+the biomedical domain.
+An early example of such adaptation is
+BioBERT (Lee et al., 2019), which was pretrained
+using biomedical research articles from PubMed
+and PubMed Central. This adaptation has shown
+improved performance across various biomedi-
+cal NLP tasks. Recognising the significance of
+biomedical-specific vocabularies, Gu et al. (2022)
+proposed PubMedBERT, which is pretrained on
+biomedical data from scratch and initialised the
+model vocabulary with the biomedical corpus. The
+growing interest in biomedical NLP research has
+led to the adaptation of even larger models to the
+biomedical domain (Luo et al., 2022; Singhal et al.,
+2022; Wu et al., 2023; Singhal et al., 2023)
+While these biomedical LLMs have demon-
+strated advancements in various biomedical NLP
+benchmarking tasks, studies have revealed that
+clinical LLMs still outperform their biomedical
+counterparts in numerous clinical downstream
+tasks (Alsentzer et al., 2019; Yang et al., 2022;
+Li et al., 2022; Lehman and Johnson, 2023). This
+suggests that domain-adaptive pretraining using
+clinical data is still the de facto protocol in adapt-
+ing LLMs to the clinical domain.
+2.2 Clinical Large Language Models
+Clinical LLMs are often fine-tuned with clinical
+data from an LLM that is already pretrained with
+datasets that encompass broader topics. For in-
+stance, Bio+ClinicalBERT (Alsentzer et al., 2019)
+is domain-adaptively pretrained using clinical notes
+from the Medical Information Mart for Intensive
+Care (MIMIC)-III database (Johnson et al., 2016),
+starting from a pretrained BioBERT (Lee et al.,
+2019), which itself is pretrained on biomedical ar-
+ticles. BlueBERT (Peng et al., 2019) is domain-
+adaptively pretrained using PubMed abstracts and
+MIMIC-III clinical notes from a BERT model (De-
+vlin et al., 2019), that is pretrained with general-
+domain texts. Similarly, Clinical-T5 (Lehman and
+Johnson, 2023) is domain-adaptively pretrained us-
+ing the union of MIMIC-III and MIMIC-IV (John-
+son et al., 2023) clinical notes from T5-base (Raffel
+et al., 2020), another general-domain LLM.
+All these studies share a common approach,
+which is to fine-tune the entire model parameters.
+With massive LLMs, this method has become cost-
+prohibitive and inaccessible for many researchers.Pretrained
+General  LLMDomain-adaptive
+Pretraining
+LM HeadPretrained
+Clinical  LLM
+Classifier HeadDownstream
+Fine-tuningCurrent Proposed
+Domain-adaptive
+Pretraining
+LM HeadPretrained
+General  LLMClinical
+PEFT
+AdapterPretrained
+General  LLM
+Classifier HeadDownstream
+Fine-tuning
+Pretrained
+Clinical
+PEFT
+AdapterDownstream
+Clinical
+PEFT
+AdapterFigure 2: Frameworks of domain-adaptive and downstream fine-tuning to adapt a pretrained LLM from the general
+domain to the clinical domain. As opposed to a full fine-tuning process which can be prohibitively expensive
+(left), our approach leverages PEFT techniques to introduce a clinically-specialised adapter that is attached to a
+pretrained general LLM (right). Our proposed framework also introduces another clinical PEFT adapter trained on
+the downstream clinical tasks, such as clinical note classification.
+2.3 Parameter-Efficient Fine-Tuning for
+Large Language Models
+Suppose that we have a pretrained LLM PΦ(y|x);
+fine-tuning it can be effectively defined as find-
+ing the most appropriate parameter changes ∆Φ
+by optimising the fine-tuning objective. A con-
+ventional, full fine-tuning process means that the
+model needs to learn a ∆Φ whose dimension is
+equal to the entire parameters of the pretrained
+LLM|∆Φ|=|Φ0|, which is computationally ex-
+pensive. PEFT techniques address this by tuning
+thedelta ∆Φ, which corresponds to a very small
+fraction of additional trainable parameters during
+the fine-tuning process.
+Adapter tuning (Houlsby et al., 2019) is an early
+PEFT method that involves adding small additional
+parameters called adapters to each layer of the pre-
+trained model and strictly fine-tuning this small
+set of new parameters. LoRA (Hu et al., 2022) is
+another PEFT approach that trains low-rank ma-
+trices to represent the attention weights update of
+transformer-based models.
+Another group of PEFT approaches leverages
+the concept of prompting. Prefix Tuning (Li and
+Liang, 2021) optimises a sequence of continuous
+task-specific vectors, called a prefix , which are
+trainable parameters that do not correspond to real
+tokens. P-Tuning (Liu et al., 2021b) uses a similar
+strategy as Prefix tuning with a focus on text un-
+derstanding tasks, as opposed to generative tasks.
+Prompt tuning (Lester et al., 2021) simplifies Pre-
+fix tuning by introducing trainable tokens, called
+soft prompts , for each downstream task. Liu et al.(2021a) introduced P-tuning v2 which uses deep
+prompt tuning to address the lack of performance
+gain in the previous prompt tuning techniques.
+By fine-tuning a small fraction of additional pa-
+rameters, all PEFT approaches alleviate the issue
+of extensive computational resource requirements.
+3 Methodology
+3.1 Problem Statement
+Figure 2 shows the comparison between the current
+and proposed problem definitions. The general
+problem can be decomposed into two stages:
+Domain-adaptive Pretraining. Given a pre-
+trained general LLM PΦ(y|x)with its parameters
+Φand a training dataset Z={(xi, yi)}i=1,...,N. To
+adapt to the new domain, the model needs to update
+its weight iteratively from its pretrained state Φ0
+toΦ = Φ 0+ ∆Φ . This process of maximising the
+objective function can be defined as:
+argmax
+ΦX
+(x,y)∈Z|y|X
+t=1log (PΦ(yt|x, y<t))
+In the current paradigm, a full fine-tuning process
+means that the model needs to learn a ∆Φwhose di-
+mension is equal to the entire pretrained parameters
+|∆Φ|=|Φ0|, which is computationally expensive.
+In the proposed paradigm, we tune only small
+additional parameters θsuch that Φ = Φ 0+∆Φ( θ)
+whose dimension is very small compared to the
+original parameters |θ| ≪ |Φ0|. Thus, the trainingobjective can be redefined as:
+argmax
+θX
+(x,y)∈Z|y|X
+t=1log 
+PΦ+∆Φ( θ)(yt|x, y<t)
+In the current paradigm, the outcome of domain-
+adaptive pretraining would be a clinically-adapted
+LLM. While in the proposed paradigm, the out-
+come would be the clinical PEFT component,
+which can be combined with the untouched pre-
+trained general LLM for downstream applications.
+Downstream Fine-tuning. In the current
+paradigm, the pretrained clinical LLM is fine-
+tuned to the downstream tasks, such as document
+classification tasks. Suppose that we have a
+pretrained clinical LLM PΦ,Θwith its domain-
+adapted parameters Φand a newly initialised
+classifier layer Θ, as well as a training dataset
+Z={(xi, yi)}i=1,...,N. We want to maximise a
+specific loss function, such as a cross-entropy loss:
+argmax
+Φ,Θ1
+NNX
+i=1yilog (PΦ,Θ(xi))
+In contrast, in the proposed paradigm, the fine-
+tuning process only updates the small additional
+parameters ∆Φ(θ)and the classifier head Θ:
+argmax
+θ,Θ1
+NNX
+i=1yilog 
+PΦ+∆Φ( θ),Θ(xi)
+In fact, we can also decompose the fine-tuning into
+an additional "delta-updating" process:
+argmax
+θ,ϕ,Θ1
+NNX
+i=1yilog 
+PΦ+∆Φ( θ)+∆Φ( ϕ),Θ(xi)
+Similar to the Domain-adaptive Pretraining stage,
+the dimensions of the additional parameters θandϕ
+are very small compared to the original parameters.
+By updating only the additional parameters and
+the classifier head, the proposed paradigm reduces
+the computational requirements, making it more
+efficient and feasible, especially for clinical settings
+that are often resource-constrained.
+3.2 Clinical LLaMA-LoRA
+Clinical LLaMA-LoRA is a LoRA adapter built
+upon LLaMA (Touvron et al., 2023). Clinical
+LLaMA-LoRA is domain-adapted to the clinical
+domain and fine-tuned to the downstream tasks
+following the proposed procedure shown on the
+right-hand side of Figure 2.Dataset # Class Multilabel # Train # Valid # Test
+LOS 2 ✗ 30,421 4,391 8,797
+MOR 2 ✗ 33,954 4,908 9,822
+PMV 4 ✗ 5,666 707 706
+DIAG 1,266 ✓ 33,994 4,918 9,829
+PROC 711 ✓ 30,030 4,357 8,681
+Table 1: Statistics and types of downstream clinical doc-
+ument classification tasks: length of stay (LOS), mor-
+tality (MOR), prolonged mechanical ventilation (PMV),
+diagnoses (DIAG), and procedures (PROC).
+LLaMA models In this study, we evaluate two
+LLaMA models; the 7 billion parameters version
+of LLaMA (Touvron et al., 2023) and the 7 bil-
+lion parameters version of PMC-LLaMA(Wu et al.,
+2023). LLaMA was pretrained with an array of
+texts from multiple sources, such as English Com-
+monCrawl, Wikipedia, ArXiv, and C4 (Raffel et al.,
+2020). While, PMC-LLaMA is a domain-adapted
+LLaMA model that was pretrained on 4.8 million
+biomedical academic papers from PubMed Central.
+Domain-adaptive Pretraining Clinical LLaMA-
+LoRA is trained using a combination of MIMIC-
+IV de-identified discharge summaries (331,794)
+and radiology reports (2,321,355), resulting in a
+collection of 2,653,149 individual clinical notes.
+We evaluate five different PEFT techniques, which
+include LoRA ,Adaptation Prompt ,Prefix Tuning ,
+Prompt Tuning , and P-tuning .
+Our approach follows the autoregressive lan-
+guage modelling pretraining objective employed in
+the original LLaMA training. To ensure compatibil-
+ity with available computational resources, we use
+fixed model hyperparameters that allow us to fit the
+LLM into a single NVIDIA A100-80GB GPU (see
+Appendix A.1). We optimise the hyperparameters
+specific to each PEFT method using Gaussian Pro-
+cess regression for Bayesian Optimisation (Frazier,
+2018)1with a maximum of 20 trials. The detailed
+hyperparameters search space can be found in Ap-
+pendix A.2. During this stage, we evaluate the
+perplexity scores of the LLM variants.
+Downstream Fine-tuning We fine-tune the Clin-
+ical LLaMA-LoRA and Downstream LLaMA-
+LoRA to clinical document classification tasks:
+•Prolonged mechanical ventilation (PMV) : a
+binary classification task to predict whether a
+1Specifically, we use the W&B Sweep APIs: https://
+docs.wandb.ai/guides/sweepspatient will require mechanical ventilation for
+more than seven days (Huang et al., 2020).
+•In-hospital mortality (MOR) : a binary classifi-
+cation task to predict whether a patient will sur-
+vive during their hospital stay (van Aken et al.,
+2021).
+•Length of stay (LOS) : a multiclass classification
+task to predict the length of a patient’s hospital
+stay, categorised into four time-bins: less than
+three days, three to seven days, one to two weeks,
+and more than two weeks (van Aken et al., 2021).
+•Diagnoses (DIAG) : a large-scale multilabel clas-
+sification task to predict the differential diagnoses
+associated with a patient, represented by sim-
+plified ICD-9 diagnosis codes (van Aken et al.,
+2021).
+•Procedures (PROC) : a large-scale multilabel
+classification task to predict the diagnostics or
+treatments administered to a patient, represented
+by simplified ICD-9 procedure codes (van Aken
+et al., 2021).
+The label and split statistics of each dataset can be
+found in Table 1.
+During this downstream fine-tuning process,
+we use fixed model hyperparameters to ensure
+compatibility with the available computational re-
+sources, a single NVIDIA A100-80GB GPU (see
+Appendix B.1). We optimise the hyperparameters
+specific to each PEFT method using Gaussian Pro-
+cess regression for Bayesian Optimisation with a
+maximum of 20 trials. The detailed hyperparame-
+ters search space of the PEFT method can be found
+in Appendix B.2.
+For evaluating the performance of the model on
+these downstream tasks, we report the Area Under
+the Receiver Operating Characteristic Curve (AU-
+ROC) scores. Additionally, we report the macro-
+averaged AUROC score across all clinical tasks as
+commonly done in NLP benchmarking tasks (Wang
+et al., 2019; Peng et al., 2019; Gu et al., 2022).
+3.3 Baseline Models
+The baseline models used in the evaluation are as
+follows:
+•Bio+ClinicalBERT (Alsentzer et al., 2019):
+Bio+ClinicalBERT is pretrained on clinical
+notes from the MIMIC-III database. It is ini-
+tialised from a biomedical language model calledBioBERT (Lee et al., 2019), which is pretrained
+on biomedical research articles.
+•BlueBERT (Peng et al., 2019): BlueBERT is
+pretrained on clinical notes from the MIMIC-III
+database and PubMed abstracts starting from the
+pretrained checkpoint of BERT (Devlin et al.,
+2019), a general-domain language model.
+•CORe (van Aken et al., 2021): CORe is pre-
+trained on clinical notes from the MIMIC-III
+database and biomedical articles starting from
+the pretrained checkpoint of BioBERT (Lee et al.,
+2019).
+•UmlsBERT (Michalopoulos et al., 2021): Umls-
+BERT is pretrained on clinical notes from the
+MIMIC-III database starting from the pretrained
+checkpoint of Bio+ClinicalBERT while modi-
+fying the architecture and pretraining objective
+by incorporating knowledge from the Unified
+Medical Language System (UMLS) Metathe-
+saurus (Schuyler et al., 1993).
+These baseline models have been trained to per-
+form specifically on clinical data, thus providing
+comparison points for evaluating the performance
+of the proposed Clinical LLaMA-LoRA in down-
+stream clinical NLP tasks.
+4 Results and Analysis
+4.1 Pretraining
+The pretraining results can be found in Table 2.
+We employ PEFT techniques to perform domain-
+adaptive pretraining. All PEFT techniques train a
+significantly smaller number of parameters, rang-
+ing from only 0.001% to 0.24% of the original
+model parameters, which substantially decreases
+the computational resources required and short-
+ens the training time. Note that performing full-
+parameter training of LLaMA and PMC-LLaMA
+with just a single GPU is unfeasible. Instead, PEFT
+techniques require less than 24 hours per epoch on
+average with only a single NVIDIA A100-80GB
+GPU.
+Among all the PEFT techniques, LoRA emerges
+as the best-performing one for both LLaMA and
+PMC-LLaMA in the clinical domain-adaptive pre-
+training, achieving the lowest perplexity scores
+of 2.244 and 2.404, respectively. This pretrained
+LoRA is referred to as Clinical LLaMA-LoRABase Model PEFT Trainable Params Train Perplexity Test Perplexity Train Time (h:m:s)
+LLaMALoRA 8,388,608 (0.12%) 1.858 2.244 21:37:42
+Adaptation Prompt 1,228,830 (0.02%) 2.561 2.865 24:57:17
+Prefix Tuning 5,242,880 (0.08%) 2.815 2.748 20:11:07
+Prompt Tuning 61,440 (0.0009%) 4.846 4.007 23:27:28
+P-tuning 16,093,696 (0.24%) 2.723 3.271 23:49:31
+PMC-LLaMALoRA 2,097,152 (0.03%) 1.938 2.404 21:32:59
+Adaptation Prompt 1,228,830 (0.018%) 2.374 2.867 23:33:10
+Prefix Tuning 2,621,440 (0.04%) 1.789 2.848 20:13:10
+Prompt Tuning 40,960 (0.0006%) 4.821 4.385 22:25:32
+P-tuning 2,171,392 (0.03%) 3.491 4.572 22:28:15
+Table 2: Domain-adaptive Pretraining results of LLaMA and PMC-LLaMA trained on MIMIC-IV clinical notes
+with a language modelling objective. Lower perplexity scores indicate better language modelling performance. The
+boldface row indicates the model with the lowest perplexity score from each base model variant.
+in the subsequent sections. The following experi-
+ments in downstream fine-tuning will utilise this
+pretrained Clinical LLaMA-LoRA.
+4.2 Downstream results
+From the downstream fine-tuning results shown
+in Table 3, we can decompose the analysis into
+multiple research questions:
+Can LoRA help fine-tune LLaMA from other
+domains (general and biomedical) to achieve
+higher AUROC scores in clinical tasks? We
+compare the results obtained by LLaMA and
+LLaMA + LoRA, as well as PMC-LLaMA and
+PMC-LLaMA + LoRA, as presented in Table 3.
+The obtained results consistently demonstrate im-
+proved AUROC scores when utilising LoRA across
+all tasks. The macro-averaged AUROC score of
+LoRA-equipped LLaMA shows a notable 13.01%
+increase when compared to the LLaMA-only base-
+line. Similarly, LoRA-equipped PMC-LLaMA ex-
+hibits a 12.2% improvement in macro-averaged
+AUROC compared to the original PMC-LLaMA
+Both LLaMA and PMC-LLaMA, when equipped
+with LoRA, exhibit significant AUROC score
+improvements in all tasks except the prolonged
+mechanical ventilation prediction task, which is
+proven challenging for all model variants.
+Furthermore, the marginal difference in AUROC
+scores between PMC-LLaMA and the general-
+domain LLaMA can be attributed to two factors.
+Firstly, the original LLaMA has been exposed to
+biomedical concepts during its pretraining, reduc-
+ing the need for domain-adaptive pretraining to the
+biomedical domain. Secondly, clinical NLP tasks
+are challenging, even for biomedical LLMs.Can LoRA-equipped LLaMA and PMC-
+LLaMA perform comparably in comparison to
+clinically trained LMs? We compare the AU-
+ROC scores obtained by the baseline models, and
+LoRA-equipped LLaMA and PMC-LLaMA (see
+Table 3). Among the baseline models, BlueBERT
+performs the best with a macro-averaged AUROC
+score of 69.59%. Compared to BlueBERT, both
+LLaMA and PMC-LLaMA underperform with
+macro-averaged AUROC scores of 58.61% and
+60.51%, respectively. This finding highlights the
+importance of clinical-specific fine-tuning.
+Significant improvements can be observed in
+LoRA-equipped LLaMA and PMC-LLaMA, with
+macro-averaged AUROC scores of 71.62% and
+72.71%, respectively. We notice considerable im-
+provements in the diagnoses and procedures predic-
+tion tasks. For example, LoRA-equipped LLaMA
+achieves AUROC scores of 78.37% and 87.49%
+in the diagnoses and procedures prediction tasks,
+respectively, compared to 73.81% and 77.70% for
+BlueBERT. This represents improvements of 4.56%
+in diagnoses prediction and 9.79% in procedures
+prediction. Improvements are also observed in the
+results obtained by LoRA-equipped PMC-LLaMA,
+outperforming BlueBERT by 5% in diagnoses pre-
+diction and 9.02% in procedures prediction.
+Overall, LoRA-equipped LLaMA and PMC-
+LLaMA achieve higher AUROC scores than the
+baseline clinical LMs in various clinical predic-
+tion tasks, particularly in diagnoses, procedures,
+and mortality predictions, while maintaining com-
+petitive AUROC scores in length-of-stay predic-
+tion. However, LoRA-equipped LLaMA and PMC-
+LLaMA still underperform in prolonged mechani-
+cal ventilation prediction.Model PMV MOR LOS DIAG PROC Macro Average
+BlueBERT 53.12 76.95 66.36 73.81 77.70 69.59
+UmlsBERT 55.49 75.87 66.06 64.34 74.19 67.19
+Bio+ClinicalBERT 54.49 72.92 65.13 65.97 71.73 66.05
+CORe 52.11 71.52 64.17 72.40 72.73 66.59
+LLaMA ∗ 51.38 66.80 57.65 60.06 63.83 58.61
++ LoRA 51.65 74.89 65.70 78.37 87.49 71.62
++ Clinical LLaMA-LoRA (Frozen) 51.62 65.66 58.16 63.47 69.01 61.58
++ Downstream LLaMA-LoRA 51.11 66.00 58.04 60.46 65.30 60.18
++ Clinical LLaMA-LoRA (Trainable) 55.76 74.81 64.83 76.07 82.76 70.85
++ Downstream LLaMA-LoRA 56.72 76.99 65.86 78.29 86.17 72.81
+PMC-LLaMA ∗ 53.06 66.77 57.94 60.17 64.63 60.51
++ LoRA 53.84 78.03 66.14 78.81 86.68 72.70
++ Clinical LLaMA-LoRA (Frozen) 51.33 67.19 58.13 63.59 68.26 60.06
++ Downstream LLaMA-LoRA 50.90 67.00 58.31 60.50 64.42 60.23
++ Clinical LLaMA-LoRA (Trainable) 52.88 75.86 65.89 79.66 86.85 72.23
++ Downstream LLaMA-LoRA 52.21 76.54 68.42 78.67 87.08 72.58
+Table 3: AUROC scores in clinical downstream document classification tasks. The macro-averaged AUROC score is
+calculated by taking the average of AUROC scores across all tasks. The boldface cell indicates the highest AUROC
+score in a column, the row in italic indicates the model variant with the highest macro-averaged AUROC in its
+category. ∗Due to restricted computing resources, the fine-tuning of LLaMA and PMC-LLaMA was constrained to
+only training the final classification layer.
+Model PMV MOR LOS DIAG PROC Macro Average
+BlueBERT 53.12 76.95 66.36 73.81 77.70 69.59
++ LoRA 55.77 81.90 70.48 70.66 78.10 71.56
+UmlsBERT 55.49 75.87 66.06 64.34 74.19 67.19
++ LoRA 56.59 80.33 69.03 69.68 77.53 70.63
+BioClinicalBERT 54.49 72.92 65.13 65.97 71.73 66.05
++ LoRA 56.13 78.81 68.28 68.53 75.19 69.39
+CORe 52.11 71.52 64.17 72.40 72.73 66.59
++ LoRA 55.31 79.27 68.18 67.34 72.36 68.49
+LLaMA + Clinical LLaMA-LoRA + Downstream LoRA 56.72 76.62 65.86 78.29 86.17 72.81
+Table 4: AUROC scores of the LoRA-equipped baseline models in clinical downstream tasks. The boldface cell
+indicates the highest AUROC score in a column. The row in italic indicates the model variant with the highest
+macro-averaged AUROC in its category.
+Can LLaMA and PMC-LLaMA with Clinical
+LLaMA-LoRA achieve higher AUROC scores
+than the clinically trained LMs? The domain-
+adaptive pretraining step yields the clinically-
+trained LoRA adapters for LLaMA and PMC-
+LLaMA, called Clinical LLaMA-LoRA. We
+compare the results of Clinical LLaMA-LoRA-
+equipped LLaMA and PMC-LLaMA with the base-
+line models. We evaluate Clinical LLaMA-LoRA
+with and without downstream fine-tuning, referred
+to as "Trainable" and "Frozen" respectively.
+The results indicate that Clinical LLaMA-LoRA-
+equipped LLaMA and PMC-LLaMA outperform
+the baseline models. LLaMA with a trainable Clin-
+ical LLaMA-LoRA achieves an AUROC score of
+70.85%, surpassing BlueBERT’s score of 69.59%.
+PMC-LLaMA with a trainable Clinical LLaMA-
+LoRA achieves an even higher AUROC score of72.23%. These findings demonstrate that the Clini-
+cal LLaMA-LoRA contributes to higher AUROC
+scores for LLaMA and PMC-LLaMA over clini-
+cally trained LLMs.
+Can LLaMA and PMC-LLaMA with Clinical
+LLaMA-LoRA achieve higher AUROC scores
+than the other fine-tuning variants? We exam-
+ine the importance of the domain-adapted LoRA
+by comparing the results obtained by LLaMA and
+PMC-LLaMA equipped with Clinical LLaMA-
+LoRA against the results of LLaMA and PMC-
+LLaMA fine-tuning, both original and with LoRA.
+Firstly, we evaluate the frozen pretrained Clin-
+ical LLaMA-LoRA. Both LLaMA and PMC-
+LLaMA with frozen Clinical LLaMA-LoRA do
+not exhibit a significant increase in performance
+compared to the original fine-tuning. This indi-cates that, despite the domain-adaptive pretraining,
+the limited number of trainable parameters during
+the downstream fine-tuning restricts the potential
+improvement that the model can achieve.
+This reasoning is further supported by the sig-
+nificant improvement observed in the AUROC
+scores of LLaMA and PMC-LLaMA with train-
+able Clinical LLaMA-LoRA. LLaMA and PMC-
+LLaMA with trainable Clinical LLaMA-LoRA
+achieve 70.85% and 72.23% macro-averaged AU-
+ROC scores, respectively, massive improvements
+from the vanilla fine-tuning performance (58.61%
+and 60.51% AUROC scores respectively).
+However, Clinical LLaMA-LoRA does not
+yield significant improvements when compared
+to LLaMA and PMC-LLaMA, which are directly
+equipped with LoRA without pretraining. For in-
+stance, we can observe that LLaMA with LoRA
+achieves a slightly higher macro-averaged AUROC
+score of 71.62% compared to LLaMA with Clinical
+LLaMA-LoRA, which achieves 70.85%.
+Can a downstream LoRA adapter improve the
+AUROC scores of LLaMA and PMC-LLaMA
+equipped with Clinical LLaMA-LoRA? By
+considering Clinical LLaMA-LoRA as the "delta-
+updating" outcome of the domain-adaptive pre-
+training, we can view the downstream fine-tuning
+process as an additional "delta-updating" step.
+To investigate the impact of this approach, we
+conduct experiments by adding a Downstream
+LLaMA-LoRA to LLaMA and PMC-LLaMA
+models that were already equipped with Clinical
+LLaMA-LoRA. From Table 3, we can observe
+that Downstream LLaMA-LoRA fails to improve
+the performance of LLaMA and PMC-LLaMA
+with frozen Clinical LLaMA-LoRA. On the other
+hand, improvement can be observed when adding
+Downstream LLaMA-LoRA to LLaMA with train-
+able Clinical LLaMA-LoRA. This combination of
+LLaMA with trainable Clinical LLaMA-LoRA and
+Downstream LLaMA-LoRA achieves the highest
+macro-averaged AUROC score of 72.81%. The
+macro-averaged AUROC score of Clinical LLaMA-
+LoRA was almost similar to that of PMC-LLaMA
+with LoRA, suggesting similar efficacy between
+Clinical LLaMA-LoRA and the full fine-tuning
+process that PMC-LLaMA has undergone. More-
+over, Clinical LLaMA-LoRA offers the advantage
+of reduced computational resources and training
+time, which is aligned with the requirements of
+practical implementation in clinical settings.Can LoRA help better fine-tune clinically-
+trained LMs? The baseline models are relatively
+smaller in size compared to the LLaMA-based mod-
+els, which may be a better fit to care providers with
+limited access to computing resources. To that
+end, we experimented with fine-tuning the baseline
+models with LoRA.
+Table 4 shows the obtained results. All base-
+line models see improvements in AUROC scores
+in all tasks. For instance, the LoRA-equipped Blue-
+BERT achieves an improved macro-averaged AU-
+ROC score of 71.56% compared to the conven-
+tional fine-tuning with 69.59%.
+This finding highlights the possibility of using
+LoRA to efficiently fine-tune clinically trained
+LMs, such as BlueBERT, to downstream use cases.
+5 Conclusions
+In this study, we propose a two-step PEFT frame-
+work. We introduce Clinical LLaMA-LoRA,
+a LoRA (Hu et al., 2022) adapter built upon
+LLaMA (Touvron et al., 2023). Then, we intro-
+duce Downstream LLaMA-LoRA, a task-specific
+adapter that is trained on top of the pretrained Clin-
+ical LLaMA-LoRA. The fusion of the two adapters
+achieves state-of-the-art performance with an AU-
+ROC score of 72.81% macro-averaged across
+all clinical NLP downstream tasks, which rep-
+resents a 3.22% improvement over the previous
+best-performing model. Our proposed framework
+achieves improvement in performance while reduc-
+ing the computational requirements, which is suited
+for clinical settings that are often constrained by
+their computational power.
+We also find that the LoRA-equipped BlueBERT
+model achieves a considerable improvement of
+macro-averaged AUROC score over the full fine-
+tuning (71.56% compared to 69.59%), with no-
+table improvements in mortality and length-of-stay
+prediction. These findings further highlight the
+potential to achieve strong performance without
+extensive computational resources.
+Future works may explore developing a schema
+to address various real-world use cases, building
+upon the findings of this study. Such a schema
+would use multiple Downstream LLaMA-LoRA
+adapters tailored for different use cases while lever-
+aging the pretrained LLM and Clinical LLaMA-
+LoRA as the foundation. This solution would also
+be suited for use cases which rely on private data
+commonly encountered in care provider settings.Limitations
+This study presents a two-step PEFT framework
+aimed at effectively adapting LLMs to diverse clin-
+ical downstream applications. However, the evalu-
+ation of our model was restricted to MIMIC-based
+datasets, which are constrained to English and ob-
+tained exclusively within the Commonwealth of
+Massachusetts, United States of America. Con-
+sequently, despite the promising efficacy demon-
+strated by our proposed method, it would have been
+advantageous to directly assess its performance
+across diverse hospital systems spanning various
+geographical locations and languages. This would
+enable a more comprehensive understanding of its
+applicability and generalizability. However, it is
+essential to acknowledge that conducting such an
+analysis would require working within a trusted
+research environment and obtaining the necessary
+permissions to access the relevant datasets.
+It is crucial to recognise the restrictions imposed
+on accessing internal clinical datasets, as they limit
+our ability to evaluate the effectiveness of our
+approach across different care provider systems.
+Therefore, we encourage care providers to conduct
+internal experiments within their trusted research
+environment to ensure the efficacy of our proposed
+method within their specific use cases should they
+adopt this approach.
+Despite the demonstrated performance improve-
+ments, the proposed model may still be susceptible
+to spurious correlations. Predicting patient out-
+comes solely based on clinical notes presents sig-
+nificant challenges due to the other factors that may
+not be captured within those notes. For instance,
+the length of patient’s in-hospital stay is not solely
+correlated with their diagnoses and disease progres-
+sion. Factors such as the patient’s insurance status,
+which is not typically mentioned in clinical notes,
+can severely impact the duration of a patient’s stay.
+Therefore, we encourage end users of such clinical
+LLMs to consider additional measures to ensure
+predictions that reflect a holistic view of the pa-
+tient’s situation, instead of relying solely on the
+predictions of LLMs.
+Ethics Statement
+In this study, we use MIMIC-based datasets ob-
+tained after completing the necessary training.
+These datasets comply with de-identification stan-
+dards set by the Health Insurance Portability and
+Accountability Act (HIPAA) through data cleans-ing. Due to privacy concerns, we refrain from in-
+cluding direct excerpts of the data in the paper. We
+also refrain from publicly sharing the pretrained
+checkpoints.
+While our model demonstrates effectiveness, it is
+important to acknowledge the risks associated with
+relying solely on clinical outcome prediction mod-
+els. There are crucial pieces of information that
+can be found beyond the scope of clinical notes.
+Considering the potential impact on patient health
+outcomes, it is crucial to exercise caution when util-
+ising these clinical LLMs. Therefore, we propose
+that the PEFT adapter generated by our framework,
+in conjunction with the pretrained LLM, should be
+used as an aid rather than a replacement for trained
+clinical professionals.
+Acknowledgements AG was supported by the
+United Kingdom Research and Innovation (grant
+EP/S02431X/1), UKRI Centre for Doctoral Train-
+ing in Biomedical AI at the University of Edin-
+burgh, School of Informatics. PM was partially
+funded by the European Union’s Horizon 2020
+research and innovation programme under grant
+agreement no. 875160, ELIAI (The Edinburgh Lab-
+oratory for Integrated Artificial Intelligence) EP-
+SRC (grant no. EP/W002876/1), an industry grant
+from Cisco, and a donation from Accenture LLP;
+and is grateful to NVIDIA for the GPU donations.
+BA was partially funded by by Legal and Gen-
+eral PLC as part of the Advanced Care Research
+Centre and by the Artificial Intelligence and Mul-
+timorbidity: Clustering in Individuals, Space and
+Clinical Context (AIM-CISC) grant NIHR202639.
+For the purpose of open access, AG has applied a
+creative commons attribution (CC BY) licence to
+any author-accepted manuscript version arising.

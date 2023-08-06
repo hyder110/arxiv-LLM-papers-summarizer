@@ -1,0 +1,23 @@
+Summary:
+
+This paper focuses on understanding the coordination structure of neurons in neuronal networks using statistical physics of disordered systems.
+The researchers study networks of spiking leaky integrate-and-fire neurons and use mean-field and linear-response methods to map the networks to linear rate models with an equivalent correlation structure.
+They show that heterogeneity in covariances in neuronal networks is not a result of variability in single-neuron firing statistics but stems from sparse realization and variable strength of connections.
+The average correlations between neurons are found to be insensitive to heterogeneity but it modulates the variability of covariances across many orders of magnitude.
+The study uses disorder-average and replica techniques to derive quantitatively matching beyond-mean-field predictions for the mean and variance of cross-covariances.
+The researchers present a systematic inclusion of variability in network connectivity and derive a relation between mean and variance of covariances and the mean and variance of network connectivity.
+They investigate the sources of variance in neuronal coordination structures and analyze covariances in a network model of cortical dynamics.
+The study shows that the wide distribution of synaptic amplitudes and sparsity in connectivity between neurons contribute to variability in neuronal dynamics.
+The researchers use linear-response theory and simulation to analyze spike-count covariances in the spiking network and compare the results with theoretical estimates.
+
+Keywords:
+- Neuronal coordination
+- Statistical physics
+- Disordered systems
+- Heterogeneity
+- Mean-field theory
+- Variability in network connectivity
+- Covariances
+- Spiking leaky integrate-and-fire neurons
+- Linear-response methods
+- Beyond-mean-field predictions

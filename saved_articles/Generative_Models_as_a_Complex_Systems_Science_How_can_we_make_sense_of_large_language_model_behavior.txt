@@ -1,0 +1,1265 @@
+Generative Models as a Complex Systems Science:
+How can we make sense of large language model behavior?
+Ari Holtzman1and Peter West and Luke Zettlemoyer
+University of Washington
+{ahai,pawest,lsz}@cs.washington.edu
+Abstract
+Coaxing out desired behavior from pretrained
+models, while avoiding undesirable ones, has
+redefined NLP and is reshaping how we interact
+with computers. What was once a scientific en-
+gineering discipline—in which building blocks
+are stacked one on top of the other—is arguably
+already a complex systems science—in which
+emergent behaviors are sought out to support
+previously unimagined use cases.
+Despite the ever increasing number of bench-
+marks that measure task performance , we lack
+explanations of what behaviors language mod-
+els exhibit that allow them to complete these
+tasks in the first place. We argue for a system-
+atic effort to decompose language model behav-
+ior into categories that explain cross-task per-
+formance, to guide mechanistic explanations
+and help future-proof analytic research.
+1 The Newformer:
+A Thought Experiment
+Consider the following thought experiment:
+Tomorrow, researchers at an industry
+lab publicly release a new kind of pre-
+trained model: the Newformer. It
+has a completely different architecture
+than the Transformer (no attention, non-
+differentiable components, etc.), that out-
+performs all pretrained Transformers on
+the vast majority of benchmarks. Inde-
+pendent labs quickly verify that these
+results are sound, even on just-released
+benchmarks. While the composition of
+the training data is public, it is so ex-
+pensive to train that no lab can afford to
+replicate it, even the one that produced it.
+Scaled-down versions do not exhibit the
+same performance or interesting behav-
+iors as the original model.(A)
+1Incoming faculty at University of Chicago1.1 How should we study the Newformer?
+Identifying high-level behaviors a model does or
+does not share with older models can steer us to-
+ward lower-level mechanisms it uses to solve tasks
+(§1.2, Figure 1). Interpretation techniques that rely
+on low-level details are model specific (§1.3) and
+often abandoned as the field changes. The New-
+former is fictional, but it can help us reconceptu-
+alize the goals and methods of generative model
+research in light of the new landscape (§1.4).
+How should we factorize model behavior into
+understandable and explanatory categories? (§2,
+Figure 2) We present a formalism for describing
+behavior (§2.1), noting that this corresponds to a
+metamodel that predicts aspects of a primary model
+(Figure 3). Benchmarks help us measure perfor-
+mance , but rarely discover behavior (§2.2) or char-
+acterize it (§2.3). Instead, discovered behaviors
+motivate new benchmarks (§2.4, Figure 4).
+Generative models qualify as complex systems
+(§3), due to their emergent behaviors (§3.1, Fig-
+ure 5), which are more often discovered than engi-
+neered (§3.2). A lack of clarity on what models do
+holds us back, as if we were studying organic chem-
+istry without knowledge of biology (§3.3). This
+issue remains even when proprietary models are
+released (§3.4), as the problem lies in our lack of
+behavioral vocabulary; investigating possible map-
+pings between training data and generated data can
+help us establish new behavioral categories (§3.5).
+Despite the challenges, generative models are
+easier to study than many naturally arising com-
+plex systems (§4), because they are simulable by
+construction (§4.1). In contrast to physical phe-
+nomena, we can easily conduct a wide range of
+storable, repeatable experiments without observer
+effects (§4.2, Figure 7). We do, however, rely on
+the availability of open-source models (§4.3).
+We conclude (§5) with an argument for increased
+focus on the foundational “what are models doing?”
+to guide the classic “why are models doing that?”arXiv:2308.00189v1  [cs.LG]  31 Jul 2023Figure 1: To explain why learned models self-organize the way they do from the bottom-up, it is useful to have
+top-down hierarchy of partially decomposed behaviors, to guide hypotheses with functionality we know the overall
+model has. While networks are composed of bedrock units for which we have a perfect understanding by construction
+(e.g. neurons), most emergent aspects of these systems are still undefined and undiscovered (represented as “?”).
+1.2 Top-down behavioral taxonomy guides
+bottom-up mechanistic explanation
+The Newformer is a completely opaque result when
+considering benchmarks alone; it is simply better
+at doing what we want it to do than Transformer
+models (Vaswani et al., 2017) were before. How-
+ever, as shown in Figure 1, a hierarchical taxonomy
+of LM behavior can guide our investigation of the
+Newformer, leading to questions such as:
+1.What behaviors do the Transformer models
+and the Newformer model share, e.g., does
+the Newformer also repeat phrases more often
+than as seen in the training data?
+2.Do they exhibit similar behaviors in the same
+contexts, e.g., does the Newformer need fewer
+input-output demonstrations to exhibit in-
+context learning at peak performance?
+3.Do high-level behaviors decompose into the
+same lower-level behaviors or does the New-
+former use different mechanisms to express
+them, e.g., when the Newformer is used for
+paraphrasing does it also tend to exactly copy
+the input?
+Without such behavioral categories, we risk investi-
+gating the wrong direction when we try to interpretmodels, because we do not know what phenomena
+we are trying to explain in the first place.
+Observed behavior can tell us where to look for
+bottom-up explanations. Al-Rfou et al. (2019) ob-
+served emergent copying behavior in Transformer
+Language Models (LMs), paving the way for the
+discovery of copying heads that make copying pos-
+sible. Characterizing copying heads led to the dis-
+covery of induction heads (Elhage et al., 2021;
+Olsson et al., 2022): Transformer heads that are ca-
+pable of copying abstract representational patterns
+in previous layers and appear to be responsible for
+in-context learning. Olsson et al. (2022) show that
+induction heads exhibit a variety of pattern match-
+ing behaviors that are still not fully catalogued.
+Attempting to explain neural networks bottom-
+up without being guided by behavior can make it
+difficult to interpret results. For example, many
+works that identify anisotropy in the embedding
+spaces of large LMs diagnose this as a deficiency,
+and attempt to fix it (Wang et al., 2020; Ethayarajh,
+2019; Gao et al., 2019). However, recent work
+suggests that this anisotropic property may not ac-
+tually limit expressivity (Bi ´s et al., 2021), may be
+a result of the transformer architecture specifically
+(Godey et al., 2023), and may actually be helpful
+for language models (Rudman and Eickhoff, 2023).1.3 The Transformer is the old Newformer
+A moderate Newformer event has occurred at least
+once before with LMs: the switch from Recurrent
+Neural Networks (RNNs) to Transformers. Despite
+many partial explanations (Lakretz et al., 2019;
+Olah, 2015; Hochreiter and Schmidhuber, 1997),
+we still lack an explanatory theory of how LSTM
+(Hochreiter and Schmidhuber, 1997) LMs such as
+ELMo (Peters et al., 2018) worked—what behav-
+iors they could and could not capture, how these
+composed, etc.—even as they were replaced by
+models like BERT (Devlin et al., 2019) with simi-
+lar use cases, but completely different architectural
+details. This does not bode well for the introduc-
+tion of something like the Newformer which is
+significantly farther from the Transformer than the
+Transformer is from the LSTM.
+On their own, bottom-up methods do not trans-
+fer well to new systems: analysis techniques that
+relied on mutated state and gating in RNNs, such
+as visualizing gating mechanisms (Karpathy et al.,
+2015), are not applicable to Transformers. Inter-
+pretation methods for Transformer models (Weiss
+et al., 2021; Rogers et al., 2020), such as those
+that use attention, are unlikely to transfer over to
+the Newformer which breaks many previously im-
+mutable assumptions.
+This suggests the value in doing more interpreta-
+tion work that treats models like black-box es, as if
+we do not have access to their internal mechanisms.
+There is growing interest in looking at NLP systems
+as black-boxes (Bastings et al., 2022; Ribeiro et al.,
+2020; Linzen et al., 2019), though much of this
+work still uses intermediate outputs—such as em-
+beddings—rather than directly analyzing behavior
+in the output space models are trained to fit. Truly
+black-box methods can help insulate our analysis
+from change, giving us an anchor point that will
+always be testable on models that use the same
+modality (e.g., text, speech, images). Belinkov and
+Bisk (2017) show that neural machine translation
+systems are brittle to both natural spelling errors
+and synthetic character-level noise. This obser-
+vation can be extended to ask: Is the Newformer
+robust to the same kinds of noise? Up to what
+threshold? Does the noise appear to be localized
+in the brittleness of tokenization, as was the case
+for Transformer-based systems (Provilkov et al.,
+2020)? Developing a rich inventory of such tests
+would give us a universal scaffolding for analyzing
+any Newformer the moment it is discovered.1.4 Are we there yet?
+Deciding whether a Newformer-like event has truly
+happened is an unresolvable question. New models
+are always partially derivative, and new (possibly
+artificial) axes can always be invented where they
+are worse or better (Wolpert and Macready, 1997).
+Yet three years on it is still infeasible for most
+labs to train a GPT-3 (Brown et al., 2020) level
+LM, costing approximately half a million dollars in
+compute alone for private companies—with engi-
+neering teams—to produce a similar model (Abhi-
+nav Venigalla, 2022). Thus it seems that the gap for
+training is only growing wider as ChatGPT (Schul-
+man et al., 2022) and GPT-4 (OpenAI, 2023) be-
+come commonplace in research (Yang et al., 2023;
+Zhang et al., 2023), production (Eloundou et al.,
+2023; George and George, 2023; Ray, 2023), and
+even model evaluation (Liu et al., 2023b; Zheng
+et al., 2023).
+Unlike the Newformer these models were
+never released, are frequently deprecated (OpenAI,
+2023), change from day to day (Perry, 2023; South-
+ern, 2023), and are know to be unstable over theo-
+retically deterministic queries (Deng, 2023). Yet,
+the open source community has caught-up quickly
+(Alizadeh et al., 2023; Mukherjee et al., 2023; Gu-
+nasekar et al., 2023, inter alia ) helped by industry
+labs’ open-sourcing efforts (Touvron et al., 2023;
+Almazrouei et al., 2023; Stability AI, 2023, inter
+alia), and new finetuning tehchniques (Taori et al.,
+2023; Vicuna Team; Dettmers et al., 2023).
+However, the question still remains: how should
+we explain models not everyone can train? Models
+that are so arduous, slow, and expensive to train
+that we will likely never ablate all the necessary
+variables needed to study them properly?
+This leaves us with mere behavior. We generally
+think of there as being two different kinds of behav-
+ior: the neural behavior of different activations in
+models and the “output” of the model in the form
+of human media (e.g., text, images, videos, etc.).
+Most methods of explaining models focus on the
+former: trying to explain why neural activations
+cluster into certain patterns and trying to under-
+stand what those patterns mean about the output.
+We argue that not enough attention has been
+given to formalizing the latter: what models are do-
+ing in the first place, in terms of regularities in their
+outputs. Without such a formalization, bottom-up
+methods will have a much harder time deciding
+what precisely to explain, and what is simply noise.2 The Behavioral Bottleneck
+How do we avoid proposing a new explanation for
+every exhibited difference? Surely we do not be-
+lieve that we need a benchmark for every prompt
+that elicits slightly different behavior from a gen-
+erative model? One solution is to propose many
+possible mechanisms, but make it an explicit re-
+search agenda to discover the most parsimonious
+explanation , a concept visualized in Figure 2. In
+other words, we want to be able to predict the as-
+pects of text we care about (e.g. factuality) with
+the simplest rules possible. We briefly formalize
+this concept in §2.1, but the bulk of this paper con-
+cerns the need for this new research focus and the
+perspective it yields.
+Thousands of papers observe behavioral tenden-
+cies in models, such as the ability of a pretrained
+Transformer to copy from the input context (Elhage
+et al., 2021; Al-Rfou et al., 2019), which we will
+adopt as a running example. To understand models
+better, we must rigorously describe (1) what aspect
+of generative behavior a given mechanism predicts
+(e.g. repetition, copying from the training set, etc.)
+and (2) how much of the information in the output
+space of the model such predictions explain (since
+most will not predict 100% of what a model emits).
+Figure 2 serves as a visual map of how we might
+explain models via behavior. On the top level we
+have a huge diversity of benchmarks that currently
+exist, and the even larger number that may one day
+exist. On the bottom we have the mathematical
+abstraction that describes the space of all possible
+models. Clearly both of these represent many more
+possibilities than is useful as an explanation or than
+isnecessary to explain specific facets of model be-
+havior. The intermediate levels, then, deal with
+simplified metamodels, i.e., models of the underly-
+ing generative model that are less explanatory, but
+still allow us to interpret or theorize around models.
+2.1 A working definition of “behavior”
+Fong and Vedaldi (2017) state that: “An explana-
+tion is a rule that predicts the response of a black
+boxfto certain inputs.” We think of a behavior
+as an explanation of limited aspects of a model, a
+concept we briefly formalize. We make reference
+to this formalization sparsely throughout the rest of
+the paper, as the argument can be understood with-
+out it, and we stress that the problem we are facing
+is more fundamental than a missing formalism.Given a generative model from one input
+medium X(e.g., strings composed of at most 2048
+tokens) and a source of randomness Rto an output
+medium Y(e.g., 512x512 pixel images):
+M:X × R → Y (1)
+we can define a behavior as a function from the
+same input medium to a feature set F:
+B:X → F (2)
+For instance, Mmay be a general purpose text-
+to-image model trained on scraped data, while B
+may map a string x∈ X to a probability that an
+image M(x), contains at least one dog. Or Xand
+Ymay both be Unicode strings, in the case of an
+LM, with Bbeing a binary prediction as to whether
+M(x)will eventually get caught in a repetition
+loop (Holtzman et al., 2020).
+Our goal in proposing behaviors is to explain the
+underlying model using rules that capture model
+tendencies. Behaviors are explanatory to the extent
+that they give us information about the application
+of the model Munder distributions DXandDR
+overXandR, which we collectively refer to as D
+for brevity. We can formalize the notion of “giving
+us information about the application of the model”
+through the mutual information:
+ID(M(X,R);B(X)) = (3)
+HD(M(X,R))−HD(M(X,R)|B(X))(4)
+whereXandRare random variables drawn from
+XandRaccording to DXandDR, andHis the en-
+tropy: H(Y) =ED[−logpD(Y)]for a random
+variable Y. The mutual information is a direct
+measure of how many bits of information we learn
+about one variable given another , so this formula-
+tion directly tells us how much a behavior reveals
+about expected model output.
+We call setting DXto be uniform over Xthe
+“mechanistic distribution.” In this case, the mutual
+information is unrelated to the expected distribution
+of inputs in the wild, but is instead representative
+of how well we can model anyinput to M. For
+instance, explaining an LM under the mechanistic
+distribution would require a behavior that predicts
+aspects of the LM’s output accurately even for long
+strings of gibberish. This may be difficult, since we
+often use human linguistic features to make predic-
+tions about model outputs, but such behaviors are
+closer to the notion of mechanistic interpretabilityexplain more 
+variables more 
+interpretableByte-pair
+Encoding
+Sennrich et al. 2015Position
+Embedding
+Vaswani et al. 2017Word
+Embedding 
+Mikolov et al. 2013GELU
+Hendrycks and Gimpel
+ 2016Softmax
+Boltzmann 1868Embedding
+Isotropy
+Gao et al. 2019Sentiment
+Neuron
+Radford et al. 2017Unargmaxable
+Classes
+Grivas et al. 2022MathFraming
+Patel and Pavlick 
+2021DALL•E Hidden 
+Vocabulary
+Daras and Dimakis 2022Formal 
+Logic
+AlgebraPhilosophyParaphrasingMMLU
+Hendrycks et al. 2021GEM
+Gehrmann et al. 2021GLUE
+Wang et al. 2019BenchmarksSkills
+Behaviors
+ElementsUnexplained BehaviorsFuture BenchmarksExisting Benchmarks 
+HumanMachineExplain 
+More
+Simpler
+Rules
+Copy 
+Head
+Elhage et al. 2021Induction 
+Head
+Elhage et al. 2021Generalized
+Copy
+Olsson et al. 2022SummarizationIn-Context
+Learning
+Brown et al. 2020CrossFit
+Ye et al. 2021
+Copy 
+Al-Rfou et al. 2022
+Attention
+Bahdanau et al. 2014Learned StructureAgent
+Modeling
+Andreas et al. 2022PaperWriterMovieGenStoryBenchOpenGameFigure 2: A visual representation of different aspects of models, shown from the basic elements of models on
+the bottom up to the benchmarks we are attempting to solve. Nodes represent invented and discovered aspects
+of models. The highlighted subgraph captures the concepts that we might want to use for understanding the
+phenomenon of “copying” in Transformers, when models generate sequences that appear in their local context
+window, a behavior that serves as a running example in this paper.
+We might start out by noticing that Transformer models have higher scores on GEM (Gehrmann et al.,
+2021) ( Benchmark ), especially on summarization-like tasks ( Skill ). Inspecting the data generated by the models of
+interest, we might notice one of the qualitative differences separating Transformer models from other models is the
+ability to correctly use novel entities (Al-Rfou et al., 2019) ( Behavior ). We might ask why this is, embarking on an
+empirical study of when networks develop the ability to copy, as Elhage et al. (2021) did, discovering specific
+attention heads served as copying heads (Learned Structure supported by certain Elements ). This led to other
+discoveries such as induction heads (Elhage et al., 2021; Olsson et al., 2022) ( Learned Structure ), which were
+found to perform a kind of generalized copying that supports inference-time pattern recognition ( Behavior ), e.g.,
+for In-Context Learning (Brown et al., 2020) ( Skill ), leading to better results on fewshot benchmarks such as
+CrossFit (Ye et al., 2021) ( Benchmark ). Research can proceed by observing high-level behavioral regularities,
+explaining them via the tendencies of the model, and using this to achieve clarity about other observed behaviors.that tries to fully reverse engineer the model being
+studied (Olah, 2022).
+IfMignores its source of randomness, i.e.,
+I(M(X,R);R) = 0 —as is the case for determin-
+istic models such as a greedy-decoded LM—then
+the most explanatory behavior is simply B=
+M(X, r)for any r∈ R . This is a degenerate
+behavior, in that it is very explanatory, but has not
+brought us any closer to explaining M. There-
+fore, we would like behaviors that are not just very
+high mutual information with the model, but also
+point to predictable regularities inM, especially
+in a way that allows us to build up new hypotheses
+about it. Much has been written about what makes
+an explanation useful (Lipton, 2018; Jacovi and
+Goldberg, 2020; Chen et al., 2023, inter alia ), and
+reviewing these desiderata is out of scope for this
+paper.
+The mutual information ID(M(X,R);B(X))
+can also be viewed as how much a behavior al-
+lows us to compress the output of a model under
+a distribution D, e.g., a distribution of articles for
+a summarization task (and a random number gen-
+eratorR). This is because any bits of information
+revealed by one variable, can be used to compress
+the other, under a proper coding scheme (Cover,
+1999).
+The concept of Minimum Description Length
+(MDL) has been used as an information theoretic
+criterion for finding good hypotheses (Grünwald,
+2007). Essentially, it suggests an extension to Oc-
+cam’s razor (Barry, 2014): that we should favor
+explanations that are simple to describe and explain
+the object under study the most. We can formalize
+this notion for behaviors, via an encoding scheme
+Cthat represents behaviors Band outputs y∈ Y as
+binary strings of variable (but finite) length s∈ S,
+where |s|is the length of a string s. A naïve MDL
+objective would then be:
+argmin
+B|C(B)|+X
+x∈XEDR[|C(M(x,R)|B(X))|]
+(5)
+However, this would not suit our general objec-
+tive: we do not necessarily wish to encode all pos-
+sible data a model could produce , especially since
+most models have huge output spaces of largely
+low probability density. Instead, we would like
+to quantify the information behaviors can save us
+underDX.
+Figure 3: If we cannot train models easily, but those
+models are sufficiently general and useful, we can pre-
+dict what models can and can’t do, rather than what a
+model trained differently would do. The kiki/bouba
+categorization is a cross-culturally robust linguistic-
+conceptual mapping in humans ( ´Cwiek et al., 2022).
+To capture the idea “how much space does B
+save us under DXwe can use:
+argmin
+B|C(B)|+αHD(M(X,R)|B(X))(6)
+where we replace the second term with the condi-
+tional entropy HD, since this describes the mini-
+mum number of bits that could be used to represent
+the information encoded (Cover, 1999). This can
+be interpreted as, “we would like behaviors that on
+average, save us more space in terms of encoding
+the possible outcomes of a model than they take to
+describe.” αallows us to trade-off how much we
+weight the representation of the behavior vs. the
+outputs of a model, where larger values of αmay
+be appropriate if we are dealing with a many out-
+puts, making the bits saved by way of conditioning
+on the behavior more pertinent.
+Overall, we seek to find behaviors that are both
+explanatory and simple to describe. We can think of
+this as attempting to find a metamodel : models that
+are designed or trained to predict another model’s
+behavior (Barton and Meckesheimer, 2006), as il-
+lustrated in Figure 3. This suggests we want to find
+behaviors that transfer over different contexts so
+we can predict where models will be useful and
+where they will break down.2.2 Can benchmarks discover new behavior?
+In general, discrepancies in performance between
+benchmarks can hintat potentially new behavior,
+but they cannot discover behavior we have not yet
+observed. Given the diversity of NLP benchmarks,
+it is likely that the Newformer (§1) will perform
+drastically different on certain pairs of benchmarks
+we believe to be related, e.g., the same task in two
+different domains. This is a useful signal for where
+to inspect behavior, but benchmarks alone cannot
+reveal new abilities, underlying mechanisms, or
+shortcut heuristics the Newformer is relying on
+thatcause a discrepancy in results and what else its
+effects are.
+For example, it is very difficult to imagine how
+prompting (Radford et al., 2019b; Liu et al., 2021)
+could have been discovered via benchmarking.
+Finetuning a generative model, such as GPT-2
+(Radford et al., 2019a), and doing well or badly
+at any number of benchmarks could not have re-
+vealed a model can be prompted with text that
+matched training data patterns, to elicit behavior
+such as summary generation via the string “TL;DR”
+or translation through formatting such as “French
+sentence: <source> \\English sentence:”. These
+discoveries are a result of inspecting the generative
+behavior of GPT-2, and only afterwards testing a
+perceived pattern on benchmarks.
+How do we try to explain the behavior of mod-
+els, once we know there’s a discrepancy we want
+to explain? Often we attempt to look at the qualita-
+tive differences between tasks a model is good or
+bad at, and come up with hypotheses for what the
+model is failing to do when it performs poorly, e.g.,
+across different finetuning tasks (Li et al., 2021).
+While useful for coming up with hypotheses, using
+benchmarks as evidence of behavior requires care,
+because it is often unclear what a given benchmark
+is actually testing. Rohrbach et al. (2018) show
+that image captioning systems hallucinate objects
+not present in the scene, and are unintentionally
+rewarded for doing so by standard metrics, by cap-
+turing phrasing and ngrams of reference captions
+better when hallucinating. Liao et al. (2021) de-
+scribe a detailed framework for assessing bench-
+mark validity and note the complexity of ensuring
+benchmarks test what we would like them to. Thus,
+since we often do not know precisely what behavior
+benchmarks test, they might indicate what contexts
+to examine the Newformer in, but not precisely
+what it does.2.3 Can benchmarks characterize behavior?
+Consider standardized tests for humans—such as
+the SAT (for College Admission Counseling, 2008)
+or the NCEE ( 百度百科, 2022)—while the debate
+about how much these tests tell us is heated, there
+is little resistance to the statement: test scores do
+not fully describe human behavior , even within the
+subjects they test such as mathematics and biology.
+Performance data about a bicycle is not suffi-
+cient to reverse-engineer its gear system. Even
+with perfectly valid benchmarks, the subspace of
+benchmark performance is not descriptive enough
+to characterize behavior. As we greatly increase
+the number of benchmarks, we are left with the
+problem of determining precisely how benchmarks
+overlap and differ in a way that characterizes behav-
+ior (Figure 2). Because the space of benchmarks
+is limited, as we test for human-desirable skills
+and human-interpretable pitfalls, discovering novel
+behavior in non-human systems is difficult.
+Measuring systems only for their expected pur-
+poses makes it difficult to disentangle component
+behaviors that allow models to produce the de-
+sired or undesired outputs, as failure under dis-
+tribution shift often reveals. For example, neural
+machine translation often outputs completely irrel-
+evant translations under domain shift (Wang and
+Sennrich, 2020; Müller et al., 2020). This is exac-
+erbated by the fact that most generative models are
+not trained with a precise purpose in mind.
+Imagine testing whether an LM can summarize
+an article. In order to summarize an article a req-
+uisite skill required by models is copying , because
+novel entities are constantly appearing, but need
+to be referenced in the summary. See et al. (2017)
+add a copying mechanism to an RNN in order to
+improve its copying ability for summarization. If
+we were to only look at performance on summariza-
+tion, we would be unlikely to notice whether copy-
+ing was happening or not directly—only whether
+performance is hitting certain desired levels.
+Benchmarks are, by necessity, scoped to certain
+contexts that are presumed to test for certain behav-
+iors—but they do not directly tell us what patterns
+the model is exploiting to solve the task, as Liao
+et al. (2021) point out. This was a hard-learned les-
+son in many benchmarks, such as when it was dis-
+covered that SNLI (Poliak et al., 2018; Gururangan
+et al., 2018) could be solved with hypothesis-only
+systems that only use a subset of the information
+that was supposed to be necessary to the task.Figure 4: An example of how behaviors can be used to create new evaluations. These examples were generated
+from GPT-4, but required significant human curation, suggesting that Thought Experiment B has not yet occurred.
+2.4 Behaviors: building blocks for evaluation
+Benchmarks are still the best solution for coordi-
+nating cross-lab experimental comparisons , and we
+expect them to continue to be useful in that respect
+indefinitely. However, to answer “ What strategy
+is the Newformer using for this task?” and “What
+failure modes should we expect?” and “What else
+do we expect the Newformer to be capable of?” we
+cannot use benchmarks alone to guide where we
+inspect model behavior, nor as a means to define it.
+Instead, we propose an increased focus on behav-
+ior, because we believe the science of generative
+models is currently held back by insufficient un-
+derstanding of what models are doing in general,
+rather than how well models perform on specific
+tasks. These are highly related to each other, and
+we can think of behaviors as building blocks for
+evaluation . Consider the following thought experi-
+ment:
+A new LM is released with many of the
+expected capabilities, such as basic arith-
+metic and basic translation, but another
+interesting behavior is noticed and hy-
+pothesized: when asked properly in nat-
+ural language, the model can stegono-
+graphically encode complex hidden mes-
+sages while completing other tasks.(B)When this LM is released it is unlikely there are
+any benchmarks that test this particular capabil-
+ity. While we could design a specific benchmark
+for this behavior, this would be somewhat counter-
+productive: what we really care about is the Carte-
+sian product of this behavior and other tasks that
+we were already testing. In this sense, behaviors
+are the building blocks for benchmarks.
+As Chang and Bergen (2023) point out in their
+survey of behaviors, researchers are often surprised
+by the outputs of the models they work with; it
+should not surprise us that we cannot premeditate
+benchmarks to capture behavior when modeling im-
+provements have outpaced our ability to be exposed
+to generated data. One way to be more nimble to
+new behaviors, is to directly measure behaviors
+we expect (Jain et al., 2023), flagging unexpected
+combinations for inspection.
+On the surface, it might seem that naming behav-
+ioral categories such as “copying” or “in-context
+learning” is just as liable to obsolescence as any
+other analysis. What should we do if the New-
+former does not exhibit these behaviors? We argue
+that this is a very unlikely scenario: as long as we
+are attempting to train models to mimic human un-
+derstandable phenomena, there will be human per-
+ceivable patterns that we expect models to mimic
+as well.3 Generative Models
+as a Complex Systems Science
+While the Newformer (§1) is a thought experiment,
+it is representative of many facets of research re-
+garding generative models today; suddenly, focus
+has shifted to searching for emergent behaviors
+in large and often inscrutable models. Larger pre-
+trained models continue to be trained and continue
+to perform better (Schulman et al., 2022; OpenAI,
+2023; Pichai, 2023, inter alia ). While efforts to
+release models (Touvron et al., 2023; Almazrouei
+et al., 2023; Stability AI, 2023) and involve more
+researchers in model training (BigScience, 2022)
+can increase transparency and provide more infor-
+mation, it is well beyond the resources of the vast
+majority of labs to train. Efficiency breakthrough
+are likely to be exploited to further increase model
+size and feed into the same problem they were
+meant to solve.
+Thus, it seems likely that training and re-training
+models is no longer the path towards understanding
+them for the vast majority of researchers. In many
+fields the creation of what it studies is impossible,
+from biology to astronomy. Many of these fields
+arecomplex systems sciences , in that they focus
+on the question illustrated in Figure 5: how do
+the macro-level behaviors we observe (life, black
+holes, etc.) arise from the micro-level units we
+understand better (chemicals, regular matter, etc.)?
+In other words, we suggest studying generative
+models themselves not just generative modeling .
+3.1 What is a complex system?
+Newman (2011) establishes a working definition:
+[A] system composed of many interact-
+ing parts, such that the collective behav-
+ior of those parts together is more than
+the sum of their individual behaviors.
+The collective behaviors are...“emergent”
+behaviors, and a complex system can
+thus be said to be a system of interacting
+parts that displays emergent behavior.
+Recently, interest in emergent behavior has grown
+in NLP (Bubeck et al., 2023; Wei et al., 2022; Tee-
+han et al., 2022; Manning et al., 2020, inter alia ),
+though it is usually defined, in terms of scaling over
+model parameters, dataset size, or computational
+power. We rely on a much simpler definition:
+Micro-level  Patterns & PredictionMacro-level  Patterns & PredictionWeather partially cloudy to rainLM Behavior copy token ti
+Neuron Interactions activation of neuron xi,jBehavior of gas trajectory of O2 moleculepreﬁxgenerationFigure 5: Complex systems are characterized by two or
+more levels of regularity: a micro-level in which local
+interactions are at least partially predictable and a macro-
+level in which many local interactions collectively ex-
+hibit recognizable patterns. Emergence describes how
+macro-level regularity is hard to predict in advance from
+comparatively well-understood micro-level dynamics.
+Emergent behaviors are system level be-
+haviors that are hard to predict from the
+dynamics of lower level subcomponents.
+For instance, the ocean is a complex system. We
+can understand many properties of individual water
+molecules, e.g., H2Ohas a partial positive and neg-
+ative charge in certain places due its composition,
+but the aggregate properties of water as a collec-
+tive whole exhibits predictable properties such as
+waves. It is difficult to predict the properties of
+water from H2Obecause “the interactions of inter-
+est are non-linear...[yielding] levels of organization
+and hierarchies—selected aggregates at one level
+become ‘building blocks’ for emergent properties
+at a higher level, as when H2Omolecules become
+building blocks for water.” (Holland, 2014)
+Similarly, we understand the basic mechanical
+properties of LMs at the neuronal level, e.g., we
+have a perfect understanding of how to predict what
+any individual neuron will do given arbitrary inputs
+(by construction), but we also notice patterns at the
+level of model behavior , e.g., the emergent copying
+behavior, which is observed in both Transformer
+models (Al-Rfou et al., 2019; Khandelwal et al.,
+2019) and LSTM models (Khandelwal et al., 2018).
+In the face of new behavior that a model such as
+the Newformer might exhibit, we would be even
+less certain of how lower-level system components
+add up to observed responses.3.2 Emergent behaviors in LMs are
+discovered, not designed
+Neural architectural elements (e.g. position embed-
+dings) and training methods (e.g. masking strate-
+gies) deeply affect the resulting model but do not
+fully explain behavior. We often fail to create the
+behavior we attempted to engineer into an architec-
+tureanddiscover new, unintentional behavior.
+Many architectures have been designed to make
+use of longer context (Yu et al., 2023; Beltagy et al.,
+2020; Child et al., 2019, inter alia ), but evidence
+suggests that these models often do not make use
+of the long-term dependencies that they intended
+to capture (Liu et al., 2023a; Sun et al., 2021; Press
+et al., 2021). Inversely, BERT was shown to cap-
+ture much of the functionality of a knowledge base
+without task-specific training (Petroni et al., 2019).
+To illustrate the difference between designing
+anddiscovering behavior, let us return to our run-
+ning example of the copying behavior, where mod-
+els produce a span that was in their input. A classic
+example of designing behavior is pointer-generator
+models (See et al., 2017), in which a specific, dis-
+crete mechanism was added to encourage a certain
+behavior: copying. Transformers, on the other
+hand, were designed such that computation at a
+given time-step could attend to any previous time-
+step that was included in the context window. This
+intentionally removed the recurrence in architec-
+tures such as LSTMs (Hochreiter and Schmidhuber,
+1997) and GRUs (Cho et al., 2014) in order to in-
+crease efficiency on highly parallelizable hardware
+such as GPUs and TPUs. A side-effect of this
+change was the emergent behavior of copying that
+arises directly from the Transformer architecture
+trained as a language model (Al-Rfou et al., 2019).
+Instead of directly designing models for these
+purposes, we are now in the position of training
+general models with different structure and actively
+probing them for behavior. Using various data and
+masking strategies has produced models that can be
+controlled through different metadata (Keskar et al.,
+2019; Zellers et al., 2019; Aghajanyan et al., 2022),
+while instruction-tuning has shown that pretrained
+LMs can be finetuned for control (Mishra et al.,
+2022; Chung et al., 2022; Ouyang et al., 2022, inter
+alia) often with very limited data (Zhou et al., 2023;
+Dettmers et al., 2023; Taori et al., 2023).
+This discovery process focuses on giving the
+model access to certain kinds of correlations, and
+then inspecting what model behavior emerges.3.3 Neuronal explanations are limited by
+our understanding of behavior
+It is difficult to explain how or why LMs produce
+their outputs without having a good description
+ofwhat they do. Explaining behavior bottom-up,
+requires an understanding of what behaviors we are
+trying to explain. Mittal et al. (2018) note:
+an emergent property of a system is usu-
+ally discovered at the macro-level of the
+behavior of the system and cannot be
+immediately traced back to the specifica-
+tions of the components, whose interplay
+produce this emergence.
+This is the situation we find ourselves in with re-
+gards to large, pretrained models. We cannot, in
+general, predict how structure will form. While we
+can engineer systems with the hope of producing
+certain kinds of behavior, e.g., training on multi-
+modal data to produce models that can draw infer-
+ences in ways that integrate paired text and images,
+this often does not produce the desired results (Il-
+harco et al., 2021; Parcalabescu et al., 2021).
+Bottom-up investigation can reveal key prop-
+erties of emergent organization within LMs, e.g.
+BERT replicates features of the classical NLP
+pipeline (Tenney et al., 2019). But when anomalous
+behavior is discovered, e.g., the DALL •E 2 hypoth-
+esized “hidden vocabulary” of invented words that
+correspond to specific image categories (Daras and
+Dimakis, 2022), it is difficult to investigate them
+with bottom-up tools until we reach a better under-
+standing of what triggers them, what their scope is,
+etc. There have been attempts to reject the hidden
+vocabulary hypothesis (Hilton, 2022), but it is a
+very difficult hypothesis to rebut from first princi-
+ples: what tests reject the hypothesis “DALL •E 2
+has a hidden set of vocabulary with clear and con-
+sistent meaning” rather than “this specific mapping
+from the vocabulary to features isn’t correct”?
+This is similar to trying to research organic chem-
+istry without knowledge of biology: it is certainly
+not impossible, but without high-level guides to the
+kind of structure one is expecting, the search space
+is huge and it is difficult to know where to look.
+Our lack of a behavioral taxonomy hampers re-
+search into internal structure, especially in models
+that break current assumptions such as the New-
+former, as it is significantly more challenging to
+probe for structure without knowing what patterns
+in the outputs hint at the presence of structure.3.4 Access is not a silver bullet
+Consider the following thought experiment:
+Tomorrow, all industry labs publicly
+release all of their pretrained models(C)
+Despite the fact that this would doubtlessly help us
+understand the basic properties of a given model
+such as ChatGPT, e.g., how large it is, we would
+still have significant obstacles on the way to ex-
+plaining why ChatGPT is capable of writing short
+stories for almost any given prompt.
+Indeed, the problem with answering the question
+of “How can a language model write a story?” has
+much less to do with language models and much
+more to do with the fact that we are currently inca-
+pable of answering the question “How can xwrite
+a short story?” for any value of x. We find our-
+selves in the strange position of being able to train
+models we do not fully understand for tasks we do
+not fully understand or anticipate in advance .
+The key to answering this question is to ask:
+what kind of explanation would satisfy us? For
+instance, when it comes to LMs, one explanation
+is that models are simply reconstructing long se-
+quences from the training set and stitching them
+together. While a significant amount of memoriza-
+tion is taking place (McCoy et al., 2023; Carlini
+et al., 2023; Lee et al., 2022, inter alia ) models ap-
+pear to be able to generate data that is not a trivial
+recombination of the training data (Bubeck et al.,
+2023; Tirumala et al., 2022; Olsson et al., 2022).
+The goal, then, should be to build up the case for
+a reasonable hypothesis that explain the breadth,
+depth, and (most importantly) mistakes models
+make when executing a complex task. However,
+we do not want a new explanation for every new
+task, which is precisely why we argue for the for-
+malization and study of behaviors that describe the
+underlying strategies of models.
+While model access would not directly solve
+these problems, we dobelieve that open-source
+models are a necessary prerequisite to this research
+program, for reasons outlined in §4.3.
+3.5 (Generated) data represents behavior
+Behavior in large pretrained models is nothing
+more than the answer to the question “How can
+we characterize the distribution of data this model
+generates?” Aspects of the training data such as
+the presence of multiple languages (Blevins and
+Zettlemoyer, 2022; Lin et al., 2021) or the number
+HumansLanguage
+Modelunexpressed
+behavioridiosyncratic
+behavior
+shared behaviorcontingent
+behavior
+Training DataInference DataFigure 6: Generative language models are trained to
+capture the distribution of training data, then exhibit
+behavior in model outputs, i.e., inference data . See §3.5
+for examples of the different behavioral mappings.
+of repeated documents (Kandpal et al., 2022; Lee
+et al., 2022) in the training set have been shown to
+be explanatory of zero-shot translation abilities and
+model tendency to leak training data, respectively.
+Figure 6 visualizes what kind of behavioral map-
+pings we can explore with data-based explanations.
+Shared behavior —patterns that are found in both
+the training and inference data (the outputs of the
+model)—are the simplest to search for, because
+they only require finding a specific behavior in the
+training or inference data and then looking for it
+in the other. For instance, the prompting behavior
+discovered in GPT-2 that causes summaries to be
+generated when “TL;DR” is placed after an article
+is an example of shared behavior. Idiosyncratic be-
+haviors describe behaviors that don’t appear to be
+caused directly by the training data at all, e.g., zero-
+length translations in many large models (Stahlberg
+et al., 2022; Shi et al., 2020; Stahlberg and Byrne,
+2019). Perhaps the most difficult to find behav-
+ioral mappings are those for which behavior in
+the corpus yields different behavior in the model,
+contingent behavior , as is hypothesized to be the
+case for DALL-E 2’s “hidden vocabulary”: non-
+sense words that appear to consistently lend certain
+meanings to produced images (Daras and Dimakis,
+2022). Finally, unexpressed behavior is observed
+in the training data, but not in the inference data,
+such as long-term consistency in story telling (Xie
+et al., 2023; See et al., 2019) that models have yet
+to properly mimic for very long documents.(1) Perfect ﬁdelity  state encoding (2) Complete theory of  Low-level dynamics  (simulability) (3) Exact repeatability (4) Ease of perturbation (5) No observer effects (6*) Outputs are human understandable media onlyAs an AI language model…
+✗✓✓✓✓✓✓
+✗✗
+?
+✗✗✗Figure 7: Visual representation of the advantages generative model researchers have over researchers that study the
+main other media generating system on earth: human beings.
+4 A Different Kind of Complex System
+One reasonable worry is that taking on the com-
+plex systems lens will be fruitless because studying
+complex systems is a very difficult task, and we are
+not equipped to tackle such a hard problem.
+In fact, compared to other complex systems,
+such as the brain, understanding current genera-
+tive models is an immensely easier challenge, and
+can help us develop tools for the future. Turning
+our attention to “What, precisely, do language mod-
+els do?” over “What is the best recipe for training
+large models?” we can take full advantage of the
+complete simulability of generative models. In the
+long run, it seems it will become more difficult
+to address the latter question coherently without
+better answers to the former.
+4.1 Two kinds of complex systems simulations
+Complex systems theory is divided be-
+tween two basic approaches. The first
+involves the creation and study of sim-
+plified mathematical models that, while
+they may not mimic the behavior of
+real systems exactly, try to abstract the
+most important qualitative elements into
+a solvable framework from which we can
+gain scientific insight...The second ap-
+proach is to create more comprehensive
+and realistic models, usually in the form
+of computer simulations, which repre-
+sent the interacting parts of a complex
+system, often down to minute details, and
+then to watch and measure the emergent
+behaviors that appear. (Newman, 2011)At first glance, generative models can largely be
+described as the second complex systems approach:
+we train models to capture properties of the natural
+distribution of human media, such as internet text,
+images, videos, etc., and then attempt to study the
+emergent effects. Yet, this would be a mischarac-
+terization of what, e.g., language models do: we do
+not expect that language models learn language the
+way a human does nor create languages the way
+the human species did.1
+Instead, the triumphs of generative models are
+the result of emergent behavior within computa-
+tional models trained to predict very general objec-
+tives. Many have been surprised that by learning
+on massively more data from a given medium than
+a human is ever exposed to, generative models can
+learn uncannily human patterns from simple, pas-
+sive word prediction, denoising objectives, etc.
+Generative models are certainly a computational
+simulation, but they are a simulation of an entire
+medium rather than a singular process we have
+isolated. We suggest thinking of generative mod-
+els as a different kind of complex system, where
+underlying patterns of a medium are learned by
+a model through optimization, and we then look
+for those patterns within the model. Below we list
+ways in which this discovery process is made easier
+because our system of interest is the computational
+model itself, rather than a naturally arising system.
+1Though this certainly describes facets of certain sub-
+fields such as emergent communication (Lazaridou and Ba-
+roni, 2020), with recent work taking advantage of pretrained
+models (Steinert-Threlkeld et al., 2022), and developmentally
+plausible pretraining such as the recent BabyLM challenge
+(Warstadt et al., 2023).4.2 Generative Models:
+the easiest complex system to study
+(1)Perfect fidelity state encoding Because neu-
+ral networks are formal mathematical models,
+represented by code and parameters, there is
+zero necessary ambiguity in our representa-
+tions. Imperfect data archiving and complex
+code bases often make it difficult to perfectly
+recover the formal model, but with sufficient
+effort, it is possible to store every bit of infor-
+mation about the state of the model at every
+computation step. We cannot track every neu-
+ron in a participant’s brain at every moment
+due to the limited nature of our measurement
+instruments, but we can perfectly record the
+state of an LM in order to look for and ver-
+ify emergent behavior, without influencing the
+system as we note in Advantage (5).
+(2)Complete theory of low-level dynamics
+While Advantage (1) establishes that we can
+perfectly store the state of a generative model
+at any given moment in time, Advantage (2)
+notes that we have a perfect, mechanistic, and
+deterministic understanding of how one state
+of a model evolves into the next, unlike in
+physical experiments. Artificial neural net-
+works do not need to be simulated, they are de-
+fined in a medium for simulation: executable
+code. Unlike in physics, where centuries of
+research have been spent chasing the bottom
+of the chain of causation, we begin with the
+base-level causal structure of the model. This
+does not follow directly from (1). It is possible
+to imagine a scenario where every static state
+is recordable, but where the rules that govern
+the changes in states are hard to discover, e.g.,
+the problem of learning video game dynamics
+from pixels (Hafner et al., 2019). In practice,
+nondeterminism exists in certain fast compu-
+tations (Morin and Willetts, 2020), but this
+can be removed at the cost of speed.
+(3)Exact repeatability Directly entailed by (1)
+and (2) is the fact that experiments can be
+repeated exactly . An algorithm that uses ran-
+domness to generate text, may generate dif-
+ferent text on a second run, but as long as the
+probabilities of different tokens are recorded
+the likelihood of that text (and of alternative
+branching paths) can be verified to be exactly
+the same. A psychologist who conducts astudy twice will almost never get results that
+are exactly the same, simply because sample
+differences and unmeasured variables have to
+be accounted for. We distinguish repeatabil-
+ity from the broader notion of replicability ,
+which also includes replicating a study to the
+level of detail described by the authors, leav-
+ing room for both human and systematic error.
+With proper code, data, and model releases,
+many generative model experiments are ex-
+actly repeatable, allowing us to reach for a
+much higher standard for replicability.
+(4)Ease of perturbation We also have a com-
+plete description of all possible models given
+a certain setup, e.g., all possible combinations
+of weights for a given architecture. Combin-
+ing this with Advantage (2), we can perturb
+a model of interest, and play out experiments
+with this new model without destroying the
+original model . Contrast this with studying
+human language production, for which most
+perturbations of the human brain are both un-
+ethical and illegal, partially because humans
+cannot be unperturbed. This allows for ex-
+tremely targeted experiments, e.g., finding
+which weights in a network control a certain
+decision boundary.
+(5)No observer effects —a classic problem in
+many complex systems is that by attempting
+to make a measurement one changes the value
+being measured, e.g., Clever Hans a horse
+that could allegedly play chess, but was sim-
+ply reading the audience’s reaction to possible
+moves (Prinz, 2006). In contrast, generative
+models do not distinguish between the same
+input given for different reasons or with dif-
+ferent expectations by the experimenter. The
+caveat is that experimenters still control the
+input distributions to experiments allowing
+for systematic bias that accidentally leaks ex-
+perimenter expectations (Rosenthal, 1976) to
+the model, as past research has consistently
+shown (McCoy et al., 2019; Poliak et al., 2018;
+Gururangan et al., 2018, inter alia ). We must
+be careful about “tells” (Caro, 2003): stylistic
+and semantic artifacts that make it into the
+data which can give the model information
+the experimenter assume it does not have ac-
+cess to. Yet, the guarantee that the specific
+observer will not change the result is strong.Advantages (1) and (2) allow us to completely
+remove any worry about hidden variables that may
+explain effects we attempted to explain through
+other means. (3) and (4), allow us to experiment
+freely, knowing that experiments and models that
+have been properly recorded are recoverable, leav-
+ing us free to perturb and explore the local neigh-
+borhood of similar models and setups. (5) partially
+relieves us of the fear of influencing the outcome
+through our means of observation, a key issue in
+many experiments involving language.
+Another advantage, that does not apply to every
+generative model, deserves an honorable mention:
+(6*) (Some) generative models exclusively out-
+put human understandable media Many
+complex systems, such as cities and brains,
+produce human understandable media as some
+percentage of their output. Many generative
+models produce human understandable me-
+dia as their only output, an enormous advan-
+tage for two reasons. First, humans are better
+suited to positing patterns in human under-
+standable media than, say, subatomic parti-
+cles. Second, the uncanny valley effect (Mori,
+2012) allows us to see when patterns are “al-
+most correct but not quite” much more easily
+in human-related artifacts. While we some-
+times finetune models to produce outputs that
+are no longer human understandable, by and
+large current generative models operate en-
+tirely within human media—and we believe
+there is much that can be learned from this
+that will transfer over to generative models of
+other media.
+Advantage (6*) is very special. By allowing us
+to take advantage of our intuitive understanding
+of media, it becomes easier to seek out the ways
+generated media diverges from the natural human
+media we are steeped in from infancy. Indeed, most
+named behaviors are failure modes, e.g. degenera-
+tion (Holtzman et al., 2020) or empty translations
+(Stahlberg and Byrne, 2019)).
+Organic chemistry has given a great deal to bi-
+ology, but is very much indebted to it as well. Our
+hope is that we can take inspiration from these
+other complex system sciences to start taking the
+problem of understanding behavior seriously, as a
+distinct abstraction that needs to be decomposed
+and theorized, while putting our enormous advan-
+tages to good use.4.3 The necessity of open-source models
+Most of these advantages rely on stable access to
+a consistent representation of a model, which is
+difficult to guarantee via a proprietary API.
+(1)Perfect fidelity state encoding It is difficult
+to work with or guarantee saved state is per-
+sistent and untampered without direct access
+to said state. Even cryptographically signed
+state can be tampered after re-submission to
+an API for use there, making guarantees moot.
+(2)Complete theory of low-level dynamics
+With only imperfect knowledge of an under-
+lying model, researchers must make assump-
+tions about low-level dynamics in a model that
+may only partially be true, or possibly even
+completely false.
+(3)Exact repeatability In practice, it is impossi-
+ble to guarantee that an API will not drift over
+time, something observed with even the ap-
+parent attempts at stable APIs in recent years
+(Deng, 2023).
+(4)Ease of perturbation It is normally impossi-
+ble to perturb a model through an API, though
+some APIs allow for finetuning and special
+versions of models. However, the real issue is
+that it is impossible to ensure that such pertur-
+bations do precisely what they are claiming to
+do to the model, without access to the model
+or even the model architecture in most cases.
+(5)No observer effects Sadly, even though this
+is one of the greatest advantages of generative
+models, it is the one most destroyed by using
+models via APIs: companies consistently, and
+often silently, fix undesired (from the com-
+pany’s perspective) behaviors in models (Wil-
+son; Eliaçık; Kiho) so that testing a certain
+hypothesis tends to influence future tests.
+(6*) (Some) generative models exclusively out-
+put human understandable media Without
+complete access to a model it is impossible
+to know if it doesn’t have other outputs (or
+inputs) that would help explain the model’s
+behavior more fully.
+In short, without access to open-source models,
+these advantages are largely moot. However, the
+community has seen a consistent open-source re-
+leases of better generative models in many differentmedia (Rombach et al., 2021; Le et al., 2023; Luo
+et al., 2023). There is unquestionably lag in the
+capabilities between proprietary and open-source
+models, and this is out of necessity: open-source
+cannot outpace private industry when private indus-
+try controls most of the training resources and can
+build on top of anything open-source does. But the
+fact that open source often lags only a year or two
+behind in terms of capabilities, and the fact that
+private labs are often incentivized to open-source
+models as a recruiting and market strategy, suggests
+that open-source will continue to be a wellspring
+of fascinating generative models to study. Indeed,
+if all progress stopped now, we believe it would
+be decades before we finished cataloging all of the
+generalizable behavioral principles with the hun-
+dreds of large generative models that have already
+been released; perhaps our successes would encour-
+age future open-source releases.
+5 Conclusion
+How should we study models of data, when we
+don’t fully understand the models or the data? We
+should study them first by asking what models do,
+before attempting the more complicated how and
+the bottomless question of why?
+In this paper, we presented a thought experiment:
+the Newformer, a model that would be impossible
+to study with many of the techniques we use to
+understand Transformer models today.
+We argue that focusing on what behaviors ex-
+plain its performance across tasks will lead-us to a
+deeper understanding of generative models’ tenden-
+cies and guide bottom-up mechanistic explanation,
+as well as forming building blocks for evaluations.
+We discuss how generative models are well cap-
+tured by the definition of a complex system, due to
+the emergent behaviors they exhibit. This separates
+generative models from traditional machine learn-
+ing, where models often served as explanations via
+behaviors that were architected directly into them.
+This opens up the need for metamodels that help us
+predict regularities in generative model outputs in
+order to understand them better.
+While the prospect of studying models we do
+not have a clear understanding of is daunting, we
+highlight advantages that generative models have
+over naturally arising complex systems. These ad-
+vantages, however, require open-source models as
+a prerequisite, a point we emphasize as a necessity
+for conducting replicable science.6 Limitations
+We present one perspective on the kind of science
+NLP is becoming, and how we can leverage the
+complex systems lens in order to better explore the
+phenomena we find ourselves faced with: genera-
+tive models we do not fully understand. We cite
+evidence from NLP publications, blog posts, and
+other media, but this necessarily does not capture
+the totality of perspectives.
+Indeed, we purposefully avoid attempting any
+sort of survey of these issues, as this would involve
+citing thousands of papers and be a very unwieldy
+object. Instead, we attempt to form an argument as
+economically as possible, attempting to put forth
+a new set of goals and principles for how to study
+generative models given current progress.
+We make comparisons with other sciences and
+cite sources from those sciences where appropri-
+ate, but are extremely limited in expressing many
+equally relevant connections and in fully explor-
+ing the connections we do mention. There is an
+enormous amount related to sister fields (e.g., cog-
+nitive science, linguistics, etc.), other sciences that
+study complex systems (e.g., chemistry, biology,
+etc.), and regarding more meta-science issues (e.g.,
+complex systems theory, chaos theory, etc.) that we
+could not cover, and we do not in any way attempt
+to—giving a complete account of these connections
+is simply beyond the reach of any one work.
+Finally, parts of our assessment is necessarily
+subjective. We attempt to lay out the evidence as
+we see it, tracing the connections we drew in order
+to describe a style of research that we believe is
+necessary to face the current challenges of our field.
+This seems especially pertinent in a time when most
+researchers cannot train large generative models
+from scratch, but are excited to contribute to their
+study. With evidence drawn from the literature, we
+describe the current research space as we perceive
+it, and our vision for where it might go. Our hope is
+that this will add to a discussion on what the study
+of generative models currently is and what we, as a
+community, would like it to become.
+Acknowledgements
+We thank Julian Michael, Dallas Card, Jared
+Moore, Daniel Fried, Gabriel Ilharco, Tim
+Dettmers, Ian Magnusson, Alisa Liu, and Kaj
+Bostrom for their insightful discussions and feed-
+back.Re

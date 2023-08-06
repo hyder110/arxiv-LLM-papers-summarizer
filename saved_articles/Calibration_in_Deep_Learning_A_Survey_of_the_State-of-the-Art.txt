@@ -1,0 +1,725 @@
+Calibration in Deep Learning: A Survey of the State-of-the-Art
+Cheng Wang
+Amazon
+cwngam@amazon.com
+Abstract
+Calibrating deep neural models plays an important role in
+building reliable, robust AI systems in safety-critical appli-
+cations. Recent work has shown that modern neural net-
+works that possess high predictive capability are poorly cal-
+ibrated and produce unreliable model predictions. Though
+deep learning models achieve remarkable performance on
+various benchmarks, the study of model calibration and reli-
+ability is relatively underexplored. Ideal deep models should
+have not only high predictive performance but also be well
+calibrated. There have been some recent methods proposed to
+calibrate deep models by using different mechanisms. In this
+survey, we review the state-of-the-art calibration methods and
+provide an understanding of their principles for performing
+model calibration. First, we start with the definition of model
+calibration and explain the root causes of model miscalibra-
+tion. Then we introduce the key metrics that can measure this
+aspect. It is followed by a summary of calibration methods
+that we roughly classified into four categories: post-hoc cal-
+ibration, regularization methods, uncertainty estimation, and
+composition methods. We also covered some recent advance-
+ments in calibrating large models, particularly large language
+models (LLMs). Finally, we discuss some open issues, chal-
+lenges, and potential directions.
+1 Introduction
+Deep Neural Networks (DNNs) have been showing promis-
+ing predictive power in many domains such as computer
+vision (Krizhevsky, Sutskever, and Hinton 2012), speech
+recognition (Graves, Mohamed, and Hinton 2013) and nat-
+ural language processing (Vaswani et al. 2017). Nowadays,
+deep neural network models are frequently being deployed
+into real-world systems. However, recent work (Guo et al.
+2017) pointed out that those highly accurate, negative-log-
+likelihood (NLL) trained deep neural networks are poorly
+calibrated (Niculescu-Mizil and Caruana 2005a), i.e., the
+model predicted class probabilities do not faithfully esti-
+mate the true correctness likelihood and lead to overconfi-
+dent and underconfident predictions. Deploying such uncal-
+ibrated models into real-world systems is at high risk, par-
+ticularly for applications such as medical diagnosis (Caruana
+et al. 2015), autonomous driving (Bojarski et al. 2016) and
+finance decision-making.
+Calibrating deep models is a procedure for preventing the
+model’s posterior distribution from being over- or under-
+0.0 0.2 0.4 0.6 0.8 1.0
+Confidence0.00.20.40.60.81.0AccuracyECE = 16.78%
+MCE = 72.00%
+0.0 0.2 0.4 0.6 0.8 1.0
+Confidence0.00.20.40.60.81.0AccuracyECE = 7.98%
+MCE = 13.40%
+0.0 0.2 0.4 0.6 0.8 1.0
+Probability (Label 0)0.00.20.40.60.81.0Probability (Label 1)
+0.0 0.2 0.4 0.6 0.8 1.0
+Probability (Label 0)0.00.20.40.60.81.0Probability (Label 1)Figure 1: An illustration of model calibration. Uncalibrated
+model (left) that trained with standard cross-entropy loss and
+calibrated model (right) that trained with focal loss ( γ= 5)),
+have similar predictive performance on a binary classifica-
+tion task (accuracy is 83.8% and 83.4% respectively), but
+the right one is better calibrated. Top: The reliability dia-
+gram plots with 10 bins. The diagonal dash line presents
+perfect calibration (on a specific bin, confidence is equal
+to accuracy.), Expected Calibration Error (ECE) and Max-
+imum Calibration Error (MCE) are used to measure model
+calibration performance. Bottom: the posterior distribution
+of the two models on 1000 samples, the one from calibrated
+model is better distributed.
+confident. Figure 1 gives an illustration of calibrating a bi-
+nary classification model. It is noted that (1) a highly pre-
+dictive model can be poorly calibrated, this is exhibited by
+high calibration errors; (2) The deep models tend to be pri-
+marily overconfident, this is shown by a spiking posterior
+distribution. (Guo et al. 2017; Wang, Feng, and Zhang
+2021; Mukhoti et al. 2020). Model overconfidence is usu-
+ally caused by over-parameterized networks, a lack of ap-
+propriate regularization, limited data, imbalanced label dis-
+tributions, etc. In the past years, different streams of work
+have been proposed to calibrate models. In this survey, we
+review, classify, and discuss recent calibration methods andarXiv:2308.01222v1  [cs.LG]  2 Aug 2023Methods Categorization Measurement Principle
+Dirichlet Calibration (2019) Post-hoc CECE, NLL Classwise parameterization with Dirichlet distributions.
+ATS (2018) Post-hoc ECE, NLL Gathering more validation samples with Bayesian Theorem
+BTS (2019) Post-hoc ECE Equal bin size with confidence-interval-based method.
+LTS (2021) Post-hoc ECE,MCE,AECE,
+SCEExtend TS to multi-label semantic segmentation, learn local scaling
+factor for each pixel/voxel.
+Focal Loss (2020) Reg.(Implicit) ECE, NLL FL can be interpreted as entropy regularization depending on γ
+FLSD (2020) Reg.(Implicit) ECE,MCE,AECE,
+CECE, NLLUsing focal loss with scheduled γvalue that is based on the
+Lambert-W function.
+MMCE (2018) Reg.(Proxy) ECE, Brier, NLL Kernel-based trainable calibration measure along with NLL.
+Meta-Calibration (2021) Reg.(Proxy) ECE Learning to learn weight regulariser with differentiable ECE.
+Label Smoothing (2019) Reg.(Aug.) ECE Softening hard labels to reduce model over-confident.
+Mix-Up (2019) Reg.(Aug.) ECE Generate synthetic samples during training.
+Mix-n-Match (2020) Composition ECE Ensemble TS and kernel based unbiased estimator.
+TS+MC dropout (2019) Composition ECE, UCE Extend TS to dropout variational inference.
+Table 1: The state-of-the-art calibration methods and their categorization. The regularization methods are further divided into
+explicit, implicit regularization and trainable calibration proxies. Uncertainty estimation and quantification methods are ex-
+cluded, please refer to surveys (Gawlikowski et al. 2021; Mena, Pujol, and Vitria 2021).
+their advantages and limitations.
+Scope and Focus This survey particularly focuses on cal-
+ibration methods for classification problems. There have
+been some related surveys on this topic (Silva Filho et al.
+2023) or on the highly relevant topic–uncertainty estimation.
+For example model calibration has been briefly discussed in
+the uncerainty estimation surveys (Gawlikowski et al. 2021;
+Mena, Pujol, and Vitria 2021). Our survey distinguishes it-
+self from those surveys in several aspects:
+• This survey reviews the state-of-the-art calibration meth-
+ods and focuses mostly on the ones proposed in the last
+five years. This includes such as kernel-based methods,
+differentiable calibration proxy, and meta-learning-based
+approaches. Those are rarely discussed in previous sur-
+veys.
+• This survey tries to explain calibration principles of
+each method via the discussion of the conceptual re-
+lationships among over-parameterization, over-fitting,
+and over-confidence. We systematically categorize those
+methods into post-hoc, regularization (explicit, implicit
+and differentiable calibration proxy), uncertainty estima-
+tion, and composition methods.
+• This survey also discusses the methods of calibrat-
+ing large pre-trained models, particularly large language
+models (LLMs), where calibrating LLMs in zero-shot in-
+ference has been attracting increasing interest from AI
+communities.
+The rest of this survey is structured as follows. In sec-
+tion 2 we introduce the definition of model calibration and
+discuss the reasons cause miscalibration; Section 3 lists the
+mainstream calibration metrics that are used for measuring
+model calibration. Section 4 review, classify and discuss re-
+cently proposed calibration methods. Section 5 discusses fu-
+ture directions and concludes this survey.
+2 Preliminaries and Backgrounds
+This section describes the definition of model calibration
+and the aspects cause miscalibration.2.1 Definitions
+In classification tasks, for a given input variable Xand a cat-
+egorical variable Y∈ {1,2, ..., k}, assume we have a neural
+network model fwhich maps input variable xto a categori-
+cal distribution p={p1, ..., p k}overkclasses {y1, ..., y k}:
+f:D→∆, where ∆is the k−1dimensional standard
+probability simplex and ∆ ={p∈[0,1]k|Pk
+i=1pi= 1}.
+Calibration measures the degree of the match between pre-
+dicted probability pand the true correctness likelihood. A
+model fis perfectly calibrated on if and only if:
+P(Y=yi|f(X) =p) =pi (1)
+where Pis true correctness likelihood. Intuitively, for all in-
+put pairs {x, y} ∈D, if model predicts pi= 0.8, we expect
+that 80% have yias label.
+Instead of probability distribution, the argmax calibra-
+tion (Guo et al. 2017; Minderer et al. 2021a; Kumar,
+Sarawagi, and Jain 2018) takes only the maximum proba-
+bility into consideration:
+P(Y∈arg max( p)|max( f(X)) =p∗) =p∗(2)
+In reality, it is difficult to obtain perfection calibration ,
+any deviation from it represents miscalibration .
+2.2 Aspects impact model calibration
+It has been obversed that some recent changes in mod-
+ern neural networks are responsible for model miscalibra-
+tion (Guo et al. 2017; Mukhoti et al. 2020; Minderer et al.
+2021a). The underlying general cause is that modern neural
+networks’ high capacity makes them vulnerable to miscali-
+bration, which is tightly correlated to the concepts of over-
+parameter ,overfitting andover-confidence .
+Model Size While increasing the depth and width of neu-
+ral networks helps to obtain highly predictive power, it also
+negatively increases calibration errors. Empirical evidence
+has shown that this poor calibration is linked to overfit-
+ting on the negative log-likelihood (NLL) (Guo et al. 2017;
+Mukhoti et al. 2020). The over-parameteriaztion is one of the
+main causes of overfitting. Concretely, along with the stan-
+dard NLL-based model training, when classification erroris minimized, keeping training will further push the model
+to minimize NLL on the training data, i.e., push the pre-
+dicted softmax probability distribution as close as possible
+to the ground-truth distribution (which is usually one-hot).
+Model overfitting starts by exhibiting increased test NLL,
+and then the model becomes overconfident (Guo et al. 2017).
+For more recent large models, this trend is negligible for in-
+distribution data and reverses under distribution shift (Min-
+derer et al. 2021b).
+Regularization Regularization can effectively prevent
+overfitting when model capacity increases. Recent trends
+suggest that explicit L2 regularization may not be necessary
+to achieve a highly accurate model when applying batch nor-
+malization (Ioffe and Szegedy 2015) or dropout (Srivastava
+et al. 2014), but it is observed that reduced model calibration
+without L2 regularization (Guo et al. 2017). There have been
+more recent regularization techniques (Mukhoti et al. 2020;
+Bohdal, Yang, and Hospedales 2021; Kumar, Sarawagi, and
+Jain 2018; Pereyra et al. 2017) been proposed to improve
+model calibration.
+Data Issues Another important aspect that impacts cali-
+bration is data quantity (e.g., scale, volume, diversity, etc.)
+and quality (relevance, consistency, completeness, etc.).
+Training high-capacity (over-parameterized) networks with
+scarce data can easily cause overfitting and an overconfi-
+dent model. Data augmentation is an effective way to al-
+leviate this phenomenon and brings implicit calibration ef-
+fects (Thulasidasan et al. 2019; M ¨uller, Kornblith, and Hin-
+ton 2019). The recent pretrain-finetune paradigm offers the
+possibility of reducing overfitting caused by limited and
+noisy data (Desai and Durrett 2020). Another challenge
+is data imbalance, where models overfit to the majority
+classes, thus making overconfident predictions for the ma-
+jority classes. Focal loss (Lin et al. 2017; Mukhoti et al.
+2020) has recently demonstrated promising performance in
+calibrating deep models.
+3 Calibration Measurements
+Exact calibration measurement with finite data samples is
+impossible given that the confidence pis a continuous vari-
+able (Guo et al. 2017). There are some popular metrics that
+approximate model calibration error by grouping Npredic-
+tions into Minterval bins {b1, b2, ..., b M}.
+Expected Calibration Error (ECE) ECE (Naeini,
+Cooper, and Hauskrecht 2015) is a scalar summary statistic
+of calibration. It is a weighted average of the difference
+between model accuracy and confidence across Mbins,
+ECE =1
+NMX
+m=1|bm||acc(bm)−conf(bm)| (3)
+where Nis the total number of samples. |bm|is the number
+of samples in bin bm, and
+acc(bm) =1
+|bm|MX
+m=1⊮(ˆyi=yi),conf(bn) =1
+|bm|MX
+m=1pi.
+(4)Maximum Calibration Error (MCE) MCE (Naeini,
+Cooper, and Hauskrecht 2015) measures the worst-case de-
+viation between accuracy and confidence,
+MCE = max
+m∈{1,...,M}|acc(bm)−conf(bm)|. (5)
+and is particularly important in high-risk applications where
+reliable confidence measures are absolutely necessary.
+Classwise ECE (CECE) Classwise ECE (Kull et al.
+2019) can be seen as the macro-averaged ECE. It extends the
+bin-based ECE to measure calibration across all the possible
+Kclasses. In practice, predictions are binned separately for
+each class, and the calibration error is computed at the level
+of individual class-bins and then averaged. The metric can
+be formulated as
+CECE =MX
+m=1KX
+c=1|bm,c|
+NK|accc(bm,c)−conf c(bm,c)|(6)
+where bm,crepresents a single bin for class c. In this for-
+mulation, acc c(bm,c)represents average binary accuracy for
+class cover bin bm,cand conf c(bm,c)represents average
+confidence for class cover bin bm,c.
+Adaptive ECE (AECE) The binning mechanism in the
+aforementioned metrics can introduce bias; the pre-defined
+bin size determines the number of samples in each bin.
+Adaptive ECE (Nixon et al. 2019) introduces a new binning
+strategy to use an adaptive scheme that spaces the bin inter-
+vals to ensure each bin hosts an equal number of samples.
+AECE =RX
+r=1KX
+c=11
+RK|accc(bn,c)−conf c(bn,c)|(7)
+Where r∈[1, R]is defined by the [N/R]-th index of the
+sorted and threshold predictions.
+For a perfectly calibrated classifier, those calibration erros
+should equal 0.
+Reliability Diagram Besides the metrics that provide
+a scalar summary on calibration, reliability diagrams (as
+shown in 1) visualize whether a model is over- or under-
+confident on bins by grouping predictions into bins accord-
+ing to their prediction probability. The diagonal line in Fig-
+ure 1 presents perfect calibration: acc (bm) =conf(bm),∀m,
+the red bar presents the gap to perfect calibration.
+4 Calibration Methods
+In this section, we categorize the state-of-the-art calibra-
+tion methods into post-hoc methods, regularization meth-
+ods, implicit calibration methods, and uncertainty estimation
+methods. Besides, we discuss compositional methods that
+combine different calibration methods. Table 1 summarizes
+those methods.
+4.1 Post-hoc Methods
+Post-hoc calibration methods aim to calibrate a model af-
+ter training. Those include non-parametric calibration his-
+togram binning(Zadrozny and Elkan 2001), isotonic regres-
+sion (Zadrozny and Elkan 2002) and parametric methodssuch as Bayesian binning into quantiles (BBQ) and Platt
+scaling (Platt et al. 1999). Out of them, Platt scaling (Platt
+et al. 1999) based approaches are more popular due to their
+low complexity and efficiency. This includes Temperature
+Scaling (TS), attended TS (Mozafari et al. 2018).
+Temperature Scaling Temperature scaling (TS) is a
+single-parameter extension of Platt scaling (Platt et al. 1999)
+and the most recent addition to the offering of post-hoc
+methods. It uses a temperature parameter τto calibrate the
+softmax probability:
+pi=exp(gi/τ)
+Pk
+j=1exp(gj/τ), i∈[1. . . k]. (8)
+where τ > 0for all classes is used as a scaling factor to
+soften model predicted probability, it controls the model’s
+confidence by adjusting the sharpness of distribution so
+that the model prediction is not too certain (overconfident)
+or too uncertain (underconfident). The optimal temperature
+value is obtained by minimizing negative log likelihood loss
+(NLL) on the validation dataset.:
+τ∗= arg min
+τ 
+−NX
+i=1log( SOFTMAX (gi, τ))!
+(9)
+TS simplifies matrix (vector) scaling (Guo et al. 2017) where
+class-wise τis considered as a single parameter, and offers
+good calibration while maintaining minimum computational
+complexity (Guo et al. 2017; Minderer et al. 2021a).
+Temperature Scaling Extensions The goal of post-hoc
+calibration on a validation dataset is to learn a calibration
+map (also known as the canonical calibration function of
+probablity (Vaicenavicius et al. 2019)) which transforms un-
+calibrated probabilities into calibrated ones. Many TS ex-
+tensions aim to find a proper calibration map. Kull et al.
+(2019) proposed Dirichlet calibration which assumes proba-
+bility distributions are parameterized Dirichlet distributions:
+p(x)|y=j∼Dirichlet (αj) (10)
+where αj={αj
+1, αj
+2, ..., αj
+k}are Dirichlet parameters for j-
+th class. The proposed Dirichlet calibration map family coin-
+cides with the Beta calibration family (Kull, Filho, and Flach
+2017). Besides, it provides uniqueness and interpretability as
+compared to generic canonical parametrization. Mozafari
+et al. (2018) suggested TS has difficulties finding optimal
+τwhen the validation set has a limited number of samples.
+They proposed attended temperature scaling (ATS) to alle-
+viate this issue by increasing the number of samples in vali-
+dation set. The key idea is to gather samples from each class
+distribution. Let’s assume p(y|x)is the predicted probabil-
+ity. ATS first divides the validation set into Ksubsets with
+p(y=k|x), k∈[1, K], which allows to add more y̸=k
+samples using the Bayeisan Theorem (Jin, Lazarow, and Tu
+2017) as the selection criterion:
+p(x, y=k) =p(y=k|x)
+p(y̸=k|x)p(x, y̸=k) (11)
+It indicates that ATS selects the samples with y̸=kwhich
+are more probable to belong to p(x, y=k).Bin-wiseTS (BTS) (Ji et al. 2019) was proposed to extend TS to
+multiple equal size bins by using the confidence interval-
+based binning method. Together with data augmentation,
+BTS showed superior performance as compared to TS. Lo-
+cal TS (LTS) (Ding et al. 2021) extends TS to multi-label
+semantic segmentation and makes it adaptive to local image
+changes. A local scaling factor is learned for each pixel or
+voxel.
+Q(x, τi(x)) =max l∈LSOFTMAX (gi(x)
+τi(x))(l)(12)
+where lis the class index, gi(x)is the logit of input at loca-
+tionx, and The τi(x)is the location-dependent temperature.
+Remarks : Although using a single global hyper-
+parameter, TS remains a popular approach due to its ef-
+fectiveness and accuracy-preserving (Zhang, Kailkhura, and
+Han 2020). Post-hoc calibration usually works well with-
+out a huge amount of validation data and is thus data ef-
+ficient. The calibration procedure is decoupled from train-
+ing and doesn’t introduce training complexity. On the other
+hand, post-hoc calibration is less expressive and suffers dif-
+ficulty in approximating the canonical calibration function
+when data is not enough (Zhang, Kailkhura, and Han 2020).
+4.2 Regularization Method
+Regularization is important to prevent neural network mod-
+els from overfitting. In this section, we discuss some repre-
+sentative work in this direction that either explicitly or im-
+plicitly regularizes modern neural networks to have better
+calibration.
+Explicit Regularization The typical (explicit) way to add
+regularization term (or penalty) Lregto standard loss objec-
+tive (e.g., negative log likelihood):
+L(θ) =−X
+logp(y|x) +αLreg. (13)
+where αcontrols the importance of penalty in regularizing
+weight θ.L2 regularization has been widely used in train-
+ing modern neural networks and showed its effectiveness
+in model calibration ](Guo et al. 2017). Entropy regulariza-
+tion(Pereyra et al. 2017):
+L(θ) =−X
+logp(y|x)−αH(p(y|x)). (14)
+directly penalizes predictive distributions that have low en-
+tropy, prevents these peaked distributions, and ensures better
+model generalization.
+Implicit Regularization: Focal Loss and Its Extensions
+Focal loss (Lin et al. 2017) was originally proposed to al-
+leviate the class imbalance issue in object detection: Lf=
+−PN
+i=1(1−pi)γlogpiwhere γis a hyperparameter. It
+has been recently shown that focal loss can be inter-
+preted as a trade-off between minimizing Kullback–Leibler
+(KL) divergence and maximizing the entropy, depending on
+γ(Mukhoti et al. 2020):
+Lf≥KL(q∥p) +H(q)−γH(p) (15)The first term pushes the model to learn a probability pto
+have a high value (confident, as close as possible to ground-
+truth label distribution, which is usually one-hot represen-
+tation). The second term is constant. The last term regular-
+izes probability to not be too high (overconfident). Mukhoti
+et al. (2020) empirically observed that γplays an important
+role in implicitly regularizing entropy and weights. How-
+ever, finding an appropriate γis challenging for all sam-
+ples in the datasets. Thus, they proposed sample-dependent
+scheduled γ(FLSD) based on the Lambert-W function (Cor-
+less et al. 1996). They have shown that scheduling γvalues
+according to different confidence ranges helps to improve
+model calibration on both in-domain and out-of-domain
+(OOD) data.
+Differentiable Calibration Proxy : Recall that the afore-
+mentioned methods use a penalty term (either explicitly
+or implicitly) to improve model calibration on dataset D.
+There is a rising direction that directly optimizes objective
+function by using calibration errors (CE) as differentiable
+proxy (Kumar, Sarawagi, and Jain 2018; Bohdal, Yang, and
+Hospedales 2021) to standard loss:
+arg min
+θLstandard (D, θ) +Lcalibration (D, θ) (16)
+The focus of this line of work is to find differentiable ap-
+proximations to calibration errors. Kumar, Sarawagi, and
+Jain (2018) proposed a kernel-based approach to explic-
+itly calibrate models in training phrase called Maximum
+Mean Calibration Error (MMCE) , which is differentiable
+and can be optimized using batch stochastic gradient algo-
+rithms. They cast the calibration error to be differentiable
+by defining an integral probability measure over functions
+from a reproducing kernel Hilbert space (RKHS) Hinduced
+by a universal kernel k(·,·)and cannonical feature map
+ϕ: [0,1]→ H :
+MMCE (P(r, c)) =E(r,c)∼P[(c−r)ϕ(r)]
+H(17)
+where r, crepresent confidence and correctness scores, re-
+spectively, and P(r, c)denotes the distribution over r, cof
+the predicted probability P(y|x). An approach that com-
+bines meta-learning and a differentiable calibration proxy
+was proposed by Bohdal, Yang, and Hospedales (2021). The
+authors developed a differentiable ECE(DECE) and used it
+as learning objective for a meta network. The meta network
+takes representations from original backbone network and
+outputs a unit-wise L2 weight decay coefficient ωfor back-
+bone network. The DECE is optimized against calibration
+metrics with validation set but attached to standard cross-
+entropy (CE) loss.
+ω∗= arg min
+ωLval
+DECE (f∗
+c◦f∗
+θ(ω)) (18)
+f∗
+c, f∗
+θ(ω) = arg min
+fc,fθ(ω)(Ltrain
+CE(fc◦fθ(ω) +ω∥fc∥2)
+(19)
+where fcis classification layer and fθis the feature extractor.
+Remarks : Regularization methods, as compared to post-
+hoc methods, can directly output a well-calibrated model
+without additional steps. The increased complexity is dif-
+ferent for different methods; for instance, focal loss can beseen as an implicit regularization and does not introduce ob-
+servable additional computational complexity. Kernel-based
+and meta-network regularization add additional computa-
+tions depending on the designed kernel methods and meta-
+networks.
+4.3 Data Augmentation
+This line of work is highly relevant to regularization meth-
+ods, instead of directly adding penalty terms to optimiza-
+tion objectives. Those studies try to augment data or add
+noise to training samples to mitigate model miscalibration.
+Label smoothing (M ¨uller, Kornblith, and Hinton 2019) and
+mixup (Thulasidasan et al. 2019) are popular approaches in
+this line. Label smoothing (M¨uller, Kornblith, and Hinton
+2019) soften hard labels with an introduced smoothing pa-
+rameter αin the standard loss function (e.g., cross-entropy):
+Lc=−KX
+k=1ys
+ilogpi, ys
+k=yk(1−α) +α/K (20)
+where ykis the soft label for k-th category. It is shown that
+LS encourages the differences between the logits of the cor-
+rect class and the logits of the incorrect class to be a constant
+depending on α. The confidence penalty can be recovered by
+assuming the prior label distribution is a uniform distribution
+uand reversing the direction of the KL divergence.
+L(θ) =−X
+logp(y|x)−KL(u∥p(y|x)). (21)
+Mixup training (Thulasidasan et al. 2019) is another work
+in this line of exploration. It studies the effectiveness of
+mixup (Zhang et al. 2018) with respect to model calibra-
+tion (Zhang et al. 2022). Mixup generates synthetic sam-
+ples during training by convexly combining random pairs
+of inputs and labels as well. To mix up two random samples
+(xi, yi)and(xj, yj), the following rules are used:
+¯x=αxi+ (1−α)xj¯y =αyi+ (1−α)yj (22)
+where (¯xi,¯yi)is the virtual feature-target of original pairs.
+The authors observed that mixup-trained models are better
+calibrated and less prone to overconfidence in prediction on
+out-of-distribution and noise data. It is pointed out that mix-
+ing features alone does not bring calibration benefits; label
+smoothing can significantly improve calibration when used
+together with mixing features.
+Remarks : This line of work combats overfitting by data
+augmentation in hidden space. This improves not only
+model generalization but also calibration. Those methods
+don’t significantly increase network complexity but usually
+require more training time due to more generated or synthe-
+sized training samples.
+4.4 Uncertainty Estimation
+This line of work aims to alleviate model miscalibra-
+tion by injecting randomness.The popular methods are (1)
+Bayesian neural networks (Blundell et al. 2015; Fortu-
+nato, Blundell, and Vinyals 2017), (2) ensembles (Lak-
+shminarayanan, Pritzel, and Blundell 2017), (3) Monte
+Carlo(MC) dropout (Gal and Ghahramani 2016) and (4)Gumbel-softmax (Jang, Gu, and Poole 2017) based ap-
+proaches (Wang, Lawrence, and Niepert 2021; Pei, Wang,
+and Szarvas 2022). The former three sub-categorgies have
+been discussed in recent surveys (Mena, Pujol, and Vitria
+2021; Gawlikowski et al. 2021)
+𝑥𝑖𝑧𝑗𝑦𝑊𝑖𝑗=𝜇𝑖𝑗+𝜖∗𝜎𝑖𝑗𝜖~𝐺𝑎𝑢𝑠𝑠𝑖𝑜𝑛(0,1)𝑥𝑖𝑧𝑗𝑦𝑊𝑖𝑗𝑓𝑓𝑥𝑖𝑟𝑖𝑟𝑖~𝐵𝑒𝑟𝑛𝑜𝑢𝑙𝑙𝑖(1−𝑝)𝑝∈[0;1]𝑥𝑖𝑧𝑗𝑦𝑗𝑊𝑖𝑗𝑓𝑗𝑥𝑖𝑧𝑘𝑦k𝑊𝑖k𝑓k𝑥𝑖𝑧𝑗𝑦𝑓𝑔𝑖𝑦𝑔𝑖~𝐺𝑢𝑚𝑏𝑒𝑙[−log(−log𝑢]𝑢~𝑈𝑛𝑖𝑓𝑜𝑟𝑚(0,1)(a)(b)
+(c)(d)
+Figure 2: The methods of uncertainty estimation (Pei, Wang,
+and Szarvas 2022). (a) Bayesian neural network; (b) MC
+dropout; (c) Ensembles; (d) Gumbel-Softmax trick.
+0.0 0.2 0.4 0.6 0.8 1.0
+Confidence0.00.20.40.60.81.0AccuracyECE = 7.69%
+MCE = 23.31%
+0.0 0.2 0.4 0.6 0.8 1.0
+Confidence0.00.20.40.60.81.0AccuracyECE = 8.03%
+MCE = 28.11%
+0.0 0.2 0.4 0.6 0.8 1.0
+Confidence0.00.20.40.60.81.0AccuracyECE = 8.29%
+MCE = 34.58%
+Figure 3: The reliability diagram plots for a model trained
+on CIFAR100 with different bin numbers (left to right: 20,
+50, 100). The diagonal dash line presents perfect calibra-
+tion, the red bar presents the gap to perfect calibration on
+each bin.The calibration error is sensitive to increasing bin
+numbers.
+Bayesian Neural Network Given a learning objec-
+tive is to minimize negative log likelihood, L=
+−1
+NPN
+ilogp(yi|xi, ω). The probability distribution is ob-
+tained by Softmax function as:
+p(yi=m|xi, ω) =exp(fm(xi, ω))P
+k∈Mexp(fk(xi, ω). (23)
+In the inference phase, given a test sample x∗, the predictive
+probability y∗is computed by:
+p(y∗|x∗, D) =Z
+p(y∗|x∗, ω)p(ω|D)dω (24)
+As posterior p(ω|D)is intractable, we perform approxima-
+tion by minimizing the Kullback-Leilber (KL) distance. This
+can also be treated as the maximization of ELBO :
+Lθ=Z
+qθ(ω)p(Y|X, ω)dω−KL[qθ(ω)∥p(ω)](25)where θare the variational parameters. With the re-
+parametrization trick (Kingma, Salimans, and Welling
+2015), a differentiable mini-batched Monte Carlo (MC) es-
+timator can be obtained.
+The uncertainty estimation can be done by performing T
+inference runs and averaging predictions.
+p(y∗ |x∗) =1
+TTX
+t=1pωt(y∗|x∗, ωt) (26)
+MC Dropout, Ensembles and Gumbel-Softmax By fol-
+lowing the above-mentioned strategy, MC-dropout (Gal and
+Ghahramani 2016), ensembles (Lakshminarayanan, Pritzel,
+and Blundell 2017) and Gumbel-softmax sampling (Jang,
+Gu, and Poole 2017; Wang, Lawrence, and Niepert 2021)
+introduce randomness in different ways, as illustrated in Fig-
+ure 2. Then the Tin equation (29) corresponds to the number
+of sets of mask vectors from Bernoulli distribution {rt}T
+t=1
+in MC-dropout, or the number of randomly trained models
+in Ensembles, which potentially leads to different sets of
+learned parameters ω={ω1, ..., ω t}, or the number of sets
+of sampled attention distribution from Gumbel distribution
+{gt}T
+t=1.
+Remarks : This line of work requires multiple inference
+runs to perform approximations. This increases computa-
+tional overhead significantly as compared to previous meth-
+ods. On the other hand, besides model calibration, those
+methods are primarily proposed for uncertainty quantifica-
+tion and estimation. Therefore, network uncertainty can be
+captured and measured as well.
+4.5 Composition Calibration
+Beside applying each calibration method independently, we
+can always have calibration compositions by combining
+two or more methods. One straightforward way to com-
+bine non-post-hoc methods with post-hoc methods For in-
+stance, performing Temperature Scaling (TS) after em-
+ploying the regularization method and implicit calibra-
+tion (Kumar, Sarawagi, and Jain 2018; Bohdal, Yang, and
+Hospedales 2021). Thulasidasan et al. (Thulasidasan et al.
+2019) observed that the combination of label smoothing and
+mixup training significantly improved calibration. While
+there are several possibilities for combining different ap-
+proaches, we highlight some interesting calibration compo-
+sitions.
+Ensemble Temperature Scaling (ETS) Zhang,
+Kailkhura, and Han (2020) gave three important definitions
+related to calibration properties: accuracy-preserving,
+data-efficient, and expressive. They pointed out that TS is
+an accuracy-preserving and data-efficient approach but is
+less expressive. Ensemble Temperature Scaling (ETS) was
+proposed to improve TS expressivity while maintaining the
+other two properties:
+T(z;w, τ) =w1T(z;τ) +w2z+w3K−1(27)
+There are three ensemble components: the original TS
+T(z;τ) = ( zτ−1
+1, ..., zτ−1
+k)/PK
+k=1zτ−1
+k, uncalibrated pre-
+diction with τ= 1 and uniform prediction for each class
+zk=K−1.Temperature Scaling with MC Dropout Laves et al.
+(2019) extended TS to dropout variational inference to
+calibrate model uncertainty. The key idea is to insert
+τbefore final softmax activation and insert TS with
+τ > 0before softmax activation in MC integration: ˆp=
+1
+NPN
+i=1SOFTMAX (fwi(x)
+τ)where Nforward passes are
+performed to optimize τwith respect to NLL on the valida-
+tion set. Then the entropy of the softmax likelihood is used
+to represent the uncertainty of all Cclasses.
+H(p) =−1
+logCX
+pclogpc, H∈[0,1] (28)
+Remarks : Appropriately combining different calibration
+types to some degree can further improve calibration, mean-
+while, it may combine the advantages of different calibration
+methods like Ensemble Temperature Scaling (ETS) (Zhang,
+Kailkhura, and Han 2020). Obviously, this increases com-
+plexity.
+4.6 Calibrating Pre-trained Large Models
+Pre-trained large models, including vision, language, or
+vision-language models, have been increasingly used in
+many safety-critical and customer-facing applications. The
+calibration of those large models has been recently studied
+and revisited (Minderer et al. 2021b; LeVine et al. 2023).
+Large Vision Model Calibration Minderer et al. (Min-
+derer et al. 2021b) studied recent state-of-the-art vision mod-
+els that include vision transformer (Dosovitskiy et al.) and
+MLP-mixer (Tolstikhin et al. 2021). They found out that
+the model size and amount of pre-training in the recent
+model generation could not fully explain the observed de-
+cay of calibration with distribution shift or model size in
+the prior model generation. They also discussed the correla-
+tion between in-distribution and out-of-distribution (OOD)
+calibration. They pointed out that the models with better
+in-distribution calibration also gave better calibration on
+OOD benchmarks LeVine et al. (2023) studied the calibra-
+tion of CLIP (Radford et al. 2021) as a zero-shot inference
+model and found that CLIP is miscalibrated in zero-shot set-
+tings.They showed effectiveness of learning a temperature
+on an auxiliary task and applying it to inference regardless
+of prompt or datasets.
+Large Language Models (LLMs) Zhao et al. (2021) pro-
+posed contextual calibration procedure to improve the pre-
+dictive power of GPT-2 and GPT-3 on few-shot learning
+tasks. They pointed out that the model instability issues re-
+late to the bias of language models: the choice of prompt
+format, training samples, and even the order of training sam-
+ples. The contextual calibration is performed by using vector
+scaling (Guo et al. 2017). Park and Caragea (2022) ex-
+tended mixup (Zhang et al. 2018) training to improve model
+calibration by synthesizing samples based on the Area Un-
+der the Margin (AUM) for pre-trained language models.
+Prototypical calibration (PROCA) (Han et al. 2023) is one
+of the latest studies in calibrating LLMs. It showed the im-
+portance of decision boundary in few-shot classification set-
+tings and suggested learning a better boundary with a pro-totypical cluster. Concretely, it estimates Kcategory-wise
+clusters with the Gaussian mixture model (GMM):
+PGMM (x) =NX
+k=1αk(x|uk,Σk) (29)
+where ukandΣkare the mean vector and covariance ma-
+trix of the distribution. The parameters {α, u,Σ}K
+k=1are es-
+timated by using the Expectation-Maximization (EM) algo-
+rithm (Moon 1996) with a small unlabelled dataset.
+5 Conclusion and Future Work
+We have reviewed the state-of-the-art calibration methods,
+described with the motivations, causes, measurement met-
+rics, and categorizations. Then we discussed the details and
+principles of recent methods as well as their individual ad-
+vantages and disadvantages. Despite recent advances in cal-
+ibrating deep models, there are still some challenges and un-
+derexplored aspects and needs further exploration.
+5.1 Mitigating Calibration Bias
+Accurately and reliably measuring calibration is still chal-
+lenging due to the introduced biases from the binning mech-
+anism and the finite sample numbers (Minderer et al. 2021a).
+For the former challenge, it mainly suffers from sensitiv-
+ity and data inefficiency issues. The sensitivity to the bin-
+ning scheme is presented in 3. We can see that for a given
+model, increasing bin numbers gives higher ECE and MCE
+scores. A KDE-based ECE Estimator (Zhang, Kailkhura,
+and Han 2020) was proposed to replace histograms with
+non-parametric density estimators, which are continuous
+and more data-efficient. Measuring the bias is then impor-
+tant for having a correct calibration evaluation. Roelofs et al.
+(2022) proposed Bias-by-Construction (BBC) to model the
+bias in bin-based ECE as a function of the number of sam-
+ples and bins. It confirms the existence of non-negligible
+statistical biases. To follow this line of work, future efforts
+will include developing an unbiased calibration estimator,
+exploring the trade-off between calibration bias and variance
+as mentioned in (Roelofs et al. 2022).
+5.2 Calibrating Generative Models
+Most recent calibration efforts have focused on classifica-
+tion and regression tasks; model calibration for sequence
+generation is rarely discussed in the literature. Kumar and
+Sarawagi (2019) pointed out the token-level probability in
+neural machine translation tasks is poorly calibrated, which
+explains the counter-intuitive BLEU drop with increased
+beam-size (Koehn and Knowles 2017). The token-level
+probability miscalibration is further confirmed in LLM for
+few-shot learning (Zhao et al. 2021). The main cause is the
+softmax bottleneck (Yang et al. 2018) on large vocabulary.
+In the task of sequence generation, early token probability
+miscalibration can magnify the entire sequence. How to ef-
+fectively calibrate token-level probability in various settings
+would be an interesting direction, particularly in the era of
+LLMs.

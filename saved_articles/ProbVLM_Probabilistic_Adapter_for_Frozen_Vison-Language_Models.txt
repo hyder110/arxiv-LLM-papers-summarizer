@@ -1,0 +1,636 @@
+ProbVLM : Probabilistic Adapter for Frozen Vison-Language Models
+Uddeshya Upadhyay,1Shyamgopal Karthik,1Massimiliano Mancini2Zeynep Akata1,3
+1University of T ¨ubingen2University of Trento3MPI for Intelligent Systems
+Abstract
+Large-scale vision-language models (VLMs) like CLIP
+successfully find correspondences between images and text.
+Through the standard deterministic mapping process, an
+image or a text sample is mapped to a single vector in the
+embedding space. This is problematic: as multiple sam-
+ples (images or text) can abstract the same concept in the
+physical world, deterministic embeddings do not reflect the
+inherent ambiguity in the embedding space. We propose
+ProbVLM , a probabilistic adapter that estimates probabil-
+ity distributions for the embeddings of pre-trained VLMs
+via inter/intra-modal alignment in a post-hoc manner with-
+out needing large-scale datasets or computing. On four
+challenging datasets, i.e., COCO, Flickr, CUB, and Oxford-
+flowers, we estimate the multi-modal embedding uncertain-
+ties for two VLMs, i.e., CLIP and BLIP , quantify the cal-
+ibration of embedding uncertainties in retrieval tasks and
+show that ProbVLM outperforms other methods. Further-
+more, we propose active learning and model selection as
+two real-world downstream tasks for VLMs and show that
+the estimated uncertainty aids both tasks. Lastly, we present
+a novel technique for visualizing the embedding distribu-
+tions using a large-scale pre-trained latent diffusion model.
+1. Introduction
+Recently, large vision-language models (VLMs) [62, 51,
+45, 74, 1, 35] have become exceedingly popular due to
+their ability to align images and text. These models such
+as CLIP [62] and BLIP [45] are trained on large-scale
+datasets such as LAION-400M [70] and YFCC-100M [79]
+and have shown strong performance when evaluated in a
+zero-shot fashion (i.e without requiring fine-tuning on spe-
+cific datasets) for a variety of downstream tasks. One of
+the most popular applications of VLMs is cross-modal re-
+trieval [86, 88] i.e retrieving images (text) for a queried
+text (images). However, image-to-text matching (and vice-
+versa) is fundamentally ill-posed due to the inherent ambi-
+*Authors contributed equally.
+Figure 1: We provide probabilistic embeddings for deter-
+ministic pre-trained vision-language models that are frozen .
+By capturing the ambiguity inherently present in the inputs,
+we obtain well-calibrated uncertainty estimates.
+guity in either modality [97], i.e. the same caption (or im-
+age) can be valid for multiple images (or captions). There-
+fore, it becomes essential to model the ambiguity inherently
+present in the various modalities, and combinations thereof.
+Instead of mapping inputs to embeddings, probabilistic
+embedding methods [57, 10] learn to map input samples to
+distributions. This is achieved by parameterizing the distri-
+butions of the embeddings and training a deep neural net-
+work to maximize its likelihood. Although they model am-
+biguities in the embedding space, such probabilistic models
+require training deep networks from scratch. This requires
+access to the large-scale datasets and the computational re-
+sources of the recent VLMs [62, 35, 51, 74, 45].
+We propose ProbVLM , a post-hoc probabilistic adapter,
+the first method to convert the deterministic embeddings
+provided by a frozen large-scale vision-language models
+into probabilistic ones, as shown in Figure 1. This enables
+us to efficiently retain the benefits of large-scale pre-training
+while learning distributions that model the inherent ambigu-
+ities in the different modalities. Our ProbVLM models the
+embedding distribution as a heteroscedastic probability dis-
+tribution and is trained using a combination of intra-modal
+and cross-modal alignment objectives and provides well-
+calibrated uncertainty estimates, useful for several tasks.
+We demonstrate on two large vision-language datasets,
+i.e., COCO [46] and Flickr [60], and on two fine-grained
+image datasets, i.e., CUB [85] and Oxford-Flowers [55]
+with sentences from [66], that ProbVLM learns calibrated
+uncertainties without requiring large-scale models to bearXiv:2307.00398v1  [cs.CV]  1 Jul 2023trained from scratch. This sharply contrasts previous works
+on probabilistic embeddings [57, 10] that train new models
+from scratch. We perform a series of analyses to understand
+the impact of the training objective and to study the proper-
+ties of the resulting uncertainties. Furthermore, we demon-
+strate that our uncertainty estimates can be used to select the
+optimal model from a set of finetuned vision-language mod-
+els on an unlabeled target dataset. They can also be used to
+choose the most suitable samples for fine-tuning the model
+in an active learning setup. Finally, with the help of a pre-
+trained latent diffusion model [67], i.e., Stable Diffusion , we
+decode sampled embeddings from predicted distribution to
+visualize the predicted embedding distributions. We show
+that the predicted embedding distributions indeed capture
+meaningful modes of variation, that may be interpretable.
+2. Related Work
+Vision-Language Models. Such models [62, 51, 74, 1,
+45, 47, 44, 100, 101, 90] have become ubiquitous in re-
+cent times due to their various applications in image clas-
+sification [105, 21, 106, 50], cross-modal retrieval [4], as
+well as open-vocabulary semantic segmentation [24, 96].
+The most notable among these is CLIP [62], which con-
+sists of an image and text encoder trained on 400M image-
+text pairs with a contrastive objective [28, 58]. As a result,
+the model is able to project images and text to a shared
+embedding space. In this paper, we focus on using the
+shared embedding space for the task of cross-modal re-
+trieval [60, 46]. Recent works have predominantly relied
+on large-scale pre-training [62, 51, 74, 1, 104, 70, 69] to
+project images and text to the same metric space. How-
+ever, it is essential to note that all of these vision-language
+models [62, 51, 45, 74, 1] provide deterministic mappings
+that do not model the inherent ambiguity in the inputs. In
+this work, we turn a deterministic model (i.e., CLIP) into a
+probabilistic one, without the need of a large-scale dataset.
+Probabilistic Embeddings. These methods [57, 10, 43]
+provide an elegant solution to estimate the ambiguity
+present in the inputs [37]. The key idea here is to map inputs
+to probability distributions in the embedding space, as op-
+posed to point estimates, thereby modeling the inherent am-
+biguity present in the input. In the context of cross-modal
+retrieval, this was done by optimizing a probabilistic analog
+of the contrastive objective to learn distributions for the im-
+age and text inputs [10]. Other works have further improved
+the performance [43, 59, 34], extended this formulation to
+achieve compositional retrieval [54], and have applied it to
+other tasks such as video retrieval [59, 17] and tasks like
+pose estimation [78]. However, most of these works focus
+on training a model from scratch, thereby not leveraging
+the power of the pre-trained models that are widely present.
+The notable exception to this is Probabilistic Face Embed-
+ding (PFE) [73] that proposed to learn a probabilistic em-bedding while retaining a deterministic pre-trained model
+for the task of learning face embeddings. However, this
+was done in a unimodal setting using only images. In this
+work, we aim to utilize pre-trained vision-language models
+while providing probabilistic embeddings for both modal-
+ities. The probabilistic embeddings derived from our pro-
+posed ProbVLM are consistent with cross-modal learning
+at the core of pretrained vision-language models.
+Uncertainty Estimation. These techniques have been
+widely explored for different tasks in computer vision [36,
+7, 41, 42, 56, 102, 83, 53, 80, 27, 68, 103, 65, 81, 77, 82].
+Uncertainties can be broadly categorized into aleatoric [36,
+23, 3, 89, 12, 2, 87, 56, 95] and epistemic [25, 7, 41,
+91, 20, 33, 19, 18] uncertainties. Uncertainty estimation
+has been used for a variety of tasks, such as identify-
+ing model failure [15, 5, 6, 92] and is extensively used
+in active learning to select the best samples to train the
+model [71, 38, 64, 72, 99, 98, 61, 52]. While several of
+these methods focus on training a new Bayesian model from
+scratch for quantifying the uncertainties in the prediction,
+some recent works like [83, 102, 29] have proposed meth-
+ods to estimate the uncertainties for the pre-trained frozen
+models. However, these works tackle data from a single
+modality. This work efficiently estimates the uncertainty for
+the pre-trained frozen large-scale vision-language model.
+3. Method
+We first describe the problem formulation in Section 3.1.
+In Section 3.2, we describe our proposed method ProbVLM
+that estimates the complex probability distributions for the
+embeddings of the frozen deterministic vision-langue en-
+coders, quantifying the uncertainties for their predictions.
+3.1. Problem Formulation
+LetD= (I,C)denote a vision and language dataset,
+where Iis a set of images and Ca set of captions The two
+sets are connected via ground-truth matches where multi-
+plicity is plausible. For a caption c∈ C (respectively an
+image i∈ I), the set of corresponding images (respec-
+tively captions) is given by κ(c)⊆ I (respectively κ(i)⊆
+C). Recent advances in cross-modal vision-language mod-
+els [62, 51, 74] often involve learning a shared embedding
+space, Z ⊆RD(D-dimensional space), for images and
+texts. This allows quantifying the similarity between cross-
+modal elements based on their distances in the shared em-
+bedding space. The shared embedding space is learned via
+a set of two encoders: ΦV(·;θV) :I → Z for the images
+andΦT(·;θT) :C → Z for the texts, where θVandθTare
+the parameters for the respective mapping functions.
+We consider a real-world scenario where the above set
+of encoders have already been trained on vast datasets using
+large models with high computational cost, e.g., CLIP [62],
+SLIP [51], Flava [74] and BLIP [45], are in frozen state , i.e.,
+2Figure 2: Proposed framework ( ProbVLM ) takes an existing vision-language model and introduces a probabilistic adapter
+over the image and text encoders. These adapters predict the parameters of a parameterized distribution for a given embed-
+ding. Models are trained by minimizing an objective consisting of intra/cross-modal supervision as detailed in Section 3.
+we have ΦV(·;θ∗
+V)andΦT(·;θ∗
+T), where θ∗
+V, θ∗
+Trepresents
+the parameters of the pretrained frozen encoders. These en-
+coders are deterministic and map an image/text to vectors
+in the shared space, i.e., given a sample image xV(and sim-
+ilarly sample text xT), the encoder provides an embedding
+zV:=ΦV(xV;θ∗
+V)(and similarly, zT:=ΦT(xT;θ∗
+T)).
+However, the point estimates, z, do not capture the ambigu-
+ity inherent to these embeddings [57, 10, 17] that are better
+represented by the probability distribution Pz|x. Therefore,
+we propose to estimate Pz|xfor the pretrained model ef-
+ficiently, using ProbVLM , quantifying the uncertainties of
+the output without re-training the encoders.
+3.2. Building ProbVLM
+Despite being deterministic, large-scale frozen encoders
+already provide high-quality point estimates. Our proposed
+method leverages this fact, using the embeddings zas es-
+timates for the mean of the desired distribution Pz|x, and
+estimating the remaining parameters. Pz|xcan be mod-
+eled as a parametric distribution Pz|x(z|{ˆz,ˆν...ˆρ})where
+the parameters can be estimated using a deep neural net-
+work [20, 36, 41]. Therefore, we introduce ProbVLM ,
+Ψ(·;ζ) := (ΨV(·;ζV),ΨT(·;ζT)) (1)
+where ΨVandΨTrepresents the vision and text encoders
+parameterized by ζVandζT, respectively. Also, ζ:=
+ζV∪ζTrepresents the overall parameters for ProbVLM .
+that learns to estimate the parameters {ˆz,ˆν...ˆρ}with thehelp of frozen encoders ΦV(·;θ∗
+V)andΦT(·;θ∗
+T). The
+functions ΨV(·;ζV)andΨT(·;ζT)operate on image and
+text embeddings respectively, but during training depend on
+both modalities, as discussed later. We design the learn-
+ing scheme for Ψ(·;ζ)such that: (i) Estimated parameter ˆz
+should remain faithful to the original unimodal embedding
+z(intra-modal alignment ), this makes the uncertainty of
+theProbVLM serve as a good proxy for the uncertainty of
+frozen encoders. (ii) Estimated parameters {ˆν...ˆρ}should
+capture the ambiguities and uncertainties present within and
+across modalities ( cross-modal alignment ). Figure 2 depicts
+ProbVLM in tandem with the frozen VLM.
+Intra-modal Alignment. To ensure that the mean of the
+distribution estimated by Ψ(·;ζ)reflects the point esti-
+mates provided by the frozen encoders, we set up a prob-
+abilistic reconstruction problem for the embeddings within
+the modalities. That is, for a given sample x(either
+from image or text modality), we obtain the embedding
+from the frozen encoder z=Φ(x;θ)(using the appro-
+priate encoder), then the modality-specific component of
+Ψ(·;ζ)learns to reconstruct the z(let the reconstruction
+be called ˆz). The modality-specific component of Ψ(·;ζ)
+is designed to (i) relax the i.i.d constraints by assuming
+independent but notidentically distributed residuals and
+(ii) learn the heteroscedasticity for the residuals at the time
+of reconstruction that may follow the heavy-tailed distribu-
+tions [83, 84, 40, 39, 30]. The modality-specific component
+is learned by maximizing the likelihood, L(ζ;{zi}N
+i=1)for
+3the embeddings of Nsamples in the datasets. That is, the
+modality-specific optimal parameters are given by,
+ζ∗:=argmax
+ζL(ζ;{zi}N
+i=1) =NY
+i=1ˆβie−(|ˆzi−zi|/ˆαi)ˆβi
+2ˆαiΓ(1/ˆβi)
+(2)
+In the above equation,ˆβie−(|ˆzi−zi|/ˆαi)ˆβi
+2ˆαiΓ(1/ˆβi)represents the gen-
+eralized Gaussian distribution (GGD, represented by G)
+that is capable of modeling heavy-tailed distributions (note
+the Gaussian and Laplace are special cases of Gwithα=
+1, β= 2 andα= 1, β= 1, respectively). The variables
+ˆzi,ˆαi,ˆβiare the predicted mean, scale, and shape param-
+eters of Gfrom our modality-specific components for the
+given input zi. We obtain modality-specific optimal param-
+eters by minimizing negative log-likelihood (equivalent to
+Equation 2). Given zand predicted ˆz,ˆα,ˆβ, loss is given by,
+Lrec(ζ) :=|ˆz−z|
+ˆαˆβ
+−logˆβ
+ˆα+ log Γ(1
+ˆβ) (3)
+Therefore, the vision-specific component of ProbVLM ,
+Ψ(·;ζV)), is trained by minimizing the Eqation 3 using im-
+age embeddings, we denote this loss as LV
+rec(ζV). Simi-
+larly the text-specific component, Ψ(·;ζT), is trained by
+minimizing LT
+rec(ζT). As discussed next, we also enforce
+cross-modal alignment so that the predicted distribution of
+ProbVLM captures the uncertainties across modalities from
+one-to-many correspondences for an embedding.
+Cross-modal Alignment. While the intra-modal alignment
+seeks to match the means of the output distribution from
+ProbVLM to the embeddings derived from frozen vision-
+language encoders, we also enforce the image and text em-
+bedding output distribution (from ProbVLM ) belonging to
+similar concepts to remain close to each other. That is, given
+an image and text embedding pair (zV,zT)(from frozen
+model) representing similar concepts, the output distribu-
+tions from Ψ(·;ζ),G(z;ˆzV,ˆαV,ˆβV)andG(z;ˆzT,ˆαT,ˆβT)
+(later referred to as GV(z)) andGT(z)) should match. This
+can be measured directly from the likelihood as, p(zv=
+zu), where zv∼ GV(z)andzu∼ GT(z)as in [73] , i.e.,
+p(zv=zu) :=ZZ
+GV(zv)GT(zu)δ(zv−zu)dzvdzu(4)
+where δ(·)refers to the Dirac-delta distribution . The above
+integral can be simplified further by defining ∆z=zv−
+zuand seeking p(∆z) = 0 . As both zvandzuare GGD
+random variables, ∆zfollows the distribution based on the
+Bivariate Fox H-function [76, 48, 49] given by,
+∆z∼1
+2Γ(1/ˆβV),Γ(1/ˆβT)×
+Z
+H1,1
+1,2
+At2(1−1
+ˆzV,1
+ˆzT)
+(0,1)(1
+2,1)
+H1,1
+1,2
+Bt2(1−1
+ˆzT,1
+ˆzT)
+(0,1)(1
+2,1)
+cost(µ−z)dt
+(5)Where A=ˆα2
+VΓ(1/ˆβV)
+4Γ(3/ˆβV),B=ˆα2
+TΓ(1/ˆβT)
+4Γ(3/ˆβT),µ=ˆzv−ˆzu, and
+His the Fox H function [76, 48, 49]. Equation 5 does not
+provide a scalable objective function suitable for training
+deep neural networks. Hence, we propose an approximation
+that is easily scalable for deep-learning models given by,
+p(zv=zu) =ZZ
+GV(zv)GT(zu)δ(zv−zu)dzvdzu
+≈Z1
+2(GV(z)δ(z−zT) +GT(z)δ(z−zV))dz (6)
+The appendix shows details of the above equation. The first
+term in the integral,R
+GV(z)δ(z−zT)dz, is the likelihood
+of the text embedding zTunder the predicted distribution,
+GV(z), for the visual embedding. Similarly, the second term
+is the likelihood of the visual embedding zVunder the pre-
+dicted distribution, GT(z), for the text embedding. Negative
+log of Equation 6 leads to a scalable objective function that
+can be used to learn the optimal parameters for vision and
+text components of ProbVLM (ΨV(·;ζV)andΨT(·;ζT)),
+Lcross(ζV, ζT) :=|ˆzV−zT|
+ˆαVˆβV
+−logˆβV
+ˆαV+ log Γ(1
+ˆβV)
+| {z }
+Cross-modal: vision →text+
+|ˆzT−zV|
+ˆαTˆβT
+−logˆβT
+ˆαT+ log Γ(1
+ˆβT)
+| {z }
+Cross-modal: text →vision(7)
+The overall objective used for ProbVLM is designed to be,
+LProbVLM (ζV, ζT) =LV
+rec(ζV) +LT
+rec(ζT) +λcrossLcross(ζV, ζT)
+(8)
+where λcross is a hyperparameter controlling the relative
+contribution of inter-intra modality terms.
+Uncertainty Quantification. Given embedding zfrom
+a frozen encoder, predicted distributions from the trained
+ProbVLM (output from the appropriate component) allows
+aleatoric uncertainty estimation as ˆσ2
+aleatoric =ˆα2Γ(3/ˆβ)
+Γ(1/ˆβ).
+Moreover, we design both ΨVandΨTto be simple 3-
+layer MLPs with dropout layers (with dropout probability
+set to 0.1 during training). Activating dropouts during infer-
+ence, with multiple forward passes (say M), allows estimat-
+ing the epistemic uncertainty, ˆσ2
+epistemic =1
+MPM
+m=1(ˆzm−
+1
+MPM
+j=1ˆzj)2. We estimate total uncertainty as,
+ˆσ2
+total= ˆσ2
+epistemic + ˆσ2
+aleatoric (9)
+3.3. Latent Diffusion for Probabilistic Embeddings
+For a given text embedding zT, the distribution esti-
+mated via ProbVLM ,G(z;ˆzT,ˆαT,ˆβT)can be visualized
+by drawing samples from the predicted distribution of vec-
+tors (say, {ˆzT,i}Q
+i=1) and passing them through a latent dif-
+fusion model, e.g., Stable Diffusion (say,Ω(·;θ∗
+Ω)) using
+4Figure 3: Measuring the calibration with various post-hoc method for Image-to-Text and Text-to-Image retrieval when trained
+on (top) CUB and (bottom) COCO, and evaluated on CUB, COCO, Flickr, FLO.
+CLIP text encoder, to synthesize the set of samples (say, J)
+from the corresponding distribution of images, i.e.,
+J:={Ω(ˆzi;θΩ)}Q
+i=1 (10)
+Section 4.4 uses this to visualize the predicted distributions.
+4. Experiments and Results
+We start by highlighting our tasks, datasets, and evalua-
+tion metrics. We also compare our model to various state-
+of-the-art methods quantitatively and qualitatively in Sec-
+tion 4.1. In Section 4.2, we provide an ablation analysis,
+and Section 4.3 demonstrates some real-world applications
+ofProbVLM for model selection and active learning.
+Datasets, Metrics, and Baselines. We use the MS-
+COCO [46], Flickr-30k [60], and the CUB [85] as they are
+widely used for cross-modal retrieval [10, 16, 75]. Further-
+more, we adapt the Oxford-Flowers 102 (FLO) dataset [55]
+similar to [10] as an additional benchmark for cross-modal
+retrieval in a fine-grained setting. We evaluate the perfor-
+mance of both Image-to-Text retrieval and Text-to-Image
+Retrieval using the Recall@k (R@k) metric. To evaluatethe calibration of the uncertainty estimates, we define un-
+certainty levels [10] and use the Spearman rank correla-
+tion (denoted by S) between the uncertainty level and the
+Recall@k for retrieval. For an ideal model, performance
+would decrease monotonically with increasing uncertainty
+levels, leading to a score of -1. We also compute the R2for
+the regression fit between the uncertainty levels and R@1
+performances to measure if the drop in performance follows
+a linear trend. Finally, we also measure the product of these
+two scores (as a unified metric), i.e., −SR2, which should
+be 1.0 for an ideal model. Since there is no prior work to es-
+timate probabilistic embeddings from a deterministic model
+in a cross-modal setting, we adapt a few existing ideas for
+the task. The first baseline is adapted from PFE [73], where
+we learn the covariances for the heteroscedastic Gaussian
+distribution while keeping the mean fixed to the embeddings
+derived from the frozen encoders in each modality. The sec-
+ond is to use the soft-contrastive objective of PCME[10] to
+train a probabilistic adapter in a post-hoc fashion. Finally,
+we also have a baseline that performs perform Test-Time
+Data Augmentation (TTDA) on the inputs [2, 87]. This is
+done by perturbing the images and masking out words in
+5i2t t2i
+VL M Metrics COCO Flickr FLO CUB COCO Flickr FLO CUBCLIP
+ProbVLMS↓ -0.99 -0.70 -0.90 -0.60 -0.30 -0.70 -0.99 -0.89
+R2↑ 0.93 0.71 0.62 0.67 0.35 0.50 0.99 0.70
+-SR2↑ 0.93 0.49 0.56 0.40 0.10 0.35 0.99 0.63PFE*[73]S↓ -0.79 -0.19 0.60 -0.60 0.79 0.30 -0.89 -0.10
+R2↑ 0.59 0.01 0.30 0.28 0.74 0.44 0.52 0.00
+-SR2↑ 0.47 0.00 -0.18 0.17 -0.59 -0.13 0.47 -0.00PCME*[10]S↓ -0.89 -0.30 -0.30 -0.60 0.30 0.09 -0.70 0.30
+R2↑ 0.75 0.07 0.07 0.20 0.16 0.01 0.57 0.01
+-SR2↑ 0.68 0.02 0.02 0.12 -0.05 -0.00 0.40 -0.00TTDA[2]S↓ -0.79 -0.30 0.00 -0.60 -0.10 -0.19 -0.89 -0.50
+R2↑ 0.69 0.09 0.00 0.41 0.26 0.071 0.80 0.15
+-SR2↑ 0.55 0.03 0.00 0.24 0.00 0.01 0.73 0.07BLIP
+ProbVLMS↓ -0.87 -0.79 -0.74 -0.66 -0.43 -0.38 -0.31 -0.22
+R2↑ 0.92 0.83 0.68 0.61 0.52 0.48 0.45 0.38
+-SR2↑ 0.80 0.66 0.50 0.40 0.22 0.18 0.14 0.08PFE*[73]S↓ -0.82 -0.74 -0.63 -0.63 -0.39 -0.32 -0.28 -0.18
+R2↑ 0.72 0.76 0.62 0.44 0.48 0.38 0.39 0.37
+-SR2↑ 0.58 0.57 0.39 0.27 0.19 0.12 0.11 0.07PCME*[10]S↓ -0.76 -0.53 -0.60 -0.44 -0.28 -0.26 -0.28 -0.21
+R2↑ 0.81 0.56 0.60 0.53 0.50 0.34 0.44 0.36
+-SR2↑ 0.62 0.29 0.36 0.23 0.14 0.09 0.12 0.08TTDA[2]S↓ -0.44 -0.33 -0.74 -0.60 -0.19 -0.26 -0.21 -0.21
+R2↑ 0.66 0.56 0.42 0.55 0.49 0.23 0.35 0.36
+-SR2↑ 0.29 0.18 0.31 0.33 0.10 0.06 0.07 0.08
+Table 1: Metrics to evaluate the calibration of the uncer-
+tainty estimates for both CLIP [62] and BLIP [45] Vision-
+Language models for all considered methods, trained on
+COCO and evaluated on COCO, Flickr, CUB, and FLO.
+the text. While TTDA does not require additional training,
+we train our ProbVLM and other baselines on datasets like
+COCO, Flickr, CUB, and FLO.
+Implementation Details. OurProbVLM consists of a
+Multi-Layer Perceptron (MLP) for both the image and text
+encoder, each consisting of an input layer going from em-
+bedding dimension to 256, a hidden layer of size 256, and
+an output layer going from 256 to embedding dimensions.
+This is trained for 100 epochs with a learning rate of 1e−4.
+More details are available in the supplementary.
+4.1. Calibrated Uncertainty via ProbVLM
+We investigate the calibration of the uncertainty derived
+fromProbVLM for the cross-modal retrieval task. All mod-
+els trained on CUB and COCO were evaluated on all four
+datasets. Calibration plots are illustrated in Figure 3. We
+observe that the R@1 performance consistently drops for
+Figure 4: Visualizing the uncertainties of the vision encoder
+captured by ProbVLM . Fixing an image from CUB, we ob-
+tain the predicted embedding distribution and compute the
+likelihood of all other samples in CUB and COCO. We ob-
+serve that the images in COCO are similar/ambiguous to
+CUB overlap (Top). However, deterministic embeddings
+lead to a separation between the two datasets (Bottom).
+ProbVLM as we increase the uncertainty levels, whereas
+the baselines rarely see a monotonic drop in performance.
+We quantify this performance in Table 1. The highest score
+of 0.93 for −SR2(i2t) on the COCO dataset indicates a
+decreasing performance trend with increasing uncertainty.
+Notably, the uncertainty estimates indicate the average per-
+formance in different bins even when ProbVLM is eval-
+uated on datasets that are different from the train set. In
+some cases, we see that ProbVLM even achieves a nearly
+perfect score ( −SR2of 0.99, with CLIP VLM on FLO,
+after training on COCO for Image-to-Text Retrieval). On
+the contrary, we find that the baselines often achieve poor
+scores. It is important to note that all these models use the
+same underlying embeddings and achieve the same perfor-
+mance on the retrieval task. Of all the considered methods,
+ProbVLM provides the most calibrated uncertainty esti-
+mates. We see similar trends for ProbVLM with BLIP [45],
+where ProbVLM achieves a −SR2of 0.80, when trained on
+COCO and evaluated on COCO, compared to other meth-
+ods like PFE∗(0.58), PCME∗(0.62), and TTDA (0.29).
+Figure 4-(Top) visualizes the ambiguities captured by
+ProbVLM on the visual embeddings. We take a bird im-
+age (source) from the CUB dataset and obtain the proba-
+bility distribution for the visual embedding of that sample;
+we then compute the likelihood of the visual embeddings
+(i.e., point estimates derived from CLIP) for the other sam-
+ples of CUB and COCO datasets, under the source distri-
+6Figure 5: Plot indicating (left) necessity of the cross-modal
+alignment and (right) data required to train ProbVLM .
+Figure 6: Uncertainty increases with increased masking of
+the input images (Left) and texts (Right). Results with three
+vision encoders and one language encoder from CLIP.
+bution. We notice that within the CUB dataset, the bird
+images similar to the source image have a higher likelihood
+compared to other bird images. Also, the images from the
+COCO dataset tend to have a lower likelihood. However,
+some images from the COCO dataset have a likelihood sim-
+ilar to the samples from CUB. We visualize these samples
+and discover them to be bird images. Moreover, the over-
+lapping region between CUB and COCO has samples from
+the COCO dataset that are ambiguous and related to bird
+images as they have similar backgrounds, etc. On the con-
+trary, when a similar analysis is performed using the CLIP
+(by measuring the distance between the embeddings instead
+of likelihood, Figure 4-(Bottom)), we notice that the two
+datasets are well separated and ambiguities are not captured.
+4.2. Ablations
+We ablate different components of our proposed
+ProbVLM , to provide a deeper understanding of its work-
+ings. First, we perform a sensitivity analysis on the cross-
+modal reconstruction objective, as shown in Figure 5-(Left),
+forProbVLM on BLIP using the COCO dataset. We need
+a non-zero coefficient of the cross-modal loss to ensure that
+ProbVLM learns meaningful uncertainties that capture the
+ambiguities across modalities and are well-correlated with
+its performance on the downstream retrieval task. Similarly,
+having a large co-efficient for the cross-modal loss could
+Figure 7: Results for active learning, with different vision
+encoders and varying training budgets. For a given encoder,
+uncertainty-based sampling outperforms random sampling.
+hinder learning a faithful identity reconstruction, thereby
+hampering the performance of the downstream evaluation.
+Next, we investigate the amount of data that is required to
+trainProbVLM in Figure 5-(Right). We get satisfactory cal-
+ibration of the uncertainty estimates while using only 50%
+of the dataset (shown for ProbVLM on BLIP using COCO),
+indicating that ProbVLM is highly data-efficient.
+Further, we investigate the uncertainties by masking out
+increasing portions of the input image/text in Figure 6. We
+use three different CLIP backbones for the images, ViT-
+B/32, ViT-B/16, ResNet50, and GPT-based language en-
+coder from CLIP [62, 63]. The mean uncertainty steadily
+increases as we mask increasing amounts of input.
+4.3. Applications
+We study the utility of the uncertainty estimates derived
+from ProbVLM on two critical applications not well re-
+viewed for VLMs: active learning and model selection.
+Active Learning. Here, we choose a small subset of the un-
+labeled dataset to fine-tune the model [11]. In this case, we
+wish to finetune the CLIP model on the FLO dataset while
+using a limited amount of labeled data. To achieve this,
+we estimate the uncertainty of the image embeddings us-
+ingProbVLM (trained using a diverse dataset like COCO).
+We then select the top-k samples sorted by their mean un-
+certainty in the visual embeddings and fine-tune the CLIP
+model using them with a contrastive objective [62]. Results
+with varying budgets are shown in Figure 7. Selecting sam-
+ples based on uncertainty scores significantly outperforms
+random sampling for all considered visual backbones.
+Pretrained Model Selection. We are given a set of mod-
+els trained on different data distributions. We aim to select
+the best model for the target distribution for which we have
+unlabeled samples. This has been explored mostly in the
+context of classification previously [22, 26, 8, 9, 13, 14].
+7Figure 8: Visualizing the predicted embedding distributions from ProbVLM using a large-scale pre-trained diffusion model,
+i.e.,Stable Diffusion . The example is shown for two different captions from CUB dataset, for which the point-estimate
+embedding vector is obtained via CLIP, and the distribution is obtained via ProbVLM .
+Metrics
+D Models Uncertainty score R@1 R@5 R@10CUBCLIP-ViT32-COCO 11.92 31.5 61.0 75.8
+CLIP-ViT32-Flickr 9.37 32.4 64.2 76.9
+CLIP-ViT32-FLO 15.43 22.8 49.8 64.9FLOCLIP-ViT32-COCO 11.83 47.9 79.2 88.5
+CLIP-ViT32-Flickr 13.55 49.5 84.6 93.9
+CLIP-ViT32-CUB 18.39 37.7 69.4 82.8FlickrCLIP-ViT32-COCO 9.61 88.8 97.8 99.8
+CLIP-ViT32-CUB 16.49 25.8 47.4 55.6
+CLIP-ViT32-FLO 13.67 52.8 77.8 85.2COCOCLIP-ViT32-Flickr 7.28 58.1 80.9 88.2
+CLIP-ViT32-CUB 15.37 8.8 21.7 29.8
+CLIP-ViT32-FLO 12.44 23.9 46.6 58.8
+Table 2: Results for the model selection experiment.
+ProbVLM accurately identifies the best performing source
+model using only unlabeled samples of the target dataset.
+We consider the specific case of having the CLIP models
+fine-tuned on three datasets, and the fourth dataset is held
+out, for which we only have the images. We compute the
+mean uncertainty on these images using ProbVLM whose
+weights are interpolated from all the source datasets [93, 94,
+32, 31]. This is to ensure that the uncertainties on all these
+models are comparable. The results for this experiment are
+shown in Table 2. On CUB, Flickr, and COCO, the source
+model with the lowest uncertainty has the best performance
+on the target dataset, and on FLO dataset, the model with
+the least uncertainty has the 2nd best performance (R@1 of
+47.9 vs 49.5 for the best model). This indicates that the un-
+certainties provided by ProbVLM can be used as a signal to
+predict the performance on unlabelled samples for retireval.
+4.4. Latent Diffusion for Embedding Uncertainty
+To further understand the semantics of the predicted em-
+bedding distribnutions from the ProbVLM , we visualize
+the text embedding distributions by sampling the embed-ding vectors from the predicted distribution for a caption
+(converted to embedding vector using CLIP) and passing it
+through the pre-trained latent diffusion model using CLIPs
+text encoder, stable diffusion , as shown in Figure 8 and de-
+scribed in details in Section 3.3. We observe from Figure 8
+that the samples obtained closer to the mean (i.e., sampled
+embedding vector similar to the one generated by CLIP for
+the caption) lead to meaningful variations in the generated
+images, e.g., for the left caption, close to the mean of the
+distribution, the generated samples show variations in the
+shape and colour of the beak, wings, and feet. Whereas far
+away from the mean of the distributions, i.e., on the tails,
+we start seeing images with strong artifacts that no longer
+preserves the semantics of the caption. We observe this for
+another example as well shown in Figure 8-(Right). More
+results are available in the supplementary.
+5. Conclusion
+We introduce ProbVLM , a post-hoc method for estimat-
+ing the embedding distribution for a frozen large-scale de-
+terministic vision-language model. We efficiently estimate
+calibrated uncertainties using our framework and show that
+such calibrated estimates have a variety of applications in
+downstream tasks such as model selection and active learn-
+ing. Furthermore, we perform experiments to interpret em-
+bedding distribution predicted by ProbVLM using a large-
+scale pre-trained latent diffusion model (i.e., Stable Diffu-
+sion). We hope our work highlights and inspires future work
+on efficient methods for probabilistic embeddings.
+Acknowledgements. This work was supported by DFG
+project number 276693517, by BMBF FKZ: 01IS18039A,
+by the ERC (853489 - DEXIM), by EXC number 2064/1
+– project number 390727645. The authors thank the Inter-
+national Max Planck Research School for Intelligent Sys-
+tems (IMPRS-IS) for supporting Uddeshya Upadhyay and
+Shyamgopal Karthik.
+8

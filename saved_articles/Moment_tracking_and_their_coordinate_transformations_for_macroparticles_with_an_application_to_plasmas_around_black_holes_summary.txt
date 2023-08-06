@@ -1,0 +1,23 @@
+Summary:
+This paper presents a method for tracking the moments of macroparticles in particle-in-cell codes used in plasma simulations.
+The coordinate transformations for moments where space and time coordinates are mixed are calculated using Schwartz distributions.
+The moment tracking and coordinate transformation equations are tested by modeling the motion of uncharged particles in a circular orbit around a black hole.
+The error in tracking moments is small and scales quadratically, and can be improved by including higher order moments.
+By using moments to deposit charge back onto the grid, a full particle-in-cell code can be developed.
+The article also discusses the different summation conventions and coordinates used in plasma simulations.
+The Vlasov equation, which describes the dynamics of collisionless charged particles, is introduced.
+A distributional representation of moments in terms of derivatives of Dirac delta functions is used to show the time evolution of moments.
+The article calculates the coordinate transformations for moments between different coordinate systems.
+The formula for the coordinate transformation of moments between coordinate systems that mix space and time coordinates is derived.
+
+Keywords:
+- Particle-in-cell codes
+- Macroparticles
+- Moments
+- Coordinate transformations
+- Schwartz distributions
+- Plasma simulations
+- Black holes
+- Vlasov equation
+- Distributional representation
+- Quadratic scaling

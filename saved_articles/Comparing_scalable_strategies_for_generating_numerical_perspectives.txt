@@ -1,0 +1,15 @@
+Comparing scalable strategies for generating numerical
+perspectives
+HANCHENG CAO, Stanford University, United States
+SOFIA ELENI SPATHARIOTI, Microsoft, United States
+DANIEL G. GOLDSTEIN, Microsoft, United States
+JAKE M. HOFMAN, Microsoft, United States
+Numerical perspectives help people understand extreme and unfamiliar numbers (e.g., $330 billion is about
+$1,000 per person in the United States). While research shows perspectives to be helpful, generating them
+at scale is challenging both because it is difficult to identify what makes some analogies more helpful than
+others, and because what is most helpful can vary based on the context in which a given number appears.
+Here we present and compare three policies for large-scale perspective generation: a rule-based approach, a
+crowdsourced system, and a model that uses Wikipedia data and semantic similarity (via BERT embeddings) to
+generate context-specific perspectives. We find that the combination of these three approaches dominates any
+single method, with different approaches excelling in different settings and users displaying heterogeneous
+p

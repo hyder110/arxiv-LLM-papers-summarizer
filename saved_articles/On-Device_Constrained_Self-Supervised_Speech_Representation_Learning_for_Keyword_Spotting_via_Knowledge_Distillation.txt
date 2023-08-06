@@ -1,0 +1,426 @@
+On-Device Constrained Self-Supervised Speech Representation Learning for
+Keyword Spotting via Knowledge Distillation
+Gene-Ping Yang1†, Yue Gu2, Qingming Tang2, Dongsu Du2, Yuzong Liu3†
+1Centre for Speech Technology Research, University of Edinburgh
+2Alexa Perceptual Technologies, Amazon3Zoom Video Communications, Inc.
+geneping.yang@ed.ac.uk, {yguam,qmtang,dudongsu }@amazon.com, yuzong.liu@zoom.us
+Abstract
+Large self-supervised models are effective feature extractors,
+but their application is challenging under on-device budget con-
+straints and biased dataset collection, especially in keyword
+spotting. To address this, we proposed a knowledge distillation-
+based self-supervised speech representation learning (S3RL) ar-
+chitecture for on-device keyword spotting. Our approach used a
+teacher-student framework to transfer knowledge from a larger,
+more complex model to a smaller, light-weight model using
+dual-view cross-correlation distillation and the teacher’s code-
+book as learning objectives. We evaluated our model’s per-
+formance on an Alexa keyword spotting detection task using a
+16.6k-hour in-house dataset. Our technique showed exceptional
+performance in normal and noisy conditions, demonstrating the
+efficacy of knowledge distillation methods in constructing self-
+supervised models for keyword spotting tasks while working
+within on-device resource constraints.
+Index Terms : self-supervised learning, knowledge distillation,
+dual-view cross-correlation, keyword spotting, on-device
+1. Introduction
+Self-supervised methods have proven highly effective as gen-
+eral feature extractors for various speech-related tasks [1, 2].
+Unlike supervised methods, the self-supervised models are
+trained to do autoregressive prediction [3, 4, 5], contrastive
+learning [6, 7], mask reconstruction [8, 9, 10] without hu-
+man annotation. The features learned by these models are ag-
+nostic to the tasks being evaluated, and recent literature has
+shown that they are well suited for downstream tasks such as
+phone recognition, speech recognition, and emotion recogni-
+tion [11, 12, 13, 14, 15]. One of the most appealing strengths of
+these features is their linear separability, which allows easy ex-
+traction of desired information using a simple linear layer [1, 2].
+Despite the success of self-supervised speech representa-
+tion learning (S3RL) models in evaluating diverse datasets with
+large vocabularies, most research has largely neglected to inves-
+tigate their effectiveness on biased datasets such as in keyword
+spotting domain. Industrial-scale keyword data often exhibits
+significant bias towards utterances that include designated key-
+words. In particular, contrastive self-supervised learning [6, 7]
+may be limited by a lack of diversity in the training data, causing
+the model to encode spurious noise to improve contrast. Such
+noise is not a desirable feature and may result in overfitting to-
+wards the model training.
+Besides, the most previous S3RL research focuses on
+improving state-of-the-art performance on public benchmarks
+such as SUPERB [2, 16] or internal proprietary data. How-
+ever, these models are typically large and require significant
+†Work done at Amazon
+Figure 1: Proposed knowledge distillation pipeline.
+computational complexity and storage [7, 17]. The 12-layer
+transformer-based self-supervised models, with 95 million pa-
+rameters, are particularly challenging to deploy in on-device
+keyword spotting. End devices have extremely limited compu-
+tational and storage resources, making it infeasible to use such
+large models for budget-constrained real-time applications.
+To overcome the challenges associated with data bias and
+model size on keyword spotting, we utilized knowledge dis-
+tillation techniques in S3RL models [18]. Our approach in-
+troduced two novel distillation techniques: dual-view cross-
+correlation distillation, and teacher codebook distillation. To
+address the issue of model size, we distilled knowledge from
+large, self-supervised models (teacher) to smaller, on-device
+lightweight models (students) [19, 20, 21, 22]. Specifically, we
+used the Wav2vec 2.0 [7] trained with LibriSpeech 960 hour
+set as the teacher model and transferred the knowledge to a 3-
+layer transformer architecture with 21 million or 1.6 million pa-
+rameters as the student model. Compared to prior techniques
+such as DistilHuBERT [23] and LightHuBERT [24], which em-
+ployed distance-based distillation on single frames, our dual-
+view cross-correlation distillation method considers the interde-
+pendence between samples and feature dimensions. This strat-
+egy takes into consideration the correlation between each fea-
+ture of an utterance and each dimension, thereby optimizing its
+effectiveness in the distillation procedure even when the train-
+ing data lacks diverse and high-quality negative samples.
+To further alleviate the in-domain data bias during pre-
+training the on-device model, we proposed leveraging the code-
+book in teacher models, which are trained on a more diverse
+dataset, to improve the distillation process using a smaller and
+biased dataset. Specifically, the student model is trained with
+native wav2vec 2.0 objective, while the positive and negative
+samples are the quantized vectors drawn from teacher model
+with teacher codebook. The teacher codebook can be viewed
+as a compact representation of large, diverse speech data. By
+using this codebook, we addressed the missing information is-arXiv:2307.02720v1  [cs.CL]  6 Jul 2023sue from our biased data and also alleviate the training of the
+codebook requiring additional diversity loss.
+We conducted the experiments on a de-identified 16,600
+hours in-house keyword spotting dataset. The result showed
+that the proposed knowledge distillation based S3RL model out-
+performs the baselines on both normal and noisy conditions.
+The ablation study demonstrated that the introduced dual-view
+cross-correlation regularization surpass both previously L1 and
+Cosine similarity methods and single-view approaches on dis-
+tillation. We also observed that the distillation method that uti-
+lized the teacher codebook as the training objective produced
+better results than the method without integrating the teacher
+codebook, especially under noisy conditions. The superior per-
+formance of the proposed model emphasized the efficiency and
+effectiveness of innovative knowledge distillation methods in
+developing on-device constrained self-supervised models for
+keyword spotting tasks. Our contributions can be summarized
+as:
+1. Developed an efficient and effective on-device constrained
+self-supervised model for keyword spotting task through
+knowledge distillation method.
+2. Devised two novel knowledge distillation techniques, dual-
+view cross-correlation distillation and teacher codebook dis-
+tillation, to facilitate the effectiveness and robustness of
+knowledge transfer.
+3. Conducted an extended analysis and ablation study to investi-
+gate the potential crucial factors and benefits of S3RL knowl-
+edge distillation on keyword spotting tasks.
+2. Methodology
+This section provides an overview of our S3RL based knowl-
+edge distillation system, which encompasses both the general
+teacher-student architecture and our newly proposed distilla-
+tion mechanism. The overall system design can be observed
+in Figure 1. Initially, we will outline the general framework
+for knowledge distillation, while a more comprehensive expla-
+nation of the proposed distillation design will be presented in
+section 2.1 and section 2.2.
+Given an input utterance X, the self-supervised teacher
+model generates a sequence of hidden features h1, h2, ..., h T,
+where Tis the number of time frame. The same input utterance
+is then fed into the student model, which may incorporate an
+augmented or distorted view of the input, generating another set
+of hidden features o1, o2, ..., o T. The objective of knowledge
+distillation is designed to encourage the student model learns
+high-fidelity representation of the teacher model. We illustrate
+one potential method by employing the L1 distance and cosine
+distance as a metric of similarity for the two features, and the
+loss function is defined as follows:
+L=TX
+t=1
+∥ht−ot∥1−λσ(cos ( ht, ot))
+, (1)
+where λcontrols the weighting and is set to 1 in [23].
+Unlike previous approaches that used frame-wise features
+[23, 24], we focus on distilling utterance-wise features to avoid
+capturing variations in individual frames [25]. This results in
+overall utterance-wise representations that are more representa-
+tive and effective for downstream keyword classification. The
+loss function can be adjusted as follow:
+L=∥h−o∥1−λσ 
+cos (h,o)
+, (2)
+where handoare the averaged features over time.2.1. Dual-View Cross-Correlation Distillation
+Inspired by the work of Barlow-Twins and its successors [26,
+27, 28], we propose a novel dual-view cross-correlation mech-
+anism to facilitate contrastive knowledge distillation in our pro-
+posed teacher-student design. Specifically, our method regular-
+izes two cross-correlation matrices on batch-view and feature-
+view to reduce feature dimensional redundancy and generalize
+contrast operation, respectively. In our modeling process, we
+define two sets of features: a batch of teacher features repre-
+sented as H∈Rb×dand a batch of student features represented
+asO∈Rb×d, where bindicates the batch size and dis the
+feature dimension. We apply average pooling along the time
+axis for each utterance to obtain the feature shape of [d]from
+[T, d]. Notably, our approach calculates the correlation matrix
+between the batches of teacher and student features from both
+feature-view and batch-view.
+As shown in in Figure 2, we refer the feature-view as redun-
+dancy reduction, which calculates the cross-correlation matrix
+Cas follow:
+Cij=P
+bHbiObjpP
+b(Hbi)2pP
+b(Obj)2, (3)
+where Cis a square matrix of shape Rd×d. The goal of Cis
+to match identity matrix, where the on-diagonal elements are 1
+and the off-diagonals are 0. The objective can be formulate as
+follow:
+LC=X
+i(Cii−1)2+αX
+i,j̸=iC2
+ij (4)
+The goal of applying the dot product to the batch dimension is
+to minimize redundancy in each feature dimension and produce
+a more streamlined student feature. This process seeks to make
+the student feature as compact as possible.
+Regarding the batch-view, we generalize the contrast oper-
+ation on the feature dimension, which is formulated as:
+Gij=P
+dHidOjdpP
+d(Hid)2pP
+d(Ojd)2, (5)
+where Gis of shape Rb×b. The objective for Gis:
+LG=X
+i(Gii−1)2+βX
+i,j̸=iG2
+ij (6)
+It aims to maximize the similarity between features from the
+same sample and minimize the correlation between features
+from different samples. By combining the two views, we get:
+LDVCC =LC/sg(LC) +LG/sg(LG), (7)
+The notation sgis used to denote stop gradient with both terms
+scaled to 1. The complete loss function dynamically integrates
+both components, thus eliminating the need to manually adjust
+the weights of the two terms. This approach saves effort and
+rationalizes the optimization process.
+2.2. Teacher Codebook Distillation
+When pre-training the student model on an in-domain biased
+dataset, there is a lack of diversity in the trained codebook,
+which presents a significant challenge for selecting sample pairs
+and representing unseen entries, especially in the case of the
+proposed utterance-wise representation on keyword spotting.
+To cope with this issue, we use a more robust codebook from
+the teacher model that has been trained on a more diverse speechFigure 2: Distillation using dual-view cross-correlation, where
+the top section illustrates the feature-view and the bottom sec-
+tion illustrates the batch-view. The figure depicts features with
+a dimension of 6 and a batch size of 3.
+dataset and distill the teacher codebook knowledge into the stu-
+dent model during pre-training. We specifically employ the
+pre-trained Wav2vec 2.0 model as the teacher, which has been
+trained on the LibriSpeech 960 hour set. We train the student
+model with the same Wav2vec 2.0 objective as the teacher and
+select both positive and negative samples from the quantized
+features obtained from the teacher model during the mask pre-
+diction phase. This approach prevents the student from learning
+a codebook that captures subtle noise and effectively boosts the
+distillation computation by using only 5% of the teacher’s total
+parameters, specifically the CNN layers and the codebook. The
+teacher-student robust contrastive loss is defined as follows:
+Lt-code=−X
+tlogexp(cos(ot, kt))P
+˜k∼Ktexp(cos(ot,˜k)), (8)
+where otdenotes prediction made by the student model, kt
+refers to positive quantized codebook from the teacher model,
+andKtrepresents the set of one positive ktandNnegative
+samples sampled from the teacher codebook.
+2.3. Combined Distillation Objective
+In order to enhance the performance of knowledge distillation
+in the S3RL model, we integrate the proposed dual-view cross-
+correlation and robust codebook distillation mechanisms. By
+leveraging the unique advantages of both approaches, we can
+create a more effective distillation framework. To execute our
+approach, we adopt a combined objective for the student model,
+as follows:
+Lcombined =LDVCC+γL t-code, (9)
+The hyperparameter γis utilized to regulate the balance be-
+tween the two objectives and can be adjusted to optimize the
+overall performance of the student model..
+3. Dataset and Implementation
+3.1. Dataset
+We collected 16,600 hours of de-identified audio recordings in
+various front-end conditions for the Alexa keyword detection
+task. All data was processed into 64-D LFBE spectrograms us-
+ing an analysis window of 25ms and a shift-size of 10ms. The
+dataset was split into 85 hours for validation, 85 hours for test-
+ing, and the remaining hours for training. To evaluate the model
+robustness, the test set was further divided into the normal con-
+dition with clean speech and playback condition with increased
+noise. The keyword labels were based on human annotation and
+underwent a quality check inspection.3.2. Implementation
+We used wav2vec 2.0 as the teacher model, comprising 7 CNN
+layers and 12 transformer layers, with a total of 95 million pa-
+rameters. To meet device budget constraints for student model,
+we removed the CNN layers, reducing computation by approx-
+imately 33% [29]. The student model directly takes LFBE fea-
+tures as input and consists of 3 transformer layers with a hidden
+size of 768 and 256, resulting in 21 million parameters with
+a 78% size reduction, and 1.6 million parameters with a 98%
+size reduction. We trained the student model with Adam opti-
+mizer for 15 epochs, each epoch comprising 5,000 update steps
+with a batch size of 512. For distillation, we used a learned
+weighted sum of all the hidden layers of the teacher model as
+the teacher feature. For fine-tuning, we added a linear layer on
+the last transformer layer of the student model and used cross-
+entropy loss to modify model parameters. The student model
+was fine-tuned for 30 epochs, each epoch having 5,000 steps
+with a batch size of 2,048. We set αandβto5×10−3, andγ
+to1. Same dataset was used for both knowledge distillation and
+downstream training phases, which was designated for keyword
+detection.
+3.3. Evaluation Metrics
+We evaluated the performance of our method on our internal
+dataset by measuring the false acceptance rate (FAR) at a fixed
+false rejection rate (FRR) in comparison to the baseline model.
+The FRR is the proportion of false negatives to true positives
+for a given keyword at the operating point (OP) of the baseline
+model. We determined the OP at which our proposed approach
+exhibited a comparable FRR and employed that same OP to
+calculate the corresponding FAR, which represents the ratio of
+false positives to true negatives.
+4. Results
+4.1. Baseline Comparison
+To evaluate the impact of knowledge distillation on lightweight
+keyword spotting in self-supervised speech representation
+learning, we established a baseline model without knowledge
+distillation. We pre-trained and fine-tuned the baseline model
+using the student architecture as the backbone. The outcomes
+in Table 1 demonstrated that the proposed dual-view cross-
+correlation based knowledge distillation approach outperforms
+the baseline by 14.6% and 21.3% with respect to the relative
+false acceptance rate (FAR) in normal and playback conditions,
+respectively. Additionally, we replicated the DistilHuBERT
+method by adjusting the objectives to operate on utterance-wise
+features and predicting the weighted sum of the features from
+all teacher layers instead of making three predictions into re-
+spective layers. The result revealed that the dual-view approach
+led to an improvement of more than 8% relative FAR on our
+in-house alexa test set under both normal and playback (noisy)
+conditions. Table 1 also displayed the outcomes of integrat-
+ing the teacher-codebook into the dual-view cross-correlation
+process during knowledge distillation. The results demon-
+strated a consistent improvement in the relative FAR of the
+combined large model (21M parameter model), yielding val-
+ues of 0.850 and 0.762 in normal and playback conditions, re-
+spectively. Subsequently, we further reduced the student model
+size to 1.6M parameters. The findings indicated that this ultra-
+lightweight student model outperforms the baseline model with
+same model size by 10%, and achieved comparable relative
+FAR compared with the 21M parameters baseline. These re-
+sults substantiate the efficiency and effectiveness of knowledgedistillation-based S3RL for keyword spotting tasks subject to
+on-device budget constraints.
+Table 1: Experiment results on Alexa keyword spotting
+Method Model SizeRelative FAR
+Normal Playback
+Baseline w/o KD 21M 1.0 1.0
+Ultra-light w/o KD 1.6M 1.17 1.22
+DistilHuBERT 21M 0.937 0.901
+Feature-view 21M 0.853 0.817
+Batch-view 21M 0.861 0.813
+Dual-view 21M 0.854 0.787
+w/o T-codebook 21M 0.907 0.884
+w/ T-codebook 21M 0.903 0.841
+Combined large 21M 0.850 0.762
+Combined small 1.6M 1.07 1.09
+Legend: Relative FAR =relative false acceptance rate compared to
+baseline at fixed false rejection rate; T-codebook =teacher codebook;
+Dual-view =Batch-view + Feature-view; Combined large/small =
+Dual-view + T-codebook.
+4.2. Single-View vs Dual-View
+To further examine the advantages of the proposed dual-view
+cross-correlation approach, we conducted an ablation study to
+compare the performance of single-view (batch-view or feature-
+view) and dual-view distillation. The results presented in Ta-
+ble 1 demonstrated that, under normal testing condition, batch-
+view, feature-view, and dual-view distillation produced similar
+results, with feature-view distillation exhibiting slightly better
+performance than the other two approaches. This demonstrated
+that the reduction of redundancy among each feature dimension
+in the feature-view facilitates the generalization of the model.
+In contrast, when subjected to noise, the dual-view distillation
+method surpassed the other approaches by 2.6% and 3% rela-
+tive FAR, which indicated that the contrastive nature between
+different samples in the batch-view is an essential element for
+learning a more robust model.
+4.3. Teacher Codebook vs Codebook from Scratch
+By comparing the results presented in the second group of
+rows in Table 1, we noticed that the distillation approach that
+employed the teacher codebook as the training objective per-
+formed better than the approach without integrating the teacher
+codebook during training, particularly in noisy conditions. The
+model obtained even better results by combining the dual-view
+distillation with the teacher codebook. We also observed that
+the benefits of the teacher codebook were less prominent when
+combined with dual-view distillation under normal conditions,
+but still resulted in a 2.5% relative (FAR) gain under playback
+conditions. These findings confirmed our hypothesis that the
+teacher codebook serves as a more diverse speech representa-
+tion, thereby augmenting the effectiveness of contrastive self-
+supervised learning.
+4.4. Layer Selection from Teacher Model
+While developing the model, we discovered that by training
+only a linear classifier on keyword spotting, the features from
+layers 5, 6, 7, and 8 of the teacher model outperform those from
+other layers on a linear classifier, with the final layer exhibiting
+the weakest performance [12, 30]. Consequently, we conducted
+additional experiments to assess the effectiveness of distillation
+using only the selected layers, as opposed to employing infor-mation from all layers. In previous experiments, we trained 13
+weights to aggregate the CNN output feature and all 12 trans-
+former layer features from the teacher model. As in sub-layer
+experiment, we first utilized four weights to compute a weighted
+sum of features from layers 5 to 8 for distillation. Moreover, we
+trained another sub-layer model to nullify the information from
+layers 5 to 8 and only distill information from the remaining
+layers. We evaluated different layer distillation techniques us-
+ing dual-view cross-correlation distillation.
+Table 2: Dual-View Cross-Correlation (DVCC) distillation from
+selected teacher layers.
+MethodRelative FAR
+Normal Playback
+Baseline w/o KD 1.0 1.0
+DVCC w/ Layer0−12 0.854 0.787
+DVCC w/ Layer5−8 0.806 0.713
+DVCC w/ Layer0−4,9−12 0.855 0.790
+Figure 3: Learned weighting for the teacher features with dif-
+ferent sets of layers.
+Table 2 illustrates that distilling information from layers
+5 to 8 led to the most exceptional overall performance. We
+also noted that distilling information from the remaining layers
+produced results comparable to those of distilling from all lay-
+ers. Further analysis revealed that the most significant learned
+weights for distillation information from layers 0-12 and layers
+0-4,9-12 were found in layers 0 (CNN output), 2, and 4, while
+the most significant learned weights for layers 5-8 were found
+in the respective layers as shown in Figure 3. This indicates
+that the comparable performance attained by employing the re-
+maining layers may be due to the fact that the model distilling
+all layers fails to entirely capture information from layers 5-8.
+This finding indicates that a straightforward layer selection can
+lead to substantial benefits since the model is ignorant of down-
+stream tasks during the distillation process.
+5. Conclusions and Future Work
+In this study, we proposed a new self-supervised speech rep-
+resentation learning (S3RL) architecture for on-device key-
+word spotting tasks that utilizes two novel knowledge distil-
+lation methods: dual-view cross-correlation and teacher code-
+book distillation. Our experiments on a biased keyword spot-
+ting dataset confirmed the effectiveness and robustness of our
+approach, highlighting its potential for improving the perfor-
+mance of S3RL knowledge distillation and providing promising
+avenues for research direction in this field. To extend the appli-
+cability of the introduced approach, our future work will include
+experiments on other downstream tasks using different datasets,
+as this research has solely focused on on-device keyword spot-
+ting. This will enable us to evaluate the generalizability of our
+proposed method.6. 

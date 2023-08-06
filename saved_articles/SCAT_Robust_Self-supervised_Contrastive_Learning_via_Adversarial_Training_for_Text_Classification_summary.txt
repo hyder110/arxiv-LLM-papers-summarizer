@@ -1,0 +1,26 @@
+Summary:
+The paper proposes a framework called SCAT (Self-supervised Contrastive Learning via Adversarial Training) for learning robust representations for text classification without using labeled data. SCAT modifies random augmentations of the data to generate adversarial examples, and adversarial training is achieved by minimizing the contrastive loss between the augmentations and their adversarial counterparts. The authors evaluate SCAT on two text classification datasets using two state-of-the-art attack schemes and show that SCAT can train robust language models from scratch and significantly improve the robustness of existing pre-trained models.
+
+Bullet Points:
+1. SCAT is a framework for learning robust representations for text classification without labeled data.
+2. It modifies random augmentations of the data to generate adversarial examples.
+3. Adversarial training is achieved by minimizing the contrastive loss between the augmentations and their adversarial counterparts.
+4. SCAT can train robust language models from scratch.
+5. It can significantly improve the robustness of existing pre-trained language models.
+6. SCAT can be combined with supervised adversarial training to further enhance model robustness.
+7. The framework is evaluated on two text classification datasets using state-of-the-art attack schemes.
+8. SCAT outperforms other existing methods in terms of robustness.
+9. The framework provides a trade-off between accuracy and robustness.
+10. SCAT can be widely applied in the NLP community to improve the robustness of text classification systems.
+
+Keywords:
+- SCAT
+- self-supervised contrastive learning
+- adversarial training
+- robustness
+- text classification
+- labeled data
+- augmentations
+- adversarial examples
+- pre-training
+- language models

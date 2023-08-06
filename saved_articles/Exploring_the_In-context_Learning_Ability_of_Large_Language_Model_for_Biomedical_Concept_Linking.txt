@@ -1,0 +1,430 @@
+EXPLORING THE IN-CONTEXT LEARNING ABILITY OF LARGE
+LANGUAGE MODEL FOR BIOMEDICAL CONCEPT LINKING
+A P REPRINT
+Qinyong Wang
+Center for Artificial Intelligence in Drug Discovery
+Case Western Reserve University
+Cleveland, OH, 44106
+qxw225@case.eduZhenxiang Gao
+Center for Artificial Intelligence in Drug Discovery
+Case Western Reserve University
+Cleveland, OH, 44106
+zxg306@case.edu
+Rong Xu
+Center for Artificial Intelligence in Drug Discovery
+Case Western Reserve University
+Cleveland, OH, 44106
+rxx@case.edu
+ABSTRACT
+The biomedical field relies heavily on concept linking in various areas such as literature mining, graph
+alignment, information retrieval, question-answering, data, and knowledge integration. Although
+large language models (LLMs) have made significant strides in many natural language processing
+tasks, their effectiveness in biomedical concept mapping is yet to be fully explored. This research
+investigates a method that exploits the in-context learning (ICL) capabilities of large models for
+biomedical concept linking. The proposed approach adopts a two-stage retrieve-and-rank framework.
+Initially, biomedical concepts are embedded using language models, and then embedding similarity
+is utilized to retrieve the top candidates. These candidates’ contextual information is subsequently
+incorporated into the prompt and processed by a large language model to re-rank the concepts. This
+approach achieved an accuracy of 90.1% in BC5CDR disease entity normalization and 94.7% in
+chemical entity normalization, exhibiting a competitive performance relative to supervised learning
+methods. Further, it showed a significant improvement, with an over 20-point absolute increase in F1
+score on an oncology matching dataset. Extensive qualitative assessments were conducted, and the
+benefits and potential shortcomings of using large language models within the biomedical domain
+were discussed.
+1 Introduction
+Biomedical concept linking is a critical procedure in knowledge integrationHimmelstein et al. [2017] and information
+retrievalGopalakrishnan et al. [2019]. This process identifies biomedical concepts within the text and associates these
+concepts with matching entities in a biomedical knowledge base. It essentially forms a bridge between text and
+structured knowledge databases, facilitating the efficient extraction and utilization of intricate biomedical information.
+Concept linking is integral to diverse applications, such as literature mining, graph alignmentZeng et al. [2021], and
+information retrieval within the biomedical domain. Moreover, the efficacy of concept linking directly influences the
+performance of graph-based algorithms, search algorithms, and question-answering systems.
+While significant progress has been made in the field of biomedical concept linking, major issues still pertain
+to their limited capacity to handle the ambiguity and complexity characteristic of biomedical conceptsHuang et al.
+[2020]. Supervised Training or fine-tuning methods typically require extensive labeled data, which is labor-intensive
+and expensive to compile Ji et al. [2020], Li et al. [2019]. The reliance on labeled data also introduces the data
+expiration problem, given the evolving nature of biomedical knowledge. For instance, biomedical entities linkingarXiv:2307.01137v1  [cs.CL]  3 Jul 2023A P REPRINT
+datasets often utilize an ontology system for labeling text mentions; however, these systems change over time. The
+Medical Subject Headings (MeSH) system housed 28,000 concepts in 2016, but by 2023, the count has increased to
+32,000 conceptsLipscomb [2000]. Consequently, if we were to employ label-dependent supervised methods, models
+may need recurrent retraining to stay updated. Additionally, these techniques are often task-specific, lacking the
+requisite adaptability to handle different datasets or tasks without comprehensive retraining.
+Figure 1: Overview of the proposed methodology and comparison with previous methods.
+There is a need for a more generalized framework for biomedical concept linking that can navigate the complex
+landscape of biomedical text data effectively. The ideal system should be adaptable, capable of processing various
+datasets and tasks without the need for task-specific training data. It should also possess the robustness to handle the
+ambiguity and complexity of biomedical concepts. Biomedical concept linking can be described as the process of
+identifying concepts within a given text and associating them with corresponding concepts in a biomedical knowledge
+base. This task encompasses a range of specific tasks, including biomedical entity linkingKalyan et al. [2022], disease
+name normalizationHuang et al. [2020], and ontology matching Harrow et al. [2019]. Biomedical entity linking or
+disease name normalization typically involves mapping unstructured text to an ontology system. On the other hand,
+ontology matching refers to identifying identical concepts across two distinct ontology systems and establishing a link
+between them. Notably, there are differences between tasks like entity normalization and ontology matching. While
+entity normalization operates on free text, ontology matching deals with more structured text and the related contextual
+information of the concepts. Furthermore, entity normalization typically encompasses a smaller percentage of an
+ontology’s concepts, while ontology matching often covers a larger and more diverse array of concepts. Biomedical
+concept linking extends beyond tasks such as entity normalizationHuang et al. [2020] and ontology matchingHarrow
+et al. [2019]. For instance, a concept linking method should be capable of matching two heterogeneous biomedical
+graphs at the concept level. This task presents a significant challenge for supervised training methods, as it’s nearly
+impossible to generate labels for arbitrary heterogeneous graphs. It’s important to note that concept linking does
+not include entity recognitionSong et al. [2021], a common procedure in text-mining tasks. Entity recognition often
+precedes concept linking and may not even feature in some tasks. Thus, concept linking is a distinct, wider task,
+facilitating effective navigation of intricate biomedical information.
+Traditional BERT-based methods may struggle to adapt to the diverse array of datasets and tasks associated with this
+fieldKalyan et al. [2022], Li et al. [2019]. LLMs Zhou et al. [2023], however, have recently demonstrated remarkable
+2A P REPRINT
+proficiency in the biomedical domain De Angelis et al. [2023], Wang et al. [2023]. This paper aims to investigate
+a generalized and effective framework for biomedical concept linking, leveraging the ICL capabilities of LLMs.
+In-context learning forms the backbone of our proposed methodology. It operates on the principle of learning by
+analogy, offering a unique method for LLMs to make informed predictionsDong et al. [2023]. This novel paradigm
+offers several compelling benefits. As the demonstration is rendered in natural language, it provides an interpretive
+interface for interaction with LLMs, making it significantly simpler to incorporate biomedical knowledge into LLMs
+by altering the demonstration and templates. Compared to supervised training, in-context learning is a training-free
+learning framework. This drastically cuts down the developing time required to adapt the model to new tasks. As such,
+it can be readily applied to real-world tasks, broadening its applicability and utility.
+In this research, we propose a classic yet effective, generalized methodology for biomedical concept linking that
+leverages the ICL capabilities of LLMs. Our method involves a two-stage retrieve-and-rank system: The first stage
+embeds biomedical concepts using language models and uses these embedding to retrieve top candidate concepts. In
+the second stage, the contextual information of these candidates is incorporated into the prompt, and an LLM ranks
+these concepts. Our proposed method presents several advantages. Firstly, it is adaptable, requiring no task-specific
+training, and can be applied to different datasets and tasks. Secondly, it demonstrates competitive performance with
+state-of-the-art supervised learning methodsNeumann et al. [2019], He et al. [2022a], as evidenced by our results on
+entity normalization datasets and ontology matching datasets. Lastly, by leveraging the ICL abilities of large models,
+it effectively navigates the inherent ambiguity and complexity of biomedical concepts, significantly improving the
+efficacy of concept linking in the biomedical domain.
+The objective of this paper is to delve into a more comprehensive framework utilizing LLMs for broader and more
+challenging tasks in the biomedical field. Our contributions are manifold; We identify a straightforward yet effective
+approach for tackling the complexity inherent in biomedical linking problems, and we also carry out an extensive
+application test to scrutinize various embedding methods and different language models. We further analyze the
+functioning of the large model and identify circumstances leading to its failure. A qualitative test is conducted to
+provide nuanced insights into the model’s operation. All these explorations collectively guide the development of the
+next generation of accurate and trustworthy artificial intelligence solutions in the biomedical domain.
+2 Backgrounds
+Entity Linking and Entity Normalization Entity linking refers to the task of mapping mentions in free text to
+unique concepts in ontologies Huang et al. [2020]. This can take the form of linking a certain drug to its specific
+drug ID or associating the disease with its corresponding disease/symptom ID. The Unified Medical Language System
+(UMLS) Bodenreider [2004] is a compendium of biomedical vocabularies, The Unified Medical Language System
+(UMLS), a representative ontology for biomedicine, contains over 4 million entities. UMLS has been extensively
+used as a knowledge base to link biomedical entities in the text to their corresponding concepts. These tasks often
+involve mapping free text terms in the biomedical literature to UMLS Concept Unique Identifiers(CUIs). A notable
+tool in this field is the MetaMap system Demner-Fushman et al. [2017]. MetaMap utilizes natural language processing
+techniques to map biomedical text to concepts in the UMLS. Although robust, its rule-based method can struggle with
+semantic ambiguity, demanding supplementary solutions like advanced deep learning models to improve its accuracy
+and adaptability. Traditional methods often rely on rule-based approaches or string matchingSoldaini and Goharian
+[2016], which unfortunately proved to be ill-suited for dealing with concepts carrying contextual meanings and disease
+subtypes. A popular approach in recent years has been to utilize BERT-based methodsNeumann et al. [2019], Huang
+et al. [2020], which are primarily supervised. However, these techniques encounter significant challenges due to the
+scarcity of annotated examples, particularly given the vast number of entities involved. Recently, the development
+of self-supervised methods has introduced a fresh perspectiveZhang et al. [2022], Liu et al. [2020]. These methods,
+requiring no supervised samples, have demonstrated comparable results to supervised training methods. Despite
+these advances, such techniques cannot be applied universally across an array of tasks. Additionally, the process
+of constructing a dataset and training model is time-consuming. By leveraging the ICL capabilities of LLMs, the
+difficulties associated with constructing training corpora and executing training are significantly alleviated. By adjusting
+the prompts in natural language, this framework can be easily adapted to various tasks, demonstrating its potential for
+efficiency and versatility.
+Ontology Matching Ontology matching, a key area of research, is the process of identifying corresponding entities
+or concepts across diverse ontology systemsHarrow et al. [2019]. This procedure is fundamental for integrating
+heterogeneous databasesYi et al. [2022] and enhancing interoperability in the biomedical sector. Historically, ontology
+matching approaches primarily relied on exploiting lexical, structural, and semantic similaritiesAnam et al. [2015]. The
+3A P REPRINT
+advent of deep learning has ushered in an era where many current studies are investigating the use of Transformer, or
+specifically BERTHe et al. [2022a], for ontology matching. However, these BERT-based methods often grapple with the
+challenges previously outlined. Moreover, their performance is less than ideal when it comes to biomedical ontologyHe
+et al. [2022b]. Biomedical ontology often encompasses a multitude of concepts that demand expert-level understanding,
+such as the ability to distinguish between two rare diseases that may appear similar but are caused by distinct genes.
+BERT-based methods frequently struggle to address these scenarios. Yet, the identification of the relationship between
+genes and diseases is paramount to advancements in biomedical discoveries. By capitalizing on the in-context learning
+capabilities of large language models, we’re able to more accurately differentiate between complex biomedical concepts
+and enhance the efficacy of ontology matching in the biomedical sector.
+Text Embedding The quality of text embedding plays a critical role in enhancing the recall rate of concept linking.
+Many text embedding methods Lately, transformer-based models have been gaining traction due to their ability to
+generate context-aware embeddings. Moreover, recent studies have made significant strides in training BERT models
+on the biomedical textLiu et al. [2020], Lee et al. [2020] and using innovative training techniques such as contrastive
+learningLe-Khac et al. [2020]. Domain-specific language models, those specifically trained on biomedical texts, have
+demonstrated superior performance compared to standard BERT modelsLee et al. [2020]. This performance boost
+highlights the importance of domain-specific knowledge in enhancing the accuracy of embedding.
+Large Language Models LLMs have demonstrated remarkable capabilities in natural language understanding and
+generation. These models are trained on massive amounts of text data and can generate coherent and contextually
+appropriate responses Zhou et al. [2023]. However, they often lack domain-specific knowledge and struggle with
+understanding specialized terminologies, which is a crucial aspect of biomedical concept linking. LLMs are built using
+deep learning architectures like TransformersVaswani et al. [2017] and have demonstrated remarkable proficiency in
+understanding and generating human-like text. Two of the most well-known LLMs are GPT-3Brown et al. [2020] and
+GPT4Bubeck et al. [2023]. GPT-3, with 175 billion parameters, has displayed impressive results in a wide range of
+NLP tasks. The most popular open-source LLM is LLaMaTouvron et al. [2023] which showed comparatively good
+performers with GPT 3.5, and there’s a wide range of domain-specific fine-tuned llama modelsWu et al. [2023], Zhang
+et al. [2023a] from 7 billion to 65 billion parameters. However, the usage of LLMs also presents challenges. One
+such issue is the "hallucination" problem Zhou et al. [2023], Zhang et al. [2023b], where the model generates outputs
+that seem plausible but are factually incorrect. Furthermore, due to their size and complexity, these models require
+substantial computational resources for training and deployment. Despite these challenges, LLMs have ushered in a
+new era in NLP and are continuously being explored for their potential in a wide range of biomedical concept linking.
+In-context Learning Generally, in-context learning necessitates a few examples to create a demonstration con-
+textDong et al. [2023]. These examples are typically expressed using natural language templates. Following this, a
+query question is concatenated with the demonstration context to generate a prompt. This prompt is then processed
+by the language model to predict an outcome. The definition of in-context learning is continuously evolving, in our
+proposed method, we not only include the conventional approach of using knowledge examples in the prompt, but we
+also supply more relevant information related to a given biomedical concept. By doing so, we equip the LLM with
+the necessary contextual information, thereby LLM learns from extra information rather than just analogy. Unlike
+supervised learning which necessitates a training stage involving backward gradientsNeumann et al. [2019], Huang et al.
+[2020] for model parameter updates, ICL eschews parameter updates and makes predictions directly using pre-trained
+LLMs. The expectation is that the model will discern patterns hidden within the demonstration and make appropriate
+predictions accordinglyBubeck et al. [2023].
+3 Methodology
+Formally, we set the objective of concept linking as the development of an algorithm Link :(esource, Csource)→
+(etarget, Ctarget). This algorithm maps a source entity esource within the context Csource to a unique target entity etarget with
+context Ctarget. The source entity could be derived from free text, a graph, or a source ontology system in ontology
+matching, and it’s worth noting that Csource may sometimes be absent. Generally, we require the context of the target
+concept to be provided. A concept is more well-defined when its associated information is supplied. In the process of
+developing a zero-training algorithm, we operate under the assumption that no access to gold-mention examples or
+labels is available. Our assumption extends to the availability of a target domain ontology Otarget and an unlabeled text
+corpus T, or a source ontology Osource. Specifically, we necessitate a concept list that provides a unique identifier, a
+canonical name, and a description for each concept. Our framework also has the capacity to incorporate additional
+knowledge present in the ontology.
+4A P REPRINT
+Figure 2: Workflow of the proposed methodology for exploring the in-context learning ability of large language models
+for biomedical concept linking.
+3.1 Text embedding
+The first stage in our methodology involves transforming textual data into semantic representations. The quality of these
+embeddings is crucial as it significantly affects downstream tasksLiu et al. [2020]. To meet our objective of exploring
+a training-free framework, we opt for three different embedding models. Our first model of choice is SapBERTLiu
+et al. [2020], a Self-Aligned Pretrained BERT model specifically designed for the biomedical domain. Serving as a
+representation of the BERTDevlin et al. [2018] family of models, SapBERT has superior performance in biomedical
+tasks. Next, we leverage the LLaMa model’s embeddings Zhang et al. [2023a]. LLaMa symbolizes an open-source
+option for Large Language Model embeddings, boasting high applicability across diverse language tasks. Finally,
+we utilize GPT-3 embeddings, specifically "text-embedding-ada-002", representing one of the most powerful and
+proprietary embedding methodologies currently available.
+Considering a target ontology Otarget and an embedding model femb(), we generate text embeddings for each en-
+tity/concept etarget. This process involves generating embeddings for both the canonical concept name string and
+a combined version that includes the name string and its context. The purpose of creating an ’entity-name-only’
+representation is to recall entities that can be easily matched with the string, serving as an efficient approach for exact or
+simple matches. On the other hand, generating ‘entity-name-context’ embeddings targets a more complex objective.
+Despite entities not bearing similarity in appearance, they may be describing the same concept, and this intricate relation
+can be captured through context-inclusive embeddings. This dual approach caters to both explicit matches and the
+nuanced equivalences in the realm of biomedical concepts. As we will illustrate in the appendix, embedding with
+context plays a significant role in the success of our approach.
+3.2 Candidate generation
+Following the generation of contextual embeddings, we persist all embeddings from the ontology into a vector database,
+alternatively referred to as a long-term memory store Park et al. [2023]. This enables efficient computation of cosine
+similarity between any given query text embedding and all the ontology embeddings. This stored ontology is referred to
+as ‘mem‘.
+When a query entity (esource, Csource)is presented, we employ the same embedding process. The top kcandidates are
+then retrieved based on the cosine similarity of their contextual embeddings. The process of memory creation and
+candidate generation can be outlined in Algorithm 1.
+5A P REPRINT
+Algorithm 1 Memory Creation and Candidate Generation
+Require: Target domain ontology Otarget, Source entity esource, Source context Csource, Embedding function femb,
+VectorDatabase mem, Number of candidates k
+1:Memory Creation
+2:Initialize VectorDatabase: mem ←VectorDatabase()
+3:for(etarget, Ctarget)inOtargetdo
+4: mem.add( femb(etarget))
+5: mem.add( femb([etarget, Ctarget]))
+6:end for
+7:Candidate Generation
+8:function GENERATE _CANDIDATES (esource, Csource,mem, k)
+9: query emb←femb([esource, Csource])
+10: top_k_candidates ←mem.retrieve_top_k( query emb, k)
+11: return top_k_candidates
+12:end function
+3.3 Rank with LLM
+LLMs possess text comprehension capabilities and a degree of logical reasoning abilityBubeck et al. [2023]. Con-
+sequently, our approach revolves around providing comprehensive contextual information related to the biomedical
+concept linking task, enabling the model to execute an extensive reading task and subsequently select the most
+appropriate answer from the given options.
+When constructing the prompt, we initially define the task and inform the model that our aim is to identify analogous
+concepts. We then present the candidate concepts retrieved from long-term memory. These candidates are options
+within the prompt. Further, we fetch the descriptions of these candidates from the ontology and associated text of the
+source entity. Ultimately, the prompt asks the model to select the concept that aligns best with the options; if none are
+suitable, the model is to select the ’None’ option.
+The configuration of the prompt is adaptable, accommodating the unique requirements of different tasks. For instance,
+in entity linking tasks, we may also include related text. The BC5CDR datasetLi et al. [2016], which extracts named
+entities from PubMed abstracts, would necessitate the addition of abstract tags within the prompt. Similarly, for tasks
+like graph alignment, we could incorporate neighborhood information into the prompt. The overall workflow of the
+ontology matching task is illustrated in figure 2.
+4 Experiments
+4.1 Dataset
+Choosing an appropriate dataset to benchmark our proposed method and probe the capabilities of LLMs poses a few
+challenges. Firstly, as LLMs are trained on a vast amount of text data including published papers and webpages, data
+leakage becomes an inevitable concern for many existing datasets. Estimating the impact of this leakage on performance
+is not straightforwardBubeck et al. [2023]. Moreover, biomedical NLP datasets can be sensitive, with some prohibiting
+any form of redistribution. This becomes problematic when using the GPT API, as the dataset is exposed to OpenAI,
+potentially leading to indirect redistribution via the LLM. Another obstacle is the slow inference speed of LLMs.
+For datasets with over 100,000 samples, the inference could take more than ten days, and with multiple models to
+benchmark and various ablation tests to conduct, it necessitates a smaller dataset.
+Consequently, we chose the BC5CDR datasetLi et al. [2016] for benchmarking. This well-known dataset in biomedical
+entity normalization requires mapping named entities in PubMedRoberts [2001] abstracts to unique MeSH IDs. It
+encompasses two types of entities - chemicals, and diseases. By using this dataset, we can readily compare our
+proposed framework with previous supervised or self-supervised training methodsLiu et al. [2020], Zhang et al. [2022].
+Additionally, the BC5CDR dataset is relatively small, with 4797 mentions in the test set, making it manageable given
+the slow inference speed of LLMs.
+For the ontology matching task, we selected the Machine Learning-Friendly Biomedical Datasets for Equivalence and
+Subsumption Ontology Matching He et al. [2022b], published in 2022. Being recently published, unlikely to be accessed
+by Llama, GPT3, or GPT4. We focused on two challenging sub-tasks from this dataset: OMIM-ORDO and SNOMED-
+NCIT Neoplas. OMIM (Online Mendelian Inheritance in Man) McKusick [2011] OMIM provides extensive data on
+6A P REPRINT
+genes and genetic phenotypes and their relationships, curated meticulously from biomedical literature. ORDO (Orphanet
+Rare Disease Ontology)Vasant et al. [2014]encompasses a classification of rare diseases and establishes relationships
+between diseases, genes, and epidemiological features. Given that many rare diseases are genetic disorders, ORDO
+and OMIM share considerable overlap. However, linking these rare disease names poses a significant challenge. Such
+diseases are typically unfamiliar to individuals without specialized medical knowledge, and their mentions in literature
+are often infrequent. We selected SNOMED-NCIT Neoplas Stearns et al. [2001] ontology matching, as differentiating
+neoplasm names is challenging for Bert-based methods. The test sets for OMIM-ORDO and SNOMED-NCIT Neoplas
+contain 3,721 pairs and 3,804 pairs, respectively.
+4.1.1 Implementation details
+Unlike many previous studies that utilize somewhat complex systems, such as developing corpora for fine-tuning, and
+incorporating synonym dictionaries, and abbreviation dictionariesLiu et al. [2020], Zhang et al. [2022], our approach is
+guided by the principle of simplicity. Our goal is to establish a universal framework for biomedical concept linking,
+without adding complexity or tailoring our system to a specific task or dataset. The only aspect we modify is the prompt.
+For instance, in the BC5CDR task, we include the PubMed abstract text and insert the instruction "read the abstract" in
+the prompt. We perform one-shot learning in the ablation test, similar to the application of Chain of ThoughtsWei et al.
+[2022]. However, we do not use the Self-Consistency methodWang et al. [2022] in this paper. The reason is discussed
+in the appendix. We chose to include GPT-3.5-turbo (ChatGPT) in our study because it is one of the most widely known
+LLMs and offers the advantages of being both fast and cost-effective. We also decided to incorporate GPT-4, given its
+exceptional power and performance. Finally, we used a 4-bit quantization of LLama-65b (known as alpaca-lora), which
+is a highly popular open-source LLM that can be conveniently deployed on a standard desktop computer due to its
+quantization. For the LLama-65b, we utilized a desktop machine equipped with 64GB of RAM, running llama-cpp for
+inference. As for GPT-3.5 and GPT-4, we accessed these models through OpenAI’s API, conducting our experiments
+on an ordinary laptop.
+4.1.2 Evaluation
+As our proposed framework does not require training, we have no need for training and development sets. We directly
+evaluate our framework using the test sets from our chosen datasets. As discussed in the dataset section, benchmarking
+larger models needs to take data leakage into account, as it may impact the quantitative results. For BC5CDR, we
+employ accuracy as the metric for evaluation, consistent with previous research, enabling comparison.
+For comparison, we choose KRISSBERTZhang et al. [2022], BERN2Sung et al. [2022], ScispaCyNeumann et al. [2019],
+and QuickUMLSSoldaini and Goharian [2016] as baselines. KRISSBERT is representative of self-supervised training
+methods that, like ours, do not require training and development datasets. BERN2 is a hybrid system that employs
+both rule-based and BERT models for named entity normalization and claims superior performance. ScispaCy is a
+BERT-based method.QuickUMLS is a dictionary-based method. For the ontology matching task, we make comparisons
+with LSMatchSharma et al. [2021], ATMatcherHe et al. [2022b], LogMapJiménez-Ruiz and Cuenca Grau [2011], and
+BERTMapHe et al. [2022a]. Among these, BERTMap is the most recent and capable contender. And we use Precision,
+Recall, and F1 score as our evaluation criteria. We also test the effect of using context information or one-shot learning
+in the prompt.
+Our primary objective is to delve into the capabilities of LLMs for biomedical concepts linking in with ICL. Conse-
+quently, we also undertake extensive qualitative result analysis. We will assess both false positives and false negatives,
+providing a more comprehensive evaluation of our model’s performance. Furthermore, we ask the model to elucidate
+the rationale behind its concept linking decisions, a practice known as process correctnessBubeck et al. [2023]. In
+the quest to build accurate and trustworthy AI in the biomedical field, achieving the correct predictions is crucial, but
+equally important is understanding the explanations underpinning these results.
+5 Results
+5.1 Quantitative results
+5.1.1 Main results
+The results of our framework on the BC5CDR dataset are presented in Table 1. Utilizing GPT-4 as the ranker, our
+model achieved an accuracy of 90.1% on disease name entity linking and 94.7% on chemical name entity linking.
+We primarily compared our approach with the self-supervised KRISSBERT method and the more complex hybrid
+system BERN2. In terms of linking disease names, our model’s results surpass KRISSBERT’s and are competitive
+7A P REPRINT
+with BERN2’s, with just a 3.85% difference. Notably, our results were achieved without the use of any customized
+rules, abbreviation dictionaries, or synonym dictionaries. For chemical name entity linking, our model’s performance is
+approximately 2% lower than KRISSBERT’s and BERN2’s. Considering our framework requires no training, these
+results are quite promising and outperform earlier BERT-based methods like ScispaCy. When we switch to GPT-3 as
+the ranker, the performance remains reasonably good. However, with the Llama model as a ranker, performance drops
+significantly for chemical entity linking, even falling behind early BERT models.
+Method Accuracy-Disease Accuracy-Chemical
+QuickUMLS(dictionary-based) 0.475 0.349
+ScispaCy(BERT) 0.640 0.853
+BERN2(Hybrid system) 0.939 0.966
+KRISSBERT(self-supervised) 0.855 0.965
+Retrieve-Rank with LLaMa 65B 0.726 0.728
+Retrieve-Rank with GPT3.5 0.840 0.912
+Retrieve-Rank with GPT4 0.901 0.947
+Table 1: Comparison of Retrieve-Rank with different LLMs with previous methods on BC5CDR dataset. The highest
+accuracy of our methodology and previous methods are both highlighted.
+Table 2 presents the results of ontology matching between OMIM and ORDO and ontology matching between
+SNOMED and NCIT Neoplas. Our framework, utilizing the ICL capabilities of GPT-4, achieved over a 20 percentage
+point increase in F1 score in comparison to the previous best-performing method, BERTmap. When GPT-3.5 was
+employed as the ranker, there was still a notable increase of approximately 10 percentage points in the F1 score. These
+outcomes underscore the effectiveness of the ICL provided by LLMs. Meanwhile, Llama’s performance just marginally
+surpassed BERTmap in OMIM-ORDO matching but lagged behind in the SNOMED-NCIT Neoplas matching task.
+Given that we used a 4-bit quantized version of Llama that was not specifically aligned to biomedical tasks, the results
+remain promising. However, the disparity in performance between Llama and the GPT models indicates that there’s
+significant room for the enhancement of open-source LLMs in the future.
+OMIM-ORDO (Rare disease) SNOMED-NCIT(Neoplas )
+Precision Recall F1 Precision Recall F1
+LSMatch 0.650 0.221 0.329 0.902 0.238 0.377
+ATMatcher 0.940 0.247 0.391 0.866 0.284 0.428
+LogMap 0.827 0.498 0.622 0.947 0.520 0.671
+BERTMap 0.730 0.572 0.641 0.815 0.709 0.759
+Retrieve-Rank with LLaMa 65B 0.797 0.543 0.646 0.699 0.665 0.679
+Retrieve-Rank with GPT3.5 0.777 0.704 0.738 0.760 0.736 0.748
+Retrieve-Rank with GPT4 0.906 0.859 0.882 0.916 0.893 0.904
+Table 2: Comparison of different methods.
+5.1.2 Ablation test
+Table 3 presents the results of various prompting methods for rare disease concept matching in OMIM-ORDO (Disease)
+using GPT-4. The findings indicate that without the use of a one-shot example and no context information about
+these rare disease concepts, the F1-score is merely 0.698. This is approximately 19 points lower than the proposed
+method and shows no significant improvement compared to the previous BERTMap method. These results suggest
+that even the most powerful language model does not automatically perform well on certain biomedical tasks without
+additional context. The implementation of both one-shot learning and the addition of related concept information
+significantly improves performance, demonstrating the value of using the ICL ability of large language models for
+concept-linking tasks.It’s interesting to note that adding OMIM context information provides a larger performance
+increase than one-shot learning without context. When combining both one-shot learning and OMIM context, the
+performance increase is marginal compared to just using OMIM context. This suggests that introducing the correct and
+relevant information for each case is more beneficial than providing an analogous example. Interestingly, it’s noteworthy
+to observe that one-shot learning significantly enhances precision to a greater extent than it does recall.
+8A P REPRINT
+Method Precision Recall F1
+No context 0.783 0.629 0.698
+One-shot 0.871 0.708 0.781
+OMIM context only(source concepts) 0.860 0.773 0.814
+OMIM context + One-shot 0.914 0.7495 0.824
+ORDO context only(options) 0.856 0.792 0.823
+Both OMIM and ORDO 0.906 0.859 0.882
+Table 3: Ablation test results with different prompting methods on OMIM-ORDO (Disease) rear disease concepts
+matching with GPT4.
+5.2 Qualitative results
+5.2.1 Abbreviations
+Abbreviations are a prevalent feature in biomedical text. Previous methodsZhang et al. [2022], Sung et al. [2022] we
+compared employed an abbreviation dictionary to enhance performance. But does an LLM understand biomedical
+abbreviations? The answer is affirmative, but LLMs tend to struggle with less common abbreviations. For familiar
+abbreviations such as AD (Alzheimer’s Disease) or PD (Parkinson’s Disease), LLMs can easily link them to the correct
+concept when provided with a medical context. However, for less common abbreviations like MR (Mitral Valve
+Insufficiency) or VT (Tachycardia, Ventricular), LLMs tend to either choose a ’None’ option from the list of candidates
+or erroneously select an incorrect option. Detailed cases could be checked in the appendix. Therefore, we believe it’s
+still valuable to supply LLMs with abbreviation dictionary information to improve accuracy in more infrequent cases.
+5.2.2 Disease subtypes
+The task of linking disease subtype concepts presents a significant challenge in the biomedical field. These disease
+subtypes often share a lot of similarities, particularly for rare diseases in ORPHA. Even human experts might need
+some time to gather information to discern the differences between these rare disease subtypes. GPT-4 is capable of
+understanding common disease subtypes, such as different types of diabetes, with ease. However, LLama tends to
+struggle with identifying these common disease subtypes. Regarding rare disease subtypes, GPT-4 can comprehend
+most of them when provided with appropriate descriptions. In contrast, LLama fails in most cases involving rare
+diseases subtypes. In situations where GPT-4 failed, rare disease subtypes constitute a significant portion. For instance,
+"Dentinogenesis imperfecta, shields iia 3" in OMIM corresponds to "Dentinogenesis imperfecta type 3". However, GPT
+chose "Dentinogenesis imperfecta type 2". Generally, GPT-4 can provide the correct answer for diseases labeled with
+"type n". However, it does occasionally falter in a few of these cases.
+5.2.3 Process Correctness
+The rationale behind an LLM ranking a candidate first is critical. To construct precise and trustworthy AI in the
+biomedical domain, we aim for both the prediction and the process to be accurate. We noticed from the LLama results
+that there are instances where the process was incorrect, yet the final answer was right. For example, in case 9 from
+the appendix, LLama provided the correct prediction, yet the reasoning appeared to be based on shared keywords
+between disease concept names. This is not ideal, especially for rare disease concept linking, where many concepts
+share keywords yet refer to different diseases. GPT-4 exhibits a more accurate and consistent reasoning process than
+LLaMa, which sometimes even outputs code (as seen in case 8 in the appendix), indicating that the LLama model
+we utilized may not be well-aligned for this task. Although we are not medical experts and cannot offer an accurate
+assessment of LLM’s process correctness, the process correctness of GPT-4 is generally satisfactory when given
+the correct concept description. Most of the time, the process is associated with the context we provided, further
+emphasizing the importance of using LLM’s ICL. By qualitatively evaluating the process correctness of LLM, we
+enhance the interpretability of using large models in concept linking tasks.
+6 Limitations and discussion
+While our framework holds promise, it also comes with notable limitations. Primarily, the inference speed of LLMs
+is exceedingly slow, making the process expensive and long. For instance, our experimental setup involving GPT4
+inference on 3700 OMIM-ORDO pairs costs approximately $150 USD. When employing locally deployable LLMs,
+such as LLama 13B, the inference speed is roughly 103 ms/token, processing only a few words per second. Larger
+9A P REPRINT
+models like Galantica and LLama 65B are even slower, handling only about one word per second with cpu. In light of
+these constraints, future research could explore fine-tuning (without supervision) a LLM specifically designed for this
+task with low resourcesHu et al. [2021].
+Considering the rigorous hardware requirements, our framework’s accessibility is rather constrained. This is further
+exacerbated by GPT’s closed-source nature, leading to diminished transparency. Moreover, even when using open-
+source LLama for inference, powerful GPUs or large amounts of RAM are required - resources that most researchers
+and potential users in the biomedical domain do not have readily available. Training and compressing a quantified
+LLMDettmers et al. [2023] for the biomedical domain is also beneficial in future work.
+Furthermore, our framework sometimes exhibits unexpected failures. For instance, when two share the same name,
+our framework may fail to provide the correct answer. This could be due to context embedding - if the accurately
+labeled name is contextually farther than other candidates, the correct option may not appear. Moreover, this framework
+also exhibits frequent shortcomings in handling abbreviations. Both of these issues could potentially be mitigated by
+utilizing dictionaries, suggesting that a hybrid system might be an avenue worth exploring for future concept linking
+tasks.
+7 Conclusion
+In conclusion, this research explores the use of the in-context learning capabilities of large language models for
+biomedical concept linking. Our proposed two-stage framework effectively retrieves and ranks biomedical concepts,
+achieving competitive results without needing any training.

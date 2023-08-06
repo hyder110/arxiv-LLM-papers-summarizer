@@ -1,0 +1,555 @@
+Published as a conference paper at ICLR 2023
+CODEBPE: I NVESTIGATING SUBTOKENIZATION
+OPTIONS FOR LARGE LANGUAGE MODEL
+PRETRAINING ON SOURCE CODE
+Nadezhda Chirkova
+Naver Labs Europe∗
+nadia.chirkova@naverlabs.comSergey Troshin
+University of Amsterdam∗
+s.troshin@uva.nl
+ABSTRACT
+Recent works have widely adopted large language model pretraining for source
+code, suggested source code-specific pretraining objectives and investigated the
+applicability of various Transformer-based language model architectures for
+source code. This work investigates another important aspect of such models,
+namely the effect of different subtokenization options, and aims at identifying
+most effective and length-efficient subtokenizations, taking into account code
+specifics. We propose subtokenziation that reduces average length by 17% without
+downstream performance drop, and show that a carefully chosen subtokenization
+may improve quality by 0.5-2%, possibly with some length increase.
+1 I NTRODUCTION
+With the inspiration from the success of large language model (LM) pretraining in natural language
+processing (NLP), BERT-like models have been widely adopted for source code processing (Feng
+et al., 2020; Kanade et al., 2020), as code has a similar discrete sequential structure to natural text.
+Being trained on huge source code corpora in a self-supervised manner, large LMs often substan-
+tially outperform domain-specific models developed purposely for applied tasks, especially in the
+tasks with limited parallel / labelled data (Ahmad et al., 2021a). These tasks include fixing code
+bugs, generating text from code and vice versa, or translating code between programming languages.
+Recent works advanced large LM pretraining on source code in two main directions. First, various
+model kinds were utilized for source code: CodeBERT (Feng et al., 2020) and CuBERT (Kanade
+et al., 2020) rely on the classic encoder-only RoBERTa (Liu et al., 2019), CodeGPT (Lu et al.,
+2021) uses decoder-only GPT (Radford & Narasimhan, 2018), PLBART (Ahmad et al., 2021a) is
+based on the denoising sequence-to-sequence BART (Lewis et al., 2020) model, and CodeT5 (Wang
+et al., 2021b) utilizes multitask sequence-to-sequence T5 (Raffel et al., 2020). Second, a range of
+code-specific self-supervised pretraining tasks were proposed to enrich the classic masked language
+modeling (MLM) objective, e. g. GraphCodeBERT (Guo et al., 2021) predicts data flow connections
+during pretraining (one variable is computed from another variable), and CodeT5 (Wang et al.,
+2021b) and DOBF (Roziere et al., 2021) use a variable naming objective.
+This work is devoted to investigating one more important component, subtokenization, which is
+usually not paid much attention when pretraining large LMs on source code. Modern LMs usually
+preprocess sequences using open-vocabulary models such as Byte-pair encoding (BPE, Sennrich
+et al., 2016) which split long tokens into smaller subtokens. Though this process is often referred
+to as tokenization, we call it subtokenization, to underline its smaller granularity. Subtokenization
+became a standard part of all widely-used LMs pretrained on natural text or code, because it ensures
+the relatively high frequency of all subtokens (compared to the whitespace-separated tokenization,
+which results in a large portion of out-of-vocabulary tokens), at the same time producing sequences
+of reasonable length (compared to character-level tokenization). Though subtokenization was ini-
+tially introduced for NLP, it is especially relevant for code, as programming languages usually permit
+identifiers of unrestricted complexity, e. g. variable or function names (Chirkova & Troshin, 2021).
+∗Work done while being at HSE University.
+1arXiv:2308.00683v1  [cs.LG]  1 Aug 2023Published as a conference paper at ICLR 2023
+BPE-50KUnigramLM-10K(3-19% length increase)Grouping punctuationwithout quality dropF req Lists = [ [ 0 , 0 ] for i in range ( voc Sz ) ]+0.5-2% quality17% length reductionFreq List s = [ [ 0 , 0 ] for i in range ( vo c S z ) ]Freq Lists =[[ 0 , 0 ] for i in range ( voc S z )]Commonly usedGrouping frequent combinations40% length reduction(sometimes quality drop)Freq List s=[ [0,0] for_i_in_range (vo c S z )]
+Figure 1: Example subtokenizations (all numbers compared to the commonly used BPE-50K).
+Though subtokenization is often chosen with only superficial deliberation, it is one of the essential
+model components which may affect both quality and prediction speed. First, an inaccurately chosen
+subtokenization procedure may substantially increase sequence lengths and consequently slow down
+prediction. As a simple example, the work on CodeT5 (Wang et al., 2021b) notices that using
+BPE trained specifically on source code corpora makes sequences 30–45% shorter than using BPE
+trained on natural text. Second, a line of recent research points at the positive effect of the carefully
+chosen subtokenization procedure on the model’s performance in NLP. For example, Bostrom &
+Durrett (2020) show that using a UnigramLM (Kudo, 2018) subtokenization algorithm instead of
+BPE improves the quality of BERT-based question answering or textual entailment in English by
+1%, and Ding et al. (2019) show that adjusting BPE vocabulary size in translation may produce
++4 BLEU. At the same time, for large LMs, the particular subtokenization procedure chosen at the
+pretraining stage becomes an inseparable part of the model and must later be used in applied tasks.
+This underlines the need for a careful choice of subtokenization options when pretraining large LMs.
+In this work, we conduct a deep study of subtokenization options for large LM pretraining on source
+code, using PLBART as a testing ground. In addition to investigating general aspects, e. g. the
+subtokenization algorithm and the vocabulary size, we study the ways of adapting subtokenization
+to the specific properties of code, such as a large amount of punctuation marks and frequently-
+used token combinations, a variety of complex identifiers, or relative similarity of programming
+languages. We aim at choosing optimal subtokenization options that (a) lead to the best performance
+or (b) minimize sequence lengths (and thus speed up the model) without downstream performance
+drop. Our contributions are as follows - we show that for large LMs pretrained on source code:
+• Grouping punctuation chars in single tokens reduces the average length by 17% without
+downstream performance drop (we call this approach CodeBPE or CodeUnigramLM), and
+permitting more complex composite tokens reduces lengths by 40%, sometimes with qual-
+ity drop (Section 1);
+• UnigramLM is generally preferable over BPE (Section 4);
+• Smaller vocabularies may improve quality with 3–19% length increase (Section 5);
+• Subtokenizers are well transferable between programming languages (Section 6);
+Our length-efficient subtokenization procedure (see examples in Figure 1) compresses sequences by
+17% without quality drop and our most effective subtokenization improves performance by 0.5–2%
+significantly in three out of eight tasks and by one standard deviation in two other tasks.
+2 M ETHODOLOGY AND EXPERIMENTAL SETUP
+The existing works on large LMs for source code usually choose a particular subtokenization li-
+brary, for example the same as in the base LM the work uses, and train the subtokenizer with
+the vocabulary size of 30-50K on source code corpora used for pretraining. Often code is pre-
+processed before subtokenization, e. g. by replacing \nwithNEW_LINE , and split into tokens
+on white-spaces and punctuation marks so that these tokens are further split into subtokens,
+e. g. for i in range (vocSize) will be split into [‘ for’, ‘i’, ‘in’, ‘range ’, ‘(’,
+‘vocSize ’, ‘)’] even if for i in is generally a frequent combination. The latter principle
+appears to be intuitively reasonable, since it ensures that subtokenization preserves syntactically
+meaningful boundaries of tokens (Kanade et al., 2020). We refer to this principle as prohibiting
+composite tokens . More details on subtokenization in different LMs for code are given in Section 7.
+2Published as a conference paper at ICLR 2023
+We treat the described commonly-used approach as a baseline, and conduct a series of experiments,
+each modifying the baseline subtokenization procedure in one dimension and pretraining PLBART
+with the new subtokenization. The dimensions we vary are as follows: the allowed complexity
+of composite tokens, the subtokenization algorithm, the vocabulary size, the set of languages the
+subtokenizer is trained on, and the use of stochastic subtokenization. These dimensions are inspired
+either by the specifics of source code or by the recent works on subtokenization in NLP.
+Experimental setup. As our base model, we use PLBART (Ahmad et al., 2021a), since it comes
+with the released pretraining code and data preprocessing routine under the MIT license. We use the
+same model size, the pretraining dataset size and other hyperparameter settings, including finetuning
+hyperparameters, as in PLBART1. In particular, we use an encoder-decoder Transformer architecture
+with 6 layers in each part, with the model dimension of 768 and 12 heads (140M parameters).
+The pretraining data consists of 230M Python functions, 470M Java functions (crawled through
+BigQuery2) and 47M natural language (NL) descriptions (crawled from StackOverflow3), referred
+to as sequences below. The BigQuery dataset consists of repositories with clear open-source license.
+We pretrain all our PLBART models for 100k updates, as in the original paper.
+As applied tasks, we consider three tasks from the PLBART paper: code generation (generating a
+Java function based on an NL description; CONCODE (Iyer et al., 2018) dataset, CodeBLEU (Ren
+et al., 2020) metric), code summarization (generating an NL description for a Python or Java func-
+tion; CodeSearchNet (Husain et al., 2020) dataset, BLEU metric), code clone detection (classifying
+whether two Java functions implement the same functionality; BigCloneBench dataset (Svajlenko
+& Roy, 2015); F1 metric), and one additional task of code translation (translating code from Python
+to Java and vice versa; A V ATAR dataset (Ahmad et al., 2021b)). Here we consider original data
+with the CodeBLEU metric (Code Translation-1) and the smaller version of data with tests and
+the Computational Accuracy metric – which portion of generated functions passed all tests (Code
+Translation-2). We chose tasks so that we have both code generative and discriminative tasks and
+that datasets are either in Python or Java.
+We clip all sequences by 510 subtokens, except summarization where we clip by 250 subtokens
+following Ahmad et al. (2021a). Such clipping remains the majority of sequences unclipped in all
+subtokenizations: 96-99.1% in the pretraining data, 93–99% in translation, 88–100% in generation,
+76–93% in summarization, and 37–80% in clone detection. In the main text we report average
+lengths computed on the randomly chosen subset of pretraining data before clipping, Appendix A
+reports length statistics for downstream data with similar trends as observed for the pretraining
+data. We only clip sequences passed to neural networks and use unclipped target sequences when
+computing metrics.
+Baseline subtokenization. Following Ahmad et al. (2021a), we use a SentencePiece (Kudo &
+Richardson, 2018) library, which is a one of the most widely used solutions for subtokenization. We
+train subtokenizers on 10M functions and NL descriptions randomly selected from the pretraining
+data (different from the random subset on which we measure average lengths). Though Ahmad et al.
+(2021a) use BPE subtokenization algorithm, our baseline subtokenization uses another algorithm,
+UnigramLM, because it was shown to be quantitatively and qualitatively more suitable for pretrain-
+ing in NLP than BPE (Bostrom & Durrett, 2020). We also perform their comparison for code in
+Section 4. We set the vocabulary size to 50K (the commonly used size for large LMs of code) and
+character coverage to 99.99% (enough to cover English chars and punctuation).
+We also use PLBART’s preprocessing which includes removing comments and docstrings, replacing
+\n, indents and dedents in Python with NEW_LINE ,INDENT andDEDENT tokens as they are a
+part of the language syntax, and removing formatting in Java as it does not affect the language
+syntax. Our baseline subtokenizer follows the commonly used strategy of prohibiting composite
+tokens described above. The only exception we make is that we allow underscores _inside tokens,
+because they do not represent a syntax unit, as other punctuation chars do.
+1https://github.com/wasiahmad/PLBART
+2https://console.cloud.google.com/marketplace/details/github/
+github-repos
+3https://archive.org/download/stackexchange
+3Published as a conference paper at ICLR 2023
+Table 1: Different levels of allowed composite tokens complexity considered in the paper. Green
+emphasizes tokens which could not be obtained in the previous level, and gray emphasises the re-
+maining tokens that could not be obtained in Level 0. Levels list allowed merges, but what particular
+merges to perform is chosen by the tokenizer.
+Lev. Description Example
+0 Whitespaces in the middle of tokens are
+prohibited and each punctuation char is
+treated as a separate token (except ‘ _’)[‘for’, ‘i’, ‘in’, ‘range ’, ‘(’, ‘df’, ‘.’, ‘shape ’, ‘[’, ‘1’, ‘]’, ‘)’,
+‘:’, ‘NEW_LINE ’, ‘INDENT ’, ‘print ’, ‘(’, ‘i’, ‘)’, ‘NEW_LINE ’,
+‘print ’, ‘(’, ‘df’, ‘.’, ‘columns ’, ‘[’, ‘i’, ‘]’, ‘)’]
+1 Similar to Level 0, but tokens consisting
+of several punctuation chars are allowed[‘for’, ‘i’, ‘in’, ‘range ’, ‘(’, ‘df’, ‘.’, ‘shape ’, ‘[’, ‘1’,
+‘] ) :’, ‘NEW˙LINE INDENT ’, ‘print ’, ‘(’, ‘i’, ‘) NEW˙LINE ’,
+‘print ’, ‘(’, ‘df’, ‘.’, ‘columns ’, ‘[’, ‘i’, ‘] )’]
+2 Similar to Level 1, but dots are allowed in
+tokens[‘for’, ‘i’, ‘in’, ‘range ’, ‘(’, ‘df’, ‘.shape ’, ‘[’, ‘1’, ‘] ) : ’,
+‘NEW˙LINE INDENT ’, ‘print ’, ‘(’, ‘i’, ‘) NEW˙LINE ’,
+‘print ’, ‘(’, ‘df’, ‘.columns ’, ‘[’, ‘i’, ‘] )’]
+3 Whitespaces and single punctuation chars
+allowed in tokens, except NEW_LINE[‘for i in range ’, ‘( df’, ‘. shape [ 1 ’, ‘] ) :’, ‘NEW˙LINE INDENT ’,
+‘print ’, ‘( i’, ‘) NEW˙LINE ’, ‘print ’, ‘( df’, ‘. column ’, ‘s [ i’,
+‘] )’]
+4 Composite tokens of arbitrary complexity
+are allowed[‘for i in range ’, ‘( df’, ‘. shape ’, ‘[ 1 ] ’, ‘)’, ‘: NEW˙LINE ’,
+‘INDENT print ’, ‘( i ) ’, ‘NEW˙LINE print ’, ‘( df’, ‘. columns ’,
+‘[ i ] ) ’]
+44 46Level 0
+Level 1
+Level 2
+Level 3
+Level 4Code transl.-1 (Py, CodeBLEU)    
+55 60 65Code transl.-2 (Py, Comp. Acc.)
+19.5 20.0Code summ. (Py, BLEU)
+37 38Code gen. (Ja, CodeBLEU)  
+47 48 49Level 0
+Level 1
+Level 2
+Level 3
+Level 4Code transl.-1 (Ja, CodeBLEU)    
+45 50 55Code transl.-2 (Ja, Comp. Acc.)
+18.5 19.0 19.5Code summ. (Ja, BLEU)
+97.5 98.0 98.5Clone detection (Ja, F1)
+012340255075100
+97.0
+80.7
+74.8
+64.1
+59.4Av. length
+Figure 2: Results on various subtokenization granularity, averaged over 4 finetuning runs (mean ±
+standard deviation). Level 0 – baseline subtokenization. Numerical data for all plots is given in
+Appendix.
+3 S UBTOKENIZATION GRANULARITY
+In natural text, a portion of punctuation chars is small and thus their separation in subtokenization
+does not affect lengths much. In contrast, in source code, punctuation constitutes 12.8% of chars and
+often forms frequent combinations joining which into composite tokens may substantially reduce
+lengths. Further, the presence of a large amount of commonly used patterns is another specific
+feature of source code, e. g. for (int i = 0; in Java or def __init__ (self): in
+Python, and these patterns again may form composite tokens. This section investigates the effects
+of the use of composite tokens on performance and length-efficiency.
+We consider several levels of allowed complexity of composite tokens listed in Table 1 and empir-
+ically compare them in Figure 2. The two extreme cases are no composite tokens (Level 0, equal
+to the baseline subtokenization) and unrestricted composite tokens complexity (Level 4, composite
+tokens constitute 48.6% of the vocabulary). The average sequence length in Level 4 is 40% less than
+that in Level 0. At the same time, the effect on performance depends on the task: in code-generative
+tasks (translation and generation), Level 4 performs significantly worse than Level 0, and in code
+understanding tasks, Level 4 is either similar / marginally worse than Level 0 (code summarization)
+or even significantly better (clone detection). Because of quality loss encountered in several tasks,
+we consider intermediate levels.
+Level 1 makes one step further from Level 0 and allows punctuation char merges, e. g. ‘ })’ or
+‘]):’. Though such punctuation composite tokens constitute only 3.4% of the vocabulary, their use
+reduces average length by 17%: from 97 to 80.7, and since this level does not mix punctuation with
+other chars, it presumably should not complicate code generation much. Level 2 makes one more
+4Published as a conference paper at ICLR 2023
+step further and allows merging dots .with textual tokens. This reduces the average length by 23%
+compared to Level 0. The motivation for Level 2 is that a lot of API name tokens almost always
+go with the dot, e. g. .join or.split in Python. Figure 2 shows that Level 1 model performs
+similar or better than Level 0 model in all tasks, and Level 2 performs similar or better than Level
+0 in six tasks, marginally worse in Python code summarization and significantly worse in Java code
+generation.
+Level 3 makes a step back from Level 4 and restricts the complexity of composite tokens in such a
+manner that each composed token may represent either a simple one-line code pattern or a punctu-
+ation combination, but could not combine them. Quantitatively, Level 3 performs generally better
+than Level 4, but (marginally or significantly) worse than the previous Level 2 in six tasks and
+similarly in two tasks (generation and clone detection).
+To sum up, punctuation combinations (Level 1) result in sequence lengths reduction by 17% without
+performance drop in all tasks. We verify this result for BPE in Appendix B and call this approach
+CodeBPE or CodeUnigramLM. Length reduction could be increased up to 24% in most tasks by
+allowing dots attached to tokens (Level 2) and up to 40% in most code understanding tasks by al-
+lowing arbitrary subtoken combinations (Level 4). we investigate the transferability of subtokenizers
+between programming languages in Section 6.
+One of the potential issues with using composite tokens in code-generative tasks is that an inaccurate
+generation of a “long” token may change the entire following generated code. For example, in Java–
+Python code translation, a cycle which traverses all unique element pairs in an array, converts to
+for l in range ( 0 , arr_size - 1 ) :
+for r in range ( l + 1 , arr_size ) :
+While the Level 0 model generates exactly the specified cycle and the Level 1 model only modi-
+fies the first cycle: range ( arr_size - 1 ) , making it even more concise, Level 3 model
+generates
+for l in range ( 0 , arr_size ) :
+for r in range ( 0 , arr_size ) :
+which results in traversing some elements twice. Here the first cycle begun with tokens ‘ for l in ’
+and ‘range ( 0 , ’ and the second cycle begun with tokens ‘ for r in ’ and ‘ range ( 0 , ’
+where the latter repeats the previously used token and starts an incorrect line. However, according
+to our manual prediction analyses, such inaccurate generation, if it happens, rarely results in wrong
+code and often does not affect code semantics. For example, the Level 3 model may generate
+[‘range ( 0 , ’, ‘n )’] instead of equivalent range(n) . Another example is that this model
+may generate [ [ 0 ] *c for i in range ( r ) ] instead of two nested cycles by
+beginning with tokens ‘ [ [’ and ‘ 0 ] *’, resulting in even more concise code.
+As for composite tokens in Level 1, they contain only punctuation and are “simpler” than in Level
+3. Besides, Level 1 composite tokens serve more often for statement closing (e. g. ‘ )):’ at the end
+of the cycle specification) than for a harder starting of new statements: 46.3% of Level 1 composite
+tokens contain only closing brackets, 12.8% contain only opening brackets and 26.7% contain both.
+We also check that using punctuation composite tokens does not deteriorate syntactic correctness:
+in Java-Python code translation-1, Level 0 and Level 1 models generate a similar number of syntac-
+tically correct test code snippets: 1226 and 1239 correspondingly. At the same time, for the Level 3
+model, this quantity only equals 1163.
+In Appendix C, we also analyse how much do input and output subtoken sequences intersect in
+different Levels and find that generally the higher granularity leads to the lower intersection rate.
+This may be another explanation for the superiority of the lower granularity subtokenizations, as
+intuitively it should be easier for the model to predict correct subtokens if they are present in the
+input sequence.
+As aurogregressive decoding is a slowest part of the encoder-decoder pipeline (Berard et al., 2021),
+it is important to check that the length statistics of sequences generated by the models comprising
+composite tokens are close to those of the data. We check it for Java-Python translation-1: while
+groundtruth sequences at Levels 1 and 3 are 13.5% and 50% shorter than at Level 0, the generated
+sequences at these levels are 15% and 40% shorter than sequences generated at Level 0.
+5Published as a conference paper at ICLR 2023
+45 46BPE 50K
+UniLM 50K
+UniLM 10k
+UniLM 2kCode transl.-1 (Py, CodeBLEU)     
+64 66 68Code transl.-2 (Py, Comp. Acc.)
+19.0 19.5 20.0Code summ. (Py, BLEU)
+37 38 39Code gen. (Ja, CodeBLEU)  
+47 48 49BPE 50K
+UniLM 50K
+UniLM 10k
+UniLM 2kCode transl.-1 (Ja, CodeBLEU)    
+56 58Code transl.-2 (Ja, Comp. Acc.)
+18.5 19.0 19.5Code summ. (Ja, BLEU)
+97 98Clone detection (Ja, F1)
+BPE
+50k  50kUniLM
+   10k   2k050100150
+97.1
+97.0
+106.3
+130.1Av. length
+Figure 3: Comparison of BPE and UnigramLM subtokenizers and of several vocabulary sizes. Uni-
+gramLM 50K – baseline subtokenization.
+Table 2: Example subtokenization of identifiers by UnigramLM and BPE subtokenizers
+Original token UnigramLM subtok-
+enizationBPE subtokenization Native subtokenization
+(Camel- or snake case)
+fromDottedString [’from ’, ’ Dotted ’,
+’String ’][’from ’, ’ Dot’, ’ ted’,
+’String ’][’from ’, ’Dotted ’, ’String ’]
+isInstantiated [’is’, ’Instantiate ’, ’d’] [’isIn ’, ’stanti ’, ’ated ’] [’is’, ’Instantiated ’ ]
+GridBagConverter [’Grid ’, ’ Bag’,
+’Converter ’][’GridBag ’, ’Converter ’] [’Grid ’, ’Bag’, ’Converter ’]
+isSameSize
+Horizontally[’isSame ’, ’ Size ’,
+’Horizontally ’][’isSame ’, ’ Size ’, ’ H’,
+’orizontally ’][’is’, ’ Same ’, ’ Size ’,
+’Horizontally ’]
+PA_Hierarchy_ID [‘PA’, ‘_’, ‘Hierarchy ’, ‘_ID’][‘PA’, ‘ _H’, ‘ ierarchy ’,
+‘_ID’][‘PA’, ‘_’, ‘Hierarchy ’, ‘_’,
+‘ID’]
+We note that though we use sequence clipping which clips lower granularity subtokenizations
+stronger, it does not devalue our results, as generally lower granularity subtokenizations perform
+better in our experiments, and also such clipping is a widely used practical scenario; we provide
+more comments in Appendix C. At the same time, in rare cases when lower granularity subtok-
+enizations perform worse than higher granularity ones, this may be indeed due to the max-length
+clipping. For example, we find that the more “fair” cropping eliminates the superiority of Level 1
+compared to Level 0 in code summarization and they start performing similarly (see Appendix C).
+4 S UBTOKENIZATION ALGORITHM
+Bostrom & Durrett (2020) compare two most popular subtokenization approaches, BPE and Uni-
+gramLM (Kudo, 2018), for pretraining of large LMs on natural text data. While BPE constructs the
+vocabulary in the bottom-up fashion, starting from characters and gradually joining them, the Un-
+igramLM algorithm works in the top-down fashion, staring from a large vocabulary and gradually
+filtering it. The paper finds that UnigramLM outperforms BPE in a range of downstream tasks and
+suggests several reasons for the superiority of UnigramLM, including better alignment with mor-
+phology and the more efficient vocabulary allocation. Since most existing pretrained LMs on source
+code use BPE, we decided to compare the two algorithms for source code.
+Figure 3 compares BPE and UnigramLM for PLBART. In three tasks, UnigramLM outperforms
+BPE by one standard deviation, and in remaining tasks their performance is very close. Since the
+average length of two tokenizations is similar, we recommend using UnigramLM for source code .
+Bostrom & Durrett (2020) argue that one of the potential reasons for the superiority of UnigramLM
+subtokenization is that it is better aligned with natural text morphology and thus simplifies the com-
+position of words by parts. We find that a similar effect appears for identifiers in source code:
+although 80% of identifiers are subtokenized identically by UnigramLM and BPE, for some of the
+remaining 20%, UnigramLM provides more “reasonable” splits into subtokens, see examples in Ta-
+ble 2. More formally, we observe that UnigramLM subtokenization better resembles splitting into
+subtokens based on CamelCase orsnake_case , which we call a native subtokenization. To
+estimate this effect quantitatively, we consider the Python corpus and randomly select a set of 150K
+identifiers with different UnigramLM and BPE subtokenizations consisting of ⩾2 native subto-
+6Published as a conference paper at ICLR 2023
+kens, and measure the average Jaccard similarity J(A, B ) =|A∩B|/|A∪B|between the set
+of native subtokens and the set of subtokens produced by each subtokenizer. The resulting score
+for UnigramLM, 26.6%, is much higher than for BPE, 15.2%. As could be observed from the
+third and the fourth rows in Table 2, sometimes subtokenizers join two native subtokens into one
+(isSame ,GridBag ). If we split each subtoken produced by a tokenizer based on CamelCase or
+snake_case to eliminate this effect and again measure average Jaccard similarities, UnigramLM’s
+score, 55.2%, is still much higher than BPE’s, 47.9%, again indicating that UnigramLM’s tokeniza-
+tion is better aligned with the native one. In Appendix C we measure intersections between inputs
+and outputs in the sequnce-to-sequence tasks and find that UnigramLM leads to a slightly higher
+intersection rate than BPE, which may be connected to the better alignment with native subtok-
+enization and serve as a a possible explanation of UnigramLM slight performance superiority.
+A relatively frequent pattern is that BPE tends to detach the first uppercase letter from native subto-
+kens ( H orizontally in row 4, _H ierarchy in row 5). Among 150K identifiers considered
+in the previous paragraph, 14.6% of BPE tokenizations contain at least one single uppercase letter X
+and 4.4% — at least one subtoken of kind _X, while for UnigramLM these scores are substantially
+lower and equal to 11.8% and 1.4% correspondingly. At the same time, BPE merges two native
+subtokens more frequently ( GridBag in row 3): 45.8% BPE tokenizations contain at least one to-
+ken which could be split into two or more based on CamelCase , while for UnigramLM this score
+only equals to 39.2%.
+5 V OCABULARY SIZE
+This section studies the effect of vocabulary size, one of the main subtokenizer’s hyperparameters,
+on the downstream quality of PLBART. Though the existing pretrained LMs for code use relatively
+large vocabularies of 30–50K tokens, we are interested, whether using smaller and less length-
+efficient vocabularies could result in better performance, and if yes, how large is the length increase.
+Figure 3 presents the comparison of PLBARTs trained with vocabulary sizes 50K (large), 10K
+(medium) and 2K (small). We find that in code translation, all vocabularies lead to similar per-
+formance. In code summarization, small and medium vocabularies outperform the large one by one
+standard deviation. In code generation, the medium vocabulary significantly outperforms the large
+one. Finally, in clone detection, decreasing the vocabulary size deteriorates quality. At the same
+time, with the large vocabulary, sequences are shorter than with the smaller vocabulary by 9.5%
+(10K) and 33% (2K), but the model size is larger (139M for 50K, 108M for 10K, and 102M for
+2K). We conclude that vocabulary size reduction may lead to a slight performance improvement but
+with sequences elongation , thus it may be helpful in applications with high cost of errors and weak
+restrictions on sequences lengths. We verify the highlighted result for BPE in Appendix. We note
+that compared to BPE 50K which is used in most existing large LMs of code, UnigramLM 10K
+improves performance significantly in three tasks and by one standard deviation in two other tasks.
+Reducing vocabulary size increases the granularity of identifiers subtokenization, e. g. reachable
+is subtokenized as reachable with the 50K vocabulary, reach able – with 10K and
+re ach able – with 2K. In other words, vocabulary size reduction may be seen as an even
+stronger prohibition of complex tokens than Level 0 in Section 1. Our results on the effectiveness
+of smaller granularity agree with the machine translation results of Ding et al. (2019). Programs in
+code generation and summarization data are more identifier-centered, e. g. the model often needs to
+choose a correct API based on the natural language description which seems to be easier by compos-
+ing from smaller subtokens. On the contrary, in code translation, data is more algorithmic-centered,
+with mostly short identifiers encoded in 1–2 subtokens with all vocabulary sizes. The length increase
+of 10K vocabulary compared to 50K one is 6–19% in the former two tasks (6% in generation, 19%
+in summarization) and only 3.5% in the latter one (code-translation-1).
+6 T RANSFERABILITY BETWEEN PROGRAMMING LANGUAGES
+Due to the high computational cost of large LM pretraining and relative programming languages
+similarity, e. g. compared to how dissimilar natural languages could be, pretrained LMs on source
+code are often used for programming languages that were not considered during pretraining. In this
+7Published as a conference paper at ICLR 2023
+45.5 46.0 46.5Py+Ja
+Only PyCode transl.-1 (Py, CodeBLEU)     
+65 70Code transl.-2 (Py, Comp. Acc.)
+19.50 19.75Code summ. (Py, BLEU)
+38.0 38.5Code gen. (Ja, CodeBLEU)  
+47 48 49Py+Ja
+Only PyCode transl.-1 (Ja, CodeBLEU)    
+56 58Code transl.-2 (Ja, Comp. Acc.)
+18.5 19.0Code summ. (Ja, BLEU)
+97.5 98.0Clone detection (Ja, F1)
+Py
+(Py+Ja)     Py
+    (Only Py)Ja
+(Py+Ja)    Ja
+     (Only Py)125.9 124.6
+83.388.7Average length
+Figure 5: Results of transferability between programming languages. Py+Ja – subtokenizer is
+trained on all data (baseline), Only Py – on Python and natural language data only.
+section, we investigate the effect of using a subtokenizer trained on one programming language for
+another programming language.
+109
+108
+107
+106
+105
+104
+103
+102
+Frequency in Java109
+108
+107
+106
+105
+104
+103
+102
+Frequency in PythonLevel 0 granularity
+109
+108
+107
+106
+105
+104
+103
+102
+Frequency in JavaLang.-
+specific
+tokensLevel 4 granularity
+025005000750010000
+Figure 4: Number of tokens of differ-
+ent frequency in two languages, Uni-
+gramLM 50K vocabularies.Figure 4 visualizes the number of tokens having particu-
+lar frequencies in Python and Java languages, and black
+rectangles denote language-specific areas. We find that
+the baseline Level 0 granularity vocabulary seems to be
+language-universal: the majority of subtokens have large
+frequencies in both languages, and only a small number
+of subtokens, 12.6%, are frequent in one language and
+rare in another. Interestingly, for Level 4 vocabulary, this
+quantity is not much higher, 20.1%, though it should in-
+clude all language-specific composite tokens. As com-
+posite tokens occupy almost half of the Level 4 vocab-
+ulary, the remaining 30% composite tokens are common
+for two languages.
+Analysing sequence lengths (Figure 5), we observe that
+training the subtokenizer without Java ( Only Py ) shortens
+Python sequences marginally and increases Java sequences by 6.5% compared to the baseline subto-
+kenizer trained on all data ( Py+Ja ). The latter happens because some widely used Java identifiers
+were not merged into single tokens as they are not used in Python; still, the length increase is not
+so large. For the Level 4 granularity subtokenizer, Only Py ’s length increase on Java is larger, 13%,
+since it contains more language-specific composite tokens. However, due to common composite
+tokens, the resulting Level 4 Only Py ’s Java average length is still smaller than Level 1 Only Py ’s
+Java sequences: 79 vs. 83.
+As for performance, using the Only Py subtokenizer instead of Py+Ja changes quality up to one stan-
+dard deviation and could both increase and decrease it on Java data (quality increase may be caused
+by the increased subtokenization granularity). Note that we only change subtokenizer configuration
+– PLBART is still pretrained on all languages, this may happen in practice if LM’s developers use
+the subtokenizer from another project, e. g. for comparison purposes. Summing up, we conclude
+thatthe baseline subtokenizer is universal and, if needed, could be used for other programming
+languages it was not trained on, with small length increase and slight quality change . We note that
+Python and Java have quite different syntax and are usually used in different applications.
+7 R ELATED WORK
+Subtokenization studies for NLP. Subtokenization has become an essential component of mod-
+ern NLP pipelines and thus — a subject of a line of empirical NLP studies. While word-based
+models suffer from the out-of-vocabulary problem, subtoken-based (open-vocabulary) as well as
+char-based approaches cover arbitrary novel words. Among various open-vocabulary approaches,
+BPE (Sennrich et al., 2016), WordPiece (Wu et al., 2016) and UnigramLM (Bostrom & Durrett,
+2020) became most widely used, and UnigramLM was shown to outperform BPE for LM pre-
+training (Bostrom & Durrett, 2020). A line of studies investigate the optimal granularity of word
+subtokenization: Ding et al. (2019) find that in Transformer-based neural machine translation, small
+vocabularies of 0–4K subtokens outperform large ones by up to 4 BLEU, and VOLT (Radford et al.,
+2018) automates the search of a proper subtoken vocabulary with a proper size by formulating it
+8Published as a conference paper at ICLR 2023
+as an optimal transport problem. The smallest char-based granularity is often avoided because of
+substantial sequences elongation, but has particular strengths, e. g. much less number of hyperpa-
+rameters and better robustness, and thus appears to be a promising research direction (Gupta et al.,
+2019; Clark et al., 2021; Tay et al., 2021). Provilkov et al. (2020); Kudo (2018) propose stochastic
+subtokenization as a way to improve new words composition and (Wang et al., 2021a) adapt it to
+pretrained LMs. Finally, an actively studied challenge is that various natural languages need differ-
+ent subtokenization decisions and are hard to subtokenize with one common model (Chung et al.,
+2020; Rust et al., 2021). Our work investigates most of the specified directions for source code. For
+a more detailed review on subtokenization, see (Mielke et al., 2021).
+Subtokenization practices in neural source code processing. Subtokenization was first tested
+for source code in (Karampatsis et al., 2020) and later used in the majority of Transformer-based
+models. Almost all LMs pretrained on source code use BPE-like subtokenization with large vocabu-
+lary: CodeBERT uses the WordPiece (Wu et al., 2016) algorithm (a modified BPE, 50K), CuBERT –
+an algorithm from the Tensor2Tensor project (Vaswani et al., 2018) (50K), PLBART and CodeGPT
+– BPE (50K), CodeT5 – byte-level BPE (32K), DOBF uses a subtokenization procedure of either
+CodeBERT or Roziere et al. (2020) (BPE 64K) for fair comparison, AlphaCode Li et al. (2022) –
+SentencePiece (8K, algorithm not specified), InCoder Fried et al. (2022) – BPE (50K). To the best
+of our knowledge, existing works do not provide an in-depth experimental analysis of various subto-
+kenization options for code and, particularly, do not investigate various levels of composite tokens
+complexity. Though the concurrent work of Fried et al. (2022) uses unrestricted composite tokens
+(our Level 4), they do not compare them to any other subtokenizations. Level 4 composite tokens
+are conceptually similar to code idioms used in (Iyer et al., 2019; Shin et al., 2019) for code gener-
+ation, but the mentioned works develop specific procedures for mining idioms, which need separate
+implementation, while we rely on the commonly-used subtokenization procedure.
+8 C ONCLUSION
+In this work, we conducted an empirical study of varying subtokenization options for large LMs
+pretraining on source code. We believe that main the value of our work is not in improved numer-
+ical criteria, but importantly in providing reference experiments for the community showing which
+impact (both substantial or small) subtokenization choices may have in pretraining LMs for code.
+This underlines which directions to look more carefully at in practice (the use of composite tokens)
+and which are less important to experiment with (vocabulary size, subtokenization algorithm), and
+whether the later directions can bring at least a slight improvement or not (yes, they can). Currently
+most works experiment with subtokenizations options only superficially or do not experiment at all,
+and we hope that our work will provide motivation to do that.
+Our recommendations. As for particular direct recommendations from our results, first, we rec-
+ommend to use the proposed punctuation combination approach, which we call CodeBPE or Code-
+UnigramLM depending on the used subtokenization algorithm, that shortens sequences by 17%
+without quality drop. We suppose that with larger pretrained LMs higher levels of composite tokens
+may also achieve comparable performance; we were not able to experiment with then as they require
+very extensive computational resources. Second, if changing the subtokenization algorithm is easy,
+e.g. when using the SentencePiece library, we recommend using the UnigramLM, since it performs
+slightly better than commonly used BPE with similar lengths. Third, we recommend considering
+releasing models with smaller vocabularies, as they may perform slightly better than larger vocab-
+ularies. In our experiments the UnigramLM-10K subtokenizer was 0.5–2% more effective than the
+commonly-used BPE 50K in 5/8 experiments, but with 3.5–19% length increase.
+Limitations The main work’s limitation is that we consider only the PLBART model, due to
+the limited computational resources. However, we believe that the provided recommendations will
+motivate and simplify the process of the subtokenizer’s tuning for future works, as described above.
+Another limitation is that we focus on finding optimal subtokenization options only for source code,
+though some downstream tasks also include the processing of natural language. Investigating the
+ways of choosing optimal subtokenization for both code and natural language may be an interesting
+direction for future research. Finally, we only compare BPE and UnigramLM, while it could be
+interesting to investigate the performance of other algorithms, e. g. WordPiece.
+9Published as a conference paper at ICLR 2023
+BROADER IMPACT
+We do not anticipate any direct negative social impact of our work. However, our results may
+potentially be used for developing new pretrained LMs for source code, and a detailed discussion on
+their broader impact is provided in Chen et al. (2021) (Section 7), e. g. over-reliance on generated
+code or producing vulnerable code. Unfortunately, our work may cause negative environmental
+impact because of computation ( ∼5K Tesla A-100 GPU hours and ∼4K Tesla V-100 GPU hours at
+the internal cluster).
+ACKNOWLEDGMENTS
+The results were supported by the Russian Science Foundation grant №19-71-30020. The research
+was supported in part through the computational resources of HPC facilities at NRU HSE.

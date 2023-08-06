@@ -1,0 +1,799 @@
+Deductive Additivity for Planning of Natural Language Proofs
+Zayne Sprague Kaj Bostrom Swarat Chaudhuri Greg Durrett
+Department of Computer Science
+The University of Texas at Austin
+{zaynesprague@, kaj@cs, swarat@cs, gdurrett@cs}.utexas.edu
+Abstract
+Current natural language systems designed for
+multi-step claim validation typically operate
+in two phases: retrieve a set of relevant
+premise statements using heuristics (planning),
+then generate novel conclusions from those
+statements using a large language model
+(deduction). The planning step often requires
+expensive Transformer operations and does
+not scale to arbitrary numbers of premise
+statements. In this paper, we investigate
+whether an efficient planning heuristic is
+possible via embedding spaces compatible
+with deductive reasoning. Specifically, we
+evaluate whether embedding spaces exhibit
+a property we call deductive additivity : the
+sum of premise statement embeddings should
+be close to embeddings of conclusions based
+on those premises. We explore multiple
+sources of off-the-shelf dense embeddings in
+addition to fine-tuned embeddings from GPT3
+and sparse embeddings from BM25. We
+study embedding models both intrinsically,
+evaluating whether the property of deductive
+additivity holds, and extrinsically, using them
+to assist planning in natural language proof
+generation. Lastly, we create a dataset,
+Single-Step Reasoning Contrast (SSRC), to
+further probe performance on various reasoning
+types. Our findings suggest that while
+standard embedding methods frequently embed
+conclusions near the sums of their premises,
+they fall short of being effective heuristics and
+lack the ability to model certain categories of
+reasoning.
+1 Introduction
+One way to justify the truth of a statement is to
+give an explanation building logically towards that
+statement based on deduction from shared premises.
+The ways facts can be combined through reasoning
+are numerous, including many different modes of
+deduction like syllogism or modus tollens. This
+process can be automated with natural language
+Figure 1: A visualization of an embedding space that
+has the Deductive Additivity property. When two facts
+(blue and red) are added together, their resulting vector
+(yellow) should have high similarity with the embedding
+of a statement that logically follows via deduction
+(green).
+processing, using systems to generate natural
+language proofs that use evidence to derive a claim
+through a structured argument. Large language
+models (LLMs) like GPT4 (OpenAI, 2023) have
+exhibited impressive performance in reasoning
+tasks. However, these models can still make
+unsound inferences (Ye and Durrett, 2022; Zhang
+et al., 2023; Xue et al., 2023).
+One reason for these errors is that models may
+fail to plan reasoning effectively. LLMs do not
+have explicit planning capabilities: they generate
+conclusions in a way that conflates lexical choice
+and decisions of what content to generate, and
+no alternatives are materialized in typical greedy
+or sampling-based LLM inference. A recent line
+of work (Bostrom et al., 2021, 2022; Sprague
+et al., 2022; Creswell et al., 2023) explores how
+to decouple these stages. However, what is still
+missing is a scalable method for doing planning in
+these kinds of natural language reasoning settings:
+past work involves early-fusion invocation of pre-
+trained LMs (Xiong et al., 2021) and does not scale
+to thousands of premises.
+This work explores the feasibility of planning
+the reasoning process directly in a vector space,
+where combining statements and retrieving similar
+statements can be efficiently implemented asarXiv:2307.02472v2  [cs.CL]  6 Jul 2023addition and cosine similarity, respectively. We
+introduce deductive additivity (DA) , a property
+of an embedding space necessary to enable this
+planning. A visualization of an embedding space
+with the deductive additivity property is shown in
+Figure 1. Each piece of evidence is embedded into
+a fixed-size vector, and the combined embeddings
+of two facts should be close to embeddings of
+statements that are entailed from those two facts
+via deduction. This property can help us plan when
+we are trying to derive a goal statement based on
+premise statements. New facts that bring us closer
+to that goal should be explored in the deductive
+reasoning process, so this vector space provides a
+natural heuristic: we want to find fact embeddings
+that, when summed, achieve the highest dot product
+with the encoding of our goal. Crucially, the
+vector-based nature of this heuristic facilitates rapid
+retrieval through efficient search algorithms.
+Our experiments test both off-the-shelf em-
+beddings (e.g., SimCSE (Gao et al., 2021)) as
+well as embeddings that are explicitly tuned for
+deductive additivity. First, we conduct intrinsic
+evaluations to see whether embeddings of standard
+encoders exhibit deductive additivity. We then
+test how well the method performs as a search
+heuristic on the natural language proof generation
+datasets EntailmentBank (Dalvi et al., 2021) and
+Everyday Norms: Why Not (Sprague et al.,
+2022, ENWN). Finally, we create the Single-Step
+Reasoning Contrast (SSRC) dataset to benchmark
+each method on how well they model different
+reasoning categories, like syllogism or modus
+tollens, and how robust they are to common errors
+in reasoning, like negation1.
+Our main contributions are threefold: (1) We
+propose a novel method for planning reasoning
+steps over a collection of facts purely based on
+vector arithmetic. (2) We show that several
+embedding methods have promise for deductive
+additivity but do not fully meet the properties
+required for planning in natural language deduction
+scenarios even when explicitly fine-tuned for
+it. (3) We present a new dataset meant to
+help diagnose and identify areas where deduction
+planning methods are underperforming across a
+range of different reasoning categories.
+1Code and data publicly available at https:
+//github.com/Zayne-sprague/Deductive_Additivity_
+for_Planning_of_Natural_Language_Proofs2 Problem Description and Motivation
+Here we introduce the problem of proof generation,
+the system we use to generate proofs and deductive
+additivity.
+2.1 Problem Setup
+We explore the process of proving a goal statement
+(or claim) gby generating an entailment tree
+T, given a set of general-purpose facts X=
+x1, ... x nand a collection of instance-specific
+facts F=f1, ... f m. Instance-specific facts
+typically pertain to the context or background of a
+particular scenario, while general-purpose facts can
+be applied more broadly. An example can be seen
+in Figure 1, where Fconsists of two statements,
+“Joe is an animal ” and “ Joe is in outer space ”,
+and all other facts belong to X.Tis a binary-
+branching tree with its leaves being members of X
+andFwhile its non-leaf nodes (which we also call
+intermediates ) are new statements generated via
+deductive reasoning. The root of Tmust logically
+entail g. We use the entailment models from past
+work (Bostrom et al., 2022; Sprague et al., 2022),
+which are based on WaNLI (Liu et al., 2022) to
+make this judgment.
+The EntailmentBank dataset (Dalvi et al., 2021)
+formalizes three variants of this problem setting.
+The first setting, denoted as Task 1 (T1), provides
+only the general-purpose facts relevant to the
+construction of the gold entailment tree, making it
+the easiest setting as it eliminates the need to sift
+through irrelevant facts. Task 2 (T2) includes both
+the relevant facts and lexically similar distractor
+facts. Task 3 (T3) (Dalvi et al., 2021) includes
+all facts from a large corpus like Wikipedia as the
+general-purpose fact set X. In all these settings,
+the task involves iteratively building the entailment
+tree through deductions until the original goal g
+is entailed. Our experiments will focus on the T2
+setting.2
+2.2 Proof Generation
+We follow past work on these tasks (Bostrom et al.,
+2022; Sprague et al., 2022) where the intermediate
+nodes of the entailment tree are generated from a
+2While the T3 setting offers a large-scale stress test for
+retrieval-based approaches like ours, we found in practice
+that a first-stage retrieval (i.e., converting T3 to T2) with
+BM25 worked well for all datasets considered in this work.
+Nevertheless, models that scale to large Xsets will be useful
+for future systems tackling more sophisticated problems like
+automatic fact-checking.pre-trained language model. Details on the model
+are in Appendix D. Specifically, given two premise
+statements paandpb, we assume access to a model
+P(dab|pa, pb)that places a distribution over valid
+deductions dgiven the two premises. If the two
+premises do not combine to yield any meaningful
+new conclusions, the behavior of this system is not
+well-defined.
+To produce an entailment tree T, we follow the
+proof generation algorithm from Bostrom et al.
+(2022); we outline it here and detail all modules
+of the search algorithm in Appendix D. We begin
+with our collection of premises P={XSF}. In
+EntailmentBank and ENWN, the set Pis given per
+dataset example. From P, a heuristic Mranks pairs
+of premises as to how useful their deduction will
+be in proving the claim g(also given per example).
+We denote a single ranked premise pair as a step
+in the search, and we term the current collection
+of steps at any moment in the search as the search
+fringe.
+A deductive step model, S, pops the highest-
+ranked step (according to M) from the fringe and
+generates a set of deductions.3These deductions
+are validated and added back to the pool of
+premises P, where the heuristic will rank all
+potential pairs of the new set of deductions with
+all other previous premises to create new steps in
+the search fringe. This process is repeated until the
+maxSteps limit is reached or the fringe has been
+exhausted.
+Our work focuses on investigating if the
+heuristics used during the search can leverage
+embedding spaces that exhibit deductive additivity.
+2.3 Deductive Additivity
+Recall that dabrepresents a valid conclusion from
+a pair of premises paandpb. Our heuristics are
+based on an embedding function E: Σ∗→Rn,
+embedding a sentence into n-dimensional space.
+We represent the sum of the embedded premises
+as the deductive trajectory embedding e′
+a+b=
+E(pa) +E(pb), where e′signifies embeddings
+produced through arithmetic operations rather
+than the encoder E. An encoder Egenerates
+an embedding space exhibiting the property of
+deductive additivity if the deductive trajectory
+embedding has a higher cosine similarity with their
+embedded conclusion than any other statement, x,
+3To thoroughly explore the space of all plausible
+deductions, we sample kgenerations each time ( k= 5 in
+all our experiments).not entailed by the premises via deduction, denoted
+aspa, pb↛x. That is, we want
+cos(e′
+a+b, E(dab))>cos(e′
+a+b, E(x)) (1)
+When the condition in Equation 1 holds, the
+embedding space is capable of representing logical
+relationships strictly in their vectors and can be
+expressed through simple arithmetic operations
+such as addition.
+2.4 Tuning for Deductive Additivity
+Any sentence embedding method can be evaluated
+for whether or not it exhibits deductive additivity.
+However, we additionally describe a method for
+fine-tuning an embedding model to have this
+property.
+We use EntailmentBank to obtain a collection
+of premise deduction triplets D={pa, pb, dab}.
+Subsequently, we use a loss function to push the
+encoded representations of the premises closer to
+that of the deduction (Chen et al., 2020a; Gao et al.,
+2021).
+lab=−logexp( e′
+a+b·E(dab)/τ)
+PN
+i=1exp( e′
+a+b·E(di)/τ)(2)
+where Nrepresents the batch size. Most
+deductions diwill not entail the deduction dab,
+so they serve as suitable negatives from the
+perspective of Equation 1.
+For training, we employ temperature scaling in
+the contrastive loss in Equation 2. Previous work
+has found that contrastive learning benefits from
+having large batch sizes, more in-batch negatives,
+and hard negatives (He et al., 2020; Karpukhin
+et al., 2020; Chen et al., 2020b; Radford et al., 2021;
+Xiong et al., 2021). To take advantage of hard in-
+batch negatives, we leverage the tree structures in
+our training data (EntailmentBank). Specifically,
+each batch in our training loop contains all the
+intermediate labeled steps for an entailment tree
+in EntailmentBank, covering multiple trees. We
+discover that triplets from the same tree serve
+as suitable proxies for hard negatives in our
+contrastive learning process, allowing us to bypass
+the need for hard negative mining. Our batches
+include 100 trees, as many as we could fit onto our
+GPU, which equates to 200-300 triplets in a batch.
+We found that increasing the batch size led to better
+performance. We implement our method with thePyTorch Metric learning library (Musgrave et al.,
+2020).
+Following each epoch of training, we assess
+the encoder’s performance by our second intrinsic
+evaluation, Ranking Gold Steps. We use the
+EntailmentBank T2 development set for checking
+when to stop training the encoder.
+2.5 Caching
+Certain heuristics used in proof generation
+algorithms, such as the one we construct using
+deductive additivity, can cache the encodings of
+the initial evidence pool X. This offers significant
+time savings in completing the first step of a search
+procedure (where a non-cached method would need
+to set up and rank the pairs for the initial set).
+However, any subsequent deductions will need
+to be encoded since they cannot be precomputed
+and cached. We also found the time savings to be
+relatively limited in the T1andT2settings since
+nis relatively small, so we do not expand on this
+capability further.
+3 Heuristics and Datasets
+To measure the performance of using deductive
+additivity as a proof generation heuristic, we
+explore five heuristics and three datasets.
+3.1 Baseline Heuristics
+We consider two baseline heuristics for ranking
+and retrieving relevant statements: BM25, a sparse
+retrieval method, and the original heuristic from
+previous work, SCSearch, which employs an early-
+fusion premise ranker model.
+BM25 BM25 (Robertson et al., 1995) matches
+items in an index with a query via sparse vector
+representations, capturing lexical overlap but not
+deeper semantic similarity. In the proof generation
+search procedure, we index all concatenations
+of strings in each step (two premises, generated
+deductions, or one of both), then retrieve the best
+step based on the goal.
+SCSearch Past work (Bostrom et al., 2022)
+has used heuristics with a substantially different
+structure. These heuristics use language models
+like DeBERTa to score premise pairs conditioned
+on a claim. Specifically, these models are of the
+form w⊤E(p1, p2, g); they encode p1,p2, and g
+jointly with an encoder model. A linear layer wis
+then used to predict a logit value used for ranking.These models are trained as binary classifiers on
+EntailmentBank by selecting positive examples of
+premise pairs that eventually lead to gand negative
+examples of unrelated premise pairs. This allows
+the language model to determine if the immediate
+deduction would be beneficial towards deducing
+the claim that it is conditioning on. It also allows
+the language model to see the claim and premise
+pairs in context and model interactions between
+them. Because these methods use Transformers
+to score the premise pair and can model nonlinear
+interactions between the premises, these models
+are strictly more expressive than vector-based
+heuristics.
+3.2 Embedding-based Heuristics
+To test if embeddings with deductive additivity
+can be useful in proof generation, we employ
+three different heuristics that all use deductive
+additivity but with different encoders to compare
+different embedding spaces. A deductive additivity
+heuristic will, for each step, encode any new
+deductions from the previous step and then sum
+all the pairs to create deductive representations e′
+d
+for hypothetical deduced pairs. We then compute
+the cosine similarity of each e′
+dwitheg(the goal
+embedding), which is used as a score to select the
+next step Si= argmax
+dcos(e′
+d,eg).
+We consider the deductive additivity heuristic
+under three different encoders: SimCSE and GPT3
+are used to test off-the-self sentence encoders for
+deductive additivity, and finally, we fine-tune GPT3
+explicitly for deductive additivity.
+SimCSE SimCSE (Gao et al., 2021) is an
+encoder that produces sentence embeddings
+optimized using a contrastive objective.4We test
+to see if this encoder produces an embedding space
+where deductive additivity holds.
+GPT3 We use OpenAI’s embedding endpoint to
+create sentence embeddings using the Ada model
+(Brown et al., 2020). We test to see if this encoder
+produces an embedding space where deductive
+additivity holds as well.
+GPT3-tuned We combine OpenAI’s embedding
+endpoint with three additional dense layers
+4Note that this contrastive objective is different from ours.
+Training for SimCSE was performed on natural language
+inference (NLI) examples from MNLI and SNLI datasets.
+From the perspective of data assumptions, we place it in
+the “fine-tuned” category; although it hasn’t been trained on
+EntailmentBank data explicitly, it uses related entailment data.using the GLU activation function with residual
+connections between each layer. We then fine-tune
+these three layers using the EntailmentBank T1
+dataset as described in Section 2.4.
+3.3 Datasets
+EntailmentBank (EB) This dataset comprises
+annotated entailment trees for textbook-based
+science facts (Dalvi et al., 2021). We used this
+dataset for training the majority of our models in a
+T1 setting. We evaluate the models on the test slice
+of entailment trees for the T2 task setting.
+Each example in EB contains a set of premises,
+P, and a claim gthat we are trying to prove given
+P. To prove g, the system has to produce a series of
+deductions by combining two premises from the set
+P, then combining intermediate deductions and the
+premises in Puntil the claim is proven. Whether
+it is proven is determined via an entailment model
+scoring gabove a certain threshold from some
+generated conclusion following previous work
+(Sprague et al., 2022; Bostrom et al., 2022) and
+detailed further in Appendix D. Planning heuristics
+must determine which premise-premise or premise-
+deduction pairs are most likely to help in proving
+the claim, as the set of pairwise premises and
+intermediate deductions can be large.
+In the T2 setting, the number of premises nis
+fairly small; n <30for most examples. There are
+usually only 3 to 5 deductions involved to produce
+the annotated entailment tree. We allow for a total
+of 10 steps ( maxStep ), and for each step, we allow
+for five generations to be sampled ( k).
+Everyday Norms: Why Not (ENWN) ENWN
+(Sprague et al., 2022) contains annotated en-
+tailment trees for common everday scenarios.
+Structurally, ENWN resembles EntailmentBank
+but with a different domain of reasoning and
+a larger number of required deductive steps on
+average (4.71 to 4.26). ENWN aims to combine
+common social rules deductively to determine
+whether a person should perform a particular action
+(usually something they should not do). ENWN
+currently does not have a T2 or T3 setting.
+3.4 Single-Step Reasoning Contrast Dataset
+Both EntailmentBank and ENWN test a subset of
+logical inference types but do not necessarily have
+broad coverage. For example, EntailmentBank has
+very few examples involving negation, despite this
+being a very important phenomenon to model inpractice. We want to test whether our embedding
+methods can handle a wider range of cases.
+We construct a new dataset that examines
+common forms of logical reasoning5via synthe-
+sized examples. We consider fourteen categories:
+Analogy, Categorical Syllogism, Causal reasoning,
+Classification, Comparison, Composition, Division,
+Modus Ponens, Modus Tollens, Definition, Tempo-
+ral Logic, Propositional Logic, Quantificational
+Logic, and Spatial Relationship. For each
+category, we use GPT-3.5 to generate ten examples
+of deductions given two premises using the
+corresponding reasoning category.
+For every example deduction, we prompt
+GPT 3.5 further to perturb the premises in four
+ways creating additional examples of incorrect
+deductions. For each perturbation, we create
+three examples where one or both premises have
+been negated , three examples where one or both
+premises are a false premise , fifteen examples
+where one or both premises are an irrelevant fact ,
+and three examples where one or both premises
+have an incorrect quantifier (usually meaning that
+“some”, “all”, or “none” has been prepended to
+the premise). Examples from the dataset from
+different reasoning categories and perturbation
+types are shown in Section B of the Appendix in
+Table 5. Prompts to create examples and perturb
+the examples can be found in Appendix E.
+4 Experiments
+4.1 Intrinsic Evaluation
+We perform two intrinsic evaluations to test if
+encoders exhibit the deductive additivity property:
+do they rank gold premise pairs in the proof
+generation task above incorrect pairs?
+Comparing Deduction Embedding Representa-
+tions In our first intrinsic evaluation, we measure
+the cosine similarity distributions of premise pairs
+and a deduction in three settings to test for
+deductive additivity. The first setting uses a
+deduction daband measures the cosine similarity
+of its embedding E(dab)with a random premise
+pairPr={px, py}where pxandpyare drawn
+randomly from the set of premises, U(P). The
+5We initially employed ChatGPT for annotating examples
+in EntailmentBank and ENWN. However, it did not yield
+consistent labels, signaling an opportunity for further
+exploration in future research. Instead, we adopted a different
+approach, generating a selection of widely-used labels that we
+subsequently employed as the reasoning categories within the
+SSRC dataset.Figure 2: Distribution of cosine similarities for
+examples in EntailmentBank T2 and ENWN. All three
+encoders show little overlap between Random and
+Gold, showing that these embeddings support Deductive
+Additivity and the condition in Equation 1. However,
+the overlap with Partial is substantially higher.
+next setting looks at partially random premise pairs,
+Pp={pa, py}where pais one of the gold premises
+Pg={pa, pb}that yield the deduction dab. Finally,
+we measure the distribution of scores for the gold
+premise pair Pgand the following deduction from
+those premises dab. These three settings correspond
+toRandom ,Partial , and Gold , respectively, in
+Figure 2.
+Additionally, we also compared the gold
+premise pair Pg={pa, pb}with model-generated
+deductions Sd(pa, pb) =d′
+aband measured their
+cosine similarity cos(e′
+a+b, E(d′
+ab)). Finally, we
+measured the cosine similarity scores of the
+annotated deductions and the generated deductions
+cos(E(dab), E(d′
+ab)); this is a sort of sanity check
+to see if the deductive additivity property holds for
+proof generation. This experiment checks whether
+the step model introduces significant deviation in
+embedding similarity compared to using the gold
+steps. These settings correspond to Model andG.
+to S. respectively in Figure 2, all settings have their
+averages reported in Table 4 in Section A of the
+Appendix as well.
+Embedding Representations Results Figure 2
+shows a slight overlap between the cosine similarity
+score distributions of random and gold pairs,
+aligning with expectations and showing that
+Equation 1 roughly holds for all three encoders.
+However, the partial pairs have much more overlap
+with the distribution of gold pairs for each encoder.
+Concerningly, the partial pairs are much morenumerous because these pair one of the ground
+truth statements with an irrelevant statement,
+forming a pair we do not want the heuristic to
+surface. We will see the performance ramifications
+of this in the end-to-end evaluation. On a positive
+note, we also see high agreement between the
+gold premise pair and the generated deduction,
+indicating that deductions generated by the step
+model are similar to the annotated deductions.
+EB T2 ENWN
+Heuristic Deductive Goal Deductive
+BM25 0.47 0.21 0.50
+SCSearch 0.78 0.39 0.82
+SimCSE (DA) 0.46 0.20 0.59
+GPT3-tuned (DA) 0.54 0.23 0.54
+GPT3 (DA) 0.54 0.24 0.56
+Table 1: Comparison against different heuristics on
+the MRR of selecting gold premises conditioned on
+their immediate deduction and the goal of the tree.
+GPT3 outperforms BM25, indicating that there are
+more complex reasoning steps required than just lexical
+overlap. However, SCSearch still outperforms all
+methods by as much as 0.24.
+Ranking Gold Steps The second intrinsic
+evaluation measures the rankings of premise pairs,
+Ppairs, conditioned on a deduction embedding,
+E(dab), where one pair is the gold premise pair
+Pg={pa, pb}which yield the deduction. All
+other pairs are either random Pr={px, py},
+where pxandpyare sampled uniformly from the
+set of premises U(P), or are partially random
+Pp={pa, py}. The full list of premise pairs
+is the union of all these sets Ppairs =Pg∪
+Pp∪Pr. We calculate scores for each pair
+according to how each heuristic scores premise
+pairs, scores = {heuristic( Ps, dab)|Ps∈
+Ppairs}. For the heuristics using deductive
+additivity (DA), the scores are cosine similarities,
+scores = {cos(e′
+n+m, E(dab))| {pn, pm} ∈
+Ppairs}. Finally, we sort scores and find the rank
+of the gold premise pair.
+We calculate the mean reciprocal rank (MRR)
+using the ranks of the gold premise pairs across all
+examples in the EntailmentBank T2 and Everyday
+Norms: Why Not datasets. We also repeat this
+process for EntailmentBank T2 where we make
+the target of the search the claim ginstead of the
+immediate deduction dab. Because the claim g
+is often a product of multiple deductions in the
+premise set P, we expect the MRR scores to belower than the scores on the immediate deductions
+dab. ENWN does not have a T2 setting, so we
+do not show the claim-conditioned scores because
+every premise would be related to the claim g,
+making nearly all pairs valid. These are shown in
+Table 1. A number closer to 1.0indicates that the
+gold premise pair was consistently ranked higher
+than partial and random premise pairs.
+Gold Steps MRR Results Table 1 shows the
+BM25 MRR scores as being quite competitive with
+the methods using deductive additivity, SimCSE,
+GPT3, and GPT3-tuned, all of which are within 0.1
+of each other. BM25s high performance indicates
+that the datasets EB T2 and ENWN have many
+examples where the lexical overlap is enough to
+determine the gold premise pair Pg. GPT3 does
+outperform the BM25 baseline, however, and in
+nearly every case, the SimCSE heuristic does
+as well (except for ENWN). GPT3-tuned does
+slightly worse in both EB T2 and ENWN, showing
+that fine-tuning the embeddings to produce the
+deductive additivity property is not trivial. The
+degradation in performance is surprising given
+that the model was fine-tuned on a task very
+similar to the intrinsic evaluation being reported
+in Table 1. SCSearch still outperforms all leading
+methods. There is a significant drop across all
+methods between ranking premise pairs with the
+immediate deduction and the goal. Although this
+was expected, the drop is quite significant and is
+worth exploring further in future work on how it
+could be mitigated.
+4.2 Extrinsic Evaluation: Generating Proofs
+Next, we explore how well heuristics employing
+deductive additivity can perform on proof
+generation datasets detailed in Section 3.3.
+Results We report the percentage of proofs that
+entailed the goal, g, as well as the average number
+of steps to prove the claim across all planning
+heuristics in Table 2. GPT3 (DA), GPT3-tuned
+(DA), and SimCSE (DA) are all able to produce
+slightly more proofs than BM25 on the EB T2
+dataset but fail to outperform BM25 on ENWN.
+Because BM25 is a limited heuristic that only
+employs lexical overlap, this result shows that
+nearly 50% of examples in these datasets can have
+proofs generated using simple heuristics that use no
+deeper semantic representations. However, deeper
+reasoning does help, as shown by the fact that
+SCSearch is able to generate far more proofs thanEB ENWN
+Solved Steps Solved Steps
+BM25 43% 2.2 48% 5.1
+SCSearch 61% 3.4 86% 9.8
+SimCSE (DA) 44% 2.8 46% 2.7
+GPT3-tuned (DA) 49% 2.1 46% 2.5
+GPT3 (DA) 49% 2.2 41% 2.2
+Table 2: Generated proofs per heuristic on the two
+datasets. BM25 has high performance on both of these
+datasets, indicating that textual overlap is enough to
+plan reasoning steps for nearly 50% of the examples.
+SimCSE (DA) and GPT3 (DA) underperform BM25
+on ENWN; this could mean that these methods are not
+as sensitive to lexical overlap as BM25 is. SCSearch
+still outperforms every baseline by as much as 38%,
+showing that a lot of reasoning is unaccounted for in the
+other methods.
+the other methods across both datasets by as much
+as 36%. This finding is also supported by the MRR
+results of the second intrinsic evaluation, shown
+in Table 1. Disappointingly, deductive additivity
+does not seem to be able to capture the same sort
+of benefits in the heuristic it provides.
+4.3 Single-Step Reasoning Contrast Dataset
+To best understand where the vector-based methods
+are lacking in performance and pinpoint where
+improvements can be made, we test each method
+across a variety of types of reasoning and common
+failure cases in the Single-Step Reasoning Contrast
+(SSRC) dataset. In this experiment, we perform the
+same evaluation as our second intrinsic evaluation,
+Ranking Gold Steps. Here we use examples from
+the SSRC dataset, which have been curated and
+labeled to allow for a report of an MRR on different
+types of deductions and error cases.
+Encoder Overall MRR
+SCSearch 0.83
+SimCSE (DA) 0.80
+GPT3-Tuned (DA) 0.83
+GPT3 (DA) 0.85
+BM25 0.50
+Table 3: Overall scores of each heuristic on the SSRC
+dataset. GPT3 (AD) outperforms SCSearch slightly on
+this benchmark, slightly contradicting the results of the
+previous experiments.
+Results Table 3 shows the averaged MRR scores
+across all methods. GPT3 (DA) outperforms
+SCSearch slightly overall, but to better understandFigure 3: Comparison plot of the heuristic methods
+versus the SCSearch heuristic. If a point is above the
+green line, then that method outperformed SCSearch.
+Circles indicate reasoning categories, and X-marks
+indicate perturbation types. BM25 underperforms all
+other methods, showing that the dataset is not sensitive
+to lexical overlap.
+the performance, we plot the average MRR across
+the fourteen reasoning categories and perturbation
+types for each method compared to SCSearch in
+Figure 3. GPT3 (DA) can outperform both BM25
+and SimCSE (DA) consistently across nearly every
+reasoning category and all perturbation types.
+Furthermore, we see that GPT3 (DA) is capable
+of beating or matching SCSearch on half of
+the reasoning categories and perturbation types,
+contradicting previous results indicating that these
+datasets might be skewed in areas where SCSearch
+excels at.
+GPT3-Tuned (DA) performs worse in 9
+categories than GPT3 (DA) and better in only
+3. This could be from the skewed reasoning
+categories in EntailmentBank, but it could also
+be that enforcing the condition in Equation 1
+directly is counterproductive. Averaged scores
+for each reasoning category and perturbation type
+can be found in Appendix C, in Tables 6 and 7
+respectively.
+5 Discussion
+Vector-based methods are not sufficient to
+capture all information for planning deductions.
+We’ve found that vector-based methods can
+represent complex reasoning but fall short in
+planning reasoning steps when compared to early-
+fusion premise rankers like SCSearch. Our results
+suggest a more complex and structured approaches
+may be necessary for step-by-step systems.Skewed datasets provide optimistic benchmarks
+for weaker models. Our results focused on the
+T2 setting because we discovered that a BM25 +
+SCSearch pipeline did quite well and scaled to
+large numbers of premises. However, we believe
+this is an optimistic result and may not scale to
+production settings where claims may require more
+complex deductions that are less sensitive to lexical
+overlap. Developing datasets with more complex
+reasoning and benchmarking in real production
+settings is a focus for future work.
+Training for Deductive Additivity can harm
+performance. We found that training deductive
+additivity directly improves categories of reasoning
+prevalent in the training dataset while harming
+other categories. Both larger and more diverse
+datasets may be a solution for this problem,
+but GPT3 embeddings already show deductive
+additivity without explicitly training for it.
+Developing different training objectives that result
+in embeddings with deductive additivity is another
+focus for future work.
+6 Related work
+Our work follows from models and methods
+done in the Question Answering domain where
+models are required to generate an answer or
+select evidence that leads to the answer through
+“multi-hop” reasoning (Chen et al., 2019; Min
+et al., 2019; Nishida et al., 2019). Although
+these end-to-end methods can be used in proof
+generation, understanding the underlying reasoning
+of the decisions being made is impactful for
+understanding the affordances of the model (Hase
+and Bansal, 2020; Bansal et al., 2021).
+Step-by-step methods have been looked at
+for proof generation, detangling planning and
+reasoning into separate subsystems that work
+together as a whole when proving a claim (Dalvi
+et al., 2021; Ribeiro et al., 2022; Bostrom et al.,
+2022; Yang et al., 2022; Hong et al., 2022; Creswell
+et al., 2023; Yang and Deng, 2023). There has
+also been work on using similar modular systems
+in answering questions with a knowledge base
+and different types of embeddings (Bordes et al.,
+2013; Ren et al., 2020; Tran et al., 2022). Our
+work extends from this literature, focusing on
+exploring alternative heuristics for natural language
+deduction planning entirely in embedding space by
+tapping into the property of deductive additivity.
+We also follow work being done in retrieval,which focuses on finding evidence from a large
+corpus that would help answer a query. State-
+of-the-art retrieval methods involve encoding the
+corpus into vector indexes that can be used to
+calculate the cosine similarity of an encoded
+query (Xiong et al., 2021; Karpukhin et al., 2020;
+Khattab and Zaharia, 2020). Sparse encoders, like
+BM25, have also been used to help reduce the
+search space for relevant passages (Valentino et al.,
+2022). However, none of the methods tap into the
+deductive additivity property in their embedding
+spaces and instead encode the query to find relevant
+passages and then re-encode the query with the
+appended passages to find additional relevant
+passages. We consider this to be similar to early-
+fusion premise rankers in the proof generation task.
+Another line of relevant work deals with
+understanding reasoning errors from language
+models, like the detection of logical fallacies in text
+(Jin et al., 2022). We further this line of work with
+the SSRC dataset, building a contrast set (Gardner
+et al., 2020) for reasoning targeting certain types
+of deductions and common reasoning errors.
+7 Conclusion
+In this work, we have explored the property
+of deductive additivity in sentence embedding
+spaces. Results show that off-the-shelf sentence
+encoders exhibit the property somewhat; however,
+when used as heuristics in natural language proof
+generation, they are only slightly more successful
+than BM25. Furthermore, we see that fine-tuning
+for deductive additivity does not lead to better
+reasoning capabilities of the embedding space,
+and we posit that a large contributor to this could
+be skewed datasets. We introduced the Single-
+Step Reasoning Contrast dataset, which shows that
+these same skewed datasets provide over-optimistic
+results for inferior methods harming our ability
+to benchmark systems for their use in production
+settings. Lastly, we’ve shown that early-fusion
+premise rankers like SCSearch still outperform
+vector-based approaches. However, their ability
+to scale to more diverse reasoning datasets that
+are less sensitive to lexical overlap is still an open
+question for future work.
+Acknowledgments
+This work was partially supported by NSF
+CAREER Award IIS-2145280, the NSF AI
+Institute for Foundations of Machine Learning(IFML), a gift from Salesforce, Inc., a gift from
+Adobe, and a grant from Open Philanthropy.
+Thanks to the anonymous reviewers for their
+helpful comments.

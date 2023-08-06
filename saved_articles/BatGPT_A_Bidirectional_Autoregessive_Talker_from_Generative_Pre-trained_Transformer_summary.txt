@@ -1,0 +1,25 @@
+Summary:
+
+BATGPT is a large-scale language model developed by Wuhan University and Shanghai Jiao Tong University. It can generate natural and fluent text in response to various types of input.
+
+The model utilizes a bidirectional autoregressive architecture to capture complex dependencies in natural language, making it effective in tasks like language generation, dialog systems, and question answering.
+
+To enhance the model's alignment performance, a novel parameter expansion method and reinforcement learning from both AI and human feedback are employed during training.
+
+BATGPT outperforms other Chinese-oriented language models on the CMMLU benchmark, demonstrating its versatility and high accuracy across different categories.
+
+Despite its achievements, ongoing research and development are necessary to improve language models and address ethical considerations like bias and responsible use.
+
+Keywords: BATGPT, language model, bidirectional autoregressive architecture, natural language processing, reinforcement learning, parameter expansion, alignment performance, fluency, coherence, CMMLU benchmark.
+
+Bullet Points:
+
+- BATGPT is a large-scale language model designed and trained by Wuhan University and Shanghai Jiao Tong University.
+- It can generate natural and fluent text in response to various types of input, including text prompts, images, and audio.
+- The model utilizes a bidirectional autoregressive architecture to capture complex dependencies in natural language.
+- This architecture allows the model to operate from left to right and from right to left, reducing fixed memory effects and alleviating model hallucinations.
+- BATGPT employs a novel parameter expansion method to leverage the pre-training of smaller models.
+- Reinforcement learning from both AI and human feedback is used to improve the model's alignment performance.
+- BATGPT outperforms other Chinese-oriented language models on the CMMLU benchmark in various categories.
+- Ongoing research and development efforts are necessary to further refine and improve the capabilities of language models.
+- Ethical considerations, such as bias and responsible use, need to be addressed in the deployment of language models like BATGPT.

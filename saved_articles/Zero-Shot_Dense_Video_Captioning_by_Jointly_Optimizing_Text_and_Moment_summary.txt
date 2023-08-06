@@ -1,0 +1,28 @@
+Summary:
+
+The paper introduces ZeroTA, a zero-shot method for dense video captioning, which localizes meaningful moments and generates relevant captions for videos without the need for annotated video segments paired with text. The method utilizes a soft moment mask to represent a temporal segment in the video and optimizes it with the prefix parameters of a language model. This joint optimization aligns a frozen language generation model with a frozen vision-language contrastive model by maximizing the matching score between the generated text and a moment within the video. The method effectively discovers diverse significant events within the video and outperforms zero-shot baselines and even the state-of-the-art few-shot method on the ActivityNet Captions benchmark. The method also shows greater robustness in out-of-domain scenarios compared to supervised methods.
+
+Bullet points:
+
+- ZeroTA is a novel zero-shot method for dense video captioning.
+- The method localizes and describes events within each input video at test time by optimizing solely on the input.
+- It introduces a soft moment mask that represents a temporal segment in the video and optimizes it with the prefix parameters of a language model.
+- The method aligns a frozen language generation model with a frozen vision-language contrastive model by maximizing the matching score between the generated text and a moment within the video.
+- ZeroTA surpasses zero-shot baselines and even the state-of-the-art few-shot method on the ActivityNet Captions benchmark.
+- The method shows greater robustness in out-of-domain scenarios compared to supervised methods.
+- It effectively discovers diverse significant events within the video, with resulting captions appropriately describing these events.
+- ZeroTA provides insight into the potential of aligning widely-used models, such as language generation models and vision-language models, to understand temporal aspects of videos.
+- The method can be applied without the need for annotated video segments paired with text, reducing annotation costs.
+
+Keywords:
+
+- Zero-shot dense video captioning
+- Temporal localization
+- Dense captions
+- Soft moment mask
+- Language model
+- Vision-language contrastive model
+- Zero-shot baselines
+- Few-shot method
+- ActivityNet Captions
+- Out-of-domain scenarios.

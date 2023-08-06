@@ -1,0 +1,138 @@
+1
+Large Language Models Empowered Autonomous
+Edge AI for Connected Intelligence
+Yifei Shen, Jiawei Shao, Xinjie Zhang, Zehong Lin, Hao Pan, Dongsheng Li, Jun Zhang, Khaled B. Letaief
+Abstract —The evolution of wireless networks gravitates to-
+wards connected intelligence, a concept that envisions seam-
+less interconnectivity among humans, objects, and intelligence
+in a hyper-connected cyber-physical world. Edge AI emerges
+as a promising solution to achieve connected intelligence by
+delivering high-quality, low-latency, and privacy-preserving AI
+services at the network edge. In this article, we introduce an
+autonomous edge AI system that automatically organizes, adapts,
+and optimizes itself to meet users’ diverse requirements. The
+system employs a cloud-edge-client hierarchical architecture,
+where the large language model, i.e., Generative Pretrained
+Transformer (GPT), resides in the cloud, and other AI models
+are co-deployed on devices and edge servers. By leveraging the
+powerful abilities of GPT in language understanding, planning,
+and code generation, we present a versatile framework that
+efficiently coordinates edge AI models to cater to users’ personal
+demands while automatically generating code to train new models
+via edge federated learning. Experimental results demonstrate
+the system’s remarkable ability to accurately comprehend user
+demands, efficiently execute AI models with minimal cost, and
+effectively create high-performance AI models through federated
+learning.
+Index Terms —Edge artificial intelligence, connected intelli-
+gence, large language models, federated learning.
+I. I NTRODUCTION
+As 5G networks are being standardized and globally de-
+ployed, researchers, corporations, and governments are explor-
+ing future visions and emerging technologies that will shape
+the future beyond 5G. Connected intelligence is expected to
+be the central focus in future networks, facilitating seam-
+less interconnections among humans, objects, and intelligence
+within a hyper-connected cyber-physical world [1]. Edge AI
+offers a promising solution for achieving connected intelli-
+gence by enabling data collection, processing, transmission,
+and consumption at the network edge [2]. On the one hand,
+pervasive wireless communication techniques (e.g., over-the-
+air computation and intelligent reflecting surfaces) provide
+high-quality, low-latency, and privacy-preserving AI services
+for every mobile user and IoT device. On the other, the
+convergence of deep learning models and wireless networks
+has led to AI-enabled wireless systems with network sensing,
+cooperative perception, semantic-level communication, and
+intelligent resource allocation [2], [3].
+Despite these advancements, the current vision of edge
+AI has not yet bridged the gap to fully achieve connected
+Y . Shen, H. Pan, and D. Li are with Microsoft Research Asia, Shanghai,
+China; J. Shao, X. Zhang, Z. Lin, J. Zhang, and K.B. Letaief are with the
+Department of Electronic and Computer Engineering, Hong Kong University
+of Science and Technology, Hong Kong. (The corresponding author is J.
+Zhang)intelligence. Existing studies have divided edge AI systems
+into several components, such as federated learning, edge
+inference, and cross-layer resource allocation. While designing
+these components is crucial, seamlessly integrating them re-
+mains a complex task. First, to cater to specific user demands,
+sensors and AI models from various vendors must collaborate
+in a personalized manner. Second, users may need to train
+customized AI models to meet particular requirements. Tradi-
+tionally, this process requires interdisciplinary human experts
+to read manuals of edge servers, sensors, and AI models.
+Moreover, these experts also need to write code to parse
+users’ requests, integrate diverse sensors, and train new AI
+models. To realize connected intelligence, edge AI systems
+should automatically organize, adapt, and optimize themselves
+to meet users’ diverse requirements. We refer to such systems
+asautonomous edge AI systems.
+Recently, Large Language Models (LLMs) have revolution-
+ized various research communities and application domains,
+due to their ability to understand and generate human-like
+text based on given inputs. A notable LLM, GPT [4], amassed
+one million users within just five days and will be adopted in
+our system design. Beyond language mastery, GPT achieves
+human-expert-level performance in multidisciplinary areas,
+including science, humanities, and social science [5]. Notably,
+it demonstrates a remarkable ability to comprehend manuals
+and generate code. GPT has also proven to be effective in
+managing APIs [6], [7], designing new AI models [8], and or-
+chestrating embodied sensors [9]. Based on these preliminary
+studies, we believe that GPT can be an intelligent controller
+that is capable of organizing existing AI models and generating
+code to train new ones at the edge servers without human
+intervention.
+In this article, we explore the potential of autonomous edge
+AI utilizing GPT and propose a cloud-edge-client hierarchical
+system to facilitate connected intelligence. In the proposed
+system, GPT resides in the cloud, while other AI models are
+co-deployed on devices and edge servers to reduce latency. The
+requests from users are expressed in natural language, which
+is initially processed by GPT to translate and decompose
+them into sub-tasks solvable by edge devices. These sub-
+tasks are dispatched to corresponding sensors and AI models.
+Subsequently, we employ a task-offloading algorithm and task-
+oriented communication tailored to edge AI models, aiming
+to minimize latency. This approach enables autonomous, in-
+telligent, and low-latency coordination among edge AI mod-
+els. Furthermore, we leverage GPT to design appropriate AI
+model configurations and generate code for federated learning,
+enabling the provision of new and highly accurate modelsarXiv:2307.02779v1  [cs.IT]  6 Jul 20232
+to users while preserving their privacy. To the best of our
+knowledge, this is the first paper that investigates the potential
+of GPT in edge computing and proposes a GPT-empowered
+autonomous edge AI framework.
+II. A UTONOMOUS EDGE AI: C HALLENGES AND
+OPPORTUNITIES
+In this section, we present the concept of autonomous
+edge AI, which seeks to overcome the challenges faced by
+existing edge AI systems in achieving connected intelligence.
+Subsequently, we explore the potential of employing GPT as
+an enabler for autonomous edge AI, emphasizing its distinct
+capabilities.
+A. From Edge AI to Autonomous Edge AI
+The 21st century has seen an explosion of data and com-
+putational power, enabling deep learning models to achieve
+remarkable performance in various tasks, such as image and
+speech recognition, natural language processing, and game
+playing. This era has also witnessed the extensive incorpora-
+tion of AI into numerous applications and industries, including
+self-driving cars, virtual assistants, healthcare, and finance.
+Simultaneously, considerable advancements have been made in
+the system and algorithm design of edge AI systems, offering
+reliable, low-latency, and privacy-preserving AI services at the
+edge of wireless networks.
+In the realm of connected intelligence, we anticipate a
+wireless network that is capable of automatically organizing
+and enhancing edge AI models to cater to users’ demands and
+intelligently allocate resources to meet network constraints. To
+achieve this goal, the implementation and deployment of edge
+AI systems must overcome the following distinct challenges:
+1)User interface design: Traditionally, users interact with
+AI models through apps, necessitating their effort to
+familiarize themselves with each app’s functionality. The
+user experience could be significantly enhanced by em-
+ploying an intelligent dispatcher that routes user requests
+in natural language to appropriate apps, taking into ac-
+count user p

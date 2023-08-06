@@ -1,0 +1,254 @@
+BATGPT: A Bidirectional Autoregessive Talker from
+Generative Pre-trained Transformer
+Zuchao Li, Shitou Zhang, Hai Zhao∗, Yifei Yang, Dongjie Yang
+School of Computer Science, Wuhan University
+Department of Computer Science and Engineering, Shanghai Jiao Tong University
+zcli-charlie@whu.edu.cn, stonezhang.engr@gmail.com, zhaohai@cs.sjtu.edu.cn
+Abstract
+BATGPT is a large-scale language model designed and trained jointly by Wuhan
+University and Shanghai Jiao Tong University. It is capable of generating highly
+natural and fluent text in response to various types of input, including text prompts,
+images, and audio. In the modeling level, we employ a bidirectional autoregressive
+architecture that allows the model to efficiently capture the complex dependencies
+of natural language, making it highly effective in tasks such as language generation,
+dialog systems, and question answering. Moreover, the bidirectional autoregressive
+modeling not only operates from left to right but also from right to left, effectively
+reducing fixed memory effects and alleviating model hallucinations. In the training
+aspect, we propose a novel parameter expansion method for leveraging the pre-
+training of smaller models and employ reinforcement learning from both AI and
+human feedback, aimed at improving the model’s alignment performance. Overall,
+these approaches significantly improve the effectiveness of BATGPT , and the
+model can be utilized for a wide range of natural language applications.
+1 Introduction
+In recent years, natural language processing has made remarkable progress, especially the large
+language model (LLM) pre-training, leading to the development of various language models capable
+of generating text with high fluency and naturalness. Language models are becoming increasingly
+impactful and crucial, as they underpin many applications integral to our daily lives. From generating
+human-like text for content creation to providing recommendations based on contextual understand-
+ing, language models serve as the backbone of numerous systems that improve the efficiency and
+effectiveness of workflows for millions of users.
+The landscape of modern transformer-based language models has been continuously evolving. Among
+these models, the Generative Pre-trained Transformers (GPTs) [ 1–3] has emerged as one of the most
+prominent ones due to their ability to efficiently model complex patterns in natural language. GPT
+and its variants have brought about unprecedented capabilities in generating high-quality text, making
+strides in fluency, coherence, and generalization.
+Under the hood, the GPT-like models predominantly rely on learning representations with a causal
+language modeling objective. They are categorized as unidirectional models as they only utilize
+context from one direction. In contrast, bidirectional models [ 4–6] are trained with a denoising
+pre-training objective, such as masked language modeling, allowing them to utilize context from both
+directions for prediction.
+To better align LLMs with different training objectives with a variety of downstream tasks, several
+key strategies have been implemented. T5 [ 6] reformulates different NLP tasks into text-to-text
+∗Corresponding author.
+Preprint. Under review.arXiv:2307.00360v1  [cs.CL]  1 Jul 2023problems, thus facilitating a unified solution for diverse tasks. Further, instruction tuing models like
+FLAN [ 7] and T0 [ 8] leverages task-specific instructions during pre-training to enhance performance
+across various tasks. These instructions, integrated directly into the input, enable models to better
+align with task-specific objectives, leading to improved task completion and cross-task generalization.
+To close the gap between NLP tasks with human needs, reinforcement learning from human feedback
+(RLHF) [ 9,10] has been employed. By providing models with feedback on their generated outputs,
+they can fine-tune their predictions to better align with human expectations. This iterative learning
+process enables the model to adapt its output based on the reward signal from the feedback, paving
+the way for more accurate and contextually relevant language generation.
+These advancements, in tandem, have contributed to the growing sophistication and capabilities of
+LLMs, pushing the boundaries of LLMs to unprecedented levels that are closer than ever to human-
+like performance. Recent iterations of these models have demonstrated exceptional proficiency across
+a wide range of language tasks, even surpassing human-level performance in several evaluations [ 11].
+Despite these advancements, current models still face limitations and challenges. One prominent
+issue is the "limited memory" effect, where the model’s ability to maintain context dwindens with
+increasing sequence length. Additionally, these models often suffer from hallucinations, where
+they generate outputs not aligned with the input context, and face difficulties in capturing complex
+dependencies efficiently. These challenges impose barriers on the utilization of these models for
+certain high-stakes applications.
+To overcome these limitations and build upon existing advancements, Wuhan University and Shanghai
+Jiao Tong University jointly developed and trained BATGPT , a large-scale language model that utilizes
+a bidirectional autoregressive architecture for language generation, dialog systems, and question
+answering. In this paper, we present the design, modeling, and training of BATGPT , highlighting
+our bidirectional autoregressive architecture, novel parameter expansion method, and reinforcement
+learning approach for improving the model’s alignment performance. Our results demonstrate that
+BATGPT is highly effective and versatile, making it a valuable alternative for various natural language
+applications.
+2 Related Work
+A diverse spectrum of pre-trained language models have been developed over the years, categorized
+mainly into autoregressive [ 1–3,12], autoencoding [ 4,13,5,14,15], and encoder-decoder models
+[16–19,6,8]. These models, each with their unique design philosophy and strength, have collectively
+pushed forward the boundary of natural language understanding and generation.
+T5 [6] was one of the early models that introduced the paradigm shift of formulating almost all NLP
+tasks as generation tasks. This approach was subsequently adopted and refined by instruction tuning
+models such as FLAN [ 7,20] and T0 [ 8], which enhanced the performance across various tasks by
+enriching the pre-training phase with more task-specific instructions. Further, self-instruct [ 21] was
+proposed to address the limitations of human-written instructions in terms of quantity, diversity, and
+creativity by enabling models to generate their instructions via a bootstrapping framework. Recent
+models like Alpaca [ 22] and Guanaco2, which were fine-tuned from LLaMA [ 23] using self-generated
+instructions, have shown promising performance, validating the effectiveness of self-instruct.
+Insights into the scaling laws of LLMs have also provided valuable guidance for balancing the
+trade-off between training cost and model performance. [ 24] showed that increasing model size, data
+size, and computational resources can lead to improved performance. This scaling law was further
+affirmed by models like GPT-3 [ 3] and Gopher [ 25]. While the Chinchilla study [ 26] showed that
+under the same computational budget, scaling down the model size yields uniformly and significantly
+better performance over models of larger sizes, indicating that most existing LLMs were far from
+adequately trained. This revised understanding of the scaling laws has guided the development of
+newer models such as BLOOM [27], GLM-130B [28], and etc.
+Another key effort to better align model capabilities with human needs is the integration of reinforce-
+ment learning from human feedback (RLHF) [ 9,10], which enables models to generate more helpful
+and less harmful output by learning from human feedback. Recent work [ 29] have further replaced
+2https://guanaco-model.github.io/
+2human feedback with AI feedback as the reward signal, making it possible to control AI behavior
+with far fewer human labels.
+BATGPT builds upon these advancements and aims at addressing some of the persistent limitations
+in the field. We introduce a bidirectional autoregressive architecture that not only enhances the
+model’s capability in handling complex dependencies but also mitigates the limited memory issue.
+The novel parameter expansion method employed by BATGPT leverages the knowledge garnered
+during the pre-training of models of smaller sizes, thus facilitating a significant reduction in time and
+computational costs. Inspired by RLHF models, BATGPT ’s reinforcement learning approach further
+refines the alignment between model outputs and human expectations.
+In summary, BATGPT addresses the limitations of its predecessors while incorporating their strengths.
+We hope the unique approach and advanced features of BATGPT can set a new benchmark in the
+field, not only presenting the potential to contribute to a wide range of natural language applications,
+but also paving the way for future model development.
+3 B ATGPT
+3.1 Bidirectional Autoregressive Pre-training
+BATGPT is pretrained using a bidirectional autoregressive language modeling objective, a modifica-
+tion of the traditional autoregressive objective where the model learns to predict the next token based
+on all previously seen tokens in the sequence, from both the past and future directions. This makes
+the model capable of capturing dependencies in both the forward and backward context.
+Letx= (x1, x2, ..., x T)denote a sequence of tokens of length T. The goal of BATGPT during
+pre-training is to maximize the joint probability of observing the entire sequence. More specifically,
+the model aims to predict each token xtgiven the preceding tokens x<tor the subsequent tokens
+x>t.
+Given the sequence x, the pretrained BATGPT , denoted as πpretrain
+ϕ , parameterized by ϕ, outputs a
+distribution over possible tokens at each position from both ends of the sequence: πpretrain
+ϕ(xt|x<t)
+andπpretrain
+ϕ(xt|x>t). The objective for pre-training can be written as:
+Jpretrain(ϕ) =Ex∼Dpretrain"TX
+t=1logπpretrain
+ϕ(xt|x<t) +TX
+t=1logπpretrain
+ϕ(xt|x>t)#
+, (1)
+where Dpretrainrepresents the distribution over the pre-training data and the expectation is taken
+over all sequences xsampled from Dpretrain. By maximizing Jpretrain, BATGPT learns to capture the
+intricate linguistic patterns, semantics, and structure inherent in the vast array of data it is trained on,
+thus yielding more coherent and fluent outputs..
+3.2 Instruct Tuning
+Following the pre-training stage, BATGPT is further refined via instruction tuning. This process
+utilizes a wealth of prompted data in the form of ⟨prompt ,response ⟩pairs. These pairs serve as
+contextualized cues for the model to generate appropriate responses, thereby facilitating the alignment
+of B ATGPT’s behavior with human instructions and expectations.
+Specifically, the prompted data set, denoted as Dinst, consists of sequences (x, y), where xstands for
+a prompt and yfor the corresponding response. The instruction tuning objective then becomes to
+optimize the following likelihood function:
+Jinst(ϕ) =E(x,y)∼Dinst
+logπinst
+ϕ(y|x)
+, (2)
+where πinst
+ϕ(y|x)represents the probability of generating the response ygiven the prompt xaccording
+to the instruction tuning updated model πinst
+ϕ. In addition to this, BATGPT is further refined using
+multi-round dialogue data, which takes concatenating conversation history as input and last-round
+3Figure 1: Annotation platform.
+response as output. This focused training strategy is devised specifically to enhance BATGPT ’s
+capability in comprehending and maintaining lengthy chat threads. It optimizes BATGPT ’s ability to
+preserve conversational context over long conversations, allowing for more coherent, in-depth, and
+meaningful dialogues.
+The instruct tuning phase essentially tunes BATGPT ’s parameters ϕto better generate responses that
+align with the given prompts, enabling BATGPT to effectively process and appropriately respond to
+diverse instructions.
+3.3 Reinforcement Learning from Human Feedback
+Reinforcement Learning from Human Feedback (RLHF) forms a crucial component of the BATGPT
+training pipeline. To make the aligning process more efficient and flexible, BATGPT learns not only
+from human feedback but also from feedback generated by other AI systems.
+The underlying objective of RLHF is to optimize a reward model Rwhich is then used to train
+BATGPT through Proximal Policy Optimization (PPO) [ 30]. The reward model Ris trained on
+collected preference data, which consists of pairs of model-generated responses (y, y′)along with a
+preference d∈ {− 1,0,1}. Here, d=−1denotes preference for y,d= 1denotes preference for y′,
+andd= 0represents indifference. The collection of human preference data is detailed below.
+Preference Data Collection In order to train BATGPT via RLHF, it was necessary to gather an
+ample amount of preference data based on human judgement. To expedite this process, we developed
+a preference data annotation platform. The front-end page design presented to the annotators is shown
+in 1. On this platform, the annotators are presented with two model outputs, denoted as AandB,
+generated in response to the same instruction. These outputs can either be both from BATGPT or one
+from B ATGPT and one from another LLM.
+The platform provides the annotator with a predefined set of options to make the task of comparison
+more systematic and efficient. For evaluating the acceptability of the outputs, particularly focusing
+on potential harmfulness, the annotator is presented with four choices: " Ais acceptable", " Ais
+unacceptable", " Bis acceptable", and " Bis unacceptable".
+In order to gauge the helpfulness of the outputs, the annotator is given another set of four options:
+"Ais better", " Bis better", "both AandBare good", and "both AandBare not good". The use of
+these predefined options streamlines the process of evaluating model outputs, reduces ambiguity, and
+increases the reliability of the feedback gathered, thus ensuring a more robust and effective training
+process for B ATGPT.
+4Table 1: Performance comparison of BATGPT and other Chinese-oriented large language models
+(LLMs) on the CMMLU benchmark. Results are presented as average accuracy within each categories
+based on a five-shot experiment setting.
+Model STEM Humanities Social Science Other China-specific Average
+MOSS-SFT-16B 27.23 30.41 28.84 32.56 28.68 29.57
+BATGPT-15B 33.49 35.38 36.31 42.14 37.00 36.72
+Chinese-LLaMA-13B 27.12 33.18 34.87 35.10 32.97 32.63
+Chinese-GLM-10B 25.49 27.05 27.42 29.21 28.05 27.26
+Chinese-LLaMA-7B 25.79 27.45 26.35 26.06 25.45 26.36
+ChatGLM-6B 32.35 39.22 39.65 38.62 37.70 37.48
+Random 25.00 25.00 25.00 25.00 25.00 25.00
+Following the collection of human feedback, BATGPT employs AI systems to amass additional
+preference data. This is achieved through specially designed prompt templates where the feedback
+options align with what is presented to human annotators. The feedback gathered from both humans
+and AI, consolidated, creates an extensive preference dataset, which further enhances the depth and
+diversity of the training pool.
+RLHF Training The reward model Rparameterized by θ, predicts rewards r(y)andr(y′)for each
+(y, y′, d)triplet in the preference dataset Dpref, where r(y) =R(x, y)andr(y′) =R(x, y′). The
+reward model is trained by minimizing the the following loss:
+LR(θ) =E(y,y′,d)∼Dpref[max(0 ,1−d·(rθ(y)−rθ(y′)))]. (3)
+Once the reward model is trained, it is used to update the policy parameters ϕvia Proximal Policy
+Optimization (PPO). In order to maintain the capabilities obtained from the pre-training and instruct
+tuning stages, corresponding loss terms are incorporated into the objective, resulting in an expanded
+objective function. ϕis trained by maximizing the following objective:
+JRL(ϕ) =E(x,y)∼DRL
+rθ(x, y)−λITlog 
+πRL
+ϕ(y|x)/πinst
+ϕ(y|x)
++
+λPTEx∼Dpretrain
+log 
+πRL
+ϕ(x)
+,(4)
+where rθ(x, y)is the reward for a generated response ygiven a prompt xunder the reinforcement
+learning updated policy πRL
+ϕ,λITandλPTare regularization terms that keeps the RL policy close to
+the instruct tuning and pre-training distribution. This hybridized reinforcement learning approach
+enables BATGPT to leverage the nuanced understanding of humans and the robust consistency of
+AI systems. As such, BATGPT can generate more beneficial, better-aligned, and safer outputs,
+accommodating a wide range of applications.
+4 Performance
+The CMMLU [ 31] is a comprehensive benchmark specifically designed to assess language model
+capability over a variety of Chinese-related subjects. This benchmark evaluates models across
+diverse categories, including humanities, social sciences, STEM (science, technology, engineering,
+and mathematics), and other areas. The evaluation results reported in CMMLU is presented in
+1.BATGPT ranked second among all Chinese-oriented language models, exhibiting promising
+performance. BATGPT -15B achieved the highest average accuracy in both the STEM and Others
+categories with scores of 33.49% and 42.14% respectively. The model demonstrated consistent high
+performance across the other categories as well: it scored 35.38% in Humanities, 36.31% in Social
+Science, and 37.00% in China-specific topics.
+For zero-shot accuracy on the CMMLU STEM subset and the full set, under the context of both direct
+answer (DA) and chain-of-thought (COT) prompts, BATGPT -15B achieved 33.74% and 34.47%
+respectively for the STEM category, and 38.48% and 35.91% respectively for the overall set.
+5Overall, BATGPT ’s robust performance across various topics and its ability to handle different types
+of prompts demonstrate its wide-ranging capabilities and its suitability for a broad spectrum of
+applications.
+5 Conclusion
+In this paper, we introduce BATGPT , a large-scale language model by Wuhan University and Shanghai
+Jiao Tong University. By leveraging a bidirectional autoregressive architecture, BATGPT addresses
+the limitations of existing models, such as limited memory and hallucinations, allowing it to capture
+complex dependencies more efficiently. The training of BATGPT incorporates a novel parameter
+expansion method that leverages pre-training of smaller models and reinforcement learning from both
+AI and human feedback. This approach enhances the model’s alignment performance and enables it
+to generate text that is highly fluent, coherent, and contextually relevant. However, it is important to
+acknowledge that challenges and limitations still exist. Ongoing research and development efforts
+are essential to further refine and improve the capabilities of language models like BATGPT . Ethical
+considerations regarding bias, fairness, and responsible use also need to be addressed to ensure the
+deployment of these models benefits society as a whole. As research and development continue, we
+can expect further breakthroughs in language understanding and generation, paving the way for even
+more sophisticated and impactful language models in the future.

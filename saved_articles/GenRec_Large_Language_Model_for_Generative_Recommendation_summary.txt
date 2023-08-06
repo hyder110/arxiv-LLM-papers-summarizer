@@ -1,0 +1,26 @@
+Summary:
+This paper introduces GenRec, a large language model (LLM) for generative recommendation in recommender systems. The potential of LLMs for recommendation systems is relatively unexplored, and this paper aims to fill that gap. GenRec utilizes the expressive power of LLMs to directly generate the target item to recommend, rather than calculating ranking scores for each candidate item individually. It leverages LLMs' understanding ability to interpret context and learn user preferences.
+
+Bullet points:
+1. GenRec is a large language model (LLM) designed for generative recommendation in recommender systems.
+2. LLMs have shown great potential for various natural language processing tasks, and this paper explores their application in recommendation systems.
+3. Traditional discriminative recommendation systems calculate ranking scores for each candidate item, but GenRec generates the target item directly using LLM.
+4. GenRec leverages the understanding ability of LLMs to interpret context and learn user preferences.
+5. The proposed approach offers a novel way to approach recommendation systems by utilizing the power of LLMs.
+6. By directly generating the target item, GenRec simplifies the recommendation process and potentially improves accuracy.
+7. The paper highlights the unexplored potential of LLMs in the generative recommendation paradigm.
+8. GenRec is based on text data, and it demonstrates the effectiveness of LLMs in modeling and generating text-based recommendations.
+9. This research opens up new possibilities for utilizing LLMs in recommendation systems and encourages further exploration in this area.
+10. The development of GenRec contributes to advancing the field of recommendation systems by introducing a novel approach.
+
+Keywords:
+1. GenRec
+2. large language model (LLM)
+3. generative recommendation
+4. recommender systems
+5. natural language processing
+6. ranking scores
+7. user preferences
+8. understanding ability
+9. text data
+10. recommendation accuracy

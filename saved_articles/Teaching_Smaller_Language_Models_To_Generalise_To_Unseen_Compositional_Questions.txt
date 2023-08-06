@@ -1,0 +1,52 @@
+Teaching Smaller Language Models To Generalise
+To Unseen Compositional Questions
+Tim Hartill thar011@aucklanduni.ac.nz
+School of Computer Science
+University of Auckland
+Neset TAN ntan607@aucklanduni.ac.nz
+School of Computer Science
+University of Auckland
+Michael Witbrock m.witbrock@auckland.ac.nz
+School of Computer Science
+University of Auckland
+Patricia J. Riddle p.riddle@auckland.ac.nz
+School of Computer Science
+University of Auckland
+Abstract
+We equip a smaller Language Model to generalise to answering challenging compositional
+questions that have not been seen in training. To do so we propose a combination of multi-
+task supervised pretraining on up to 93 tasks designed to instill diverse reasoning abilities,
+and a dense retrieval system that aims to retrieve a set of evidential paragraph fragments.
+Recent progress in question-answering has been achieved either through prompting methods
+against very large pretrained Language Models in zero or few-shot fashion, or by fine-tuning
+smaller models, sometimes in conjunction with information retrieval. We focus on the less
+explored question of the extent to which zero-shot generalisation can be enabled in smaller
+models with retrieval against a corpus within which sufficient information to answer a par-
+ticular question may not exist. We establish strong baselines in this setting for diverse
+evaluation datasets (StrategyQA, CommonsenseQA, IIRC, DROP, Musique and ARC-DA),
+and show that performance can be significantly improved by adding retrieval-augmented
+training datasets which are designed to expose our models to a variety of heuristic reasoning
+strategies such as weighing partial evidence or ignoring an irrelevant context.
+1 Introduction
+We are inspired by recent progress with pretrained large Language Models (LLM), which when prompted
+with task demonstrations (Brown et al., 2020), instructions (Sanh et al., 2021; Wei et al., 2021; Ouyang
+et al., 2022) or reasoning chains (Wei et al., 2022), show an ability to answer questions unlikely to have
+been encountered during training. However a diversity of potential applications exist in the broad domain
+of reasoning systems and considerations such as latency, cost, energy efficiency, physical compute size and
+internet connectivity requirements are relevant in determining the most appropriate approach for a given
+situation.
+Rather than encoding all knowledge in the parameters of a LLM, an alternative approach has been to
+transform the original question-answering problem into a reading comprehension (RC) problem by retrieving
+1arXiv:2308.00946v1  [cs.CL]  2 Aug 2023relevant information for answering a particular query from an external corpus, and training a smaller1model
+(QA Model) to reason over the concatenation of the query and retrieved information to derive an answer
+e.g. Chen et al. (2017). In this paper2we extend retrieval methods as described in section 1.1 in conjunction
+with a supervised multitask pretraining regime for the QA Model involving 79 tasks for our baseline and 93
+tasks for the improved model.
+The viability of this approach outside of fine-tuned settings is currently subject to limitations, both in the
+retrieval component, as discussed below, and with respect to the inabilities of smaller language models to
+perform the reasoning function as well as larger models. We aim to quantify performance limitations and
+evaluate mitigations for some of them.
+There are at least two significant challenges in retrieval to be overcome. Firstly, no matter how large the
+corpus is, there will always be missing information, particularly so in our setting where neither datasets
+nor corpus have been normalised such that sufficient information is in the corpus to make each question
+answerable through deductively valid means. Secondly, as long as humans ask questions with ambiguous

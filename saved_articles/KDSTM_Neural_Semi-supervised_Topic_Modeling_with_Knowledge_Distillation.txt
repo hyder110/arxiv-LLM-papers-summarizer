@@ -1,0 +1,226 @@
+Published as a conference paper at ICLR 2022
+KDSTM: N EURAL SEMI-SUPERVISED TOPIC MODEL -
+ING WITH KNOWLEDGE DISTILLATION
+Weijie Xu1, Xiaoyu Jiang1, Jay Desai1, Bin Han2, Fuqin Yan1& Francis Iannacci1
+1Amazon Inc.2University of Washington
+{weijiexu,billyjia,jdesa,fqinyan,iannacci }@amazon.com
+{binhan96816 }@gmail.com
+ABSTRACT
+In text classification tasks, fine tuning pretrained language models like BERT and
+GPT-3 yields competitive accuracy; however, both methods require pretraining on
+large text datasets. In contrast, general topic modeling methods possess the ad-
+vantage of analyzing documents to extract meaningful patterns of words without
+the need of pretraining. To leverage topic modeling’s unsupervised insights ex-
+traction on text classification tasks, we develop the Knowledge Distillation Semi-
+supervised Topic Modeling (KDSTM). KDSTM requires no pretrained embed-
+dings, few labeled documents and is efficient to train, making it ideal under re-
+source constrained settings. Across a variety of datasets, our method outperforms
+existing supervised topic modeling methods in classification accuracy, robustness
+and efficiency and achieves similar performance compare to state of the art weakly
+supervised text classification methods.
+1 I NTRODUCTION
+The current state-of-the-art language modeling methods often require transfer learning Brown et al.
+(2020), large amount of labels Yang et al. (2019) and pretrained embeddings Cao et al. (2020).
+Consequently, they are difficult to apply in low resource settings, where many endangered lan-
+guagesAustin & Sallabank (2011) lack both pre trained language models and sufficient labeled doc-
+uments. For semi-supervised method Meng et al. (2018) tailored to limited label scenario, it is time
+consuming to both tune and train.
+Topic modeling is an unsupervised method for discovering latent structure within the training doc-
+ument sets and achieves great empirical performance in many fieldsBlei et al. (2009), including
+finance Aziz et al. (2022), healthcare Bhattacharya et al. (2017), education Zhao et al. (2020b), mar-
+keting Reisenbichler (2019) and social science Roberts et al. (2013). Jelodar et al. (2018) provides
+a survey on the applications of topic modeling.
+Latent Dirichlet Allocation (LDA) Blei et al. (2003) is the most fundamental topic modeling ap-
+proach based on Bayesian inference on Markov chain Monte Carlo (MCMC) and variational in-
+ference; however, it is hard to be expressive or capture large vocabularies. Neural topic model
+(NTM) Miao et al. (2018) leverages auto-encoding Kingma et al. (2014) framework to approximate
+intractable distributions over latent variables. Recently, embedded topic model (ETM) Dieng et al.
+(2020) uses word embedding during the reconstruction process to make topic more coherent and
+reduce the influence of stop words. The goal of unsupervised topic modeling methods Blei et al.
+(2003); Teh et al. (2006); Miao et al. (2018); Gemp et al. (2019) is to maximize the probability of
+the observed data, resulting in the tendency to identify obvious and superficial aspects of a corpus.
+To incorporate users’ domain knowledge of documents into the model, supervised modeling Blei &
+McAuliffe (2010); Zhu et al. (2012); Wang & Yang (2020a) has been studied. However, supervised
+methods do not perform well when the labeled set is small.
+In this work, we propose knowledge distillation semi-supervised topic modeling (KDSTM), which
+only requires a few labeled documents for each topic as input. KDSTM utilizes knowledge distilla-
+tion and optimal transport to guide topic extraction with seed documents. It achieves state of the art
+results when benchmarking with supervised topic modeling and weakly supervised text classifica-
+tion methods.
+1arXiv:2307.01878v1  [cs.CL]  4 Jul 2023Published as a conference paper at ICLR 2022
+Advantages of KDSTM are summarized as follows:
+• KDSTM is a novel architecture which incorporates knowledge distillation and optimal transport
+into the neural topic modeling framework.
+• KDSTM consistently achieves better topics classification performance on different datasets when
+compared to supervised topic modeling methods or weakly supervised text classification methods.
+• KDSTM only requires a limited number of labeled documents as input, making it more practical
+in low resource settings.
+• KDSTM does not rely on any transfer learning or pre trained language models. The embedding is
+trained on the dataset, making it suitable for less common/endangered languages.
+• KDSTM is efficient to train and fine-tune compared to existing methods. This makes it suitable to
+be trained and run inference on resource constrained devices.
+2 P RELIMINARY
+Supervised Topic Modeling Since topic modeling reduces the dimensionality of the text, the
+learned low dimensional topic distributions can be used in the downstream tasks. Blei & McAuliffe
+(2010) adds a response variable associated with each document and assumes that the variable can be
+fitted by Gaussian distribution to make it tractable. Labeled LDA Ramage et al. (2009) assumes that
+each document can be associated with one topic and uses this information to create the model. Re-
+cently, BP-SLDA Chen et al. (2015) uses back propagation to make LDA supervised. Dieng Dieng
+et al. (2017) incorporates RNN with LDA to make latent variables more suitable for downstream
+tasks. TAM Wang & Yang (2020b) combines GSM Liu et al. (2019) and RNN Sherstinsky (2020) to
+do the supervised topic modeling. To be specific, it uses GSM to fit a document generative process
+and estimates document specific topic distribution. It uses GRU Chung et al. (2014) to encoded
+word tokens. After that, it jointly optimizes two components by using an attention mechanisms. Re-
+cently, topic modeling is also combined with Siamese network Huang et al. (2018) to achieve better
+prediction performance. However, these methods’ performances drops when training set is small.
+Optimal Transport To avoid matching labels with multiple topics , we consider the optimal trans-
+port distance Chen et al. (2019); Torres et al. (2021), which has been widely used for comparing
+the distribution of probabilities. Specifically, let U(r, c)be the set of positive m×nmatrices for
+which the rows sum to r and the columns sum to c: U(r, c) ={P∈Rm×n
+>0|P1t=r, PT1s=c}
+For each position t, s in the matrix, it comes with a cost Mt,s. Our goal is to solve dM(r, c) =
+min P∈U(r,c)P
+t,sPt,sMt,s. To make distribution homogeneous Cuturi (2013), we let
+dλ
+M(r, c) =min P∈U(r,c)X
+t,sPt,sMt,s−1
+λh(P) (1)
+, where h(P) =−P
+t,sPt,slogPt,s. Optimal Transport induces good robustness and semantic
+invariance in NLP related tasks Chen et al. (2019) or topic modeling Zhao et al. (2020a); Xu et al.
+(2018).
+Knowledge Distillation Knowledge distillation is the process of transferring knowledge from a
+large model to a smaller one. Given a large model trained for a specific classification task, the final
+layer of the network is a softmax in the form:
+y(x|τ) =es(x)
+τ
+P
+jes(x)
+τ(2)
+where tis the temperature parameter. The softmax operator converts the logit values sto pseudo-
+probabilities. Knowledge distillation consists of training a smaller network, called the distilled
+model, on a separate dataset called the transfer set. Cross entropy is used as the loss function
+between the output of the distilled model and output produced by the large model on the transfer set,
+using a high value of softmax temperature τfor both models. Hinton et al. (2015)
+E(x|τ) =−X
+iˆyi(x|τ) logyi(x|τ) (3)
+2Published as a conference paper at ICLR 2022
+Figure 1: The Architecture of KDSTM with four main loss function including reconstruction loss,
+KL divergence, optimal transport loss and knowledge distillation loss
+where ˆyiis generated by the large model and yiis generated by the distilled model. Instead of
+using the prediction itself, few methods leverage similarity Tung & Mori (2019); Chen et al. (2018);
+Passalis et al. (2020) or features Romero et al. (2015); Passban et al. (2020); Chen et al. (2021) as
+guidance.
+3 M ETHOD
+The encoder network ϕencodes the bag of words representation of any document xdand output
+parameters for latent distribution which can be used to sample the topic distribution td. Following
+Dieng et al. (2020), the decoder is represented by a vocabulary embedding matrix eWand a topic
+embedding matrix eT. We use spherical word embedding Meng et al. (2019) to create eW. We train
+it on the corpus and keep it fixed during the training. Wis the corpus and Tcontains all topics.
+We also use VMF distribution (Appendix C) instead of normal distribution as the latent distribution
+for better clusterability Xu & Durrett (2018); Davidson et al. (2018); Reisinger et al. (2010); Bat-
+manghelich et al. (2016); Ennajari et al. (2021). In this notation, our modified ETM’s algorithm can
+be described as follows: for every document d, 1) Generate tdusing sampled direction parameter µ
+and scale parameter κfrom ϕ. 2) Reconstruct bag of words by td×softmax (eTeT
+W). The goal of
+ETM is to maximize the marginal likelihood of the documents:PD
+d=1logp(xd|eT, eW). To make
+it tractable, the loss function combines reconstruction loss with KL divergence. The description of
+notation can be found in Table 1 in appendix.
+In KDSTM, we adopt optimal transport to assign topics to labels. Each entry in M is defined as
+Mg,t= 1−mean x∈gϕt(x)where gis one of the labeled documents’ group. Let Mg,trepresent
+the weights of words in labeled documents in group gon topic t. We use sinkhorn distance as loss
+function and give high entropy λto make sure that each labeled comment falls into separate topics.
+Thus,
+LOT=min P∈U(|T|,|G|)X
+t,gPt,gMt,g−1
+λh(P) (4)
+where |G|is the number of labeled groups and g represents one group of labeled comments.
+The next step is to ensure that a test input text that is similar to our labeled document has high
+probability of being classified as the same topic. To achieve that, we borrow the idea from similarity
+and feature based knowledge distillation Mun et al. (2018); Tung & Mori (2019). To be specific, we
+first train the unsupervised topic modeling till convergence. Then, we store the direction parameters
+µfrom ϕand use it to calculate cosine similarity sbetween unlabeled and labeled documents. We
+3Published as a conference paper at ICLR 2022
+use the maximum similarity in each labeled group as guidance for knowledge distillation. The
+benefits of this approach include: 1) latent distribution from unsupervised topic model can be used
+for label classification Lacoste-Julien et al. (2008); Chen et al. (2015). These distributions can serve
+as teachers. 2) we do not need a separate and larger model, making it more resource efficient.
+For each text xd, we find the most similar document i in each labeled group gand their similarity
+si(x). Then we define
+ˆyg(x;τ) =emaxi∈gsi(x)
+τ
+P
+g∈Gemaxi∈gsi(x)
+τ(5)
+where G is all labeled text groups. The knowledge distillation loss is measured by :
+LKD=−τ2X
+d∈DX
+g∈GI(sg(xd)≥thresh )ˆyg(xd;τ)log(ϕ(xd)) (6)
+We use the indicator function I(si(xd)≥thresh ). Since we only have few labels available, some
+of documents may not be related to any of the labeled documents. Thus, we only care about docu-
+ments that are relevant to existing labels to provide a better teaching experience. We split training
+into 3 stages: 1) we train the standard topic modeling with KL Divergence and reconstruction loss
+LKD+LRecon till convergence. We calculate similarity matrix safter this stage. 2) We add optimal
+transport loss LKD+LRecon +αLOTand train for few epochs. 3) We add knowledge distillation
+lossLKD+LRecon +αLOT+βLKDand train for few epochs. In practice, step 2 and step 3 are
+less time consuming and thus, this helps user optimize their labels in online settings. The archi-
+tecture is illustrated in Figure 1. Hoyle et al. (2020) also leverages knowledge distillation, but uses
+bag of words representation, is of unsupervised nature, and using a BERT-based auto-encoder as the
+teacher.
+4 E XPERIMENTS
+Settings In this section, we report the experimental results for our methods and three additional
+state of the arts methods (WestClass, LLDA, TAM). To form the vocabulary, we keep all words that
+appear more than a certain number of times and vary the threshold from 20 to 100 depending on
+the size of the dataset. We remove documents that are less than 2 words. We also remove stop
+words, digits, time and symbols from vocabulary and use a fully-connected neural network with two
+hidden layers of [256, 64] unit and ReLU as the activation function followed by a dropout layer(rate
+= 0.5). The hyperparameter setting used for all baseline models and vNTM are similar to Burkhardt
+& Kramer (2019). We use AdamKingma & Ba (2017) as the optimizer with learning rate 0.002
+and use batch size 256. We use Smith & Topin (2018) as scheduler and use learning rate 0.01 for
+maximally iterations equal to 50. For each run, we sample 5 documents per class and use them as
+inputs, calculate performance metrics on the rest of unlabeled documents, run each algorithm 10
+times and report the result in the bin plot. We report accuracy, aucroc and averaged micro f1 score.
+For hyperparameters, we use λ= 50 ,α=β= 10 ,thresh = 0 andτ= 1 for our method and
+perform moderate tuning on parameters presented in the original papers of other methods. Our code
+is written in PyTorch and all the models are trained on AWS using ml.p2.8xlarge (NVIDIA K80).
+Datasets (1)AG’s News We use AG’s News dataset from Zhang et al. (2016). It has 4 classes
+and 30000 documents per class. Class categories include World, Sports, Business and Sci/Tech for
+evaluation; (2) DBLP Tang et al. (2008; 2010) dataset consists of bibliography data in computer
+science. DBLP selects a list of conferences from 4 research areas, database, data mining, artificial
+intelligence, and computer vision. With a total 60,744 papers averaging 5.4 words in each title,
+DBLP tests the performance on small text corpus. See Appendix D. (3) 20News Lang (1995) is
+a collection of newsgroup posts. We only select 4 categories here. Compared to the other two
+datasets, 4 categories newsgroup is small so that we can check the performance of our methods on
+small datasets.
+Methods (1)WestClass Meng et al. (2018): This method is a weakly-supervised neural text classi-
+fication method. The weak supervision source can come from any of the three sources: label surface
+names, class related keywords, and labeling documents. Output will be document labels consistent
+with cluster of inputs. We will use this method to benchmark the performance on document classi-
+fication accuracy. (2) L-Label Ramage et al. (2009): This method accepts labeled documents and is
+4Published as a conference paper at ICLR 2022
+Figure 2: From left to right, is NSSTM without knowledge distillation (Sky Blue), KDNSSTM
+(Blue), WestClass, LabeledLDA, TAM. We average result as text on top of each bin plot
+5Published as a conference paper at ICLR 2022
+used to compare KDSTM. To better benchmark the performance, we fine-tune alpha, eta and number
+of iterations to get the best accuracy performance. (3) TAM Wang & Yang (2020a): This method
+achieves the better performance than existing supervised topic modeling methods. To benchmark
+the performance for a strongly performing model, we fine-tune the dimension of GRU gate, learning
+rate and number of epochs. See Appendix E.
+Results As can be seen from Figure 2, KDSTM consistently performs significantly better than exist-
+ing supervised topic modeling methods on all 3 classification metrics (accuracy, F1, and AUC). On
+standard dataset like AG’s News, our performance is higher than WestClass on accuracy and micro
+F1. Despite similar overall performance, our method is on average 4 times faster than WestClass
+(Table 2 in appendix). If we finetune τ, our method can further improve which show its poten-
+tial to beat WestClass (Table 3 in appendix). Our method has high variance in DBLP where each
+document has on average 5.4 words. We also compare the performance without knowledge distil-
+lation. Knowledge distillation increases the performance of the model on all 3 metrics. Knowledge
+distillation provides less benefit for small dataset such as 20News.
+5 C ONCLUSION
+In this work, we develop Knowledge Distillation Semi-supervised Topic Modeling (KDSTM) using
+knowledge distillation and optimal transport. Our method achieves improved performance across
+several classification metrics compared to existing supervised topic modeling methods and more
+efficient than existing weakly supervised text classification methods. Our method does not require
+transfer learning or pretrained embeddings and is faster to train and fine-tune, making it ideal in low
+resource scenarios. For future work, we will extend this work to include sequential information to
+further improve its performance and stability.

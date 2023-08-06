@@ -1,0 +1,18 @@
+Summary:
+
+The paper proposes a framework called PROTO-CLIP for few-shot learning by leveraging large-scale vision-language models like CLIP. PROTO-CLIP adapts the image encoder and text encoder in CLIP using few-shot examples to compute prototypes of image classes for classification. The alignment of image prototypes and text prototypes is beneficial for few-shot classification. The effectiveness of PROTO-CLIP is demonstrated through experiments on benchmark datasets for few-shot learning and in a real-world robot perception scenario.
+
+Bullet points:
+
+- PROTO-CLIP is a framework for few-shot learning that utilizes image prototypes and text prototypes for classification.
+- The image encoder and text encoder in CLIP are adapted in PROTO-CLIP using few-shot examples.
+- The alignment of image prototypes and text prototypes is proposed to improve few-shot classification performance.
+- PROTO-CLIP is evaluated on benchmark datasets for few-shot learning and in a real-world robot perception scenario.
+- The framework demonstrates competitive results compared to state-of-the-art CLIP-based few-shot learning methods.
+- The choice of adapter types and learnable text memory affects the performance of PROTO-CLIP.
+- Different loss functions for prototype alignment contribute to the overall performance of PROTO-CLIP.
+- PROTO-CLIP performance improves with higher numbers of shots, outperforming state-of-the-art methods in some cases.
+- The framework exhibits limitations in low-shot regimes and requires a hyperparameter grid search for optimal performance.
+- Potential future work includes exploring more powerful vision-language models and utilizing 3D information in few-shot learning.
+
+Keywords: PROTO-CLIP, few-shot learning, CLIP, vision-language models, image prototypes, text prototypes, alignment

@@ -1,0 +1,26 @@
+Summary:
+This paper proposes an approach for compressing the embedding layer in Large Language Models (LLMs) based on the Tensor-Train Decomposition (TTD). The embedding layer in LLMs contains a large number of parameters, making the model storage prohibitively high for deployment on low-end devices. The proposed approach treats each token embedding as a Matrix Product State (MPS) and decomposes it using TTD, resulting in efficient storage and computation. Experimental results on GPT-2 show that the embedding layer can be compressed by up to 38.40 times, with a compression factor of 3.31 even outperforming the original model.
+
+Bullet Points:
+1. Proposed approach based on Tensor-Train Decomposition (TTD) for compressing the embedding layer in LLMs.
+2. Each token embedding is treated as a Matrix Product State (MPS) and decomposed using TTD.
+3. Compressing the embedding layer reduces storage and parameter complexity.
+4. Experimental results on GPT-2 show up to 38.40 times compression, with a compression factor of 3.31 outperforming the original model.
+5. Approach addresses the storage efficiency issue and enables deployment on low-end devices.
+6. MPS formatting of token embeddings allows for efficient computation and flexibility with changing token vocabulary.
+7. Evaluation metrics include compression rate, distortion error, and compatibility with subsequent network blocks.
+8. Approach achieves satisfactory compression performance while reducing the number of parameters.
+9. Tensor-Train Decomposition has potential for further exploration and integration into LLM computation processes.
+10. Future work includes investigating the integration of MPS into token embeddings and exploring further compression techniques. 
+
+Keywords:
+- Tensor-Train Decomposition (TTD)
+- Large Language Models (LLMs)
+- Embedding layer compression
+- Matrix Product State (MPS)
+- Token embeddings
+- Storage efficiency
+- Computation efficiency
+- Compression rate
+- GPT-2
+- Low-end devices.

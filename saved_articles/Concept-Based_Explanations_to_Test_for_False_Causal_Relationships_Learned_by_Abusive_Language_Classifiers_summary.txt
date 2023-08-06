@@ -1,0 +1,26 @@
+Summary:
+This paper introduces a method for assessing false global sufficiency in abusive language classifiers by using concept-based explanations. The authors evaluate three classifiers trained on large English datasets and focus on the concept of negative emotions. They assess the classifiers' accuracy on a challenge set and propose concept-based explanation metrics to measure the influence of the concept on the labels. 
+
+Bullet Points:
+1. Classifiers can learn false causal relationships between over-represented concepts and labels, leading to compromised accuracy.
+2. The concept of negative emotions is important but should not be learned as a sufficient feature for abuse labels.
+3. The authors propose assessing classifiers' reliance on specific concepts by evaluating their accuracy on a challenge set.
+4. They also introduce concept-based explanation metrics to compare classifiers regarding false global sufficiency.
+5. The metrics include TCAV dir, which measures the association between a concept and a label, and TCAV mag, which measures the extent of the concept's influence on the label.
+6. The authors evaluate the sufficiency of the concept of describing protected groups with negative emotions using challenge sets and TCAV scores.
+7. The classifiers have learned a strong association between negative emotions and abuse but vary in the degree of sufficiency learned.
+8. The proposed metrics provide insights into false global sufficiency relationships and can be used to compare classifiers.
+9. The method is limited to pre-defined concepts and requires human input to define the concepts.
+10. The metrics should be used for detecting potential flaws in models rather than as absolute scores.
+
+Keywords:
+- False global sufficiency
+- Abusive language classifiers
+- Concept-based explanations
+- Negative emotions
+- Challenge set
+- TCAV dir
+- TCAV mag
+- Classifier evaluation
+- Concept influence
+- Classifier comparison

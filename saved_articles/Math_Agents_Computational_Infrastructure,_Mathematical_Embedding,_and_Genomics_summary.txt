@@ -1,0 +1,24 @@
+Summary:
+
+This paper introduces the concept of Math Agents and mathematical embeddings for the application of generative AI in genomics.
+
+LLMs (Large Language Models) are linguistic user interfaces that can be utilized in the computational infrastructure beyond human-AI chat interactions.
+
+Math Agents interact with math, which could potentially shift the focus from "big data" to "big math" for interacting with reality.
+
+The project develops a theoretical model for the deployment of Math Agents and mathematical embeddings in the field of information systems biology, specifically for aging and disease modeling.
+
+Genomic variant and expression data are indicated for practical application in addressing the challenge of Alzheimer's disease.
+
+Keywords:
+
+1. Math agent
+2. Mathematical embedding
+3. Equation cluster
+4. Mathematical ecology
+5. LLMs
+6. Generative AI
+7. Cognitive architecture
+8. Computational infrastructure
+9. Genomics
+10. Precision health

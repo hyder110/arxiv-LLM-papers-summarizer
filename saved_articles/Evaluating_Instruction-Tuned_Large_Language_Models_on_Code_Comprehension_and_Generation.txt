@@ -1,0 +1,1096 @@
+Evaluating Instruction-Tuned Large Language
+Models on Code Comprehension and Generation
+Zhiqiang Yuan, Junwei Liu, Qiancheng Zi, Mingwei Liu, Xin Peng, Yiling Lou
+Department of Computer Science, Fudan University, China
+{zhiqiangyuan23, jwliu22, qczi22 }@m.fudan.edu.cn
+{liumingwei, pengxin, yilinglou }@fudan.edu.cn
+Abstract —Instruction tuning has been proposed to enhance
+the generalization capability of large language models (LLMs) on
+new downstream tasks. To date, many efforts have been dedicated
+into evaluating instructed LLMs, covering not only general NLP
+tasks but also specific domains. However, little evaluation of
+instructed LLMs is diving into the software engineering domain,
+except the NL-to-Code task (generating a function for the given
+natural language description), which is only one of the code-
+related tasks in software development and maintenance. Although
+some recent work explores the capability of the instructed models
+such as ChatGPT on SE tasks, these commercial models are
+closed-source, thus lacking transparency and reproducibility.
+Overall, it still remains unclear how the recent open-source
+instructed LLMs perform on diverse code comprehension and
+generation tasks.
+To fill this knowledge gap, we evaluate 10 open-source in-
+structed LLMs on four representative code comprehension and
+generation tasks ( i.e.,defect detection, clone detection, assertion
+generation, and code summarization). We have the following main
+findings. First, for the zero-shot setting, instructed LLMs are
+very competitive on code comprehension and generation tasks
+and sometimes even better than small SOTA models specifically
+fine-tuned on each downstream task. We also find that on
+code-related tasks LLMs instructed by code domain do not
+necessarily outperform LLMs instructed by general domain, and
+larger instructed LLMs are not always better. Second, for the
+few-shot setting, we find that adding demonstration examples
+substantially helps instructed LLMs perform better on most
+code comprehension and generation tasks; however, the examples
+would sometimes induce unstable or even worse performance. In
+addition, we observe a performance drop with the increasing
+input length and an increasing instruction-following capability
+in the few-shot setting. Furthermore, we find the widely-used
+BM25-based shot selection strategy significantly outperforms the
+basic random selection or fixed selection only on generation
+problems ( e.g., assertion generation and code summarization),
+while exhibiting no significant difference from either basic
+strategies on classification problems ( e.g., defect detection or
+clone detection). Third, for the fine-tuning setting, we find that
+fine-tuning could further improve the model performance on
+downstream code comprehension and generation tasks compared
+to the zero-shot/one-shot performance. In addition, after being
+fine-tuned on the same downstream task dataset, instructed
+LLMs outperform both the small SOTA models and similar-
+scaled LLMs without instruction tuning. Based on our findings,
+we further present practical implications on model and usage
+recommendation, performance and cost trade-offs, and future
+direction.I. I NTRODUCTION
+Large Language Models (LLMs) have achieved great ad-
+vance and have been leveraged in various domains [1], [2],
+[3], [4]. More recently, instruction tuning has been proposedto enhance the generalization capability of LLMs on new
+downstream tasks [5], [6], [7], [8], [9]. In particular, instruction
+tuning fine-tunes the pre-trained LLMs (also known as foun-
+dation models) with massive instructions from multiple tasks,
+and the LLMs after instruction tuning (denoted as instruction-
+tuned LLMs or instructed LLMs for short) are able to solve
+various unseen tasks in the zero-shot scenario without further
+fine-tuning or demonstration examples [10], [9], [8]. For
+example, ChatGPT [11], a popular instructed LLM, is closed-
+source and supported by OpenAI. In addition, there has been
+a feverish trend of developing instructed LLMs in the open-
+source community, e.g., researchers have proposed multiple
+open-source instructed LLMs ( e.g., Vicuna [5], Alpaca [6], and
+CodeAlpaca [7]) by fine-tuning the open-source foundation
+model LLaMA [2] with instruction datasets from general or
+code-specific domains.
+Amidst the rapid development and increasing popularity of
+instruction-tuned LLMs, it becomes imperative to grasp the
+capabilities of these novel models. To date, many research ef-
+forts have been put into evaluating instructed LLMs [12], [13],
+[14], [15], [16], including not only general NLP tasks [17],
+[18] ( e.g., sentiment analysis, text classification, and semantic
+understanding) but also specific domains [19] ( e.g., medical,
+education, and agent applications). However, little evaluation
+of instructed LLMs is diving into the software engineering
+domain. Most evaluation only focuses on the coding capability
+of instructed LLMs [20], [21], [2], [22] by evaluating the
+model capability of generating a code snippet for a given
+natural language description, which is only one of the diverse
+code-related tasks in software development and maintenance.
+Although some recent work explores the capability of the
+instructed models such as ChatGPT and Codex [23], [24],
+[25], [26] on software engineering tasks ( e.g., testing and
+debugging), these commercial models are closed-source, thus
+lacking transparency and reproducibility. Overall, it still re-
+mains unclear how the recent open-source instructed LLMs
+perform on diverse code comprehension and generation tasks
+in software engineering.
+To fill this knowledge gap, we make the first attempt to
+evaluate open-source instruction-tuned LLMs on code com-
+prehension and generation tasks. While there has always been
+researched enthusiasm for leveraging advanced deep learning
+techniques to solve code-related tasks in software engineer-
+ing domain [27], [28], [29], [30], existing work focuses onarXiv:2308.01240v1  [cs.CL]  2 Aug 2023relatively-small pre-trained models without instruction tuning
+(e.g., CodeT5 [31] and CodeBERT [32]). Different from exist-
+ing work, we concentrate on recent instruction-tuned models,
+shedding light on the capability of instruction tuning in both
+code comprehension and generation.
+In this work, we perform a comprehensive study for 10
+state-of-the-art instruction-tuned LLMs on 4 representative
+code comprehension and generation tasks, i.e., defect detec-
+tion, clone detection, assertion generation, and code summa-
+rization. In particular, our studied instructed LLMs include
+the open-source ones newly-released in the past four months
+(i.e.,March 1st to July 1st 2023), covering a wide range of
+models scales ( i.e., from 6B to 16B parameters) based on
+different foundation models ( e.g., LLaMA [2], Pythia [33],
+and GLM [34]) tuned by instructions from both general and
+code domains. In addition, we further include four small
+pre-trained models ( i.e.,CodeGPT-adapted [35], CoText [36],
+PLBART [37], and CodeT5 [31]) that have been shown to
+achieve the best performance after being fine-tuned on each
+studied task [29] and an additional large model without
+instruction tuning ( i.e., CodeGen-6B [38]) as baselines, so
+as to compare the performance of instructed models with
+SOTA models. For all the studied instruction-tuned LLMs,
+we evaluate their capability in three different settings by
+answering the following research questions.
+•RQ1: How do instruction-tuned LLMs perform on
+code comprehension and generation tasks in the zero-
+shot setting? This RQ aims at investigating the zero-shot
+generalization of instructed LLMs on code-related tasks.
+•RQ2: How do instruction-tuned LLMs perform on
+code comprehension and generation tasks in the few-
+shot setting? This RQ aims at investigating the in-context
+learning capability of instruction-tuned LLMs on code-
+related tasks when additional demonstration examples are
+given in the prompt. In addition, we also study the impact
+of three different shot-selection strategies.
+•RQ3: How do instruction-tuned LLMs perform on code
+comprehension and generation tasks with further fine-
+tuning? This RQ aims at exploring the performance of
+instructed LLMs after they are further fine-tuned on each
+specific code-related task.
+In addition, we also investigate the memory costs and time
+costs of using these instructed models for the community’s
+reference via the following research question.
+•RQ4: How are the costs of instruction-tuned LLMs
+during fine-tuning and inference?
+Main findings and implications. Based on our results,
+we have the following main findings. First, for the zero-shot
+setting, we find that instructed LLMs are very competitive
+on code comprehension and generation tasks and sometimes
+even better than small SOTA models specifically fine-tuned on
+each downstream task. We also have interesting findings that
+on code-related tasks LLMs instructed by code domain do not
+necessarily outperform LLMs instructed by general domain,and larger instructed LLMs are not always better. Second,
+for the few-shot setting, we find that adding demonstration
+examples substantially helps instructed LLMs perform better
+on most code comprehension and generation tasks; however,
+the examples would sometimes induce unstable or even worse
+performance. In addition, we observe a performance drop
+with the increasing input length and an increasing instruction-
+following capability in the few-shot setting. Furthermore,
+we find the widely-used BM25-based shot selection strat-
+egy significantly outperforms the basic random selection or
+fixed selection only on generation problems ( e.g., assertion
+generation and code summarization), while exhibiting no
+significant difference from either basic strategies on classi-
+fication problems ( e.g., defect detection or clone detection).
+Third, for the fine-tuning setting, we find that fine-tuning
+could further improve the model performance on downstream
+code comprehension and generation tasks compared to the
+zero-shot/one-shot performance. In addition, after being fine-
+tuned on the same downstream task dataset, instructed LLMs
+outperform both the small SOTA models and similar-scaled
+LLMs without instruction tuning, suggesting the large benefits
+of the instruction tuning. Lastly, we find that similar-scaled
+instruction-tuned LLMs vary in memory costs and time costs;
+while they do not necessarily take more memory resources
+than small SOTA models, but take much more time costs than
+small SOTA models in both fine-tuning and inference. Based
+on our findings, we further present practical implications
+on model and usage recommendation, performance and cost
+trade-offs, and future directions.
+In summary, this work makes the following contributions:
+•To the best of our knowledge, this paper serves as the first
+study on evaluating open-source instruction-tuned LLMs on
+code comprehension and generation tasks. In particular, we
+perform a large-scale experiment of 10 instructed LLMs
+with five baseline models on four representation code-
+related tasks in zero-shot, few-shot, and fine-tuning settings,
+which takes around 1000 GPU-hours on one NVIDIA A800-
+80GB GPU.
+•Our study shows many findings and practical implications
+on instructed LLMs for code comprehension and genera-
+tion, such as the comparison between instructed LLMs and
+SOTA models in different settings, recommendations for
+instructed LLMs and shot select strategies, and trade-offs
+between model performance and costs.
+II. BACKGROUND
+Figure 1. Instruction tuningInstruction tuning. Large language models (LLMs) are
+models with hundreds of billions (or more) of parameters, pre-
+trained on vast text datasets [39], [40], [41], [42]. To enhance
+their generalization ability to unseen tasks, LLMs serve as
+the foundation models for further tuning with the instruction
+dataset, a process known as instruction tuning [10], [9], [8],
+as depicted in Figure 1. Instruction tuning is a supervised
+approach for teaching foundation models to follow instructions
+to solve new tasks, i.e., making output based on the instruction
+input. After instruction tuning, LLMs gain the ability to follow
+task instructions for new tasks without any demonstrated
+examples, thereby enhancing their generalization ability.
+In-context learning: zero-shot and few-shot. In-context
+learning refers to the process of asking LLM to make in-
+ferences based on given demonstration examples or task
+descriptions [1]. It can be classified into two types: zero-
+shot learning and few-shot learning [1]. In zero-shot learning,
+LLMs generate responses solely based on natural language
+instruction descriptions, without any parameter updates. On
+the other hand, few-shot learning tasks involve LLMs making
+responses with only a few demonstration examples, again
+without updating model parameters.
+Parameter-efficient fine-tuning. Fine-tuning the model on
+specific tasks effectively enhances its task-specific perfor-
+mance. However, the large number of parameters in the
+model makes it impractical to update all of them during
+fine-tuning. To address this issue, a Parameter-Efficient Fine-
+Tuning (PEFT) method [43] is proposed, which maintains
+the best performance of the LLM while fine-tuning only a
+small number of parameters. Several techniques fall under the
+umbrella of PEFT, including adapter tuning [43], prefix tuning
+[44], prompt tuning [45], and low-rank adaptation (LoRA).
+Among these techniques, LoRA stands out for its ability to
+significantly reduce the number of parameters updated during
+fine-tuning by imposing a low-rank constraint on the updated
+matrix of each dense layer. Studies [46] have shown superior
+performance of LoRA compared to other PEFT methods while
+using fewer trainable parameters, making it a popular choice
+for efficient fine-tuning in open-source LLM implementations
+like LLaMA [2] and BLOOM [3].
+III. E XPERIMENTAL SETUP
+This work makes the first attempt to comprehensively un-
+derstand the performance of instruction-tuned LLMs on code
+comprehension and generation by answering the following
+research questions.
+•RQ1 (Zero Shot): How do instructed LLMs perform on
+code comprehension and generation tasks in the zero-shot
+setting?
+•RQ2 (Few Shot): How do instructed LLMs perform on
+code comprehension and generation tasks in the few-shot
+setting?
+•RQ3 (Fine Tuning): How do instructed LLMs perform
+on code comprehension and generation tasks with further
+fine-tuning?
+•RQ4 (Costs): How are the costs of instructed LLMs?RQ1 investigates the zero-shot generalization of instruction-
+tuned LLMs on different downstream code-relevant tasks; RQ2
+investigates the in-context learning capability of instruction-
+tuned LLMs in the few-shot setting as well as the impact
+of different shot-selection strategies; RQ3 investigates the
+performance of the instruction-tuned LLMs after being further
+fine-tuned on specific downstream task; and RQ4 compares the
+inference and fine-tuning costs of instructed LLMs in terms
+of the memory and time costs.
+A. Studied Tasks & Datasets & Metrics
+1) Tasks: In this work, we focus on four representative code
+comprehension and generation tasks that have been widely
+used in recent empirical studies on code intelligence [29], [30],
+[28], namely Clone Detection (CD), Defect Detection (DD),
+Assertion Generation (AG), and Code Summarization (CS).
+•Defect Detection (DD). This task detects whether code
+snippets contain security-related vulnerabilities such as De-
+nial of Service and injection. This task can reflect the model
+capability of understanding the code correctness.
+•Clone Detection (CD). This task identifies whether code
+snippets are in high similarity. This task can reflect the
+model capability of capturing the code similarity.
+•Assertion Generation (AG). This task generates the asser-
+tion statement for the given focal method ( e.g., the code
+under test) and the unit test prefix ( e.g., the test code prior
+to the assertion). This task can reflect the model capability
+of understanding the intention and generating oracles for
+the code under test.
+•Code Summarization (CS). This task generates a natural
+language description for the functionality of the given
+code snippet. This task can reflect the model capability of
+understanding the code intention and generating summaries
+in natural language.
+2) Metrics: For defect detection, clone detection, and as-
+sertion generation tasks, we follow the previous work [47],
+[29], [48] by using the same metrics. In particular, we adopt
+Accuracy (Acc) for defect detection, which calculates the ratio
+of the defects that are identified by the models; for clone
+detection, we adopt F1 [49], which calculates the harmonic
+mean of precision and recall; for assertion generation, we
+adopt the exact match (EM), which calculates the ratio of
+generated assertions that are identical to the ground truth.
+For code summarization, we do not follow the previous
+work [29] to use the metric BLEU, which measures the
+similarity between the generated token sequence and the
+ground truth based on the n-gram matching. As pointed out
+by previous work on code summarization [50], BLEU fails
+to accurately capture the semantic similarity between token
+sequences, thus leading to inconsistent automated evaluation
+with manual assessment. In addition, such a bias would even
+be enlarged in evaluating instruction-tuned LLMs, since these
+models have been tuned on human-like instructions and tend
+to generate code summaries that exhibit different formats from
+the ground truth. Therefore, BLEU tends to underestimate
+the similarity between the generated code summary and theground truth. To overcome this issue, we follow the recent
+fashion in evaluating instruction-tuned LLMs by incorporating
+the powerful LLM ChatGPT [11] as the judge [51], [52],
+[53], [54], [55], [56], [57], [58]. In particular, we adopt
+the common prompt template used in previous work [51] to
+query ChatGPT to compare the quality of the generated code
+summary and the ground truth. Figure 2 presents an example
+for the prompt. In addition, to mitigate potential position bias,
+we further incorporate the few-shot strategy proposed in prior
+work [51]. In particular, we include two manually-crafted
+examples, labeled as “SUMMARY1 good” and “SUMMARY2
+good” into the prompt to guide the evaluation process. We then
+calculate the preferred rate PR (i.e.,the frequency of cases that
+the generated summary is preferred by ChatGPT) to measure
+the model capability on the code summarization task.
+Figure 2. Prompt used for judgment
+3) Datasets: Following previous work [29], we adopt the
+widely-used datasets for each studied task. Considering the
+non-trivial costs of fine-tuning instructed LLMs and the ex-
+tensive scale of our experiments, we do not use all the data
+items in the original datasets, but sample a portion of the data
+items as our training, validation, and testing datasets. Table I
+lists the detailed size of the datasets used in each task. In
+particular, we sample 2,000 items as the testing dataset for
+each task except the code summarization, given the large time
+and financial costs in querying ChatGPT API to calculate the
+metric PR.
+Table I
+SUMMARY OF STUDIED TASKS ,DATASETS AND METRICS
+Task Dataset Train/Val/Test Size Metric
+Defect Detection (DD) Devign [59] 20k/2k/2k Acc
+Clone Detection (CD) BigCloneBench [60] 100k/2k/2k F1
+Assert Generation (AG) ATLAS [61] 120k/2k/2k EM
+CodeSummarization (CS) CodeSearchNet [62] 100k/2k/0.1k PR
+B. Studied Models
+Studied Instruction-tuned LLMs. Since instruction-tuned
+LLMs have been a recently emerging and rapidly developing
+domain (especially after the release of ChatGPT), our study
+mainly focuses on recent instruction-tuned LLMs that have
+been released in the past four months ( i.e., from March 1st
+to July 1st 2023). In particular, we exclude the instruction-
+tuned LLMs (i) that are the closed-source ( e.g., ChatGPT)
+due to lack of transparency and reproducibility, or (ii) that
+have more than 20B parameters ( e.g., Falcon 40B [77]) due to
+our resource constraints. As a result, our experiments include10 recent instruction-tuned LLMs in total. Table II presents
+the details of our studied instruction-tuned LLMs. From the
+table, our experiments cover a wide spectrum of instruction-
+tuned LLMs that are diverse in multiple dimensions, such as
+model sizes, foundation models, and instruction data domains.
+For example, the sizes of our studied instruction-tuned LLMs
+range from 6B ( e.g., ChatGLM-6B) to 16B ( e.g., Instruct-
+CodeGen-16B), and our studied instruction-tuned LLMs are
+built on different foundation models ( e.g., LLaMA, Pythia, and
+GLM). Furthermore, we include both LLMs that are (i) tuned
+on general instructions or (ii) tuned on code-specific instruc-
+tions ( i.e., instructions are code-related tasks). For example,
+Alpaca is built by tuning the foundation model LLaMA on a
+general instruction dataset [65], while CodeAlpaca is built by
+tuning the foundation model LLaMA on the code instruction
+dataset [72].
+Other Baselines. In addition to the 10 instruction-tuned LLMs
+mentioned above, we further include the five baselines as
+follows. (i) Small SOTA models: we include four small pre-
+trained models (with far less than 1B parameters) that have
+achieved the best performance on our studied tasks after being
+fine-tuned on each task as shown in the latest work [29], that
+is, CodeGPT-adapted [35] for clone detection, CoText [36]
+for defect detection, PLBART [37] for assertion generation,
+and CodeT5 [31] for code summarization. It is worth noting
+that we use second-ranked models for the defect detection and
+clone detection tasks since the Top-1 model SynCoBERT [78]
+is closed-source. We include these models so as to enable
+the comparison between instruction-tuned LLMs and these
+small SOTA pre-trained models. (ii) Large models without
+instruction tuning: we also include one large language model
+that is in a similar scale range as our studied instruction-tuned
+LLMs but without instruction tuning, i.e.,CodeGen-6B [38],
+which is pre-trained on a dataset of multiple programming
+languages in an autoregressive manner. We include this model
+so as to compare similar-scaled LLMs with/without instruction
+tuning.
+C. Prompt Design
+Typically, the prompt for querying instruction-tuned LLMs
+comprises three parts: a system prompt, a task instruction, and
+the keywords to separate different parts. Table III presents the
+prompt constitution of each model. We then explain each part
+in detail.
+The system prompt is the starting sentence in the prompt,
+which is often defined by each instruction-tuned LLMs itself.
+For example, Alpaca officially suggests using the sentence
+“Below is an instruction that describes a task, paired with an
+input that provides further context. Write a response that ap-
+propriately completes the request. ” as its system prompt. Note
+that the system prompt is optional since not all instruction-
+tuned LLMs have incorporated the system prompt ( e.g., Chat-
+GLM and CodeAlpaca). Thus, our experiments only include
+the system prompt for the instruction-tuned LLMs whose
+official documentation or code repositories have provided itsTable II
+SUMMARY OF STUDIED INSTRUCTION -TUNED LLM S
+Instruction-tuned LLM Foundation ModelInstruction-tuning Dataset
+Domain Dataset Source Size Release Time
+ChatGLM-6B [34] GLM [63] General Chinese and English corpus [64] Unknown Unknown 2023/03
+Alpaca-7B [6] LLaMA [2] General Self-instruct [65] GPT-3 52k 2023/03
+Vicuna-7B [5] LLaMA [2] General ShareGPT [66] ChatGPT 70k 2023/03
+Dolly-v2-7B [67] Pythia [33] General databricks-dolly-15k [68] Manual 15k 2023/04
+StableLM-7B [69] StableLM-Base [70] General Five conversational dataset [71] ChatGPT+GPT-3+Manual Unknown 2023/04
+CodeAlpaca-7B [7] LLaMA [2] Code Code Alpaca [72] GPT-3 20K 2023/03
+Dolly-v2-12B [67] Pythia [33] General databricks-dolly-15k [68] Manual 15k 2023/04
+Vicuna-13B [5] LLaMA [2] General ShareGPT [66] ChatGPT 70k 2023/03
+WizardCoder-15B [22] StarCoder [73] Code CodeAlpaca with Evol-Instruct [74] GPT-3 78k 2023/06
+Instruct-CodeGen-16B [75] CodeGen-multi [38] Code Code instructions [76] Unknown 250k 2023/05
+Table III
+PROMPT CONSTITUTION
+LLM Prompt
+Vicuna ${System prompt }.User : ${Task instruction }.Assistant :
+StableLM ${System prompt }.<|USER |>:${Task instruction }.<|ASSISTANT |>:
+Alpaca
+${System prompt }.Instruction : ${Task instruction }.Response :Dolly
+Instruct-CodeGen
+WizardCoder
+ChatGLMInstruction : ${Task instruction }.Response :CodeAlpaca
+system prompt. More details on the system prompt used in
+each model can be found in our website [79].
+The task instruction describes the detailed task that needs
+to be done by LLMs. Following the prompt design principle
+that the task goal should be clarified [14] and referring to
+the task descriptions in prior studies [48], [47], we design the
+task instruction for each task as follows. For defect detection,
+the task instruction is “ Is there a defect in $ {code}, and
+respond to YES or NO ”, where ${code}is the given code
+snippet for defect detection. For clone detection, the task
+instruction is “ Is there a clone relation between the $ {code1}
+and ${code2}, and respond to YES or NO ”, where ${code1}
+and ${code2}are the given pair of code snippets for clone
+detection. For assertion generation, the task instruction is
+“Generate an assertion code at the <AssertPlaceHolder >in
+the following $ {code}using Junit API ”, where ${code}is
+the given focal method (the method under test) and the test
+prefix and <AssertPlaceHolder >is a placeholder in ${code}.
+For code summarization, the task instruction is “ Generate
+the method-level comment for the following $ {code}”, where
+${code}is the given code snippet for summarization.
+The Keywords are the reserved tokens defined by
+instruction-tuned LLMs themselves to indicate different parts
+in the prompt. For example, Vicuna uses the keyword “ User ”
+to indicate the following task instruction while StableLM uses
+“<|USER|>”. The detailed keywords defined by each model
+are highlighted in bold in Table III.
+D. Experimental Procedure
+In RQ1, we investigate the zero-shot generalization of
+instruction-tuned LLMs on each code comprehension and
+generation task. In particular, for all the studied 10 instruction-
+tuned LLMs as well as the uninstructed baseline CodeGen-
+6B, we directly query them via the prompt (defined in Sec-
+tion III-C). For the four small SOTA models, we first fine-
+tune them on each downstream task and compare their fine-tuned performance on the testing dataset, since such small and
+uninstructed models are not applicable in the zero-shot setting.
+In RQ2, we investigate the few-shot performance as well
+as the impact of different shot selection strategies. We cur-
+rently focus on one shot, since two or more shots sometimes
+exceed the maximum tokens taken by the model on our tasks.
+In particular, we include one demonstration example at the
+beginning of the prompt in the one-shot setting. We consider
+three common shot-selection strategies that have been widely
+used in previous work [80], including (i) F ix One (FO) strategy
+which consistently uses a same manually-designed example
+for all the testing data items in each task; (ii) R andomly-
+selected O ne (RO) which randomly selects a demonstration
+example from the training dataset for each testing data item in
+each task; and (iii) B M25-based O ne (BO), which retrieves the
+demonstration example with the highest BM25 [81] similarity
+as the testing data item from the training dataset.
+In RQ3, we fine-tune all the studied models on the same
+training dataset for each downstream task. In particular,
+for large models such as 10 instruction-tuned LLMs and
+CodeGen-6B, we fine-tune them with the parameter-efficient
+tuning strategy Low-Rank Adaptation (LoRA), which acceler-
+ates the training of large models with fewer memory costs
+by including a small number of trainable parameters ( i.e.,
+adapters) and freezing the original parameters for LLM fine-
+tuning. For small SOTA models, we follow the previous
+work [29] to tune all of their parameters.
+In RQ4, we record the average time costs and the memory
+costs of each model during its training and inference phases.
+In total, this work performs large-scale experiments for 15
+models on 4 code-relevant tasks in diverse settings ( i.e.,zero-
+shot, few-shot with three different shot-selection strategies,
+and fine-tuning), which takes around 1000 GPU-hours on one
+NVIDIA A800-80GB GPU.
+E. Implementation Details
+Models implementation. For all the studied large models, we
+directly download them from their official code repositories,
+since they are open-source. In addition, we directly use the
+fine-tuning and inference scripts of these models if they are
+provided in the repositories. For the compared small SOTA
+models, since the results reported in previous work [29] are
+based on the training dataset and testing dataset that are
+different from our experiments, for a fair comparison, we fine-
+tune these models by ourselves on the same training datasetused to fine-tune the instruction-tuned models. In particular,
+we strictly follow the same hyper-parameters of training these
+SOTA models as previous work [29], including the batch size,
+training epochs, and learning rate.
+Hyper-parameters. For all studied LLMs, we set
+“max length” to 2,048 tokens. To minimize the randomness
+in the generated responses, we set parameter “do sample”
+to False to ensure deterministic results. The other hyper-
+parameters of instruction-tuned LLMs are set as the default
+values provided in their code repositories.
+Environment. Our experiment is conducted on a single
+NVIDIA A800-80G GPU. The operating system is Ubuntu
+20.04.6 LTS.
+IV. E XPERIMENT RESULTS
+A. Performance in Zero Shot (RQ1)
+Table IV presents the performance of studied instruction-
+tuned LLMs on each code-relevant task in the zero-shot
+setting. We also present the results of relatively-smaller pre-
+trained models that have been fine-tuned on each task (the
+“SOTA Model” Row) and the results of the code large lan-
+guage model without instruction tuning (the “CodeGen-6B”
+Row) for comparison. Note that the performance of SOTA
+models reported in our work is lower than that in the previous
+work [29] since they are trained and evaluated on a smaller
+training dataset in our work. The best performance in each
+task is highlighted. Based on the table, we have the following
+observations.
+Table IV
+PERFORMANCE IN ZERO -SHOT
+Models DD (%) CD (%) AG (%) CS (%)
+SOTA Model 58.7 7.4 25.7 24.0
+CodeGen-6B 0.3 1.4 0.0 0.0
+ChatGLM-6B 7.1 17.5 1.7 45.0
+Vicuna-7B 54.0 13.2 10.1 48.0
+Alpaca-7B 45.8 22.1 5.3 32.0
+Dolly-7B 33.1 21.3 1.9 12.0
+StableLM-7B 44.3 24.3 1.1 30.0
+CodeAlpaca-7B 51.9 1.4 4.4 9.0
+Dolly-12B 33.8 23.5 1.0 5.0
+Vicuna-13B 49.8 14.1 12.0 63.0
+WizardCoder-15B 54.4 23.8 19.4 71.0
+Instruct-CodeGen-16B 47.8 14.2 8.4 9.0
+First, even in the zero-shot setting, instruction-tuned LLMs
+surprisingly achieve comparable sometimes even better perfor-
+mance on code comprehension and generation tasks compared
+to SOTA small models which have been specifically fine-tuned
+on each downstream task. For example, in clone detection and
+code summarization, most instruction-tuned LLMs outperform
+the SOTA fine-tuned models. Additionally, in defect detec-
+tion and assertion generation, although the SOTA fine-tuned
+models hold the Top-1 performance on these two tasks, some
+instruction-tuned LLMs ( e.g., WizardCoder-15B) are able to
+achieve comparable performance ( i.e., 54.4% v.s. 58.7% on
+defect detection). It is notable that CodeGen-6B (an LLM with
+a comparable number of parameters but without instruction
+tuning) performs extremely poorly in such a zero-shot settingsince it always tends to generate code snippets unrelated to
+the task. It confirms that instruction tuning indeed improves
+the zero-shot generalization of LLMs on unseen code-related
+tasks.
+Second, interestingly, we find that LLMs tuned by code-
+specific instructions do not necessarily outperform LLMs
+tuned by general instructions. For example, Alpaca-7B out-
+performs CodeAlpaca-7B on all the code-relevant tasks except
+the defect detection, while they are basically tuning the same
+foundation model LLaMA on the general instructions or code-
+specific instructions respectively. In addition, we observe that
+the smaller general instruction-tuned LLMs ( e.g., Vicuna-
+7B) have the chance to outperform the larger code-specific
+instruction-tuned LLMs ( e.g., Instruct-CodeGen-16B) on some
+tasks. One potential reason might be that the general instruc-
+tions ( e.g., ShareGPT [66]) also contain code-specific instruc-
+tions and the other code-unrelated instructions can further be
+helpful for improving the instruction understanding capability
+of LLMs. In summary, general instruction-tuned LLMs can
+achieve competitive performance on code comprehension and
+generation tasks.
+Third, we observe that increasing the model scale sometimes
+brings marginal improvements or sometimes even decreases in
+the zero-shot setting. For example, Dolly performs much worse
+on assertion generation and code summarization when the
+model scale increases from 7B to 12B. In addition, for Vicuna,
+although enlarging the model scale from 7B to 13B improves
+the performance on generation tasks such as assertion genera-
+tion and code summarization, the impact on classification tasks
+like defect detection or clone detection is rather small. In fact,
+previous studies [82], [83] also reveal similar observations that
+Dolly-12B performs worse than Dolly-6B in generative tasks,
+and ALMoST-7B [83] outperforms Alpaca-13B, Dolly-12B,
+and OpenAssistant-12B [84].
+Finding 1: In the zero-shot setting, instruction-tuned
+LLMs are competitive and sometimes even better on code
+comprehension and generation tasks compared to small
+SOTA models specifically fine-tuned on each downstream
+task. In addition, code-instruction-tuned LLMs do not
+necessarily outperform general-instruction-tuned LLMs on
+code comprehension and generation tasks, and the im-
+provement from the larger model scale sometimes can be
+limited or even negative.
+B. Performance in Few Shot (RQ2)
+In RQ2, we extensively investigate instruction-tuned LLMs
+in the few-shot setting (one-shot in our experiments), in-
+cluding the performance and instruction-following capability
+comparison to the zero-shot setting (in Section IV-B1 and
+Section IV-B2) and the impact of different shot selection
+strategies (Section IV-B3).1) Comparison to zero-shot performance: Table V presents
+the performance of instruction-tuned LLMs in the zero-shot
+setting ( i.e.,in “ZO” column) and in the one-shot setting ( i.e.,
+in “BO” column). For space limits, here we only present theTable V
+LLM PERFORMANCE UNDER ZERO -SHOT AND ONE -SHOT
+LLMDD (%) CD (%) AG (%) CS (%)
+ZO BO ZO BO ZO BO ZO BO
+CodeGen-6B 0.3 43.6 1.4 23.4 0.0 56.2 0.0 13.0
+ChatGLM-6B 7.1 54.2 17.5 12.8 1.7 46.2 45.0 54.0
+Vicuna-7B 54.0 54.1 13.2 - 10.1 31.2 48.0 37.0
+Alpaca-7B 45.8 55.4 22.1 - 5.3 41.4 32.0 6.0
+Dolly-7B 33.1 49.9 21.3 23.5 1.9 51.0 12.0 14.0
+StableLM-7B 44.3 43.4 24.3 - 1.1 44.4 30.0 19.0
+CodeAlpaca-7B 51.9 50.3 1.4 10.3 4.4 35.1 9.0 34.0
+Dolly-12B 33.8 52.7 23.5 22.6 1.0 51.7 5.0 8.0
+Vicuna-13B 49.8 53.0 14.1 6.5 12.0 44.0 63.0 24.0
+WizardCoder-15B 54.4 53.8 23.8 7.3 19.4 63.3 71.0 50.0
+Instruct-CodeGen-16B 47.8 54.6 14.2 20.7 8.4 55.0 9.0 41.0
+results of the best one-shot selection strategy ( i.e.,the BM25-
+based one) and the comparison among different strategies can
+be found in Section IV-B3. Based on the table, we have the
+following observations.
+Overall, including one demonstration example in the input
+improves the performance of all the studied instruction-tuned
+LLMs on most tasks, i.e.,25 out of 40 cases (10 instruction-
+tuned LLMs ×4 tasks). For example, on assertion generation,
+including an example substantially improves the performance
+of all the instruction-tuned LLMs. In particular, for those
+cases that the instruction-tuned LLMs perform extremely poor
+(i.e.,with less than 10% performance), adding one shot could
+always improve the performance by a large margin. For
+example, the performance of ChatGLM-6B increases from
+7.1% to 54.2% on defect detection, and the performance of
+Instruct-CodeGen-16B increases from 9.0% to 41.0% on code
+summarization. The improvements mentioned above indicate
+the strong in-context learning capability of the instruction-
+tuned LLMs. Such an observation is consistent as previous
+evaluation of instruction-tuned LLMs on other tasks such as
+coreference resolution, closed-book QA and relation extraction
+[85], [10], [19].
+Finding 2: Including demonstration examples substantially
+improves the performance of instruction-tuned LLMs on
+most code comprehension and generation tasks; and for the
+cases that instruction-tuned LLMs perform extremely poor
+in the zero-shot setting, including one shot consistently
+improves their performance in an especially-large margin.
+On the other hand, there are a few cases that adding
+examples causes unstable and even worse performance of
+instruction-tuned LLMs. For example, on clone detection,
+multiple instruction-tuned LLMs ( i.e.,Vicuna-7B, Alpaca-7B,
+and StableLM-7B) exhibit biased responses, i.e., all their
+binary classification predictions are the same (all yes or all
+no) on the entire testing dataset, leading to invalid calculation
+of the metric F1 (marked as “-” in the table). Although
+we have adjusted the prompt with many attempts, the same
+observation persists. In fact, we are not the first work to find
+some unintuitive model behaviors in the few-shot setting. For
+example, previous work [86], [87] shows that the performance
+of LLM is impacted by the order of examples in the inputwhile sometimes even incorrect examples are helpful for LLM
+in the few-shot setting. In addition to unstable inherency of the
+few-shot learning, recent work [88] shows that in the general
+domain LLMs sometimes perform much worse when the input
+context becomes longer. Compared to the zero-shot setting,
+the input length is much longer in the one-shot setting given
+the inclusion of additional examples, which thus sometimes
+distracts the model and degrades the performance. To validate
+this assumption, we further present the model performance
+with inputs of different lengths in Figure 3. For space limits,
+we mainly present the results on defect detection and assertion
+generation tasks. In particular, the x-axis presents the number
+of tokens (each LLM uses its own associated tokenizer) while
+the y-axis presents the corresponding performance. Overall,
+for most models, we observe a decreasing trend in the model
+performance with the increasing length of the inputs, implying
+that models struggle to utilize useful information in the long
+inputs. Our results extend the previous finding on general
+domain [88] that the performance of instructed LLMs also
+decreases with the longer inputs on code-specific tasks.
+Finding 3: In the one-shot setting, adding examples
+sometimes causes unstable and even worse performance
+of instruction-tuned LLMs. One potential reason might be
+the limited capability of existing instruction-tuned LLMs
+on utilizing longer input contexts.
+Figure 3. Model performance with different input lengths
+2) Instruction-following Capability: We further compare
+the model capability of following instructions in the zero-shot
+and one-shot settings. The model is considered as following
+the given instruction, when its response adheres to the re-
+quirement in instructions. For example, in classification tasks
+(e.g., clone detection and defect detection), an instruction-
+following response is supposed to answer either “YES” or
+“NO”; for the generation tasks ( e.g., assertion generation), an
+instruction-following response is supposed to return an asser-
+tion statement. The main focus is on the format rather than
+the correctness of the model response. Instruction following
+capability is an essential indicator in task generalization and
+has been extensively evaluated in previous work [89].
+Table VII shows the instruction-following capability of each
+model in both zero-shot and one-shot settings. First, in the
+zero-shot setting, we find that most instruction-tuned LLMsTable VI
+PERFORMANCE WITH DIFFERENT ONE -SHOT SELECTION STRATEGIES
+LLMDD (%) CD (%) AG (%) CS (%)
+FO RO BO FO RO BO FO RO BO FO RO BO
+CodeGen-6B 42.3 40.6 43.6 24.3 23.8 23.4 5.5 7.4 56.2 10.0 6.0 13.0
+ChatGLM-6B 45.6 50.9 54.2 6.7 11.3 12.8 2.6 3.9 46.2 44.0 35.0 54.0
+Vicuna-7B 53.4 53.9 54.1 - - - 8.4 9.5 31.2 65.0 26.0 37.0
+Alpaca-7B 46.3 50.1 55.4 - - - 0.0 1.0 41.4 2.0 2.0 6.0
+Dolly-7B 49.7 46.0 49.9 16.2 - 23.5 4.7 5.2 51.0 15.0 13.0 14.0
+StableLM-7B 44.9 47.4 43.4 - 0.7 - 0.9 1.2 44.4 16.0 8.0 19.0
+CodeAlpaca-7B 50.5 51.5 50.3 6.4 18.2 10.3 4.6 3.1 35.1 27.0 26.0 34.0
+Dolly-12B 41.3 44.3 52.7 23.6 24.3 22.6 8.8 7.0 51.7 6.0 5.0 8.0
+Vicuna-13B 53.9 52.4 53.0 1.4 9.7 6.5 14.1 11.6 44.0 42.0 23.0 24.0
+WizardCoder-15B 53.6 53.8 53.8 - - 7.3 25.5 23.1 63.3 72.0 53.0 50.0
+Instruct-CodeGen-16B 50.9 50.4 54.6 24.3 23.2 20.7 9.2 9.0 55.0 28.0 29.0 41.0
+Table VII
+INSTRUCTION -FOLLOWING CAPABILITY
+LLMDD (%) CD (%) AG (%)
+ZO BO ZO BO ZO BO
+CodeGen-6B 0.4 77.8 0.3 94.2 0.0 96.6
+ChatGLM-6B 16.2 98.2 32.4 95.3 98.7 99.7
+Vicuna-7B 100.0 100.0 100.0 100.0 82.8 99.8
+Alpaca-7B 99.3 100.0 100.0 100.0 97.5 100.0
+Dolly-7B 65.6 95.7 61.0 97.8 13.6 91.3
+StableLM-7B 92.5 96.6 90.6 98.2 27.9 99.6
+CodeAlpaca-7B 97.4 96.3 100.0 100.0 6.4 94.0
+Dolly-12B 65.2 93.8 98.9 100.0 25.0 98.6
+Vicuna-13B 92.0 99.2 61.2 100.0 99.4 99.2
+WizardCoder-15B 98.7 98.2 100.0 100.0 95.4 99.5
+Instruct-CodeGen-16B 97.7 97.6 99.7 97.7 56.0 99.8
+exhibit a high instruction-following capability on the code
+comprehension and generation tasks; and the model without
+instruction tuning ( e.g., CodeGen-6B) exhibits extremely poor
+instruction-following capability. The results confirm that in-
+struction tuning indeed improves instruction-following capa-
+bility of models. Second, in the one-shot setting, we find
+that adding a demonstration example to the input substantially
+improves the instruction-following capability. For example,
+on defect detection, the instruction-following capability of
+ChatGLM-6B improves from 16.2% to 98.2%. The increasing
+instruction-following capability from the zero-shot setting to
+the one-shot setting might also be the reason for the per-
+formance improvement in the one-shot setting observed in
+Section IV-B1.
+Finding 4: Instructed LLMs exhibit a reasonable
+instruction-following capability on code comprehension
+and generation tasks in the zero-shot setting, and incor-
+porating a demonstration example further effectively im-
+proves their instruction-following ability, which potentially
+helps improve the performance on downstream tasks.
+3) LLM Performance with different one-shot selection
+strategies: Table VI shows the performance of instruction-
+tuned LLMs with different one-shot selection strategies. As
+mentioned in Section III-D, we consider three selection strate-
+gies, including the fix one shot (“FO” column), the randomly-
+selected one shot (“RO” column), and the BM25-similarity-
+based one shot (“BO” column). Similarly, the “-” indicatesTable VIII
+P-VALUES IN PAIRED T-TEST AT SIGNIFICANCE LEVEL OF 0.05
+Control Group DD CD AG CS
+FO/BO 0.0571 0.0857 2.5089e-08 0.5661
+RO/BO 0.0643 0.5702 1.4141e-08 0.0053
+FO/RO 0.3374 0.7275 0.6697 0.0314
+that the LLM makes biased prediction on the entire testing
+set and thus leads to an invalid calculation of F1 metric on
+the clone detection task. In addition, we further conduct a
+Paired T-Test [90] to check whether there is a statistically
+significant difference between each strategy at the significance
+level of 0.05. Table VIII presents the p-values between each
+two strategies, and the cases with significant difference (p-
+value<0.05) are highlighted.
+Based on Table VI and Table VIII, we have the following
+two observation. First, on generation tasks ( i.e., assertion
+generation and code summarization), the BM25-based strategy
+is the best shot-selection strategy significantly better than
+random selection and fixed selection. Such an observation is
+consistent as previous work on the few-shot selection strategy
+for the close-source instruction-tuned LLM Codex [91], which
+also finds the BM25-based selection is better than random
+selection for Codex on assertion generation and program
+repair tasks. Our results further confirm that the superior of
+BM25-based selection strategy for a wide spectrum of open-
+source instruction-tuned LLMs on assertion generation and
+code summarization. Second, interestingly, on classification
+problems ( i.e.,defect detection and clone detection), we find
+that the widely-used BM25-based has no significant difference
+from the other two basic strategies.
+Finding 5: In the one-shot setting, BM25-based selection
+strategy is often the best on generation problems such
+as assertion generation and code summarization, but has
+no significant difference than basic strategies (random or
+fixed) on classification problems such as defect detection
+and clone detection.Table IX
+FINE-TUNED LLM PERFORMANCE COMPARISON WITH ZERO -SHOT AND ONE -SHOT (+/- VALUE AGAINST THE FT)
+LLMDD (%) CD (%) AG (%) CS (%)
+FT ZO BO FT ZO BO FT ZO BO FT ZO BO
+SOTA Model 58.7 / / 7.4 / / 25.7 / / 24.0 / /
+CodeGen-6B 46.3 -46.0 -2.7 70.4 -69.0 -47.0 43.2 -43.2 +13.0 19.0 -19.0 -6.0
+ChatGLM-6B 61.0 -53.9 -6.8 96.9 -79.4 -84.1 55.7 -54.0 -9.5 44.0 +1.0 +10.0
+Vicuna-7B 54.6 -0.6 -0.5 77.0 -63.8 -77.0 39.8 -29.7 -8.6 45.0 +3.0 -8.0
+Alpaca-7B 50.2 -4.4 +5.2 96.6 -74.5 -96.6 54.5 -49.2 -13.1 67.0 -35.0 -6.0
+Dolly-7B 53.1 -20.0 -3.2 95.7 -74.4 -72.2 52.0 -50.1 -1.0 57.0 -45.0 -43.0
+StableLM-7B 47.2 -2.9 -3.8 69.9 -45.6 -69.9 5.6 -4.5 +38.8 2.0 +28.0 +17.0
+CodeAlpaca-7B 55.1 -3.2 -4.8 95.6 -94.2 -85.3 57.8 -53.4 -22.7 58.0 -49.0 -24.0
+C. Fine-tuned Performance (RQ3)
+In RQ3, we investigate the performance of instruction-tuned
+LLMs after being fine-tuned on each task. Table IX presents
+the fine-tuned performance of instructed LLMs on each task,
+where “FT” column presents the fine-tuned performance while
+“ZO” and “BO” columns present the one-shot performance
+and one-shot performance against the fine-tuned performance.
+We also include the performance of fine-tuning the SOTA
+small models on each task (“SOTA model” Row).
+Fine-tuning v.s. Zero/One-shot. Fine-tuning the instructed
+LLMs on specific downstream tasks further improves the
+model performance compared to the zero-shot/one-shot set-
+ting. As shown in the table, the best performance in each
+task is achieved by fine-tuning the instructed LLM on the
+specific task. Previous work [92], [93], [8] also reveals similar
+observations that parameter-efficient fine-tuning can outper-
+form in-context learning ( i.e., few-shot learning) on models
+such as GPT-3, which are consistent with our results; but our
+evaluation focuses on more recent instruction-tuned LLMs in
+the code comprehension and generation domain.
+Table X
+LLM TRAINABLE PARAMETERS
+Group LLM Training Parameter
+Instruction-tuned
+LLM with LoRAChatGLM-6B 3M
+Vicuna-7B 8M
+Alpaca-7B 8M
+Dolly-7B 8M
+StableLM-7B 6M
+CodeAplaca-7B 8M
+SOTA modelCoTexT-220M 220M
+CodeGPT-adapted-120M 120M
+CodeT5-220M 220M
+PLBART-140M 140M
+Instructed LLMs v.s. SOTA models. After being fine-tuned
+on the same training dataset of each task, most instruction-
+tuned LLMs outperform the small SOTA models. As men-
+tioned in Section III-D, for the resource limits, we fine-
+tune each instruction-tuned LLM with the parameter-efficient
+tuning strategy LoRA, thus only a small number of parameters
+would be updated during fine-tuning; for small SOTA models,
+in line with previous work [29], all of their parameters
+would be updated during fine-tuning. Table X presents the
+number of parameters updated in fine-tuning for each model.Interestingly, the number of updated parameters in instructed
+LLMs is actually much smaller than the SOTA small models
+(e.g., ¡ 10M v.s. ¿ 100M); however, the instruction-tuned LLMs
+exhibit much higher performance than SOTA models after
+fine-tuning. The reason might be that the original instructed
+LLM is already quite powerful (as confirmed by our RQ1)
+and fine-tuning a small number of parameters is sufficient for
+further improving the model performance on the downstream
+task. In addition to the small SOTA models, the large model
+without instruction tuning ( i.e., CodeGen-6B) still performs
+worse than instruction-tuned models after both being fine-
+tuned, indicating that the benefits from instruction tuning
+cannot be easily mitigated in the subsequent fine-tuning phase.
+Finding 6: Fine-tuning the instructed LLMs can further
+improve the model performance on downstream code
+comprehension and generation tasks compared to the
+zero-shot/one-shot performance. Besides, after fine-tuning
+on the same downstream task dataset, instructed LLMs
+outperform both the small SOTA models and similar-
+scaled LLMs without instruction tuning, indicating the
+large benefits of instruction tuning.
+Figure 4. Performance with increasing fine-tuning epochs
+Fine-tuning Epoch. The results above are based on fine-
+tuning each model for five epochs. We then present the
+performance trend of different fine-tuning epochs. For space
+limits, we present the results of two instructed LLMs, i.e.,
+general-domain ChatGLM-6B and code-specific CodeAlpaca-
+7B in Figure 4. As shown in the figure, the model perfor-
+mance reaches a plateau after three epochs, indicating thatthe instruction-tuned LLMs can quickly adapt to downstream
+tasks with a few number of fine-tuning epochs.
+Finding 7: Instruction-tuned LLMs can quickly adapt to
+downstream code comprehension and generation tasks by
+being fine-tuned with a few numbers ( e.g., three) of epochs.
+D. Costs (RQ4)
+In RQ4, we analyze both the memory costs and time
+costs of applying instruction-tuned LLMs. Table XI presents
+the costs of fine-tuning the model per epoch on each code-
+relevant task (“Tuning” Column) and the costs during zero-
+shot inference for 100 testing data items (“Inference” Column).
+In addition, we also present the costs of small SOTA models
+for comparison.
+First, we find that even similar-scaled models take different
+memory and time costs during fine-tuning and inference.
+Notably, ChatGLM-6B is often the most memory-efficient
+model during fine-tuning. For time costs, Vicuna-7B and
+StableLM-7B are the Top-2 time-efficient models that often
+take much less fine-tuning time than other instruction-tuned
+LLMs. Second, the larger models do not necessarily take more
+time for fine-tuning or inference. For example, larger models
+such as WizardCoder-15B and Vicuna-13B do not necessarily
+take more inference time than smaller models such as Dolly-
+7B. Lastly, compared to small SOTA models, instructed LLMs
+take much more memory and time resources, indicating that
+the small SOTA models might still be the preferred option
+for the scenario that is sensitive to online latency or limited
+resources.
+Finding 8: Similar-scaled instructed LLMs vary in mem-
+ory and time costs, and larger instructed LLMs do not take
+more time for fine-tuning or inference. Nevertheless, the
+time and memory cost difference between instructed LLMs
+and the small SOTA models are non-negligibly huge.
+V. I MPLICATIONS
+We then summarize main implications based on our findings
+above. Instruction-tuned LLMs are very promising on
+code comprehension and generation. Compared to small pre-
+trained models or large models without instruction, instructed
+LLMs achieve better performance in zero-shot, few-shot, and
+even fine-tuning scenarios for code comprehension and gen-
+eration. Thus, instructed LLMs can be preferred in solving
+code-related tasks if resources allow. While the main purpose
+of this study is not to deliver a particular ranking of existing
+instructed LLMs, we recommend WizardCoder, Vicuna, and
+ChatGLM for researchers and developers who are interested
+in applying instructed LLM on code-related tasks, given their
+overall stable performance on our studied tasks and settings.
+Fine-tuning is mostly the silver bullet to get the best
+performance of the instructed LLMs on code comprehen-
+sion and generation if resources and data allow. Although
+instructed LLMs can achieve acceptable performance in bothzero-shot and few-shot settings, models might sometimes
+exhibit unstable or abnormal behaviors during in-context learn-
+ing; and fine-tuning them specifically on each code-related task
+could consistently improve the performance, in a rather stable
+way. As shown in our results, with the parameter-efficient
+tuning strategy LoRA, the instructed models can adapt to the
+downstream task with just a few fine-tuning epochs. Therefore,
+we recommend efficiently fine-tuning the instructed LLMs if
+there are available resources and datasets.
+Recommended shot-selection strategies in the few-shot
+setting. Although at most cases adding demonstration ex-
+amples could further improve the model capability on code
+comprehension and generation tasks, the improvements can be
+unstable or even negative especially for classification problems
+or with long input prompts. Therefore, for generation prob-
+lems, we recommend providing instructed LLMs with simi-
+lar demonstration examples ( e.g., BM25-based shot selection
+strategy); for classification problems, there is no dominantly-
+better shot selection strategy, and in particular, we suggest
+balancing the input length and the inclusion of demonstration
+examples since adding examples might have limited help but
+elongate the input to decrease the model performance.
+Trade-offs between performance and costs. Although
+having better performance on code generation and comprehen-
+sion tasks, instructed LLMs still take non-negligibly more time
+in tuning and inference than small SOTA models. Therefore,
+for the cases strictly requiring immediate online response or
+with limited tuning resources, fine-tuned small SOTA models
+might still be the safe choice to trade off between reasonable
+performance and costs. In addition, among instructed LLMs,
+we find larger models do not necessarily take longer time
+for inference; thus moderately speaking, we recommend Wiz-
+ardCoder, Vicuna, and ChatGLM as reasonable options with
+better trade-offs between performance and costs.
+Future directions. We further suggest the following future
+directions on instructed LLMs for code comprehension and
+generation. First, we suggest future work on more sound and
+thorough evaluation approaches for instructed LLMs on code-
+related tasks, including implementing automatic evaluation
+protocol, constructing practical code-related benchmarks, and
+designing sound evaluation metrics, which could benefit the
+field of evaluating the large body of instructed LLMs system-
+atically. Second, we suggest future work on more efficient
+tuning and inference of instructed LLMs. While instructed
+LLMs show promising and powerful performance on code
+comprehension and generation, they still take much more
+memory and time resources than small pre-trained models.
+Thus, building more efficient tuning and inference approaches
+would definitely put the instructed LLMs towards more prac-
+tical usage in the code-related domain. Lastly, we suggest
+more efforts on building instructed LLMs oriented to code
+comprehension and generation tasks. Given the high diversity
+in software maintenance and development activities, there are
+actually a great amount of code-related instructions that could
+be used to tune the LLMs, which could help build more
+universal and powerful instructed LLMs to facilitate softwareTable XI
+TIME AND MEMORY COST OF THE LLM FOR TUNING AND INFERENCE IN EACH TASK ,EVALUATED ON A SINGLE A800-80G GPU.
+ModelDD Task CD Task AG Task CS Task
+Tuning Inference Tuning Inference Tuning Inference Tuning Inference
+SOTA Model 2.5 h (15 G) 9.0 s (17 G) 3.5 h (7 G) 1.0 s (4 G) 10.0 h (11 G) 4.5 s (12 G) 13.0 h (43 G) 9.0 s (39 G)
+CodeGen-6B 6.0 h (80 G) 7.5 m (35 G) 32.0 h (80 G) 9.0 m (35 G) 28.0 h (77 G) 7.5 m (35 G) 16.0 h (77 G) 8.0 m (35 G)
+ChatGLM-6B 7.5 h (48 G) 4.5 m (28 G) 34.0 h (39 G) 4.5 m (28 G) 35.0 h (37 G) 4.5 m (28 G) 24.0 h (34 G) 5.0 m (28 G)
+Vicuna-7B 5.0 h (80 G) 6.0 m (24 G) 25.0 h (79 G) 4.5 m (24 G) 27.0 h (77 G) 4.5 m (24 G) 15.0 h (77 G) 5.0 m (24 G)
+Alpaca-7B 15.5 h (75 G) 6.0 m (24 G) 60.0 h (80 G) 4.5 m (24 G) 67.0 h (77 G) 6.0 m (24 G) 36.0 h (75 G) 5.0 m (24 G)
+Dolly-v2-7B 12.0 h (80 G) 6.0 m (29 G) 54.0 h (72 G) 7.5 m (29 G) 54.0 h (77 G) 6.0 m (29 G) 30.0 h (79 G) 6.0 m (29 G)
+StableLM-7B 5.0 h (80 G) 3.0 m (31 G) 23.0 h (71 G) 4.5 m (31 G) 22.0 h (76 G) 4.5 m (31 G) 13.0 h (72 G) 4.0 m (31 G)
+CodeAlpaca-7B 16.0 h (75 G) 4.5 m (24 G) 70.0 h (77 G) 4.5 m (24 G) 75.0 h (73 G) 4.5 m (24 G) 52.0 h (79 G) 4.0 m (24 G)
+Dolly-v2-12B - 7.5 m (44 G) - 7.5 m (44 G) - 7.5 m (44 G) -8.0 m (44 G)
+Vicuna-13B - 6.0 m (49 G) - 6.0 m (49 G) -10.5 m (49 G) -6.0 m (49 G)
+WizardCoder-15B - 3.0 m (38 G) - 4.5 m (38 G) - 3.0 m (38 G) -5.0 m (38 G)
+Instruct-CodeGen-16B -10.5 m (71 G) -10.5 m (71 G) - 9.0 m (71 G) -7.0 m (71 G)
+engineering activities.
+VI. THREATS TO VALIDITY
+The validity of our results might be threatened by the
+following issues. First, the findings might be limited by the
+prompt used in our experiments. To construct a reasonable
+prompt for studied instruction-tuned LLMs, we mainly follow
+the common practice in prompt design, such as adopting
+the default system prompt if provided by each instruction-
+tuned LLM itself and reusing the previous task instruction
+used in previous code comprehension and generation tasks as
+mentioned in Section III-C. In addition, we further perform
+a small-scale pilot study to manually refine the prompt on a
+small scale dataset ( i.e.,five data items that are not overlapped
+with our testing dataset) to ensure the prompt does not trigger
+abnormal behaviors of studied models. Even so, we still cannot
+guarantee we incorporate the optimal prompt for each task
+and our findings might be biased by the prompt used in our
+experiments. It would be important future work to extensively
+explore the impact of different prompts. Second, our findings
+might be limited to the tasks and datasets used in our experi-
+ments, and cannot be generalized to other tasks or datasets. To
+mitigate these issues, we construct our datasets by sampling
+the well-established datasets that have been used in previous
+work [29]. In addition, we select four representative code com-
+prehension and generation tasks that have been widely studied
+in previous work [29], [30], [28], covering both classification
+and generation problems. We plan to include more datasets
+and tasks in the future work. Third, the potential data leakage
+between instruction dataset and testing dataset might induce
+biases in our results. To mitigate this issue, we compare the
+instruction dataset of studied models (if released) and the
+testing dataset and find there is no overlapping instruction.
+Lastly, the evaluation metrics might also threaten the validity
+of our results. To mitigate the issue, we adopt widely-used
+metrics for most tasks, such as accuracy, F1, and exact match
+metrics. In addition for the task with open responses ( i.e.,
+code summarization), we do not follow the problematic metric
+BLEU but adopt the recent evaluation approach [51], [52],
+[53], [54], [55], [56], [57], [58] for instruction-tuned LLMs
+by leveraging the powerful LLM ChatGPT as the judge.VII. R ELATED WORK
+Evaluation of instruction-tuned LLMs. Given the emerg-
+ing popularity of instruction-tuned LLMs recently, many ef-
+forts [13], [14], [15], [16] have been dedicated to evaluating
+the instruction-tuned LLMs. As summarized by the latest
+survey [12], existing evaluations for instructed models have
+covered a broad scope, including not only general NLP
+tasks [17], [18] ( e.g., sentiment analysis, text classification,
+and semantic understanding) but also specific domains [19]
+(e.g., medical, education, and agent applications). However,
+little evaluation of instructed LLMs is diving into the software
+engineering domain, except the NL-to-Code task [20], [21],
+[2], [22] ( i.e., generating a function for the given natural
+language description), which is only one of the code-related
+tasks in software development and maintenance. While there is
+an emerging trend of leveraging the instructed models such as
+ChatGPT and Codex [23], [24], [25], [26] on more software
+engineering tasks (such as test generation and program re-
+pair), these commercial models are closed-source, thus lacking
+transparency and reproducibility. In this work, we make the
+first attempt to evaluate a wide spectrum of open-source
+instructed LLMs on four representative code comprehension
+and generation tasks.
+Evaluation of pre-trained models on code-related tasks.
+Given the recent advance in pre-trained models, researchers
+have extensively evaluated the pre-trained, fine-tuned and
+prompted model performance on code-related tasks [27], [28],
+[29], [30]. For example, Zeng et al. [28] evaluate eight pre-
+trained models on seven code-related tasks; more recently,
+Niu et al. [29] perform a comprehensive evaluation on 19
+pre-trained models across 13 code-related tasks. Wang et
+al.[30] compare the fine-tuned performance and prompt-tuned
+performance of two pre-train models on three code-related
+tasks. Existing work mainly focuses on small pre-trained
+models without instruction tuning (such as CodeT5 and Code-
+BERT), and our work evaluates 10 open-source instruction-
+tuned LLMs on code-related tasks for the first time.
+VIII. CONCLUSION
+In this work, we conduct the first systematic study to
+evaluate the performance of instruction-tuned LLMs on code
+comprehension and generation tasks. Our experiments include
+10 recent open-source instructed LLMs with additional fivebaseline models on four representative code-related tasks.
+Our key findings are as follows. First, for the zero-shot
+setting, we find that instructed LLMs are very competitive
+on code comprehension and generation tasks and sometimes
+even better than small SOTA models specifically fine-tuned
+on each downstream task. Second, for the few-shot setting,
+we find that adding demonstration examples substantially help
+instructed LLMs perform better on most code comprehension
+and generation tasks. Third, for the fine-tuning setting, we
+find that fine-tuning could further improve model performance
+on downstream code comprehension and generation tasks
+compared to the zero-shot/one-shot performance. Based on our
+findings, we further present practical implications on model
+and usage recommendation, performance and cost trade-offs,
+and future directions.

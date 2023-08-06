@@ -1,0 +1,15 @@
+Summary:
+This paper evaluates 10 open-source instructed large language models (LLMs) on four code comprehension and generation tasks: defect detection, clone detection, assertion generation, and code summarization. The main findings are as follows:
+
+1. In the zero-shot setting, instructed LLMs are competitive and sometimes even better than small state-of-the-art (SOTA) models specifically fine-tuned on each task.
+2. Instructed LLMs instructed by code domain do not necessarily outperform LLMs instructed by general domain, and larger instructed LLMs are not always better.
+3. In the few-shot setting, adding demonstration examples significantly improves instructed LLMs' performance on most tasks, but sometimes leads to unstable or worse performance.
+4. There is a performance drop with increasing input length and instruction-following capability in the few-shot setting.
+5. The BM25-based shot selection strategy outperforms random selection or fixed selection only on generation tasks (e.g. assertion generation and code summarization), but not on classification tasks (e.g. defect detection and clone detection).
+6. Fine-tuning further improves the performance of instructed LLMs on downstream tasks compared to zero-shot/one-shot performance.
+7. Instructed LLMs outperform small SOTA models and similar-scaled LLMs without instruction tuning after being fine-tuned on the same downstream task dataset.
+8. Instructed LLMs have varying memory and time costs, with some models taking more time than small SOTA models in both fine-tuning and inference.
+9. Instructed LLMs are competitive for code comprehension and generation tasks in the software engineering domain.
+10. Recommendations are provided for using instructed LLMs, shot selection strategies, and performance and cost trade-offs.
+
+Keywords: instructed large language models, code comprehension, code generation, zero-shot learning, few-shot learning, fine-tuning, performance, cost trade-offs, instructions, software engineering.

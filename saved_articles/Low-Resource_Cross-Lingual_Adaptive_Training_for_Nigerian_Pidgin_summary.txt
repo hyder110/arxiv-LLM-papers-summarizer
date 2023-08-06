@@ -1,0 +1,26 @@
+Summary:
+This paper presents a framework for improving text classification and translation of Nigerian Pidgin (Naija) by utilizing cross-lingual adaptive training. The authors collected a large-scale parallel English-Pidgin corpus and applied continual and task adaptive training to adapt a pre-trained model to the low-resource Pidgin language. The results show that English pre-trained language models outperform multilingual models on English-Pidgin tasks and that augmenting orthographic data and using task adaptive training with back-translation significantly improves model performance.
+
+Bullet points:
+- Developing spoken language processing systems for low-resource languages like Nigerian Pidgin poses challenges due to lack of data and resources.
+- This paper proposes a framework of cross-lingual adaptive training for improving text classification and translation in Nigerian Pidgin.
+- The authors collected a large-scale parallel English-Pidgin corpus for training language models.
+- The framework includes continual adaptive training and task adaptive training with back-translation.
+- English pre-trained language models are found to be more effective than multilingual models for English-Pidgin tasks.
+- Augmenting orthographic data and using task adaptive training with back-translation significantly improves model performance.
+- The paper also presents an analysis of orthographic variations in Nigerian Pidgin.
+- The authors released a large-scale English-Pidgin dataset and synthetic sentence pairs generated using their framework.
+- The results show improved performance in sentiment classification and translation tasks for Nigerian Pidgin.
+- Cross-lingual adaptive training is identified as a promising approach for building effective spoken language systems for low-resource languages.
+
+Keywords:
+- low-resource language
+- cross-lingual adaptive training
+- Nigerian Pidgin
+- text classification
+- translation
+- pre-trained language models
+- orthographic variations
+- sentiment analysis
+- back-translation
+- data augmentation

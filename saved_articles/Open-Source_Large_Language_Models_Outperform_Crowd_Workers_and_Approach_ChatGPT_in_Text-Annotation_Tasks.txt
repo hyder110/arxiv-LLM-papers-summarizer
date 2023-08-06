@@ -1,0 +1,294 @@
+OPEN-SOURCE LARGE LANGUAGE MODELS OUTPERFORM
+CROWD WORKERS AND APPROACH CHATGPT
+INTEXT-ANNOTATION TASKS
+Meysam Alizadeh
+University of Zurich
+Zurich, SwitzerlandMaël Kubli
+University of Zurich
+Zurich, SwitzerlandZeynab Samei
+Institute for Research in
+Fundamental Sciences
+Tehran, IranShirin Dehghani
+Allameh Tabataba’i
+University
+Tehran, Iran
+Juan Diego Bermeo
+University of Zurich
+Zurich, SwitzerlandMaria Korobeynikova
+University of Zurich
+Zurich, SwitzerlandFabrizio Gilardi∗
+University of Zurich
+Zurich, Switzerland
+July 6, 2023
+ABSTRACT
+This study examines the performance of open-source Large Language Models
+(LLMs) in text annotation tasks and compares it with proprietary models like Chat-
+GPT and human-based services such as MTurk. While prior research demonstrated
+the high performance of ChatGPT across numerous NLP tasks, open-source LLMs
+like HugginChat and FLAN are gaining attention for their cost-effectiveness, trans-
+parency, reproducibility, and superior data protection. We assess these models using
+both zero-shot and few-shot approaches and different temperature parameters across
+a range of text annotation tasks. Our findings show that while ChatGPT achieves the
+best performance in most tasks, open-source LLMs not only outperform MTurk but
+also demonstrate competitive potential against ChatGPT in specific tasks.
+Keywords ChatGPT ·LLMs ·Open Source ·FLAN ·HuggingChat ·NLP ·Text Annotation
+∗Corresponding author (https://fabriziogilardi.org/).arXiv:2307.02179v1  [cs.CL]  5 Jul 2023Open-Source LLMs for Text Annotation
+1 Introduction
+Generative Large Language Models (LLMs) such as GPT-3 and GPT-4 have demonstrated sub-
+stantial potential for text-annotation tasks common to many Natural Language Processing (NLP)
+applications (Ding et al., 2023). Recent research reports impressive performance metrics for these
+models. For instance, studies demonstrate that ChatGPT exceeds the performance of crowd-workers
+in tasks encompassing relevance, stance, sentiment, topic identification, and frame detection (Gi-
+lardi, Alizadeh and Kubli, 2023), that it outperforms trained annotators in detecting the political
+party affiliations of Twitter users (Törnberg, 2023), and that it achieves accuracy scores over 0.6
+for tasks such as stance, sentiment, hate speech detection, and bot identification (Zhu et al., 2023).
+Notably, ChatGPT also demonstrates the ability to correctly classify more than 70% of news as
+either true or false (Hoes, Altay and Bermeo, 2023), which suggests that LLMs might potentially be
+used to assist content moderation processes.
+While the performance of LLMs for text annotation is promising, there are several aspects that
+remain unclear and require further research. Among these is the impact of different approaches such
+as zero-shot versus few-shot learning and settings such as varying temperature parameters. Zero-shot
+learning allows models to predict for unseen tasks, while few-shot learning uses a small number
+of examples to generalize to new tasks. The conditions under which one approach outperforms
+the other are not fully understood yet. Furthermore, the temperature parameter determines the
+randomness in a model’s outputs. Identifying the optimal temperature for different tasks is still a
+topic of ongoing research.
+Moreover, the role of open-source LLMs deserves more attention. While models like ChatGPT have
+democratized the field by offering a more cost-effective alternative to traditionally more expensive
+annotation methods involving human annotations, open-source LLMs represent a further step
+towards greater accessibility. Beyond cost, the advantages of open-source LLMs include degrees of
+transparency and reproducibility that are typically not provided by commercial models. open-source
+LLMs can be scrutinized, tailored, and enhanced by a wider user base, fostering a diverse group of
+contributors and improving the overall quality and fairness of the models. Furthermore, open-source
+LLMs offer significant data protection benefits. They are designed not to share data with third
+parties, enhancing security and confidentiality. For these reasons, the academic community is
+increasingly advocating for the use of open-source LLMs (Spirling, 2023). This transition would not
+only broaden access to these tools for researchers, but also promote a more open and reproducible
+research culture.
+To address these questions, we extend our previous research (Gilardi, Alizadeh and Kubli, 2023) to
+compare the performance of two widely-used open-source LLMs, HugginChat and FLAN, with
+that of ChatGPT as well as MTurk, using eleven text annotation tasks distributed across four
+datasets. Each model is tested using different settings: varied model sizes for FLAN, and distinct
+temperature parameters in both zero-shot and few-shot approaches for ChatGPT and HuggingChat.
+We then compare their accuracy, using agreement with trained annotators as a metric, against that of
+MTurk as well as amongst themselves. While our previous research (Gilardi, Alizadeh and Kubli,
+2023) showed that ChatGPT outperforms MTurk in almost all tasks, our new results reveal that
+open-source LLMs surpass MTurk in the majority of tasks. When considering the top-performing
+models, open-source LLMs outperform ChatGPT in certain tasks and approach its performance
+in others, demonstrating their potential. Furthermore, the comparison of models using different
+2Open-Source LLMs for Text Annotation
+temperature settings and zero vs. few-shot prompts shows that, for both ChatGPT and open-source
+LLMs, there is no particular approach that uniformly maximizes performance. Given these findings,
+further research is warranted to optimize the use of diverse settings and prompts under different
+circumstances.
+Our conclusion is that, even though the performance of open-source LLMs generally remains below
+that of ChatGPT, they already represent a competitive alternative for many text annotation tasks.
+2 Results
+The analysis in this paper extends our previous study, which compared ChatGPT’s zero-shot
+annotation performance with that of MTurk (Gilardi, Alizadeh and Kubli, 2023). We rely on the
+same datasets (n = 6,183), which include tweets and news articles that we collected and annotated
+manually for another study on the discourse around content moderation (Alizadeh et al., 2022),
+as well as a new sample of tweets posted in 2023 to address the concern that LLMs might be
+merely reproducing texts that could have been part of their training data. While our previous
+study focused on ChatGPT, our analysis conducts the same classifications using two open-source
+LLMs (HugginChat and FLAN), using the same codebook that we originally constructed for our
+research assistants and which we previously used for ChatGPT and MTurk (see Appendix S2).
+Moreover, in this paper we extend our analysis to include few-shot learning for all models, including
+ChatGPT. The corresponding prompts are shown in Appendix S3. Specifically, for ChatGPT and
+HuggingChat, we conducted sixteen sets of annotations for each text, specifically two runs for each
+combination of two temperature levels, zero-shot, and few-shot. For FLAN, we conducted twelve
+sets of annotations, namely, two runs for three different model sizes, both zero-shot and few-shot
+(L, XL, XXL). More particularly, to explore the effect of ChatGPT’s and HugginChat’s temperature
+parameters, which controls the degree of randomness of the output, we conducted the annotations
+with default values (1 for ChatGPT and 0.9 for HuggingChat) as well as with a value of 0.2, which
+implies less randomness. We conducted two sets of annotations for each temperature value to
+compute LLM’s intercoder agreement. Finally, for each combination of LLM and parameter setting,
+we conduct chain of thought (CoT) prompting (Wei et al., 2022). This few-shot approach involves
+providing LLMs with question and step-by-step reasoning answer examples.
+Figure 1 compares the accuracy of ChatGPT, open-source LLMs, and MTurk, evaluated in terms of
+agreement with trained annotators. The depicted average accuracies for both ChatGPT and open-
+source LLMs are accompanied by the minimum and maximum accuracies observed across models
+employing different settings. ChatGPT parameters entail zero-shot vs. few-shot and temperature
+values of 0.2 and 1. HuggingChat’s settings correspond to those of ChatGPT, while FLAN includes
+different model sizes ranging from L to XXL. Detailed results for each model, encompassing both
+accuracy and intercoder agreement, are documented in Appendix S1.
+Figure 1 shows that ChatGPT outperforms MTurk in ten out of eleven tasks on average, while open-
+source LLMs exceed MTurk in six out of eleven tasks. However, when we isolate the top-performing
+models, open-source LLMs outpace MTurk in nine out of eleven tasks. Comparing ChatGPT directly
+with open-source LLMs, we find that ChatGPT consistently exceeds the performance of LLMs on
+average. However, when we observe only the top-performing models, open-source LLMs surpass
+ChatGPT in three out of eleven tasks and fall within a ten percentage point difference in five
+additional tasks. These findings underscore that while open-source LLMs are not consistently the
+3Open-Source LLMs for Text Annotation
+Frames IFrames IIRelevanceStanceTopics
+0% 20% 40% 60% 80%A. Tweets (2020−2021)
+Frames IRelevance
+0% 20% 40% 60% 80%B. News Articles (2020−2021)
+Frames IRelevance
+0% 25% 50% 75%C. Tweets (2023)
+Frames IIRelevance
+0% 25% 50% 75%D. Tweets (2017−2022)
+ChatGPT Open−source LLMs MTurk
+Figure 1: Accuracy of ChatGPT, open-source LLMs, and MTurk. Accuracy means agreement
+with trained annotators. Bars indicate average accuracy, while whiskers range from minimum to
+maximum accuracy across models with different parameters and/or prompts (zero vs few shot).
+superior choice, they generally outperform crowd-sourced annotations and are approaching the
+performance levels of ChatGPT.
+The relationship between model settings and performance lacks a straightforward pattern, as
+indicated in Table 1. Depending on the dataset and task, the best-performing model within each
+group can vary. With ChatGPT, any combination of temperature and zero/few shot can lead to top
+performance. For HuggingChat, lower temperature settings typically result in better performance,
+though few-shot models do not always outperform zero-shot ones. Lastly, for FLAN, larger models
+do not consistently outperform smaller ones. (Note that only zero-shot classifications were tested
+with FLAN.) Therefore, more research is required to understand which particular settings and
+prompts are more effective under different circumstances.
+4Open-Source LLMs for Text Annotation
+Group Shot Version Dataset Task
+ChatGPT few temp 0.2 News Articles (2020-2021) Frames I
+ChatGPT zero temp 0.2 News Articles (2020-2021) Relevance
+ChatGPT few temp 0.2 Tweets (2017-2022) Frames II
+ChatGPT few temp 1 Tweets (2017-2022) Relevance
+ChatGPT zero temp 0.2 Tweets (2020-2021) Frames I
+ChatGPT zero temp 0.2 Tweets (2020-2021) Frames II
+ChatGPT few temp 1 Tweets (2020-2021) Frames II
+ChatGPT zero temp 1 Tweets (2020-2021) Relevance
+ChatGPT zero temp 0.2 Tweets (2020-2021) Stance
+ChatGPT few temp 0.2 Tweets (2020-2021) Topics
+ChatGPT few temp 0.2 Tweets (2023) Frames I
+ChatGPT few temp 1 Tweets (2023) Relevance
+FLAN zero L News Articles (2020-2021) Frames I
+FLAN zero XL News Articles (2020-2021) Relevance
+FLAN zero L Tweets (2017-2022) Frames II
+FLAN zero XL Tweets (2017-2022) Relevance
+FLAN zero XL Tweets (2020-2021) Frames I
+FLAN zero L Tweets (2020-2021) Frames II
+FLAN zero XXL Tweets (2020-2021) Relevance
+FLAN zero L Tweets (2020-2021) Stance
+FLAN zero XXL Tweets (2020-2021) Topics
+FLAN zero XL Tweets (2023) Frames I
+FLAN zero XL Tweets (2023) Relevance
+HuggingChat zero temp 0.2 News Articles (2020-2021) Frames I
+HuggingChat zero temp 0.2 News Articles (2020-2021) Relevance
+HuggingChat few temp 0.2 Tweets (2017-2022) Frames II
+HuggingChat few temp 0.2 Tweets (2017-2022) Relevance
+HuggingChat few temp 0.2 Tweets (2020-2021) Frames I
+HuggingChat few temp 0.2 Tweets (2020-2021) Frames II
+HuggingChat few temp 0.2 Tweets (2020-2021) Relevance
+HuggingChat zero temp 0.2 Tweets (2020-2021) Stance
+HuggingChat few temp 0.2 Tweets (2020-2021) Topics
+HuggingChat zero temp 0.2 Tweets (2023) Frames I
+HuggingChat zero temp 0.2 Tweets (2023) Relevance
+Table 1: Best-performing model within each group (ChatGPT, HuggingChat, FLAN) for each
+dataset and task. FLAN was run only zero-shot.
+5Open-Source LLMs for Text Annotation
+3 Discussion
+This study demonstrates that open-source LLMs such as HuggingChat and FLAN represent a
+competitive alternative for text annotation tasks, exhibiting performance metrics that generally
+exceed those of MTurk and rival those of ChatGPT. For certain tasks, these open-source LLMs
+are found to be an adequate substitute for crowd-annotations, and in some instances, their top-
+performing models approach or even exceed the performance of ChatGPT.
+An important appeal of open-source LLMs is that they offer considerable cost advantages. While
+ChatGPT provides substantial cost-efficiency, being about thirty times more affordable per anno-
+tation compared to MTurk (Gilardi, Alizadeh and Kubli, 2023), open-source LLMs surpass this
+by being freely available. This constitutes a significant improvement in the accessibility of such
+models, extending their reach to a broader range of researchers irrespective of financial constraints.
+Open-source LLMs present benefits that go beyond cost-efficiency. One key advantage is that they
+help reduce reliance on proprietary models operated by for-profit companies, which may conflict
+with research ethics and the reproducibility standards (Spirling, 2023). Furthermore, open-source
+LLMs provide distinct benefits for data protection, as they are designed in such a way that data
+do not need to be shared with any third-party entities (Van Dis et al., 2023). This feature ensures
+that sensitive information remains secure and confidential, because it not sent to or stored by an
+external party. The elimination of data sharing in open-source LLMs provides an extra layer of
+protection against potential data breaches or unauthorized access. This feature becomes especially
+beneficial in scenarios where sensitive data is involved, such as in the legal or medical fields,
+where confidentiality is of utmost importance (Ray, 2023; Paul et al., 2023; Murdoch, 2021), but
+also in social science research involving data protected under the European Union’s General Data
+Protection Regulation (GDPR), or covered by non-disclosure agreements (NDAs).
+Several avenues for future research emerge from these findings. First, an in-depth error analysis is
+needed to identify areas of underperformance and potential biases across these models. A better
+understanding of these shortcomings will help refine these tools and address their limitations.
+Second, the relationship between model settings and task-specific performance needs to be further
+explored. The findings indicate that optimal performance may depend on the specific interplay
+of parameters such as temperature and model size, as well as the choice between zero-shot and
+few-shot approaches. Given the variable performance of these models under different settings, it is
+important to identify which combinations yield the best results for specific tasks.
+To conclude, this study presents evidence of the potential of open-source LLMs as a practical
+alternative for text annotation tasks. The models’ performance, coupled with their cost, accessibility,
+and data-protection advantages, position them as valuable tools in the domain of natural language
+processing. However, additional research is needed to optimize their performance and ensure their
+effective application across various use cases.
+6Open-Source LLMs for Text Annotation
+4 Materials and Methods
+4.1 Datasets
+The analysis relies on four distinct datasets. The first dataset consists of 2,382 randomly selected
+tweets from a more extensive collection of 2.6 million tweets related to content moderation, spanning
+from January 2020 to April 2021. The second dataset comprises 1,856 tweets posted by members
+of the US Congress between 2017 and 2022, sampled from a dataset of 20 million tweets. The third
+dataset consists of 1,606 newspaper articles on content moderation published from January 2020
+to April 2021, drawn from a dataset of 980k articles obtained via LexisNexis. Sample sizes were
+determined based on the number of texts required to construct training sets for machine-learning
+classifiers. Finally, the fourth dataset replicates the data collection process of the first dataset.
+Specifically, it focused on January 2023, comprising a random sample of 500 tweets (with 339
+tweets in English) from a dataset of 1.3 million tweets.
+4.2 Data Annotation Tasks
+We implemented several annotation tasks: (1) relevance : whether a tweet is about content modera-
+tion or, in a separate task, about politics; (2) topic detection : whether a tweet is about a set of six
+pre-defined topics (i.e. Section 230, Trump Ban, Complaint, Platform Policies, Twitter Support,
+and others); (3) stance detection : whether a tweet is in favor of, against, or neutral about repealing
+Section 230 (a piece of US legislation central to content moderation); (4) general frame detection :
+whether a tweet contains a set of two opposing frames (“problem’ and “solution”). The solution
+frame describes tweets framing content moderation as a solution to other issues (e.g., hate speech).
+The problem frame describes tweets framing content moderation as a problem on its own as well
+as to other issues (e.g., free speech); (5) policy frame detection : whether a tweet contains a set of
+fourteen policy frames proposed in (Card et al., 2015). The full text of instructions for the five
+annotation tasks is presented in Appendix S1. We used the exact same wordings for LLMs and
+MTurk.
+4.3 Trained Annotators
+We trained three political science students to conduct the annotation tasks. For each task, they
+were given the same set of instructions described above and detailed in Appendix S2. The coders
+annotated the tweets independently task by task.
+4.4 Crowd-workers
+We employed MTurk workers to perform the same set of tasks as trained annotators and LLMs,
+using the same set of instructions (Appendix S1). To ensure annotation quality, we restricted access
+to the tasks to workers who are classified as “MTurk Masters” by Amazon, who have a HIT (Human
+Intelligence Task) approval rate greater than 90% with at least 50 approved HITs and are located
+in the US. Moreover, we ensured that no worker could annotate more than 20 % of the tweets for
+a given task. As with the trained human annotators, each tweet was annotated by two different
+crowd-workers.
+7Open-Source LLMs for Text Annotation
+4.5 LLM Selection
+We selected three LLMs to compare their annotation performance and costs. First, we use the
+ChatGPT API (‘gpt-3.5-turbo’ version), which is a proprietary, close-source LLM. We set the
+temperature parameter at 1 (default value) and 0.2 (which makes the output more deterministic;
+higher values make the output more random). Second, we use HuggingChat (‘oasst-sft-6-llama-30b’
+version), which is an open-source model similar to ChatGPT. We set the temperature parameter
+at 0.9 (default value) and 0.2. Third, following promising results obtained in a previous research
+(Ziems et al., 2023), we selected FLAN-T5 (Chung et al., 2022) as our second open-source LLM.
+FLAN is available in six different sizes from small (80M parameters) to UL2 (20B parameters). For
+this study, we employed three different sizes: L, XL, and XXL. For each model setting, we collect
+two responses from each LLM to compute the intercoder agreement. We create a new chat session
+for every tweet to ensure that the history of annotations does not influence the LLM results.
+4.6 Prompt Engineering
+For zero-shot tests, we intentionally avoided adding any prompt engineering to ensure comparability
+between LLMs and MTurk crowd-workers. After testing several variations, we decided to feed
+tweets one by one to ChatGPT using the following prompt: “Here’s the tweet I picked, please label
+it as [Task Specific Instruction (e.g. ‘one of the topics in the instruction’)].” The corresponding
+prompts for each task are reported in Appendix S3. For few-shot tests, we employ Chain-of-Thought
+(CoT) prompting (Wei et al., 2022), where large language models (LLMs) are provided with both
+the question and a step-by-step reasoning answer as examples. Specifically, following previous
+research (Kojima et al., 2022), we use ChatGPT to generate two CoT prompted examples per class
+per annotation task. More particularly, we feed ChatGPT with our human-annotated examples
+and ask it to annotate the example and provide explanations for the annotation. If the ChatGPT’s
+annotation was correct (which we know thanks to our human annotations), we included the example
+along with the ChatGPT’s explanation in our prompt for the few-shot experiment.
+4.7 Evaluation Metrics
+First, we computed average accuracy (i.e. percentage of correct predictions), that is, the number of
+correctly classified instances over the total number of cases to be classified, using trained human
+annotations as our gold standard and considering only texts that both annotators agreed upon.
+Second, we computed intercoder agreement, measured as the percentage of instances for which
+both annotators in a given group report the same class.
+Acknowledgments
+This project received funding from the European Research Council (ERC) under the European
+Union’s Horizon 2020 research and innovation program (grant agreement nr. 883121). We thank
+Fabio Melliger, Paula Moser, and Sophie van IJzendoorn for excellent research assistance.
+8Open-Source LLMs for Text Annotation

@@ -1,0 +1,775 @@
+Scaling In-Context Demonstrations with Structured Attention
+Tianle Cai* 1Kaixuan Huang* 1Jason D. Lee1Mengdi Wang1
+Abstract
+The recent surge of large language models
+(LLMs) highlights their ability to perform in-
+context learning, i.e., “learning” to perform a task
+from a few demonstrations in the context with-
+out any parameter updates. However, their capa-
+bilities of in-context learning are limited by the
+model architecture: 1) the use of demonstrations
+is constrained by a maximum sentence length due
+to positional embeddings; 2) the quadratic com-
+plexity of attention hinders users from using more
+demonstrations efficiently; 3) LLMs are shown to
+be sensitive to the order of demonstrations. In this
+work, we tackle these challenges by proposing
+a better architectural design for in-context learn-
+ing. We propose SAICL (Structured Attention
+forIn-Context Learning), which replaces the full-
+attention by a structured attention mechanism de-
+signed for in-context learning, and removes unnec-
+essary dependencies between individual demon-
+strations, while making the model invariant to
+the permutation of demonstrations. We evaluate
+SAICL in a meta-training framework and show
+thatSAICL achieves comparable or better per-
+formance than full attention while obtaining up
+to 3.4x inference speed-up. SAICL also consis-
+tently outperforms a strong Fusion-in-Decoder
+(FiD) baseline which processes each demonstra-
+tion independently. Finally, thanks to its linear
+nature, we demonstrate that SAICL can easily
+scale to hundreds of demonstrations with continu-
+ous performance gains with scaling.
+1. Introduction
+Large language models (LLMs) have recently made no-
+table advances with superior performance in downstream
+tasks (Brown et al., 2020; Chowdhery et al., 2022; Zhang
+*Equal contribution1Princeton University.
+Emails: {tianle.cai, kaixuanh, jasonlee,
+mengdiw }@princeton.edu
+Work presented at the ES-FoMo Workshop at ICML 2023. Copy-
+right 2023 by the author(s).et al., 2022; Hoffmann et al., 2022). One emergent prop-
+erty of LLMs is their ability to learn in-context (Brown
+et al., 2020), i.e., with a few task demonstrations provided
+in the prompt, LLMs are readily adapted to make accurate
+predictions without any parameter updates. The process
+of in-context learning only requires a single forward pass,
+making it an efficient and flexible alternative to fine-tuning
+for many real-world problems.
+There are two major limitations of existing LLMs’ in-
+context learning. First , it is expensive or infeasible to
+support a large number of demonstrations (typical choices
+ranging from 5 (Chung et al., 2022) to 32 (Brown et al.,
+2020)) due to the quadratic complexity of their attention
+mechanisms and the maximal sentence length constraints
+of the inputs. Therefore, whether scaling up the number of
+demonstrations will improve the performance of in-context
+learning remains unexplored. Second , the demonstrations
+are sequentially concatenated in the prompt, and recent ev-
+idence shows that performance is sensitive to the order of
+the demonstrations (Lu et al., 2022; Zhao et al., 2021). This
+artifact creates additional overhead and design for selecting
+a better order of demonstrations (Lu et al., 2022).
+In this paper, we seek novel solutions to address the above
+challenges by removing unnecessary dependencies between
+the demonstrations , and making the model invariant to their
+permutations . This problem has yet to be comprehensively
+studied in the literature, while some existing ideas can be
+adapted. In particular, we find that the Fusion-in-Decoder
+(FiD) model (Izacard & Grave, 2021)1—originally proposed
+for open-domain question answering—is a strong base-
+line for in-context learning. In FiD, demonstration-input
+pairs are independently encoded and then concatenated be-
+fore feeding into the decoder2. Independent encoding of
+demonstrations makes FiD scale linearly with the number
+of demonstrations, at the expense of fusing demonstrations
+only at the decoder stage. Another simple approach is en-
+semble , which averages the predictions based on individual
+demonstrations (Min et al., 2022a), and the dependencies be-
+tween the demonstrations are completely ignored. Although
+both FiD and ensemble are already efficient and permutation-
+1A concurrent work (Ye et al., 2022a) also experiments with
+FiD for in-context learning. See more discussion in related work.
+2FiD relies on the encoder-decoder Transformer architecture
+like T5 (Raffel et al., 2020).
+1arXiv:2307.02690v1  [cs.CL]  5 Jul 2023Scaling In-Context Demonstrations with Structured Attention
+invariant, we find that their performance is prone to satu-
+rate empirically as more demonstrations are used (Figure 4,
+6(a)), and they often underperform standard concatenation-
+based baselines (Table 1, Appendix D). Therefore, how to
+strike the balance between efficient encoding and retaining
+necessary dependencies between demonstrations is the key
+research question to explore.
+Motivated by the recent development of sparse Transform-
+ers (Child et al., 2019; Beltagy et al., 2020; Zaheer et al.,
+2020), we propose SAICL (Structured Attention for In-
+Context Learning) as a replacement for the full-attention
+mechanism. Unlike existing sparse attentions that approx-
+imate the capability of full attention to process any input
+sequence, the design of SAICL istightly coupled with the
+structure of in-context learning . As shown in Figure 1, we
+only allow the tokens of each demonstration to attend to
+themselves and the tokens of the test input, while the at-
+tentions of the tokens of the test input remain unchanged.
+In this way, the information from each demonstration is
+fused through the global attention of the test input in each
+attention layer and then sent back to all demonstrations in
+the next attention layer. Therefore, each demonstration is
+able to utilize the information from all other demonstra-
+tions while the complexity of the attention module is still
+linear to the number of demonstrations. Additionally, the
+positional encoding is only computed inside each demon-
+stration, making the model invariant to the permutation of
+the demonstrations.
+AsSAICL requires modifications to the model architecture,
+we evaluate it in a meta-training framework (Min et al.,
+2021) for in-context learning. We use T5 (Raffel et al.,
+2020) as our base model and compare SAICL with stan-
+dard T5 models with full attention and the FiD model (See
+Section 3.2 for a discussion about the choice of using T5).
+Specifically, we meta-train all models with the prompt being
+the same format of in-context learning using a set of source
+tasks and evaluate their performance when transferred to
+unseen target tasks. Our experiments (Section 5.1) indicate
+thatSAICL often achieves better performance than FiD ( 18
+wins out of 28settings) and is able to match or even beat ( 13
+wins out of 28settings) the full attention baseline. Further-
+more, we demonstrate that SAICL can scale to hundreds of
+demonstrations, and improve its performance consistently
+with more demonstrations (Figure 4). Thanks to its linear
+complexity, SAICL also achieves significant speed-ups dur-
+ing inference—up to 3.4x for 64 demonstrations and 6.3x
+for 128 demonstrations.
+2. Related Work
+In-context learning. Large language models can perform
+in-context learning (Brown et al., 2020), where LLMs are
+adapted to new tasks by conditioning them on a few demon-
+Attention typesAlbert
+GermanwasEinstein
+IndianwasGandhiMahatma
+?wasMarie
+CurieSelf-Attn  
+inside Demo 2
+Self-Attn  
+inside T est 
+No Attn  
+between Demos
+Global Attn  
+to/from T estSelf-Attn  
+inside Demo 1Demo 1
+Demo 2
+Test sampleFigure 1. An illustration of SAICL with two demonstrations.
+SAICL is a structured attention mechanism designed for in-context
+learning that can directly replace the self-attention layers in Trans-
+former models. By removing the attention across different demon-
+strations while keeping the test input to attend to all tokens globally,
+we reduce the redundancy in computation but retain necessary de-
+pendencies between different demonstrations. SAICL , therefore,
+1) enjoys linear computational and memory complexity; 2) has no
+limitation on the number of demonstrations used; 3) is invariant to
+the permutation of the demonstrations. Demo istands for the i-th
+demonstration, test stands for the test input.
+strations. Although in-context learning is shown mainly
+with decoder-only models such as GPTs(Radford et al.,
+2019; Brown et al., 2020), several recent works also ex-
+periment with encoder-decoder models such as T5 (Patel
+et al., 2022; Chung et al., 2022; Tay et al., 2022b).
+Many recent works aim to understand how in-context
+learning works through empirical and theoretical investi-
+gation (Xie et al., 2021; Min et al., 2022b; Aky ¨urek et al.,
+2022; Garg et al., 2022; von Oswald et al., 2022; Dai et al.,
+2022; Chan et al., 2022; Lyu et al., 2022; Qiao et al., 2022; Li
+et al., 2023). Some other studies focus on improving the per-
+formance of in-context learning through calibration (Zhao
+et al., 2021; Holtzman et al., 2021; Min et al., 2022a), self-
+supervised training (Chen et al., 2022a), and meta-learning
+(Min et al., 2021; Chung et al., 2022). Other directions in-
+clude retrieving demonstrations that are semantically similar
+to the test input (Liu et al., 2022b; Rubin et al., 2021), or
+using chain-of-thought prompts to enhance reasoning (Wei
+et al., 2022; Kojima et al., 2022; Wang et al., 2022b;a).
+One notorious property of in-context learning is its sensitiv-
+ity to the order of demonstrations. Zhao et al. (2021) show
+that LLMs are prone to outputting the same label as the last
+demonstration (aka recency bias). Lu et al. (2022) find that
+under some permutation of the demonstrations, the perfor-
+mance is close to random guesses, and this phenomenon
+exists across various models. As a remedy, they propose to
+exhaustively search for all possible prompt orders and use
+2Scaling In-Context Demonstrations with Structured Attention
+entropy statistics to select the best order. The permutation
+sensitivity of in-context learning incurs a computational
+overhead to search for a good prompt order. This moti-
+vates us to address the order-sensitivity issue of in-context
+learning through a better model design.
+Efficient Transformers. Despite the success of the Trans-
+former architecture (Vaswani et al., 2017) in a wide range
+of machine learning applications, its computation and mem-
+ory complexity scale quadratically with the input length.
+This makes it intractable for modeling long-range contexts.
+Therefore, a variety of efficient Transformer models have
+been proposed to mitigate this issue (Child et al., 2019;
+Beltagy et al., 2020; Wang et al., 2020; Kitaev et al., 2019;
+Katharopoulos et al., 2020; Zaheer et al., 2020; Qiu et al.,
+2020; Tay et al., 2020; Peng et al., 2021; Qin et al., 2021;
+Zhou et al., 2021). We refer the readers to Tay et al. (2022a)
+for a comprehensive survey. In this paper, we draw inspi-
+ration from the design of sparse attention mechanisms in
+efficient Transformers (Beltagy et al., 2020; Zaheer et al.,
+2020). However, instead of using sparse attention to approx-
+imate the ability of full attention to process any sequences,
+we exploit the inherent structure of in-context learning (test
+input follows a number of demonstrations), and design a
+structured attention mechanism tailored for the problem.
+Comparison with concurrent works. Concurrent with
+our work, there are several works (Hao et al., 2022; Rat-
+ner et al., 2022; Ye et al., 2022a) exploring architectural
+designs to improve the in-context learning ability of LLMs.
+Among them, Hao et al. (2022); Ratner et al. (2022) focus
+on tackling the limitation of context length by independently
+processing several prompts within the max length constraint
+and then combining them. This idea is similar to our adap-
+tation of FiD while Hao et al. (2022); Ratner et al. (2022)
+usefixed schemes (e.g., average) for fusing parallel prompts
+so that their methods can be used directly on top of pre-
+trained models without further fine-tuning. Compared to
+their methods, we, in addition, seek to address the efficiency
+and instability issues while exploring better encoding to re-
+tain the dependencies between demonstrations. These goals
+cannot be directly achieved by processing several grouped
+prompts in parallel. Ye et al. (2022a) investigate different
+ways of fusing demonstrations, and they also observe that
+adapting FiD to in-context learning is effective (usually bet-
+ter than the ensemble-based method and more efficient than
+the concatenation-based method), which is aligned with our
+findings (Figure 6(a) and Section 5.1).
+Due to length limitation, we refer the readers to Appendix E
+for more related works on (few-shot) fine-tuning.3. Efficient In-Context Learning with SAICL
+3.1. Desiderata of In-Context Learning Models
+For in-context learning, assume we are given kdemon-
+strations (xi, yi)k
+i=1, we construct the prompt as the con-
+catenation of all the demonstration pairs and the test in-
+put:xprompt = (x1, y1,x2, y2, . . . ,xk, yk,xtest). When
+we evaluate the model on a fresh input xtestto predict from
+a set of candidate answers Ytest={y(1)
+test, . . . , y(m)
+test}, we
+condition the language model on xprompt and query the
+probabilities of its continuations to inference about the an-
+swerp(ytest|xprompt )for each ytest∈Ytest.3Afterwards,
+the answer for xtestisargmaxytestp(ytest|xprompt ). For
+encoder-decoder models such as T5, the xprompt is fed into
+the encoder, whose embedding is then computed as key-
+value pairs for the cross-attention modules of the decoder to
+perform auto-regressive decoding.
+We state the high-level design goals for an ideal in-context
+learner. 1) Extensibility. The model should be capable of
+using many demonstrations to boost performance without
+anyhard-coded constraints on the number of demonstra-
+tions caused by the model design, e.g., the max length con-
+straints due to the limited number of positional encodings.
+2)Efficiency. The model should be able to efficiently scale
+to a large number (e.g., hundreds) of demonstrations. Ide-
+ally, the computational complexity should only have a linear
+dependency on the number of demonstrations. 3) Invari-
+ance. The model should be invariant to the permutation of
+demonstrations, which saves extra computation on search-
+ing over the combinatorial space of possible permutations
+and preserving the natural symmetry of demonstrations.
+3.2.SAICL
+We propose Structured Attention for In-Context Learning
+(SAICL , pronounced as cycle ) that replaces the full bidirec-
+tional attention in the encoder of encoder-decoder models
+such as T5. In SAICL , we exploit the special structure of
+the prompts of in-context learning. We observe that the com-
+putational burden comes from the dense attention between
+all pairs of demonstrations . Intuitively, the understanding
+of each demonstration (xi, yi)only loosely depends on the
+understanding of all other demonstrations. Therefore, in
+SAICL , we remove the attentions across different demon-
+strations as shown in Figure 1. Meanwhile, we keep the
+attention from xtestglobal to make xtestan aggregator of
+information from different demonstrations. Concretely, the
+tokens of the i-th demonstration (xi, yi)can only attend
+to 1) tokens within the same demonstration and 2) the test
+tokens, while the test tokens xtestcan attend to all the to-
+3We use the direct method for demonstration in this section.
+See Section 4.1 for the comparison between the direct method and
+thechannel method.
+3Scaling In-Context Demonstrations with Structured Attention
+kens. This way, the test input tokens can fuse information
+from all demonstrations and send information back to each
+demonstration in the next layer, which implicitly makes
+each demonstration fully utilize information from all other
+demonstration exemplars.
+For simplicity of illustration, we assume each sample only
+hasone token and ignore the relative positional encodings
+(for a comprehensive description of SAICL , please refer
+to the pseudo-code in Appendix B). Let {(qi,ki,vi)}k
+i=1
+and(qtest,ktest,vtest)be the (query, key, value) triplets of
+demonstrations and test sample for calculating the attention,
+respectively. Then the output of SAICL at position i∈
+[1, k]is calculated as:
+zi=exp 
+q⊤
+iki
+vi+ exp 
+q⊤
+iktest
+vtest
+exp 
+q⊤
+iki
++ exp 
+q⊤
+iktest ;
+and the output at the test sample position is
+ztest=Pk
+i=1exp 
+q⊤
+testki
+vi+ exp 
+q⊤
+testktest
+vtestPk
+i=1exp 
+q⊤
+testki
++ exp 
+q⊤
+testktest
+Efficiency. This sparse structure of SAICL then makes
+the computational complexity and the memory consump-
+tion only linearly depend on the number of demonstrations.
+Concretely, assume there are kdemonstrations, and each
+demonstration and test sample has a max length L, then
+the computational and memory complexity of full attention
+will be O(k2L2)while the complexity of SAICL will be
+O(kL2). As shown in Figure 2, we create fake inputs where
+the number of tokens in each demonstration is fixed to 64
+and 128 for evaluating the scalability of inference time of
+SAICL and full attention. The reported inference times are
+averaged across ten runs tested on RTX A6000 GPUs. We
+observe that SAICL scales much better than the full atten-
+tion, yet the advantage of SAICL is less significant when
+the number of demonstrations is small. We hypothesize
+that this is mainly due to the implementation overhead of
+SAICL , which may be further improved.
+Extensibility and permutation invariance. Unlike the
+decoder-only GPT models, the T5 encoder only relies on the
+relative positional encodings to determine the order of the
+tokens. Specifically, instead of adding an absolute positional
+encoding to each token embedding, T5 adds a bias term to
+the pre-softmax value of the attention heads, which only
+depends on the difference between the query position and
+the key position. In SAICL , we only keep the relative
+positional encodings inside the tokens of each demonstration
+or test sample. Therefore, the max length constraint only
+limits the length of each sample, which is usually short
+in practice. Also, in T5, the order of demonstrations is
+distinguished solely via the relative positional encodings
+16 32 64 128 256 512 1024 2048
+Number of Demonstrations10040016006400Time (ms)
+ SAICL (128 tokens)
+T5 baseline (128 tokens)
+SAICL (64 tokens)
+T5 baseline (64 tokens)Figure 2. The inference times (ms) v.s. different numbers of
+demonstrations. The inference time of SAICL consistently scales
+better than the full attention baseline with different per sample
+length L∈ {64,128}. By design, the computational complexity
+ofSAICL scales linearly to the number of demonstrations kwhile
+the full attention scales quadratically ( O(kL2)v.s.O(k2L2)).
+Also note that the T5 baseline runs out of memory quickly (64
+shots), even on an A6000 with 50 GB of memory.
+in the attentions across difference demonstrations. Thus,
+after removing these attentions, our SAICL automatically
+achieves the permutation invariance goal.
+Discussion on the choice of encoder-decoder model. We
+build SAICL and conduct experiments on top of the T5
+model, and many ideas benefit from the T5 architecture: 1)
+More flexible information exchange. The bidirectional
+attention mechanism enables free information exchange
+between different demonstrations. Specifically, in SAICL ,
+the information can be passed through the global attention
+by the test sample. Also, the encoder-decoder separation
+enables parallel encoding in FiD. 2) Easier to keep the
+symmetry. It is more natural to use bidirectional attention
+for encoding demonstrations because there is no canonical
+order of demonstrations, but the causal mask in decoder-only
+models induces an order. Also, as mentioned before, the
+relative positional encoding in T5 enables the permutation
+invariance in SAICL . Yet, we believe that it is easy to adapt
+our methods to a decoder-only model with modifications on
+the positional encoding and the attention mask.
+3.3. Meta-Training
+We use meta-training to fine-tune the models following
+Meta In-Context Learning (MetaICL) (Min et al., 2021).
+The meta-training objective is
+max
+θˆElogpθ(ytest|x1, y1, . . . ,xk, yk,xtest),
+where the model is trained using a mixture of source tasks
+and the prompt has the same format of in-context learning,
+i.e., the concatenation of the demonstrations and the test
+input. During training, we first sample a source task and
+4Scaling In-Context Demonstrations with Structured Attention
+then randomly draw (xi, yi)’s and (xtest, ytest)from its
+training dataset.
+We use the same datasets, evaluation protocols, and prompt
+template designs as MetaICL. Concretely, we use 142 tasks
+from CrossFit (Ye et al., 2021) and UnifiedQA (Khashabi
+et al., 2020), which include text classification, question
+answering (QA), natural language inference (NLI), and
+paraphrase detection. They are divided into seven trans-
+fer settings, each consisting of a non-overlapping pair of
+source and target tasks. A subset of the target tasks is from
+completely different domains from the training tasks, e.g.,
+medical, financial, and climate. Following Min et al. (2021),
+we highlight these tasks as unseen domain tasks, where the
+gains of in-context learning over the multi-task fine-tuning
+setting are more significant.
+At test time, we evaluate the meta-trained model on the un-
+seen target tasks with k-shot demonstrations and average the
+results across 5different random sets of the demonstrations.
+Macro-F1 and accuracy are used as evaluation metrics for
+classification tasks and non-classification tasks, respectively.
+In order to investigate the scaling behavior of in-context
+learning, for each transfer case and each method, we meta-
+train two models with different training-time numbers of
+demonstrations: train k= 16 and train k= 64 . Then,
+we use the corresponding fine-tuned model at test time and
+evaluate it under test k= 16 and test k= 64 settings. In
+ablation studies, we use the high-resource to low-resource
+transfer setting (HR →LR) following Min et al. (2021). This
+setting is the most representative one because its source and
+target both cover all the task types.
+4. Experimental Setup
+4.1. Settings
+Base models. Different from MetaICL (Min et al., 2021),
+we choose T5-LM-adapt large (770M parameters)4as our
+base model, which is additionally fine-tuned from T5.1.1
+using LM objective5. Please see Section 3.2 for a discussion
+about the choice of using T5.
+Direct v.s. channel. There are two mainstream methods
+to perform in-context learning: direct method and channel
+method (Min et al., 2022a). For direct method, the LM
+is prompted with (x1, y1, . . . ,xk, yk,xtest)to predict the
+probability of the answer ytest. For channel method, the
+LM is prompted with (y1,x1, . . . , y k,xk, ytest)to predict
+the probability of the test input xtest. As suggested by Min
+et al. (2022a; 2021), the channel method usually performs
+4https://huggingface.co/google/
+t5-large-lm-adapt
+5This LM-adapted version of T5 is suggested to have better
+in-context learning ability than the original ones (Sanh et al., 2021).better than the direct method thanks to better calibration, so
+we choose to use the channel method in allour experiments.
+For detailed data processing and optimization settings,
+please see Appendix C.
+4.2. Baselines
+We compare SAICL with the following baseline methods.
+T5 baseline. We meta-train the LM-adapted T5-large
+model without modifying its attention mechanism using the
+channel method. In this case, the computational complexity
+isO(k2).
+Fusion-in-Decoder (FiD) (Izacard & Grave, 2021). We
+adapt the FiD to in-context learning by independently pass-
+ing each xprompt ,i= (yi,xi, ytest)through the standard T5
+encoder and concatenate all their outputs, and then feed the
+concatenation into the cross-attention layers of the T5 de-
+coder to calculate the conditional probability of xtest. The
+computational complexity is O(k)for FiD.
+MetaICL baselines. We report four baseline results from
+the original MetaICL paper (Min et al., 2021) where GPT-2
+large models are used:
+•Multi-task 0-shot: Meta-trained without any demonstra-
+tion using direct method.
+•Channel Multi-task 0-shot: Meta-trained without any
+demonstration using channel method.
+•MetaICL: Meta-trained with k= 16 demonstrations using
+direct method.
+•Channel MetaICL: Meta-trained with k= 16 demonstra-
+tions using channel method.
+5. Experiments
+5.1. Main Results
+We present the results in Table 1 and summarize the findings
+below.
+Our baselines (T5 and FiD) are strong. Although T5
+large is roughly the same size as GPT-2 large, our experi-
+mental results indicate that T5 baselines generally perform
+better than GPT-2 in the Meta-ICL setting (9 wins out of
+14 settings). We hypothesize that the benefits partially
+come from the bidirectional attention of the T5 encoder,
+which, compared to decoder-only models such as GPT, al-
+lows each demonstration to utilize the information from all
+other demonstrations. For FiD, our experiments show that it
+can be seamlessly adapted to in-context learning and usually
+match the performance of full attention without any fusion
+of demonstrations in the encoder.
+5Scaling In-Context Demonstrations with Structured Attention
+Method Complexity HR→LRClass
+→Classnon-Class
+→ClassQA
+→QAnon-QA
+→QAnon-NLI
+→NLInon-Para
+→Para
+All target tasks
+Multi-task 0-shot1
+O(1)35.6 37.3 36.8 45.7 36.0 40.7 30.6
+Channel Multi-task 0-shot138.8 40.9 42.2 42.1 36.4 36.8 35.1
+MetaICL1
+O(k2)43.3 43.4 38.1 46.0 38.5 49.0 33.1
+Channel MetaICL149.1 50.7 50.6 44.9 41.9 54.6 52.2
+T5 baseline 50.8 51.9 54.7 46.2 44.5 45.7 51.3
+T5 baseline ( 64-shot) 52.7 57.2 58.9 46.4 44.6 48.1 55.6
+FiD
+O(k)49.0 50.1 50.7 45.7 44.2 48.1 51.7
+SAICL 49.8 51.0 50.9 45.7 43.8 44.8 51.8
+FiD ( 64-shot) 50.7 57.6 48.6 46.6 45.3 53.7 57.2
+SAICL (64-shot) 53.6 58.3 53.3 46.3 44.3 48.9 57.8
+Target tasks in unseen domains
+Multi-task 0-shot1
+O(1)35.4 28.0 28.6 71.2 40.3 33.5 35.0
+Channel Multi-task 0-shot136.3 31.1 34.3 54.4 39.4 50.8 34.1
+MetaICL1
+O(k2)35.3 32.3 28.1 69.9 48.3 80.1 34.0
+Channel MetaICL147.7 41.9 48.0 57.9 47.2 62.0 51.0
+T5 baseline 53.2 50.1 50.5 50.8 50.8 60.0 47.4
+T5 baseline ( 64-shot) 54.7 54.6 54.0 53.3 46.1 62.3 53.8
+FiD
+O(k)49.8 47.3 47.3 51.8 53.3 59.8 50.9
+SAICL 49.0 52.8 47.9 52.8 50.4 57.5 53.8
+FiD ( 64-shot) 55.3 55.1 40.7 53.3 48.3 67.6 58.3
+SAICL (64-shot) 57.4 56.8 48.9 52.9 49.4 63.4 60.8
+Table 1. Main results. We use 16 shots by default. For the same number of demonstrations, we see that SAICL performs better than FiD
+in 18 out of 28 settings, and is able to achieve comparable performance as the T5 baseline. Scaling up the number of demonstrations k
+further boosts the performance for T5 baseline, FiD, and SAICL .1The results are copied from Min et al. (2021), where the base model
+used for these 4 baselines is GPT-2 large . Our result indicates that the T5 baseline performs better than GPT-2. Bold indicates the best
+result in each column. The results are averaged across 5 different samples of demonstrations.
+SAICL enables sufficient fusion among demonstrations.
+With the same number of demonstrations, we observe that
+SAICL usually performs better than FiD (18 wins out of
+28 settings) while maintaining the same linear complex-
+ity. Analogously, we can view our method as “fusion in
+encoder”, which has more flexibility for exchanging in-
+formation between demonstrations. Compared to the full
+attention, SAICL can usually match or even beat its per-
+formance while being much more efficient. These results
+indicate that SAICL enables sufficient fusion among the
+demonstrations as the full attention, while completely dis-
+abling information exchange in the encoder (FiD) will lead
+to worse performance.
+Scaling up the number of demonstrations kboosts the
+performance. Our results show that increasing kfrom
+16to64can significantly improve the performance for all
+models (by ∼3%in average). This observation is seem-
+ingly in contrast with the finding in the MetaICL paper (Min
+et al., 2021), where the authors show the performance im-
+provement tends to saturate after 32demonstrations. We
+hypothesize that the difference is because the 1024 length
+limitation of the GPT-2 model used in Min et al. (2021)
+constrains the effective context. This finding suggests thatthe potential of boosting performance with more demon-
+strations might be underestimated because of inappropriate
+architectural design.
+Different behaviors on various types of tasks. We notice
+that the methods we test behave differently across different
+tasks, and no one can rule over all tasks. This is because solv-
+ing different tasks requires different forms of information.
+For example, to solve classification tasks with in-context
+learning, it is crucial to determine the label space and the
+format by which a classification problem is converted to
+natural language. In Figure 3, we inspect the behaviors of
+SAICL and FiD on different types of tasks under the test
+domain in the HR →LR setting, where all types of tasks
+are covered by both training and test domains. One obser-
+vation is that the benefits of SAICL are more pronounced
+on classification tasks. We hypothesize that this is because
+classification tasks require more subtle knowledge about
+the format and label space, which benefits from the fusion
+of demonstrations enabled by SAICL in the encoder. This
+observation also coincides with the finding in Min et al.
+(2022b) that in-context learning relies on the label space,
+input format, and distribution of input text to work.
+6Scaling In-Context Demonstrations with Structured Attention
+Classification QA NLI Paraphrase
+T ask Type0.460.480.500.520.540.560.58AccuracyFiD, train k=64
+SAICL, train k=64
+T5 baseline, train k=64
+Figure 3. Comparison of SAICL and FiD across task types. We
+group the performance of SAICL and FiD in terms of task type in
+the HR →LR setting. The plot shows that the benefits of SAICL
+are more pronounced on classification tasks. We hypothesize that
+classification tasks rely more on the input format and label space,
+which can be extracted by comparing different demonstrations,
+and thus, more dependencies are needed.
+Discussion on the model size. Due to computational lim-
+itations, we use the T5 large model (770M) in this paper. It
+is an interesting future work to extend our methods to larger
+models. We notice that in the concurrent work Ye et al.
+(2022a) (Figure 2), the authors already find that the domi-
+nance of FiD compared to ensemble methods is much more
+significant when the model size increases from T5 large to
+T5 XL (3B). We believe that as we scale up the model size,
+the advantage of SAICL and FiD will keep increasing.
+5.2.Scaling to Hundreds of Demonstrations with SAICL
+In Section 5.1, we show that raising the number of demon-
+strations kfrom 16to64significantly improves the perfor-
+mance, showcasing the potential of increasing demonstra-
+tions. In this section, we further investigate the performance
+ofSAICL and FiD when scaling up to hundreds of demon-
+strations (T5 baseline will run out of GPU memory in these
+settings). As usual, we use HR →LR setting as our testbed.
+Due to computational limitations, we focus on the unseen
+domain setting where fewer tasks are evaluated. Here are
+several observations from the scaling curves in Figure 4.
+Performance can be further improved when we scale up
+to hundreds of demonstrations. By scaling up the num-
+ber of demonstrations, we can further boost the performance
+of both SAICL and FiD. The results also show that when
+the number of demonstrations is large, the benefit of SAICL
+is more prominent, suggesting the importance of enabling
+2 4 8 16 32 64 128 256
+Number of Demonstrations0.350.400.450.500.550.60Accuracy
+FiD, train k=16
+FiD, train k=64
+SAICL, train k=16
+SAICL, train k=64Figure 4. Scaling behaviour of FiD and SAICL . Generally, the
+performances of both SAICL and FiD improve when the number
+of demonstrations scales up. SAICL achieves significantly better
+performance when using many demonstrations. A larger train k
+is beneficial when extrapolating to larger test k. The reported
+performances are tested on HR →LRunseen domain setting.
+the fusion among demonstrations in the encoder.
+Training with larger kcan enhance the scalability. We
+also explore the influence of the training-time number of
+demonstrations (train k). We observe that for both FiD and
+SAICL , train k= 64 achieves better performance than train
+k= 16 when the test k≥16. This suggests that a larger
+training-time number of demonstrations is beneficial for
+extrapolating to a larger test-time number of demonstrations.
+It is an interesting future direction to explore how to improve
+the model’s ability to extrapolate to larger k.
+5.3. Combining with Ensemble
+Ensemble methods are commonly used in machine learn-
+ing. For in-context learning, Min et al. (2022a); Ye et al.
+(2022a) show that simply aggregating kpredictions based
+onksingle-shot prompts is already an effective approach to
+achieve extensibility, efficiency, and permutation invariance.
+However, as shown in Ye et al. (2022a) and our experiments
+in Appendix D, the ensemble of single-shot predictions
+usually under-performs FiD and also saturates fast as k
+grows. Therefore, in this section, we investigate the hybrid
+approach of combining ensemble and few-shot -prompted
+models with the hope of achieving better performance at
+the expense of losing efficiency and permutation invariance .
+Concretely, given kdemonstrations, we equally split them
+intoGgroups, independently construct the prompts, make
+predictions over each group, and finally average the logits
+of all groups to obtain the final prediction.
+We run experiments over combinations of k∈
+7Scaling In-Context Demonstrations with Structured Attention
+100 200 400 800 1600 3200 6400
+Inference Time (ms)0.520.540.560.580.600.62Accuracy
+SAICL
+T5 baseline
+Figure 5. Pareto frontier for accuracy v.s. inference time. We vary
+the ensemble size in {1,2,4,8}and the number of demonstrations
+in{16,32,64,128,256,512}for T5 baseline and SAICL . The
+baseline dominates when the inference time is short. But SAICL
+performs better when using more demonstrations. The accuracies
+are tested on the HR →LRunseen domain setting.
+{16,32, . . . , 512}andG∈ {1,2,4,8}, and compare the
+baseline T5 model and SAICL under HR →LR unseen do-
+main setting. We plot the Pareto frontier of the performance
+versus the inference time in Figure 5. As we can see, com-
+bining with the ensemble method can further boost the per-
+formance of both baseline and SAICL . Remarkably, when
+k= 512 andG= 8,SAICL achieves 60.8%accuracy,
+which is 11.8%higher than the 16-shot SAICL baseline,
+demonstrating the great potential of using more demonstra-
+tions. Meanwhile, the performance of the baseline model
+is also boosted, where the best 59.4%accuracy is achieved
+when k= 64 andG= 8. Generally, for the baseline model,
+the improvement is more significant when each group is
+reasonably small (e.g., 8demonstrations). And since when
+each prompt only has a few demonstrations, the efficiency
+advantage of SAICL is less significant (as is shown in Fig-
+ure 2), we see in the Pareto frontier curve that the baseline
+dominates when inference is fast. Yet, SAICL has a better
+frontier when the inference time is greater than 800ms, i.e.,
+using more demonstrations.
+6. Discussion
+This paper takes an initial step toward a better model de-
+sign for in-context learning, yet many interesting questions
+remain open. We discuss the important ones below and
+summarize other discussion questions in Appendix A.
+The applicability of SAICL .In this paper, we use meta-
+training to fine-tune the pre-trained model due to the modifi-
+cation of the attention mechanism. Other potential ways to
+apply the idea of SAICL include 1) approximating the full
+attention with SAICL , and then directly using pre-trained
+models without further fine-tuning. This requires careful
+alignment of the positional encoding; 2) designing unsu-pervised objectives to pre-train/fine-tune a SAICL model.
+A possible approach is to use an additional retrieval mod-
+ule to find similar sentences as demonstrations and use the
+language modeling objective on the test sample.
+Extrapolation ability to more demonstrations. In our
+experiments of scaling up the number of demonstrations in
+Section 5.2, we observe that, although SAICL removes the
+restriction on the number of demonstrations, the effect of
+increasing the number of demonstrations ksaturates quickly
+when kis larger than the one used in training time. It is an
+interesting future direction to explore how to improve the
+ability of the model to extrapolate to larger k.
+Combination of different methods. Following the dis-
+cussion of extrapolation ability in Section 5.2, one possible
+way to extrapolate to larger kis to combine different fu-
+sion methods. The combination with the ensemble methods
+in Section 5.3 is an example of the idea. Moreover, the
+methods of Hao et al. (2022); Ratner et al. (2022) may also
+be used to further boost the performance when there are
+many demonstrations available (see our tentative experimen-
+tal results in Appendix D). An interesting open question
+will be how to combine different methods to achieve the best
+performance, given the number of available demonstrations .
+Understanding in-context learning. From our experi-
+mental results, we see that removing the attention between
+different demonstrations does not hurt the performance of
+in-context learning in most settings. Moreover, fusion only
+in the decoder already suffices to achieve comparable perfor-
+mance to the full attention model. This observation raises
+the question of how much fusion of information is needed for
+in-context learning? . Furthermore, we find different tasks
+may have different degrees of requirements on the fusion of
+information. For example, classification tasks benefit more
+from the information exchange between demonstrations, as
+discussed in Section 5.1.
+7. Conclusion
+In this paper, we seek to improve the architecture design of
+large language models for in-context learning. We propose
+SAICL , a structured attention mechanism that exploits the
+prompt structure of in-context learning. The computational
+and memory complexity of SAICL only scales linearly with
+the number of demonstrations and the model does not have
+hard-coded restrictions on the number of demonstrations.
+Furthermore, our method is completely insensitive to the
+permutations of the demonstrations.
+We adapt the FiD method from open-book question answer-
+ing to in-context learning, which also enjoys extensibility,
+efficiency, and permutation invariance as our method. We
+8Scaling In-Context Demonstrations with Structured Attention
+empirically compare our method against the T5 baseline
+and FiD under the same setting as (Min et al., 2021). Our
+experiments demonstrate that FiD is a strong baseline, yet
+SAICL outperforms FiD under 18 of 28 settings and is able
+to match or beat the performance of the T5 baseline ( 13
+wins out of 28settings). Then, we show that SAICL is
+able to efficiently scale up to hundreds of demonstrations
+(6.3x speed-up when using 128demonstrations compared to
+the baseline) and can continuously boost test performance
+with more demonstrations (e.g., 13.8% relative performance
+improvement when we increase kfrom 16to256under
+HR→LR unseen domain setting).
+Acknowledgements
+Tianle and Kaixuan would like to thank Professor Danqi
+Chen for wonderful discussions and valuable suggestions.
+JDL acknowledges support of the ARO under MURI Award
+W911NF-11-1-0304, the Sloan Research Fellowship, NSF
+CCF 2002272, NSF IIS 2107304, NSF CIF 2212262,
+ONR Young Investigator Award, and NSF CAREER Award
+2144994. Mengdi Wang acknowledges the support by NSF
+grants DMS-1953686, IIS-2107304, CMMI-1653435, ONR
+grant 1006977, and C3.AI.

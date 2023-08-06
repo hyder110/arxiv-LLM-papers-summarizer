@@ -1,0 +1,708 @@
+Robust Hate Speech Detection in Social Media:
+A Cross-Dataset Empirical Evaluation
+Dimosthenis Antypas and Jose Camacho-Collados
+Cardiff NLP, School of Computer Science and Informatics
+Cardiff University, United Kingdom
+{AntypasD,CamachoColladosJ}@cardiff.ac.uk
+Abstract
+The automatic detection of hate speech on-
+line is an active research area in NLP. Most
+of the studies to date are based on social me-
+dia datasets that contribute to the creation of
+hate speech detection models trained on them.
+However, data creation processes contain their
+own biases, and models inherently learn from
+these dataset-specific biases. In this paper, we
+perform a large-scale cross-dataset compari-
+son where we fine-tune language models on
+different hate speech detection datasets. This
+analysis shows how some datasets are more
+generalisable than others when used as train-
+ing data. Crucially, our experiments show how
+combining hate speech detection datasets can
+contribute to the development of robust hate
+speech detection models. This robustness holds
+even when controlling by data size and com-
+pared with the best individual datasets.
+1 Introduction
+Social media has led to a new form of communi-
+cation that has changed how people interact across
+the world. With the emergence of this medium,
+hateful conduct has also found a place to propagate
+online. From more obscure online communities
+such as 4chan (Knuttila, 2011) and Telegram rooms
+(Walther and McCoy, 2021) to mainstream social
+media platforms such as Facebook (Del Vigna12
+et al., 2017) and Twitter (Udanor and Anyanwu,
+2019), the spread of hate speech is an on going
+issue.
+Hate speech detection is a complex problem that
+has received a lot of attention from the Natural
+Language Processing (NLP) community. It shares
+a lot of challenges with other social media prob-
+lems (emotion detection, offensive language de-
+tection, etc), such as an increasingly amount of
+user generated content, unstructured (Elsayed et al.,
+2019) and constantly evolving text (Ebadi et al.,
+2021), and the need of efficient large scale solu-
+tions. When dealing with hate speech in particular,one has to consider the sensitivity of the topics,
+their wide range (e.g. sexism, sexual orientation,
+racism), and their evolution through time and loca-
+tion (Matamoros-Fernández and Farkas, 2021). Un-
+derstanding the extent of the problem and tracking
+hate speech online through automatic techniques
+can therefore be part of the solution of this ongoing
+challenge. One way to contribute to this goal is
+to both improve the current hate speech detection
+models and, crucially, the data used to train them.
+The contributions of this paper are twofold.
+First, we provide a summary and unify existing
+hate speech detection datasets from social me-
+dia, in particular Twitter. Second, we analyse
+the performance of language models trained on
+all datasets, and highlight deficiencies in generali-
+sation across datasets, including the evaluation in a
+new independently-constructed dataset. Finally, as
+a practical added value stemming from this paper,
+we share all the best models trained on the unifica-
+tion of all datasets, providing a relatively small-size
+hate speech detection model that is generalisable
+across datasets.1
+Content Warning The article contains examples
+of hateful and abusive language. The first vowel in
+hateful slurs, vulgar words, and in general profanity
+language is replaced with an asterisk (*).
+2 Related Work
+Identifying hate speech in social media is an in-
+creasingly important research topic in NLP. It is of-
+ten framed as a classification task (binary or multi-
+class) and through the years various machine learn-
+ing and information sources approaches have been
+1The best binary hate speech detection model is available at
+https://huggingface.co/cardiffnlp/twitter-rober
+ta-base-hate-latest ; the multiclass hate speech detection
+model identifying target groups is available at https://hu
+ggingface.co/cardiffnlp/twitter-roberta-base-hat
+e-multiclass-latest . These models have been integrated
+into the TweetNLP library (Camacho-Collados et al., 2022).arXiv:2307.01680v1  [cs.CL]  4 Jul 2023utilised (Mullah and Zainon, 2021; Ali et al., 2022;
+Khanday et al., 2022; del Valle-Cano et al., 2023).
+A common issue of supervised approaches lies not
+necessarily with their architecture, but with the
+existing hate speech datasets that are available to
+train supervised models. It is often the case that
+the datasets are focused on specific target groups
+(Grimminger and Klinger, 2021), constructed us-
+ing some specific keyword search terms (Waseem
+and Hovy, 2016; Zampieri et al., 2019), or have
+particular class distributions (Basile et al., 2019)
+that leads to a training process that may or may
+not generalise. For instance, Florio et al. (2020)
+analysed the temporal aspect of hate speech, and
+demonstrate how brittle hate speech models are
+when evaluated on different periods. Recent work
+has also shown that there is a need to both focus on
+the resources available and also try to expand them
+in order to develop robust hate speech classifiers
+that can be applied in various context and in dif-
+ferent time periods (Bourgeade et al., 2023; Bose
+et al., 2022).
+In this paper, we perform a large-scale evaluation
+to analyse how generalisable supervised models are
+depending on the underlying training set. Then, we
+propose to mitigate the relative lack of generali-
+sation by using datasets from various sources and
+time periods aiming to offer a more robust solution.
+3 Data
+In this section, we describe the data used in our ex-
+periments. First, we describe existing hate speech
+datasets in Section 3.1. Then, we unify those
+datasets and provide statistics of the final data in
+Section 3.2
+3.1 Hate Speech datasets
+In total, we collected 13 datasets related to hate
+speech in social media. The datasets selected are di-
+verse both in content, different kind of hate speech,
+and in a temporal aspect.
+Measuring hate speech (MHS) MHS (Kennedy
+et al., 2020; Sachdeva et al., 2022) consists of
+39,565 social media (YouTube, Reddit, Twitter)
+manually annotated comments. The coders were
+asked to annotate each entry on 10 different at-
+tributes such as the presence of sentiment, respect,
+insults and others; and also indicate the target of
+the comment (e.g. age, disability). They use Rasch
+measurment theory (Rasch, 1960) to aggregate theannotators’ rating in a continuous value that indi-
+cates the hate score of the comment.
+Call me sexist, but (CMS) This dataset of 6,325
+entries (Samory et al., 2021) focuses on the aspect
+of sexism and includes social psychology scales
+and tweets extracted by utilising the "Call me sexist,
+but" phrase. The authors also include two other
+sexism datasets (Jha and Mamidi, 2017; Waseem
+and Hovy, 2016) which they re-annotate. Each
+entry is annotated by five coders and is labelled
+based on its content (e.g. sexist, maybe-sexist) and
+phrasing (e.g. civil, uncivil).
+Hate Towards the Political Opponent (HTPO)
+HTPO (Grimminger and Klinger, 2021) is a col-
+lection of 3,000 tweets related to the 2020 USA
+presidential election. The tweets were extracted us-
+ing a set of keywords linked to the presidential and
+vice presidential candidates and each tweet is an-
+notated for stance detection (in favor of/against the
+candidate) and whether it contains hateful language
+or not.
+HateX HateX (Mathew et al., 2021) is a collec-
+tion of 20,148 posts from Twitter and Gab extracted
+by utilising relevant hate lexicons. For each entry,
+three annotators are asked to indicate: (1) the exis-
+tence of hate speech, offensive speech, or neither
+of them, (2) the target group of the post (e.g. Arab,
+Homosexual), and (3) the reasons for the label as-
+signed.
+Offense The Offense dataset (Zampieri et al.,
+2019) contains 14,100 tweets extracted by utilising
+a set of keywords and categorises them in three
+levels: (1) offensive and non-offensive; (2) tar-
+geted/untargeted insult; (3) targeted to individual,
+group, or other.
+Automated Hate Speech Detection (AHSD) In
+this dataset, (Davidson et al., 2017) the authors
+utilise a set of keywords to extract 24,783 tweets
+which are manually labelled as either hate speech,
+offensive but not hate speech, or neither offensive
+nor hate speech.
+Hateful Symbols or Hateful People? (HSHP)
+This is a collection (Waseem and Hovy, 2016) of
+16,000 tweets extracted based on keywords related
+to sexism and racism. The tweets are annotated as
+on whether they contain racism, sexism or neitherof them by three different annotators.2
+Are You a Racist or Am I Seeing Things? (AYR)
+This dataset (Waseem, 2016) is an extension of
+Hateful Symbols or Hateful People? and adds the
+"both" (sexism and racism) as a potential label.
+Overlapping tweets were not considered.
+Multilingual and Multi-Aspect Hate Speech
+Analysis (MMHS) MMHS (Ousidhoum et al.,
+2019) contains hateful tweets in three different lan-
+guages (English, French, Arabic). Each tweet has
+been labelled by three annotators on five different
+levels: (1) directness, (2) hostility (e.g. abusive,
+hateful), (3) target (e.g. origin, gender), (4) group
+(e.g. women, individual) and (5) annotator emotion
+(disgust, shock, etc). A total of 5,647 tweets are
+included in the dataset.
+HatE HatE (Basile et al., 2019) consists of En-
+glish and Spanish tweets (19,600 in total) that are
+labelled on whether they contain hate speech or not.
+The tweets in this dataset focus on hate speech to-
+wards two groups: (1) immigrants and (2) women.
+HASOC This dataset (Mandl et al., 2019) con-
+tains 17,657 tweets in Hindi, German and English
+which are annotated on three levels: (1) whether
+they contain hate-offensive content or not; (2) in the
+case of hate-offensive tweets, whether a post con-
+tains hate, offensive, or profane content/words; (3)
+on the nature of the insult (targeted or un-targeted).
+Detecting East Asian Prejudice on Social Me-
+dia (DEAP) This is a collection of 20,000 tweets
+(Vidgen et al., 2020) focused on East Asian preju-
+dice, e.g. Sinophobia, in relation to the COVID-19
+pandemic. The annotators were asked to labelled
+each entry based on five different categories (hos-
+tility, criticism, counter speech, discussion, non-
+related) and also indicate the target of the entry
+(e.g. Hong Kongers, China).
+Large Scale Crowdsourcing and Characteriza-
+tion of Twitter Abusive Behavior (LSC) The
+dataset (Founta et al., 2018) consists of 80,000
+tweets extracted using a boosted random sample
+technique. Each tweet is labelled as either offen-
+sive, abusive, hateful, aggressive, cyberbullying or
+normal.
+2A subset of the dataset is included in the Call me sexist,
+butand is not considered.3.2 Unification
+Even though all of the datasets that were collected
+revolve around hate speech, there are major dif-
+ferences among them in terms of both format and
+content. We attempt to unify the datasets by stan-
+darizing their format and combining the available
+content into two settings: (1) binary hate speech
+classification and (2) a multiclass classification task
+including the target group. We note that in cases
+where the original annotation results were provided,
+we decided to assign a label if at least two of the
+coders agree on it and not necessarily the majority
+of them. This approach can lead to a more realis-
+tic dataset and contribute in creating more robust
+systems (Antypas et al., 2022; Mohammad et al.,
+2018).
+3.2.1 Initial preprocessing
+For each dataset collected, a simple preprocessing
+pipeline is applied. Firstly, any non-Twitter con-
+tent is removed; despite the similarities between
+the content shared in various social media (e.g. in-
+ternet slang, emojis), Twitter displays unique char-
+acteristics, such as the concept of retweets and
+shorter texts, which differentiate it from other plat-
+forms such as Reddit or Youtube (Smith et al.,
+2012). Moreover, as our main consideration is
+hate speech in the English language, we exclude
+any non-English subset of tweets, and also verify
+the language by using a fastText based language
+identifier (Bojanowski et al., 2017). Finally, consid-
+ering that some datasets in this study utilise similar
+keywords to extract tweets, we remove near dupli-
+cated entries to avoid any overlap between them.
+This is accomplished by applying a normalisation
+step where entries that are considered duplicated
+based on their lemmatised form are ignored. Also,
+all URLs and mentions are removed.
+As a final note, three of the datasets ( HSHP , AYR,
+LSC) were dehydrated using the Twitter API since
+only their tweet IDs and their labels were publicly
+available. Unfortunately, a significant number of
+tweets ( ≈10,000) were no longer available from
+the API.
+3.2.2 Binary Setting
+The majority of the datasets collected are either set
+as a binary hate classification task and no further
+preprocessing is applied ( HTPO ), or offer a more
+fine-grained classification of hate speech (e.g. Ha-
+teX,CMS ) where we consider all "hate" subclasses
+as one. In general, when a dataset focuses on a spe-cific type of hate speech (e.g. sexism) we map it as
+hate speech. Notable exceptions are: (1) The MSH
+dataset, where a continues hate score is provided
+which is transformed into a binary class according
+to the mapping proposed by the original authors.
+(2) Datasets that consist of offensive speech but
+also provide information about the target of the
+tweet. In these cases, ( Offense ), we consider only
+entries that are classified as offensive and are tar-
+geting a group of people and not individuals. Our
+assumption is that offensive language towards a
+group of people is highly likely to target protected
+characteristics and thus be classified as hate speech.
+(3) Finally, only entries classified as hate speech
+were considered in datasets where there is a clear
+distinction between hate, offensive, or profound
+speech ( LSC,AHSD ,HASOC ). All data labelled as
+normal or not-hateful are also included as not-hate
+speech.
+3.2.3 Multiclass Setting
+Having established our binary setting, we aggre-
+gated the available datasets aiming to construct a
+more detailed hate speech classification task. As
+an initial step, all available hate speech sub-classes
+present were considered. However, this led to a
+very detailed but sparse hate taxonomy, with 44 dif-
+ferent hate speech categories, but with only a few
+entries for some of the classes (e.g. "economic"
+category with only four tweets present). Aiming
+to create an easy-to-use and extendable data re-
+source, several categories were grouped together.
+All classes related to ethnicity (e.g. Arab, Hispanic)
+or immigration were grouped under racism , while
+religious categories (e.g. Muslim, Christian) were
+considered separately. Categories related to sex-
+uality and sexual orientation (e.g. heterosexual,
+homosexual) were also grouped in one class, and
+tweets with topics regarding gender (men, women)
+constitute the sexism class. Finally, all entries la-
+belled as "not-hate" speech were also included. To
+keep our dataset relatively balanced we also ig-
+nored classes that constitute less than 1% of the
+total hate speech data. Overall, the multiclass set-
+ting proposed consists of 7 classes: Racism, Sexism,
+Disability, Sexual orientation, Religion, Other , and
+Not-Hate . It is worth noting that tweets falling
+under the Other class do not belong to any of the
+other five hate speech classes.3.2.4 Statistics and Data Splits
+In total, we collected 83,230 tweets, from 13 dif-
+ferent datasets (Table 1), of which only 33% are
+classified as hate speech. This unified dataset may
+seem imbalanced but it is commonly assumed that
+only around 1% of the content shared on social
+media contains hate speech (Pereira-Kohatsu et al.,
+2019). When considering the multiclass setting,
+the hate speech percentage decreases even more
+with only 26% of tweets labelled as a form of hate
+speech, with the religion class being the least pop-
+ular with only 709 entries.
+The data in both settings (binary & multiclass)
+are divided into train and test sets using a stratified
+split to ensure class balance between the splits (Ta-
+ble 2). In general, for each dataset present, we allo-
+cate 70% as training data, 10% as validation, and
+20% as test data. Exceptions to the aforementioned
+approach are datasets where the authors provide a
+preexisting data split which we use.
+4 Evaluation
+We present our main experimental results com-
+paring various language models trained on single
+datasets and in the unified dataset presented in the
+previous section.
+4.1 Experimental Setting
+Models. For our experiments we rely on four
+language models of a similar size, two of them be-
+ing general-purposes and the other two specialized
+on social media: BERT-base (Devlin et al., 2019)
+and RoBERTa-base (Liu et al., 2019) as general-
+purpose models; and BERTweet (Nguyen et al.,
+2020) and TimeLMs-21 (Loureiro et al., 2022) as
+language models specialized on social media, and
+particularly Twitter. There is an important differ-
+ence between BERTweet and TimeLMs-21: since
+BERTweet was trained from scratch, TimeLMs-21
+used the RoBERTa-base checkpoint as initializa-
+tion and then continued training on a Twitter cor-
+pus. An SVM classifier is also utilized as a baseline
+model.
+Settings. Aiming to investigate the effect of a
+larger and more diverse hate speech training cor-
+pus on various types of hate speech, we perform
+an evaluation on both the binary and multiclass
+settings described in Section 3.2. Specifically, for
+the binary setting we fine-tune the models selected
+first on each individual dataset, and secondly while
+using the unified dataset created. For the multiclassDatasetBinary Multiclass
+hate not-hate racism sexism sexual orientation disability religion other
+HatE 5303 7364 2474 2829 -
+MHS 2485 5074 735 784 251 21 246 10
+DEAP 3727 105 3727 -
+CMS 1237 10861 - 1237 -
+Offense 1142 12547 -
+HateX 2562 5678 757 492 407 30 239 143
+LSC 889 1267 -
+MMHS 5392 - 472 764 512 1387 224 2033
+HASOC 1237 4348 -
+AYR 393 1246 42 343 -
+AHSD 1363 4088 -
+HTPO 351 2647 -
+HSHP 1498 426 9 1489 -
+Total 27,579 55,651 8,216 7,938 1,170 1,438 709 2,186
+Table 1: Distribution of tweets gathered across hate speech datasets, including those where the target information is
+available (multiclass).
+Datasettrain test
+not-hate hate not-hate hate
+AHSD 3270 1090 818 273
+AYR 996 314 250 79
+CMS 8688 989 2173 248
+DEAP 84 2981 21 746
+HASOC* 3489 1113 859 124
+HSHP 341 1197 85 301
+HTPO* 2106 292 541 59
+HatE* 5757 4197 1607 1106
+HateX 4542 2050 1136 512
+LSC 1013 711 254 178
+MHS 4058 1988 1016 497
+Offense* 10037 913 2510 229
+All 44,381 17,835 11,270 4,352
+Table 2: Binary class distribution in train and test splits
+of the unified hate speech datasets. * indicates datasets
+where preexisting train/test splits were available and
+retrieved.
+setting, we considered the unified and the HateX
+dataset, which includes data for all classes. In total,
+we fine-tuned 54 different binary3and 8 multiclass
+models.
+Training. The implementations provided by Hug-
+ging Face (Wolf et al., 2020) are used to train
+and evaluate all language models, while we utilise
+Ray Tune (Liaw et al., 2018) along with HyperOpt
+(Bergstra et al., 2022) and Adaptive Successive
+3MMHS dataset was used only for the training/evaluation
+of the unified dataset as it is lacking the not-hate classHalving (Li et al., 2018) for optimizing the learn-
+ing rate, warmup steps, number of epochs, and
+batch size, hyper-parameteres of each model.4
+Evaluation metrics. The macro-averaged F1
+score is reported and used to compare the perfor-
+mance of the different models. Macro-F1 is com-
+monly used in similar tasks (Basile et al., 2019;
+Zampieri et al., 2020) as it provides a more con-
+crete view on the performance of each model.
+4.2 Datasets
+For training and evaluation, we use the splits de-
+scribed in Section 3.2.4. As described above, for
+each language model we trained on each dataset
+training set independently, and in the combination
+of all dataset-specific training sets. The results
+on the combination of all datasets are averaged
+across each dataset-specific test set (A VG), i.e.,
+each dataset is given the same weight irrespective
+of its size. In addition to the datasets presented
+in Section 3.1, we constructed an independent test
+set (Indep) to test the robustness of models outside
+existing datasets.
+Independent test set (Indep). This dataset was
+built by utilising a set of keywords related to the
+International Women’s Day andInternational Day
+Against Homophobia, Transphobia and Biphobia
+and extracting tweets from the respected days of
+2022. Then, these tweets were manually annotated
+4Optimal hyperparameters can be found in Table 5 in the
+AppendixModelTrainHatE MHS DEAP CMS Off. HateX LSC HASOC AYR AHSD HTPO HSHP A VG IndepData Size
+BERTweetAll 58213 57.1 87.7 57.7 82.4 59.4 75.1 61.5 59.4 85.5 90.2 59.5 65.4 70.1 61.0
+All* 5290 51.1 80.5 53.7 73.1 60.8 67.3 72.1 63.9 85.6 85.4 67.6 62.1 68.6 69.2
+MHS 5291 65.5 89.3 13.3 50.6 53.2 69.6 58.8 58.0 66.8 78.8 67.7 28.6 58.3 58.6
+TimeLMsAll 58213 54.2 86.6 68.0 79.7 56.9 74.8 59.1 63.2 87.2 89.4 65.2 64.5 70.7 63.7
+All* 1146 48.3 74.9 49.3 69.3 54.7 59.7 63.8 63.8 82.3 79.9 59.6 63.0 64.0 70.6
+AYR 1147 61.0 71.4 9.8 63.5 52.5 56.3 60.9 63.6 87.7 80.7 66.8 57.9 61.0 59.3
+RoBERTaAll 58213 52.3 85.9 66.6 79.9 54.7 73.8 59.5 60.8 87.0 89.8 64.4 61.4 69.7 56.2
+All* 1146 56.0 73.7 53.2 64.2 53.0 48.9 70.2 65.8 74.3 74.1 58.9 61.0 62.8 78.3
+AYR 1147 54.8 63.8 17.5 69.8 55.2 50.1 57.7 63.4 86.3 81.9 64.6 55.6 60.1 53.8
+BERTAll 58213 52.3 84.0 49.3 79.7 56.8 74.1 56.9 60.9 85.2 89.6 60.5 65.5 67.9 50.7
+All* 2098 44.7 75.0 49.2 66.1 55.9 59.1 63.5 60.5 71.1 74.1 57.0 60.5 61.4 60.9
+HTPO 2099 54.9 77.5 19.8 52.1 52.1 58.6 64.8 55.9 61.3 78.1 73.5 38.3 57.2 50.7
+SVMAll 58213 50.6 77.0 61.6 66.1 48.5 71.2 47.8 48.9 86.9 87.3 47.3 54.9 61.2 46.7
+All* 5290 44.5 76.1 55.7 68.4 50.7 64.4 57.0 56.2 81.0 81.9 52.7 57.4 67.2 59.3
+MHS 5291 57.9 80.0 4.8 48.3 48.4 67.2 46.4 46.4 47.8 75.0 50.1 22.7 47.7 51.8
+All hate baseline 29.0 25.0 49.0 9.0 8.0 24.0 29.0 11.0 19.0 20.0 9.0 44.0 23.0 10.0
+Table 3: Macro-averaged F1 scores across all hate speech test sets and our manually annotated set (Indep). For each
+model, the table includes: (1) the performance of the model trained on all the datasets (All); (2) the performance of
+the model when trained on a balanced sample of all datasets of the same size as the best single-dataset baseline
+(All*); and (3) the best overall performing model trained on a single dataset (BERTweet: MHS , TimeLMs: AYR,
+RoBERTa: AYR, BERT: HTPO , SVM: MHS ). The best result for each dataset and model is bolded.
+model Train sexism racism disabilitysexual
+orientationreligion other not-hate A VG
+TimeLMsAll Datasets 72.2 72.9 74.2 76.9 52.6 58.8 90.6 71.6
+HateX 52.1 16.5 0 58.8 31.8 5.8 86.0 35.9
+BERTweetAll Datasets 73.1 72.5 74.1 77.6 48.6 59.3 90.9 70.9
+HateX 47.8 6.8 0 43.9 0 0 85.5 26.3
+RoBERTaAll Datasets 70.4 72.4 73.9 76.5 47.3 55.5 90.3 69.5
+HateX 50.5 16.3 0 67.9 29.1 7.7 85.5 36.3
+BERTAll 68.9 66.3 75.5 69.3 40.3 54.9 93.3 66.9
+HateX 40.4 16.0 0 66.2 15.9 0 85.4 32.0
+SVMAll 62.7 67.0 71.5 70.5 4.1 49.0 59.11 81.9
+HateX 20.1 6.0 0 54.9 6.8 0 84.5 24.6
+Baseline (most frequent) 0 0 0 0 0 0 84.0 12.0
+Table 4: F1 score for each class in the multiclass setting when trained on all the datasets (All) and when trained only
+with HateX. Macro-average F1 (A VG) is also reported.
+by an expert. In total 200 tweets were annotated as
+hateful, not-hateful, or as "NA" in cases where the
+annotator was not sure whether a tweet contained
+hate speech or not. The Indep test set consists of
+151 non-hate and 20 hate tweets and due to its na-
+ture (specific content & expert annotation) can be
+leveraged to perform a targeted evaluation on mod-
+els trained on similar and unrelated data. While we
+acknowledge the limitations of the Indep test set
+(i.e., relative small number of tweets and only one
+annotator present), our aim is to use these tweets,
+collected using relatively simple guidelines5, to test
+the overall generalisation ability of our models and
+how it aligns to what people think of hate speech.
+5Annotator guidelines are available in Appendix A.4.3 Results
+4.3.1 Binary Setting
+Table 3 displays the macro-F1 scores achieved by
+the models across all test sets when fine-tuned: (1)
+on all available datasets ( All), (2) on the best over-
+all performing model trained on a single dataset,
+and (3) on a balanced sample of the unified dataset
+of the same data size as (2). When looking at
+the average performance of (1) and (2), it is clear
+that when utilising the combined data, all mod-
+els perform considerably better overall. This in-
+creased performance may not be achieved across
+all the datasets tested, but it does provide evidence
+that the relatively limited scope of the individual
+datasets hinder the potential capabilities of ourmodels. An even bigger constrast is observed
+when considering the performance difference on
+theDEAP subset, which deals with a less common
+type of hate speech (prejudice towards Asian peo-
+ple), where even the best performing single dataset
+model achieves barely 19.79% F1 compared to the
+worst combined classifier with 49.27% F1 (BERT
+All / BERT HTPO ).
+To further explore the importance of the size and
+diversity of the training data we train and evaluate
+our models in an additional settings. Considering
+the sample size of the best performing dataset for
+each model, an equally sized training set is ex-
+tracted from all available data while enforcing a
+balanced distribution between hate and not-hate
+tweets ( All*). Finally, we make sure to sample
+proportionally across the available datasets. The re-
+sults (Table 3) reveal the significance that a diverse
+dataset has in the models’ performance. All models
+tested perform on average better when trained on
+the newly created subsets ( All*) when compared
+to the respective models trained only on the best
+performing individual dataset. Interestingly, this
+setting also achieves the best overall scores on the
+Indep. set, which reinforces the importance of bal-
+ancing the data. Nonetheless, all the transformers
+models still achieve their best score when trained
+on all the combined datasets ( All) which suggests
+that even for these models, the amount of available
+training data remains an important factor of their
+performance.
+4.3.2 Multiclass Setting
+Similarly to our binary setting, utilising the com-
+bined datasets in the multiclass setting enhances
+the models’ performance. As can be observed from
+Table 4, all the models struggle to function at a sat-
+isfactory degree when trained on the HateX subset
+only. In particular, when looking at the "disability"
+class, none of the models manage to classify any
+of the entries correctly. This occurs even though
+"disability" entries exist in the HateX training sub-
+set, albeit in a limited number (21). This behaviour
+suggests that even when information about a class
+is available in the training data, language models
+may fail to distinguish and utilise it. Imbalanced
+datasets are a common challenge in machine learn-
+ing applications. This issue is also present in hate
+speech, in this case exacerbated given the nature of
+the problem (including a potential big overlap of
+features between classes) and the lack of resources
+available.5 Analysis
+In this section, we dissect the results presented in
+the previous section by performing a cross-dataset
+comparison and a qualitative error analysis.
+5.1 Cross-dataset Analysis
+Figure 1 presents a cross-dataset comparison of
+the language models used for the evaluation. The
+heatmap presents the results of the models fine-
+tuned and tested for all dataset pair combinations.
+All models evaluated tend to perform better when
+they are trained and tested on specific subsets (left
+diagonal line on the heat-maps). Even when we
+evaluate models on similar subsets, they tend to
+display a deterioration in performance. For ex-
+ample both CMS andAYR datasets deal with sex-
+ism but the models trained only on CMS perform
+poorly when evaluated on AYR (e.g. BERTweet-
+CSM achieves 87% F1 on CSM , but only 52% on
+AYR). Finally, it is observable again that the models
+trained on the combined datasets (column "all")
+display the best overall performance and attain con-
+sistently high results in each individual test set.
+When analysing the difficulty of each individual
+dataset when used as a test set, DEAP is clearly
+the most challenging one overall. This may be
+due to the scope of the dataset, dealing with East
+Asian Prejudice during the COVID-19 pandemic,
+which is probably not well captured in the rest of
+the datasets. When used as training sets, none of
+the individual datasets is widely generalisable, with
+the results of the model fine-tuned on them being
+over 10 points lower than when fine-tuned on the
+unified dataset in all cases.
+5.2 Qualitative Error Analysis
+Aiming to better understand the models’ results
+we perform a qualitative analysis focusing on en-
+tries miss-classified by our best performing model,
+TimeLMs-All .
+Multiclass. When considering the multiclass set-
+ting, common errors are tweets that have been la-
+belled as hateful, e.g. "U right, probably some
+old n*gga named Clyde" is labelled as racism and
+"@user @user she not a historian a jihadi is the cor-
+rect term" as religion , but the model classifies them
+asnot-hate . However, depending on the context
+and without having access to additional informa-
+tion (author/target of the tweet) these entries may
+not actually be hateful.Figure 1: Macro-averaged F1 score for each dataset/model combination. The X axis indicates on which dataset
+the model was trained while the Y axis indicates the test set used to evaluate it. AVERAGE indicates the result by
+averaging across all datasets, and allrepresents the aggregated training set including all datasets.
+It is also interesting to note the limitations that
+arise when training only on a single dataset, par-
+ticularly if the data collection is done by utilising
+specific keywords. For example the tweets "Lana
+i love you b*tch. Put that flag back up h*e #lust-
+foflife" and "happy birthday b*tch, hope you have
+a great one h*e! @user" are correctly classified as
+not-hate byTimeLMs-All but are miss-classified as
+sexism byTimeLMs-HateX , despite sexism being
+present in the HateX dataset.
+Binary In the binary setting, the model seems
+to struggle with entries such as "Meanwhile in
+Spain..#stopimmigration" and "This is outrageous.Congress should be fired on the spot. #BuildThat-
+Wall #stopwastingmytaxdollars" where both entries
+are classified as hate but are labelled as not-hate .
+Similarly to the previous case, the classification of
+such tweets without additional context is a difficult
+task. While these tweets have hateful undertones,
+they may not be necessarily hate speech without
+considering them in their broader context.
+Finally, when looking at the classification errors
+ofTimeLMs-AYR (trained only on sexist and racist
+tweets) the need of diverse training data becomes
+apparent. For example, TimeLM-AYR fails to clas-
+sify as hate speech the tweets "@user that r*tardedguy should not be a reporter" and "I’m going to
+sell my iPhone and both my Macs, I don’t support
+f*ggots." as hate speech in contrast to TimeLMs-All
+which classifies the tweets correctly as hateful.
+6 Conclusion
+In this paper, we presented a large-scale analysis of
+hate speech detection systems based on language
+models. In particular, our goal was to show the
+divergences across datasets and the importance of
+having access to a diverse and complete training set.
+Our results show how the combination of datasets
+make for a robust model performing competitively
+across all datasets. This is not a surprising find-
+ing given the size of the corresponding training
+sets, but the considerable gap (e.g. 70.7% to 61.0%
+in Macro-F1 for the best TimeLMs-21 perform-
+ing model) shows that models trained on single
+datasets have considerable room for improvement.
+Moreover, even when controlling for data size, a
+model trained on a diverse set instead of a single
+dataset leads to better overall results.
+As future work, we are planning to extend this
+analysis beyond English, in the line of previous
+multilingual approaches (Ousidhoum et al., 2019;
+Chiril et al., 2019; Bigoulaeva et al., 2021), and
+masked language models by including, among
+others, generative and instruction-tuning language
+models. In addition to the extensive binary-level
+evaluation, recognising the target group is a chal-
+lenging area of research. While in Section 4.3.2,
+we provided some encouraging results, the results
+could be expanded with a unified taxonomy.
+7 Ethics Statement
+Our work aims to contribute and extend research
+regarding hate speech detection in social media and
+particular in Twitter. We believe that our efforts
+to contribute on the ongoing concerns around the
+status of hate speech on social medial.
+We acknowledge the importance of the ACM
+Code of Ethics, and are committed on following it’s
+guidelines. Our current work, uses either publicly
+available tweets under open licence and does not
+infringe any of the rules of Twitter’s API. Moreover,
+given that our task includes user generated content
+we are committed to respect the privacy of the users,
+by replacing each user mention in the texts with a
+placeholder.8 Limitations
+In this paper, we have focused on existing datasets
+and a unification stemming from their features. The
+decisions taken to this unification, particularly in
+the selection of dataset and target groups, may in-
+fluence the results of the paper.
+We have focused on social media (particularly
+Twitter) and on the English language. While
+there has been extensive work on this medium
+and language, the conclusions that we can take
+from this study can be limiting, as the detection
+of hate speech involves other areas, domains and
+languages. In general, we studied a particular as-
+pect of hate speech detection which may or not be
+generalizable.
+Finally, due to computational limitations, all our
+experiments are based on base-sized language mod-
+els. It is likely that larger models, while exhibiting
+similar behaviours, would lead to higher results
+overall.
+9 Acknowledgements
+The authors are supported by a UKRI Future Lead-
+ers Fellowship. They also acknowledge the collab-
+oration with the Spanish National Office Against
+Hate Crimes and the support of the EU Citizens,
+Equality, Rights and Values (CERV) programme.
+However, the authors have the exclusive responsi-
+bility for the contents of this publication. Finally,
+the authors thank Nina White for her help annotat-
+ing the independent test set.

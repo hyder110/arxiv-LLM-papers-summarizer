@@ -1,0 +1,31 @@
+Title: Comparing scalable strategies for generating numerical perspectives
+
+Authors: Hancheng Cao, Sofia Eleni Spatharioti, Daniel G. Goldstein, Jake M. Hofman
+
+Summary: The paper explores the challenges in generating numerical perspectives at scale and compares three strategies for large-scale perspective generation: a rule-based approach, a crowdsourced system, and a model that uses Wikipedia data and semantic similarity. The combination of these three approaches is found to be more effective than any single method, with different approaches excelling in different settings.
+
+Bullet points:
+
+1. Numerical perspectives help people understand extreme and unfamiliar numbers.
+2. Generating numerical perspectives at scale is challenging.
+3. Identifying what makes some analogies more helpful than others is difficult.
+4. The most helpful perspectives can vary based on the context.
+5. The paper presents and compares three strategies for large-scale perspective generation.
+6. The strategies include a rule-based approach, a crowdsourced system, and a model using Wikipedia data and semantic similarity.
+7. The combination of these three approaches is more successful than any single method.
+8. Different approaches excel in different settings.
+9. Users display heterogeneous preferences for numerical perspectives.
+10. This research contributes to improving the scalability and effectiveness of generating numerical perspectives.
+
+Keywords:
+
+1. Numerical perspectives
+2. Scale
+3. Challenges
+4. Analogies
+5. Context-specific
+6. Rule-based approach
+7. Crowdsourced system
+8. Wikipedia data
+9. Semantic similarity
+10. Scalability

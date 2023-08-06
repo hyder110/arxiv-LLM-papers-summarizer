@@ -1,0 +1,453 @@
+TRUST IN SOFTWARE SUPPLY CHAINS : BLOCKCHAIN -ENABLED
+SBOM AND THE AIBOM F UTURE
+Boming Xia1,2, Dawen Zhang1,3, Yue Liu1,2, Qinghua Lu1,2, Zhenchang Xing1,3, and Liming Zhu1,2
+1CSIRO’s Data61,2University of New South Wales,3Australian National University
+firstname.lastname@data61.csiro.au
+July 6, 2023
+ABSTRACT
+Software Bill of Materials (SBOM) serves as a critical pillar in ensuring software supply chain
+security by providing a detailed inventory of the components and dependencies integral to software
+development. However, challenges abound in the sharing of SBOMs, including potential data
+tampering, hesitation among software vendors to disclose comprehensive information, and bespoke
+requirements from software procurers or users. These obstacles have stifled widespread adoption
+and utilization of SBOMs, underscoring the need for a more secure and flexible mechanism for
+SBOM sharing. This study proposes a novel solution to these challenges by introducing a blockchain-
+empowered approach for SBOM sharing, leveraging verifiable credentials to allow for selective
+disclosure. This strategy not only heightens security but also offers flexibility. Furthermore, this
+paper broadens the remit of SBOM to encompass AI systems, thereby coining the term AI Bill of
+Materials (AIBOM). This extension is motivated by the rapid progression in AI technology and the
+escalating necessity to track the lineage and composition of AI software and systems. Particularly in
+the context of foundational models such as large language models (LLMs), it is crucial to understand
+their composition and dependencies as these models often form the basis for further development,
+creating intricate dependencies. The evaluation of our solution indicates the feasibility and flexibility
+of the proposed SBOM sharing mechanism, positing a new solution for securing (AI) software supply
+chains.
+1 Introduction
+Software supply chain security is an increasingly critical concerndue to vulnerabilities in both in-house and third-party
+software components, posing substantial threats to organizations and individuals [ 1,2]. These vulnerabilities can result
+in system malfunctions or failures, as exemplified by the ChatGPT outage1on March 20, 2023, caused by a bug in the
+open-source library redis-py , which inadvertently exposed some users’ chat history. Moreover, attackers can exploit
+these vulnerabilities, leading to substantial threats for affected organizations, as demonstrated by the SolarWinds attack
+[3]. In recent years, software supply chain attacks have experienced a significant surge, with an average annual increase
+of 742% reported from 2019 to 2022, according to Sonatype’s report [ 4]. This surge underscores the urgent need to
+address and manage software supply chain vulnerabilities effectively.
+To mitigate these risks and enhance software supply chain security, the implementation of robust software bill of
+materials (SBOM) practices becomes essential. An SBOM provides a formal, machine-readable inventory of software
+components used in the production of a software product, including their dependency relationships [ 5]. Recognizing
+the gravity of the situation, the US government issued an executive order in May 2021, mandating companies trading
+with the US government to provide SBOMs as a proactive step towards enhancing software supply chain security [ 6].
+Nevertheless, SBOM sharing presents significant challenges, including SBOMs’ susceptibility to tampering, the
+reluctance of software vendors to share complete information, and varying requirements among software procurers
+and users, as mentioned in [ 7]. Furthermore, despite the ongoing maturation of SBOM adoption efforts, a lack of
+1https://openai.com/blog/march-20-chatgpt-outagearXiv:2307.02088v1  [cs.SE]  5 Jul 2023APREPRINT - JULY 6, 2023
+universally applicable solutions further complicates the landscape. Additionally, a report from the U.S. Cybersecurity
+and Infrastructure Security Agency (CISA) emphasizes the importance of interoperability among SBOM sharing
+solutions and the need for automation to facilitate widespread SBOM adoption [8].
+In response to these gaps, this study proposes a blockchain-based solution for SBOM sharing via verifiable credentials
+(VCs). Blockchain offers a secure and transparent method of storing and sharing data, resistant to tampering and
+fraud, while providing a decentralized system that promotes trust and accountability [ 9]. By employing VCs, the
+proposed solution ensures the authenticity and integrity of information and allows for fine-grained selective disclosure
+and zero-knowledge-proofs (ZKPs) [ 10,11] of sensitive data, thus enhancing security and flexibility during SBOM
+sharing [ 12]. The proof-of-concept experiments show that our proposed solution for SBOM sharing is feasible and
+represents a promising approach to overcome the challenges of tampering and inflexibility in SBOM sharing. The main
+contributions of this paper include:
+•We undertake a comprehensive examination of the standard scenarios of SBOM sharing. These include secure
+full disclosure, secure disclosure, and secure need-to-know disclosure, each with its unique challenges (see
+Sections 3.1.3). This analysis contributes to a deeper understanding of SBOM sharing landscapes and the
+difficulties therein.
+•We introduce an innovative architecture that utilizes blockchain and integrates VCs to support progressive trust
+mechanisms like selective disclosure and zero-knowledge proofs for SBOM sharing. This unique solution
+establishes a chain of trust via VC reference, offering a holistic solution to managing the SBOM sharing
+lifecycle. By harnessing the potential of blockchain and smart contracts, the proposed architecture enhances
+interoperability and automation, thus catalyzing wider adoption of SBOMs. This represents a significant
+advancement in SBOM sharing solutions.
+The structure of this paper is as follows: Section 2 outlines SBOM, blockchain, and VCs. Section 3 presents motivating
+scenarios for our solution. Section 4 details the proposed architecture, while Section 5 evaluates our proof-of-concept.
+Section 6 reviews related work, and Section 7 discusses the SBOM to AIBOM evolution, concludes, and suggests future
+work.
+2 Background
+2.1 Software Bill of Materials (SBOM)
+At its core, an SBOM represents an inventory of software components. The U.S. National Telecommunications and
+Information Administration (NTIA) stipulates that an SBOM should contain eight key data fields: component supplier
+name, component name, component version, unique identifiers (e.g., package url), dependency relationship, SBOM data
+author, and timestamp [ 5]. However, as reported by [ 7], not all software vendors comply with these minimum data
+field recommendations, and many are hesitant to disclose the complete SBOM information to downstream customers.
+Current prevalent SBOM standards, namely SPDX2, CycloneDX3, and SWID Tagging4, may only mandate a subset of
+the recommended data fields. For instance, CyCloneDX 1.4 Version5does not require the inclusion of SBOM author(s)
+information. In light of this, there is a pressing need for an SBOM sharing mechanism that is not only secure but also
+flexible.
+2.2 Blockchain
+The unique advantage of blockchain as a decentralized digital ledger lies in the implementation of cryptographic proto-
+cols and distributed consensus mechanisms, ensuring the data’s immutability and resistance to tampering. This feature
+renders blockchain ideal for applications demanding trust, transparency, and security, such as financial transactions and
+supply chain management [ 13]. With the use of smart contracts, self-executing agreements can be achieved, making
+blockchain more efficient and reducing the need for intermediaries or central authorities [13, 14].
+In the context of blockchain, Decentralized Identifiers (DIDs) [ 15] represent a novel identifier class enabling verifiable,
+self-sovereign digital identity. Unlike traditional identifiers, DIDs are entirely controlled by the subject, independent of
+any centralized registry or certificate authority. These identifiers, in the form of URLs, link a DID subject to methods
+for trustworthy interactions. Residing on a distributed ledger like blockchain, DIDs are globally unique, persistent, and
+2https://spdx.dev/
+3https://cyclonedx.org/
+4https://csrc.nist.gov/projects/Software-Identification-SWID
+5https://cyclonedx.org/docs/1.4/json/#metadata_authors
+2APREPRINT - JULY 6, 2023
+Figure 1: Trust Chain Overview (adapted from [16], Fig. 9)
+do not require a central registration authority. DIDs are integral to blockchain technology, providing a framework for
+designing and utilizing blockchain-anchored systems.
+2.3 Verifiable credential (VC)
+VCs are digital credentials that allow individuals to securely share and prove their information. They are designed to be
+cryptographically secure and tamper-proof, providing a way to authenticate individuals and their data without relying
+on centralized authorities or third-party verifiers. The W3C VCs Data Model [ 10] provides a common language and
+structure for issuing, storing, and presenting VCs, making them interoperable across different systems.
+Blockchain provides a secure, transparent, and decentralized platform for issuing and verifying VCs. It ensures data se-
+curity and immutability, while verifiable claims within VCs authenticate issuers, validate information, enable contextual
+verification, manage revocation and expiry, and promote interoperability and standardization. Thus, the integration of
+blockchain technology and verifiable claims enhances the reliability and trustworthiness of the credential sharing and
+distribution process, providing a comprehensive solution for secure and verifiable digital identity management.
+3 Preliminaries and Motivating scenarios
+The motivation behind this work is rooted in several significant findings from a prior empirical study [ 7]. While the
+market primarily emphasizes SBOM generation, ensuring the integrity of the resulting SBOMs against tampering
+threats, as well as the subsequent distribution and sharing of SBOMs, present substantial risks to the broader adoption
+of SBOMs.
+3.1 Preliminaries and terminologies
+To elucidate the motivation clearly, we introduce the following preliminaries and terminologies. An overview of the
+Trust Chain based on VC referencing is presented in Fig. 1.
+3.1.1 VCs
+This section explains the different types of VCs. A Trust Chain [16] can be established via VC referencing.
+•Eligibility VCs : Oversight authorities issue these VCs to software vendors that demonstrate a strong track
+record in secure software development, adherence to industry standards, and robust security practices, thereby
+qualifying them for issuing SBOM VCs . These Eligibility VCs are embedded within SBOM VCs by referencing
+their uniform resource identifiers (URIs). Note that embedding VCs may require an integrity protection
+mechanism, such as a linking mechanism that cryptographically binds the contents of the target VC document
+to the URI itself [11], which is beyond the scope of this paper.
+•SBOM VCs : These VCs encapsulate the SBOM metadata and are linked to SBOMs (e.g., via hash values or
+URIs) without revealing the actual SBOM details. This allows for selective disclosure, where only certain
+3APREPRINT - JULY 6, 2023
+parts of the SBOM are revealed depending on the requirements of the software procurer or the policies of
+the software vendor. Given the complex components and dependencies in a software product, we further
+categorize SBOM VCs into component-level and system-level (see Fig. 1):
+–Component SBOM VCs ( cSBOM VCs ): For in-house components within a software product, the vendor’s
+ownEligibility VC is embedded in the cSBOM VCs . For third-party components, if SBOM VCs embedded
+with Eligibility VCs are already attached by upstream vendors and no customized modifications are made,
+downstream vendors may embed these credentials within the System SBOM VC of the software product
+after successful verification. However, if the third-party components lack SBOM VCs , the downstream
+vendor can choose to: 1) send a SBOM generation request to the upstream vendor if possible; 2) perform
+security checks and generate cSBOM VCs embedded with its own Eligibility VC for these components, if
+permitted (e.g., license permits etc), thereby increasing trustworthiness; or, 3) leave the credentials blank.
+It is always recommended to request or generate cSBOM VCs in such cases, or otherwise it could impact
+the trustworthiness of the downstream vendor’s software product, undermine the vendor’s reputation, and
+comprise the trust chain formed via credentials reference. If a downstream vendor modifies the third-party
+components, the same processes for in-house components apply.
+–System SBOM VCs ( sSBOM VCs ): System-level SBOM VCs incorporate all available cSBOM VCs ,
+providing a holistic view of the entire software system.
+3.1.2 Stakeholders
+Each stakeholder plays a critical role in ensuring the integrity and trustworthiness of the SBOM sharing chain:
+•Independent Oversight ( Trust Anchor ): Oversight authorities, such as government agencies, accreditation
+authorities, or industry-standard certification bodies, are responsible for verifying the identity and eligibility of
+software vendors and issuing Eligibility VCs to qualifying vendors, maintaining the integrity of the system,
+setting the standards for eligibility, and handling disputes. They also conduct regular eligibility audits and
+impose penalties in cases of violations, such as falsifying SBOM VCs or failing to adhere to the eligibility
+criteria, which could result in penalties ranging from fines to the revocation of Eligibility VCs , which could have
+significant implications for the vendor, including loss of trust and potential legal consequences. Independent
+oversight is the issuer ofEligibility VCs .
+•Software Vendors : Vendors must obtain Eligibility VCs from oversight authorities to be eligible for credential
+issuance. Qualified vendors with valid Eligibility VCs self-issue SBOM VCs for their software systems or
+products, embedding their Eligibility VCs within. Software vendors are the issuer ofSBOM VCs , the holder
+ofEligibility VCs , and the verifier of both SBOM VCs andEligibility VCs from upstream vendors.
+•Software Procurers : Procurers, including downstream software vendors in some cases, verify credentials
+when purchasing or importing third-party software or components, ensuring that only trustworthy software is
+used in their operations or further development processes. Software procurers are the verifier of the SBOM
+VCs andEligibility VCs .
+Note that procurers may only verify the sSBOM VCs (and the vendor’s Eligibility VC ), or, in the cases of downstream
+vendors, the cSBOM VCs of the components they procure/introduce although these components can contain sub-
+components with cSBOM VCs . It is the responsibility of each down-stream stakeholder to verify the VCs from the last
+up-stream vendor, thus forming a trust chain.
+3.1.3 Scenario overview
+Multiple software vendors participate in a permissioned blockchain network, each responsible for their own software
+products. The blockchain network serves as a secure and transparent platform for sharing and verifying SBOM VCs .
+Each vendor joins the network by obtaining Eligibility VCs from oversight authorities, which certify their qualification
+and eligibility for issuing SBOM VCs .
+Scenario 1: Secure Full Disclosure . The software vendor is willing to share the complete SBOMs for a purchased
+software product. Selective disclosure is optional, depending on whether the software procurer requires a complete
+or partial SBOM. However, since malicious parties may tamper with the generated SBOMs, secure SBOM sharing
+mechanisms are necessary to ensure the integrity and authenticity of the SBOMs.
+Scenario 2: Secure Selective Disclosure . The software vendor is only willing to share partial SBOMs as the SBOMs
+contain sensitive information (e.g., proprietary algorithms or trade secrets) that the vendor prefers not to disclose. In
+this case, the provided SBOMs need to be selectively disclosed based on the vendor’s and procurers’ specifications
+and requirements. Common techniques supporting selective disclosure include atomic credentials, selective disclosure
+4APREPRINT - JULY 6, 2023
+signatures, hashed values, and attribute-based encryption (ABE) [ 11,17]. Similar to scenario 1, SBOMs need to be
+securely shared.
+Scenario 3: Secure Need-to-Know Disclosure . This can be considered as an special extension of scenario 2. In cases
+where the procurer has access to only limited or no SBOM data, as the vendor could be a highly confidential corporate
+with strict privacy policies, the vendor could be obliged to provide certain information to its customers under critical
+situations. For example, when a critical vulnerability is newly discovered, software procurers may want to determine
+if the purchased software is affected. Although the vendor is unwilling to disclose SBOM data, they can inform the
+customers whether the vulnerable component is included after verifying the validity of the concern using ZKPs [ 10,11],
+without disclosing further information such as component version etc. While no SBOM will be shared in this scenario,
+the inclusion information of the vulnerable component also needs to be securely communicated.
+Based on the motivating scenarios above, we propose to encompass SBOM information into corresponding SBOM VCs ,
+and utilize blockchain as the secure underlying SBOM VCs sharing infrastructure. Together, these techniques provide a
+secure and flexible mechanism for SBOM sharing.
+4 Architecture Design
+In this section, we delineate the architectural design of our proposed solution. The architecture, as depicted in Fig. 2,
+comprises three layers: Service Layer : This layer serves as a crucial interface for stakeholders to interact with the
+blockchain network and access the system’s services. It encompasses DID Services andCredential Services , which
+include SBOM VC Services andEligibility VC Services . The inclusion of these components within the Service Layer
+stems from the objective of facilitating stakeholder engagement and ensuring a seamless user experience. Off-Chain
+Data Layer : The Off-Chain Data Layer stores essential operational data such as SBOM data and eligible vendor
+information. Storing raw data in off-chain repositories can optimize on-chain storage capacity, leading to improved
+system efficiency and cost reduction. Besides, keeping data in stakeholders’ respective off-chain repositories helps
+preserve data privacy considering SBOM information sensitivity in certain cases. On-Chain Data Layer : The On-Chain
+Data Layer encompasses data directly stored on the blockchain, including verifiable credentials (VCs) and decentralized
+identifiers (DIDs), as well as a suite of smart contracts for the execution of predefined business logic. Blockchain
+guarantees the immutability and transparency of both on-chain data and operation logs via the underlying distributed
+ledger, consequently ensuring robust data integrity and provenance to enhance the overall system trustworthiness.
+The allocation of components to either the on-chain or off-chain data layers is based on a careful balance between the
+benefits of decentralization, transparency, and immutability offered by the blockchain, and the need and capability for
+efficient and private data storage. By strategically distributing the components across the layers, our design achieves a
+well-rounded solution that ensures the qualities of security, efficiency, transparency, and integrity.
+4.1 DID Services Module
+DIDs are integral to stakeholder identity management. Stakeholders register their unique DIDs upon joining the
+network, which are stored on-chain via DID Registry . These DIDs can later be used to authenticate their actions
+and communications. The DID services facilitate the resolution of a DID to its associated DID Document, enabling
+stakeholders to verify each other’s identities and establish secure channels. Stakeholders can update their DID
+Documents as needed, such as when adding a new public key or changing a service endpoint, ensuring the continued
+accuracy and relevance of their identity information. In the event of a private key compromise or when a DID is no
+longer required, stakeholders can revoke their DIDs, preventing misuse and maintaining the integrity of the blockchain
+network.
+4.2 Credential Services: Eligibility VC Services Module
+Eligibility VC are issued by oversight authorities (i.e., Trust Anchors ) to certify that a software vendor has met certain
+criteria and is therefore eligible to issue SBOM VCs .
+4.2.1 Components
+Eligibility VC Issuance : Oversight authorities issue Eligibility VCs to software vendors who demonstrate adherence to
+secure software development standards and robust security practices. These VCs are then stored on-chain, providing a
+transparent and immutable record of the vendor’s eligibility status.
+Eligibility VC Verification : When a software vendor presents an Eligibility VC , other stakeholders (like software
+procurers or its downstream vendors) can verify its authenticity. This involves checking the digital signature on the VC
+5APREPRINT - JULY 6, 2023
+Figure 2: Architecture Overview
+using the public key of the issuing authority, and confirming that the VC is valid. The on-chain record ensures that the
+verification process is reliable and secure.
+Eligibility VC Revocation : If a software vendor violates the terms of their eligibility, such as by failing to adhere to the
+required standards or by falsifying SBOM VCs , the oversight authority can revoke the vendor’s Eligibility VC . This
+involves adding the VC to a revocation list, which stakeholders can check when verifying an Eligibility VC . If a VC is
+on the revocation list, it is no longer valid and the vendor is no longer considered eligible.
+4.2.2 Protocol
+The detailed protocol of Eligibility VC Services is presented in Fig. 3. The sequence of interactions commences with the
+software vendor applying for an Eligibility VC from the oversight authority. The oversight authority verifies the vendor’s
+identity and eligibility, which may encompass assessing the vendor’s track record in secure software development,
+adherence to industry standards, and robust security practices. Once verified, the oversight authority issues an Eligibility
+VCto the vendor, while the related information is stored on the blockchain and managed by the Eligibility VC registry
+Smart Contract.
+The vendor can then embed this Eligibility VC within their SBOM VCs . Software procurers, when considering a
+purchase, can verify the vendor’s Eligibility VC by checking its validity. This verification process involves checking the
+digital signature on the VC using the public key of the issuing authority, and confirming that the VC is valid and has not
+been revoked.
+In case of any violations by the vendor, the oversight authority can invoke penalty or even revoke the Eligibility VC .
+The revocation process involves adding the VC to a revocation list, which stakeholders can check when verifying an
+Eligibility VC . If a VC is on the revocation list, it is no longer valid and the vendor is no longer considered eligible.
+These processes are managed by the Penalty Registry andEligibility VC registry Smart Contracts on the blockchain,
+respectively.
+Detailed information about the eligible vendors is stored off-chain and linked to the Eligibility VCs . Although penalty
+andEligibility VC revocation can be invoked for various reasons, we detail this step in SBOM VC Service protocols in
+Section 4.3.2 as falsifying SBOM VCs is considered a typical reason where penalty and VC revocation are invoked.
+6APREPRINT - JULY 6, 2023
+Figure 3: Protocol for Eligibility VC Services
+4.3 Credential Services: SBOM VC Services Module
+TheSBOM VC Services module is primarily managed by the SBOM VC registry Smart Contract on-chain and plays a
+crucial role in overseeing the lifecycle of SBOM VCs.
+4.3.1 Components
+SBOM VC Issuance : The vendor initiates the SBOM generation process. Depending on the vendor’s policies and
+the software procurer’s requirements, the vendor can choose to fully or partially disclose the SBOM. The SBOM VC
+contains the metadata of the SBOM while excluding the actual composition details. It is then issued and stored on
+the blockchain, with the actual SBOM data being stored off-chain and linked to the SBOM VC. n the case of full
+disclosure , the vendor encapsulates the SBOM metadata within the VC and signs it using their private key, without
+further encryption of the SBOM data. In the case of selective disclosure , various techniques can be utilized to encrypt
+or hash the SBOM data. For instance, to address Scenario 2 (see Section 3), selective disclosure can be achieved
+through techniques such as ABE [ 17] and hashed values [ 11] etc, enabling fine-grained encryption of specific (sub-
+)attributes. This allows for the selective disclosure of authorized attributes while maintaining the privacy of others. Such
+granularity and flexibility are vital in the context of SBOMs, where component details are presented as sub-attributes
+of the “Components" (CycloneDX) or “packages" (SPDX) attribute. A coarse-grained solution that only supports
+attribute-level disclosure would not suffice to address the need for partial disclosure of components. As for Scenario 3,
+ZKPs can assist stakeholders in verifying the inclusion of specific data pieces within the SBOM.
+SBOM VC Verification : Upon issuance, any receiving party can verify the SBOM VC . The verification process involves
+checking the VC’s signature to ensure it was issued by a trusted vendor and has remained unaltered. Furthermore, in the
+case of selective disclosure, the verification process also includes verifying the ZKPs or decrypting the VC using the
+decryption key provided by the vendor. This ensures that the disclosed information remains verifiable and trustworthy,
+while the undisclosed parts remain confidential.
+SBOM VC Update : As the software product evolves over time, updates to the SBOM VC may be necessary. The vendor
+generates a new SBOM for the updated product and issues a new VC accordingly.
+SBOM VC Revocation :If the vendor determines that a previously issued SBOM VC is no longer valid, they can revoke it.
+This revocation process entails adding the VC to a revocation list, which is subsequently checked during the verification
+process. Once a VC is included in the revocation list, it will fail the verification process and be considered invalid.
+4.3.2 Protocol
+As illustrated in Fig. 4, the sequence of SBOM VC Services begins when the software procurer requests the SBOM VC
+from the software vendor or when the vendor proactively issues an SBOM VC for a software product if one has not been
+issued yet. The vendor generates the SBOM and determines the level of information disclosure, whether it is full or
+selective, based on their policies and the procurer’s requirements. Subsequently, the SBOM VC , which contains the
+SBOM metadata without the actual composition details, is stored on the blockchain. The issuance of the requested
+7APREPRINT - JULY 6, 2023
+Figure 4: Protocol for SBOM VC Services
+SBOM VC is confirmed by the SBOM VC registry Smart Contract in coordination with the vendor. The vendor can then
+transmit the requested SBOM VC to the procurer.
+Upon receiving the SBOM VCs , software procurers can verify the vendor’s SBOM VC as well as the embedded Eligibility
+VCby checking their validity. The verification processes include:
+•Credential verification: This involves verifying the VC signature and checking the VC status on the blockchain.
+The VC signature is verified using the public key of the issuer (software vendor) to ensure its authenticity and
+integrity. The VC status is verified to ensure that the VC has not been revoked and remains valid.
+•Selective disclosure verification: In the case of selective disclosure, the software procurer may need to decrypt
+the VC or verify the ZKPs off-chain. This is necessary because the actual SBOM data is stored off-chain
+and linked to the SBOM VC . The decryption key or the information required for ZKP verification would be
+provided by the vendor.
+In the event of reported violations, such as falsified SBOM VCs that are confirmed by the oversight authority, penalties
+can be imposed using the Penalty Registry Smart Contract. In severe cases, the Penalty Registry can initiate the
+revocation of Eligibility VCs by invoking the Eligibility VC registry Smart Contract.
+In the event of errors or updates to the SBOM, the vendor has the ability to revoke the SBOM VC. Additionally, if the
+software product undergoes updates over time, the vendor would generate a new SBOM for the updated product and
+issue a new VC accordingly. The old SBOM VCs can be revoked or retained for versioning purposes.
+8APREPRINT - JULY 6, 2023
+1002003004005006007008009001000020406080100
+Number of AttributesSBOM VC generation time (ms)
+(a) SBOM VC generation time151025501001502002505000510
+Number of AttributesSBOM VC proof generation time (ms)
+(b) SBOM VC proof generation time
+1510255010015020025050005101520
+Number of AttributesSBOM VC proof verificationn time (ms)
+(c) SBOM VC proof verification time1 510 25 5010002040
+Number of ThreadsTransactions per second
+(d) Throughput (SBOM VC Generation)
+Figure 5: Performance Evaluation
+5 Evaluation
+To demonstrate the feasibility of our proposed architecture, we conducted a series of proof-of-concept evaluations
+focusing on the core components of the system. The evaluation metrics include throughput and the execution time of
+various operations credential issuance and verification. In addition, we discuss the privacy and security properties of the
+architecture.
+5.1 Implementation
+For the purpose of proof-of-concept and evaluating feasibility and performance, we implemented a minimal viable
+prototype. The prototype was built using Node.js v16.15.1, with Web3.js v1.3.6 and Solidity v0.8.2. The implementation
+supports the SPDX-2.2 JSON format. As described in Section 4, the signatures of VCs are stored on-chain in the smart
+contracts, while the VC issuance, selective disclosure proof, and verification processes are assumed to occur off-chain.
+To achieve selective disclosure, we employed the hashed values technique from [ 11] in the form Merkle Hashed Tree,
+similar to [12]. The format of issued SBOM VCs and selective disclosure proofs are also in JSON formats, containing
+the relevant Merkle Trees.
+9APREPRINT - JULY 6, 2023
+5.2 Feasibility and Performance Evaluation
+We deployed the on-chain components on a local Ganache6blockchain network and the user application on a Google
+Cloud virtual machine with Ubuntu 20.04 LTS, intel Xeon E5, and 8GB RAM. The Ganache network was configured
+to simulate the Ethereum Mainnet7with a Muir Glacier hardfork and an inter-block time of 12 seconds. This setup
+allowed us to assess the performance of our system in a controlled environment.
+To evaluate the overall responsiveness and efficiency of the deployed blockchain, we utilized Apache JMeter8to
+generate a load of 100 back-to-back requests. We measured the average transaction confirmation time, which yielded a
+value of 13.652 seconds.
+Specifically, we conducted performance tests on SBOM VC generation, selective disclosure proof generation, and
+verification with varying numbers of corresponding attributes in the actual SBOMs. The results presented here are
+averaged over 20 runs. As the number of attributes increases, there is a corresponding increase in the VC generation
+time (see Fig. 5a). This is expected, as a larger number of attributes naturally require more computational resources to
+process.
+Similarly, the time required for selective disclosure proof generation and verification processes increases with the
+number of attributes included in the proof, as shown in Fig. 5b and Fig. 5c, respectively. However, it is important to
+note that the time used is not directly proportional to the number of attributes or the size of the Merkle Tree representing
+the complete VC. This reflects the advantages of the Merkle Tree structure, where the time complexity for proof and
+validation operations is logarithmic ( O(lognleaf nodes )) [18].
+The transaction throughput is demonstrated in Fig. 5d, indicating the number of credential generations completed per
+second with a total of 10,000 requests sent per data point. The results are averaged over 20 runs. The system consistently
+achieves a throughput range of 37-40 transactions per second (TPS) when the requests are sent over more than 10
+threads. This highlights the system’s ability to handle a substantial number of requests and process them efficiently.
+These findings provide valuable insights into the scalability of our system, demonstrating its capability to handle VCs of
+varying complexity. It is important to note that these results serve as an initial benchmark of our system’s performance
+under a controlled load, for the purpose of proof-of-concept. However, in a real-world scenario, the performance may
+vary due to factors such as network conditions, transaction volume, and system usage patterns.
+5.3 Security Analysis
+The solution we propose for SBOM sharing harnesses the power of blockchain technology, bolstering the authenticity and
+integrity of data while preserving confidentiality. This approach augments the security of SBOM sharing. Blockchain
+technology offers a secure, transparent mechanism for data storage and sharing, and provides robust resistance against
+tampering and fraudulent activities. It also creates a decentralized system that promotes trust and accountability. We
+analyze the security of our proposed architecture based on the principles of confidentiality, integrity, and availability
+[19].
+Confidentiality : The architecture safeguards SBOMs from unauthorized access by employing a permissioned
+blockchain with stringent access controls. Furthermore, the use of SBOM VCs allows for fine-grained, selective
+disclosure of SBOM data, thereby protecting sensitive information.
+Integrity : The architecture ensures the integrity of SBOM VCs via the blockchain and the vendor’s signature. When
+a credential is evaluated, the system verifies the embedded signature using the owner’s public key stored in the DID
+record. The blockchain-based storage of DIDs, DID documents, and credentials, managed by smart contracts, forestalls
+manipulation. Any adversarial attempt to alter the credentials would necessitate control over the vendor’s blockchain
+account and private key. The inclusion of Trust Anchors andEligibility VCs , and the implementation of penalty and
+credential revocation mechanisms, all contribute to the overall trustworthiness and integrity of the proposed architecture.
+Availability : The inherent design of blockchain ensures that all transactions are replicated on full nodes, thereby
+guaranteeing availability. In case of system failures, recovery is possible using these replicas, effectively removing
+single points of failure. Moreover, the immutability and auditability of all historical transactions ensure that stakeholders
+are accountable for their actions.
+6https://github.com/trufflesuite/ganache
+7https://ethereum.org/en/developers/docs/networks/#ethereum-mainnet
+8https://jmeter.apache.org
+10APREPRINT - JULY 6, 2023
+6 Related Work
+The application of blockchain and VCs spans a variety of contexts. For example, [ 20] propose CredenceLedge, a
+permissioned blockchain system for decentralized verification of academic credentials. Similarly, Mukta et al. [ 12]
+introduce CredChain, a blockchain-based Self-Sovereign Identity (SSI) platform that allows secure creation, sharing,
+and verification of credentials. They also propose a flexible selective disclosure solution using redactable signatures,
+emphasizing the importance of privacy in credential sharing.
+In the context of SBOM sharing, several initiatives and tools have been developed. Sigstore’s Cosign9enables signing
+and verification using a transparency log, but it does not support selective disclosure of SBOM data. Similarly, the
+CycloneDX SBOM standard and its exchange API10provide a standardized method, but they do not inherently offer the
+transparency and accountability provided by a shared ledger, nor do they support selective disclosure. On the other
+hand, the SBOM360 Hub11allows the publication, sharing, and utilization of SBOMs in a private and collaborative
+manner, but it also lacks the inherent transparency of a shared ledger and does not support selective disclosure. Finally,
+RKVST12offers access control and verification through a continuously auditable shared ledger. While role-based access
+control is supported by the platform, the support for selective disclosure of specific SBOM data still lacks.
+Our blockchain-empowered approach enhances security, privacy, and usability in SBOM sharing. Leveraging a
+decentralized trust model, we ensure robust data integrity and afford stakeholders granular control over SBOM data
+visibility through VCs. Aligned with the CISA and CESER report’s recommendations [ 8], our proposal heightens
+interoperability and encourages automation via a (potentially) unifying blockchain platform and smart contracts. Hence,
+we present an encompassing solution that effectively addresses SBOM sharing challenges, demonstrating superiority
+over existing frameworks and tools.
+7 Discussion and Conclusion
+7.1 From SBOM to AI Bill of Materials (AIBOM)
+The increasing prevalence of AI systems necessitates the evolution of the traditional SBOM to AIBOM. AIBOMs
+extend the scope of SBOMs to incorporate AI-specific components and dependencies, providing a comprehensive view
+of the AI system. We outline the additional considerations for the AIBOM as follows:
+Extended AI Components and Specifications : AIBOM requires additional fields to incorporate AI-specific compo-
+nents, such as models , as well as the associated training and testing data . Leveraging existing methods like datasheets
+for datasets [ 21] and model cards for model reporting [ 22] can provide information about the data and models, enhancing
+transparency and traceability in AI systems. Furthermore, the AIBOM can incorporate use restrictions (e.g., via
+Responsible AI Licenses [ 23]) that are beyond the traditional scope of open-source and creative common licenses in
+SBOMs. These restrictions may extend beyond mere legal obligations to more comprehensive ethical and societal
+considerations. Examples include limitations on deploying AI models for military activities or surveillance applications,
+stipulations against the provision of medical advice, prohibitions on the misrepresentation of an AI entity as a human, or
+regulations preventing bias based on non-legally protected attributes (e.g., geographic location, height, cognitive traits
+etc). By integrating such comprehensive restrictions, the AIBOM serves as a conduit for communicating the intended
+usage and the scope of responsible AI practices associated with a given AI system. At last, much like SBOMs can
+accommodate vulnerability communications, AIBOMs can encompass potential risks and quality issues inherent to AI
+systems. The presence of risks in an AIBOM doesn’t indicate system faults, but rather reflects trade-offs in development.
+For instance, enhancing privacy could inadvertently raise fairness-related risks. Some risks might persist due to their
+minor impact or the need for context-specific risk assessment, which may be incomplete at release. Including these in
+the AIBOM gives a holistic system view, alerts stakeholders to potential issues, and supports informed decision-making.
+Implications for Foundation Models (e.g., LLMs) : In the era of foundation models such as Large Language Models
+(LLMs), managing model and data dependencies becomes intricate. LLMs often connect various smaller models [24]
+and services (e.g., ChatGPT Plugins), each with their own dependencies and potential risks. For instance, the input of
+one model may originate from the output of another [ 25], leading to potential risks such error propagation and bias
+amplification. That is, a provider offering an LLM-based application or an enterprise building one internally would
+need to manage not only the dependencies of the LLM itself but also those of the integrated models and services.
+AIBOM can provide a mechanism for tracking these dependencies and risks, enhancing the security and reliability of
+9https://docs.sigstore.dev/cosign/overview/
+10https://github.com/CycloneDX/cyclonedx-bom-exchange-api
+11https://www.sbom360hub.com/
+12https://www.rkvst.com/share-sboms/
+11APREPRINT - JULY 6, 2023
+LLM-based applications. It offers insights into the functioning of the AI system and aids in identifying potential points
+of failure or vulnerability.
+While AIBOMs confer numerous advantages, they also bring potential security and trustworthiness concerns to the fore,
+such as the threat of data tampering. Additionally, AIBOMs, similar to SBOMs, are typically static in nature, which
+raises important questions around the dynamic runtime governance of AI systems. As such, methods like “bill of lots"
+[26] that provide dynamic governance solutions merit further exploration.
+7.2 Conclusion and Future Work
+This paper introduces an innovative blockchain-empowered solution for SBOM sharing by leveraging VCs. Our
+approach offers an enhancement over traditional methods, delivering a secure and adaptable mechanism for SBOM
+dissemination. The decentralized attribute of the blockchain fortifies the integrity of SBOM sharing, while its immutable
+characteristic ensures data integrity. The distributed ledger technology of the blockchain, in tandem with VCs which
+facilitate selective disclosure (and ZKPs), grants software vendors control over their SBOM data visibility. Our proposed
+solution aligns with the recommendations of the CISA report [ 8], fostering interoperability and automation through the
+use of blockchain technology and smart contracts. Additionally, we have extended the traditional SBOM concept to
+introduce AI Bill of Materials (AIBOM), incorporating AI-specific components. The integration of our perspectives on
+AIBOMs in the era of foundation models offers a crucial trajectory for future exploration.

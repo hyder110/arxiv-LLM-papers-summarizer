@@ -1,0 +1,611 @@
+arXiv:2307.00963v1  [cs.CL]  3 Jul 2023Challenges in Domain-Speciﬁc Abstractive Summarization a nd How to
+Overcome them
+Anum Afzal1, Juraj Vladika1, Daniel Braun2, Florian Matthes1
+1Department of Computer Science, Technical University of Mu nich, Boltzmannstrasse 3, 85748 Garching bei Muenchen,
+Germany
+2Department of High-tech Business and Entrepreneurship, Un iversity of Twente, Hallenweg 17, 7522NH Enschede, The
+Netherlands
+{anum.afzal, juraj.vladika, matthes }@tum.de, d.braun@utwente.nl
+Keywords: Text Summarization, Natural Language Processing, Efﬁcien t Transformers, Model Hallucination, Natural
+Language Generation Evaluation, Domain-adaptation of Lan guage Models
+Abstract: Large Language Models work quite well with general-purpose data and many tasks in Natural Language
+Processing. However, they show several limitations when us ed for a task such as domain-speciﬁc abstractive
+text summarization. This paper identiﬁes three of those lim itations as research problems in the context of
+abstractive text summarization: 1) Quadratic complexity o f transformer-based models with respect to the
+input text length; 2) Model Hallucination, which is a model’ s ability to generate factually incorrect text; and
+3) Domain Shift, which happens when the distribution of the m odel’s training and test corpus is not the same.
+Along with a discussion of the open research questions, this paper also provides an assessment of existing
+state-of-the-art techniques relevant to domain-speciﬁc t ext summarization to address the research gaps.
+1 INTRODUCTION
+With the ever-increasing amount of textual data be-
+ing created, stored, and digitized, companies and re-
+searchers have large corpora at their disposal that
+could be processed into useful information. Perusal
+and encapsulation of such data usually require domain
+expertise which is costly and time-consuming. Ab-
+stractive text summarization using Natural Language
+Processing (NLP) techniques, is a powerful tool that
+can provide aid for this task. Unlike the traditional
+automatic text summarization techniques, which ex-
+tracts the most relevant sentences from the original
+document, abstractive text summarization generates
+new text as summaries. For the sake of simplicity, the
+term text summarization would be used to represent
+abstractive text summarization in this paper.
+While text summarization
+(Gupta and Gupta, 2019; Klymenko et al., 2020)
+on general textual data has been an active research
+ﬁeld in the past decade, summarization of domain-
+speciﬁc documents, especially to support business
+and scientiﬁc processes have not received much
+attention. State-of-the-art research focuses on deep
+learning models in NLP to capture semantics and
+context associated with the text. While these LargeLanguage Models (LLMs) perform well on the
+general-purpose corpus, their performance declines
+when tested against domain-speciﬁc corpus. This
+paper discusses some challenges LLMs face in the
+context of a text summarization task and provides
+an overview of existing techniques that could be
+leveraged to counter those challenges.
+Previous research in text summarization
+has mostly focused on general-purpose data
+(Gupta and Gupta, 2019; Allahyari et al., 2017).
+Domain-speciﬁc summarization however, is still an
+active research area and has many research questions
+that need to be addressed. This paper addresses some
+of those theoretical research questions and provides
+an initial assessment of the existing techniques can
+be utilized to overcome those limitations. We have
+identiﬁed three important hurdles with regards to
+the successful implementation of an NLP model for
+generation of domain-speciﬁc summaries.
+1. Most language models have quadratic complex-
+ity, meaning that the memory requirement grows
+quadratically as the length of the text increases.
+As a result, transformer-based language models
+are not capable of processing large documents.
+Since most documents that need to be summarized
+are long, it creates a need for language models ca-pable of handling them efﬁciently without over-
+shooting in terms of complexity.
+2. Evaluating generated summaries is difﬁcult us-
+ing common evaluation metrics, that look at word
+overlaps between generated summaries and the
+reference text. This curbs model expressiveness
+in favor of repeating the original human wording.
+Generated summaries can include information not
+present in the original document, a phenomenon
+known as model hallucination. Factually incor-
+rect summaries are problematic in domains like
+science or journalism because they can produce
+misinformation and reduce the trust in models.
+3. State-of-the-art text summarization models are
+pre-trained on general-purpose corpus and hence
+do not perform well on domain-speciﬁc text. This
+happens because a domain-speciﬁc text contains
+words and concepts that were not a part of the
+original model training vocabulary. When gen-
+erating summaries, it is essential for the model
+to encode the text properly, which is usually not
+the case since the model fails to capture domain-
+speciﬁc concepts.
+Hence, to produce concise and meaningful domain-
+speciﬁc summaries, it is important to address the fol-
+lowing three research gaps:
+• How to overcome the input size limitation of
+transformer-based language model so they can
+process large documents without running into
+complexity issues?
+• How to evaluate summaries generated by a lan-
+guage model to ensure they convey all the impor-
+tant information while being factually correct?
+• How can we adapt an existing general-purpose
+language model to understand the underlying con-
+cepts and vocabulary of the new domain?
+This paper is divided into ﬁve sections. The ﬁrst sec-
+tion provided an introduction to the topic and out-
+lined three important hurdles faced in domain-speciﬁc
+summarization. Section 2 builds up on the research
+gaps and further elaborates them. Section 3 outlines
+the existing techniques that can be used to overcome
+those research gaps, followed by Section 4 that ini-
+tiates a comparative discussion on the existing tech-
+niques. Finally, Section 5 concludes this paper and
+provides hints related to the future work.2 CURRENT CHALLENGES IN
+TEXT SUMMARIZATION
+For a task such as text summarization, a sequence-
+to-sequence (Seq2Seq) architecture that takes text as
+input and produces text as output, is the most suit-
+able one. Since traditional seq2seq models like Re-
+current Neural Networks (RNNs) and Long short-
+term memory (LSTMs) (Hochreiter et al., 1997) have
+some inherent limitations, such as not being able to
+encode long-term dependencies in text and lack of
+parallelism opportunities, they are not suitable for
+domain-speciﬁc summarization of long documents.
+Transformer-based seq2seq models address these lim-
+itations by allowing computations to be parallelized,
+retain long-term dependencies via a self-attention ma-
+trix, and better text encoding through a word embed-
+ding module that has been trained on a huge corpus.
+As discussed in the section below, these models come
+with their own set of impediments when utilized for
+summarization of domain-speciﬁc long documents.
+2.1 Transformers and their quadratic
+complexity
+First introduced in the paper Attention is all you need
+(Vaswani et al., 2017), the Transformers immediately
+became popular and have since been the backbone of
+LLMs. By design, they are pre-trained on a huge cor-
+pus allowing them to learn the patterns, context, and
+other linguistic aspects of the text. Furthermore, they
+are trained using self-supervised approaches that al-
+low them to make use of the huge corpora of unstruc-
+tured and unlabeled data. The heart of a Transformer
+block however, is the self-attention matrix that helps
+it retain the long-term context of the text. The self-
+attention matrix essentially tells the model how much
+attention a word should pay to all the other words in
+the text. While this information is vital, its calcula-
+tion consumes a huge amount of memory and takes
+a long time to compute. The calculation of the n×n
+self-attention matrix, where nis the number of tokens
+(sequence length), entails quadratic complexity.As a
+workaround, the input text is typically truncated to re-
+tain only the ﬁrst 512 tokens. For tasks such as text
+summarization, it is important for the model to en-
+codes the entire input text and hence, this problem is
+still an open research area.
+2.2 NLG Evaluation and Hallucinations
+A common challenge in generating summaries from
+scratch is how to meaningfully evaluate their content
+and ensure factual consistency with the source text.2.2.1 Evaluating Summarization
+Natural Language Generation (NLG) is a subset of
+NLP dealing with tasks where new text is generated,
+one of them being abstractive summarization. The
+output of models for NLG tasks is notoriously hard
+to evaluate because there is usually a trade-off be-
+tween the expressiveness of the model and its fac-
+tual accuracy (Sai et al., 2022). Metrics to evaluate
+generated text can be word-based, character-based, or
+embedding-based. Word-based metrics are the most
+popular evaluation metrics, owing to their ease of use.
+They look at the exact overlap of n-grams (n consec-
+utive words) between generated and reference text.
+Their main drawback is that they do not take into ac-
+count the meaning of the text. Two sentences such
+as “Berlin is the capital of Germany ” and “ Berlin is
+not the capital of Germany ” have an almost complete
+n-gram overlap despite having opposite meanings.
+2.2.2 Model Hallucinations
+Even though modern transformer models can gener-
+ate text that is coherent and grammatically correct,
+they are prone to generating content not backed by
+the source document. Borrowing the terminology
+from psychology, this is called model hallucination.
+In abstractive summarization, the summary is said to
+be hallucinated if it has any spans not supported by
+content in the input document (Maynez et al., 2020).
+Two main types of hallucinations are (1) intrinsic,
+where the generated content contradicts the source
+document; and (2) extrinsic, which are facts that can-
+not be veriﬁed from the source document. For ex-
+ample, if the document mentions an earthquake that
+happened in 2020, an intrinsic hallucination is say-
+ing it happened in 2015, while an extrinsic one would
+be a sentence about a ﬂood that is never even men-
+tioned in the document. In their analysis of three
+recent state-of-the-art abstractive summarization sys-
+tems, (Falke et al., 2019) show that 25% of generated
+summaries contain hallucinated content. Hallucina-
+tions usually stem from pre-trained large models in-
+troducing facts they learned during their training pro-
+cess, which is unrelated to a given source document.
+2.3 Domain Shift in Natural Language
+Processing
+When working with speciﬁc NLP applications, do-
+main knowledge is paramount for success. Finding
+labeled training data, or even unlabeled data in some
+cases, is a big challenge. Training data is often scarce
+in many domains/languages and often hinders the so-
+lution development for domain-speciﬁc tasks in NLP.Transfer Learning provides a solution to this by uti-
+lizing the existing model knowledge and building on
+it when training the model for a new task. Essentially,
+it allows the transfer and adaptation of the knowledge
+acquired from one set of domains and tasks to another
+set of domains and tasks.
+Transformer-based language models in tandem
+with Transfer Learning have proven to be quite suc-
+cessful in the past years and have found their appli-
+cation in several real-world use cases. While they
+work well with tasks involving general-purpose cor-
+pus, there is a performance decline when it comes
+to domain-speciﬁc data. This happens because these
+language models are pre-trained on general-purpose
+data but are then tested on a domain-speciﬁc corpus.
+This difference in the distribution of training and test-
+ing data is known as the Domain Shift problem in
+NLP. It essentially means that the model doesn’t know
+the domain-speciﬁc corpus contains words and con-
+cepts since they were not part of model’s pre-training.
+3 EXISTING TECHNIQUES
+This section presents an overview of the existing tech-
+niques and architectures that can be applied for the
+summarization of domain-speciﬁc documents. These
+techniques are categorized into three sections based
+on the research questions they address; Efﬁcient
+Transformers, Evaluation metrics, and Domain adap-
+tation of Language Models. These techniques are
+summarized in Table 1, and discussed in detail in the
+section below.
+3.1 Efﬁcient Transformers
+The quadratic complexity of the Transformer block
+is a well-known issue and several approaches to
+counter this have been proposed in the past years.
+All of these approaches focusing on adapting the self-
+attention mechanism of the Transformer block to re-
+duce the quadratic complexity are categorized as Efﬁ-
+cient Transformers. The survey by Tay et al. provides
+a detailed taxonomy of all available Efﬁcient Trans-
+formers (Tay et al., 2020). Some state-of-the-art Ef-
+ﬁcient Transformers suitable for domain-speciﬁc text
+summarization are discussed below:
+BigBird. BigBird is a long sequence Transformer that
+was introduced by Zaheer et al. and can process up to
+4,096 tokens at a time. The attention mechanism of
+BigBird essentially consists of three parts in which
+all tokens attend to 1) a set of global tokens, 2) a set
+of randomly chosen tokens, and 3) all tokens in di-
+rect adjacency (Zaheer et al., 2020). The set of globalTable 1: An overview of the research gaps, the proposed solut ions, and the existing techniques that can be utilized for do main-
+speciﬁc abstractive summarization as discussed in Section s 2 and 3.
+Challenges Proposed Solution Existing Techniques
+Quadratic Complexity of
+Transformer ModelsEfﬁcient TransformersBigBird
+Longformer Encoder-Decoder
+Reformer, Performers
+NLG Evaluation and
+Hallucination MitigationSemantic Evaluation Metrics
+Fact-CheckingMETEOR, BERTScore
+NLI-based, QA-based
+Domain shift in
+Language ModelsDomain-adaptation of
+Language ModelsFine-tuning-based
+Pre-training-based
+Tokenization-based
+tokens attending to the entire sequence consists of ar-
+tiﬁcially introduced tokens. The local attention is im-
+plemented in form of a sliding window of a prede-
+ﬁned width w, in which a token attends to the w/2
+preceding and following tokens in the sequence. The
+BigBird model’s memory complexity is linear with
+regard to the length of the input sequence, i.e., it is
+O(N)(Tay et al., 2020).
+Longformer Encoder-Decoder. The Longformer
+Encoder-Decoder (LED) model is a variant of the
+Longformer for sequence-to-sequence tasks such as
+summarization or translation (Beltagy et al., 2020).
+Similar to the BigBird model, the original Long-
+former relies on a sliding window attention of width
+wwith each token attending to the w/2 preceding and
+following tokens in the sequence. Stacking multiple
+layers, each using sliding window attention, ensures
+that a large amount of contextual information is em-
+bedded in each token’s encoding. Apart from sliding
+window attention, the authors also use dilated slid-
+ing window attention. This in effect reduces the res-
+olution of the sequence and allows the model to in-
+clude more contextual information with ﬁxed com-
+putational costs. The Longformer model also incor-
+porates global attention. Similar to BigBird’s global
+attention, a set of predeﬁned positions in the input se-
+quence attend to the entire sequence and all tokens in
+the sequence attend to the same global tokens. LED
+has an encoder that uses the local+global attention
+pattern of the original Longformer and a decoder that
+uses the full self-attention on the encoding provided
+by the encoder. The LED model scales linearly as the
+input length increases and hence has a complexity of
+O(N)(Tay et al., 2020).
+Reformer The Reformer (Kitaev et al., 2020) fol-
+lows a two-step approach to reduce the complex-
+ity of the Transformer block. Firstly, the Reformer
+model makes use of reversible residual networks
+RevNet (Gomez et al., 2017) which allow the model
+to store only one instance of the activations rather
+than having to store activations for every layer to
+be able to use back-propagation. In RevNets anylayer’s activations can be restored from the ones
+of the following layer and the model’s parame-
+ters (Gomez et al., 2017) hence reducing the model’s
+memory requirements drastically. Secondly, to re-
+duce the quadratic complexity with regard to the input
+sequence’s length, the authors use locality-sensitive
+hashing to approximate the attention matrix. The at-
+tention mechanism’s outsized memory requirements
+result from the computation of the attention matrix,
+i.e., so ftmax(QKT√dk), and in that mainly the compu-
+tation of QKT. The authors point out that applying
+the softmax function implies that the attention ma-
+trix is dominated by the largest elements of QKT.
+These largest elements result from the dot-product of
+the query and key vectors that are most similar to
+each other. Kitaev et al. note that the attention ma-
+trix can, consequently, be efﬁciently approximated by
+only computing the dot-product of those query and
+key vectors with the closest distance to each other.
+The Reformer uses locality-sensitive hashing to de-
+termine the closest neighbors of each query vector.
+The memory complexity of the LSH attention mecha-
+nism is O(NlogN)in the length of the input sequence
+(Tay et al., 2020).
+Performers . The Performer architecture relies on
+a mechanism known as Fast Attention Via posi-
+tive Orthogonal Random features (FA VOR+) to ap-
+proximate the self-attention matrix in kernel space.
+This technique is different from the previously dis-
+cussed ones since it does not make any assump-
+tions about the behavior of the self-attention ma-
+trix such as low-rankness or sparsity and guarantees
+low estimation variance, uniform convergence, and
+an almost-unbiased estimation of the original self-
+attention matrix. The authors further state that the
+Performer is compatible with existing pre-trained lan-
+guage models and requires little further ﬁne-tuning
+(Choromanski et al., 2020). The Performer’s com-
+plexity is O(N)(Tay et al., 2020) in terms of time and
+space.3.2 Semantic Evaluation Metrics and
+Fact-Checking of Hallucinations
+Numerous metrics have been devised for evaluating
+generated summaries. Word-based metrics look at n-
+gram overlaps between a candidate summary and the
+source document, while semantic evaluation metrics
+take into account the meaning of generated words and
+sentences. Many state-of-the-art generative models
+for summarization produce hallucinations, so there is
+an increasing effort to detect and eliminate them.
+3.2.1 Evaluation Metrics
+Word-based metrics. These metrics look at exact
+overlap between words in candidate summaries and
+gold summary. BLEU is a metric based on precision
+which computes the n-gram overlap between the gen-
+erated and the reference text (Papineni et al., 2002).
+It is calculated for different values of nand for all
+generated candidate summaries that are to be evalu-
+ated. The ﬁnal BLEU-N score is the geometric mean
+of all intermediate scores for all values of n. ROUGE
+is a metric similar to BLEU, but it is based on re-
+call instead of precision (Lin, 2004). This means that
+for any given n, it counts the total number of n-grams
+across all the reference summaries, and ﬁnds out how
+many of them are present in the candidate summary.
+Semantic evaluation metrics. Since both BLEU and
+ROUGE look at exact word matching, this leaves no
+room for synonyms or paraphrases. METEOR is a
+metric (Banerjee and Lavie, 2005) that builds up on
+BLEU by relaxing the matching criteria. It takes into
+account word stems and synonyms, so that two n-
+grams can be matched even if they are not exactly
+the same. Moving away from synonym matching,
+embedding-based metrics capture the semantic sim-
+ilarity by using dense word/sentence embeddings, to-
+gether with vector-based similarity measures (like co-
+sine similarity), to evaluate how closely the summary
+matches the source text. BERTScore is one such met-
+ric that utilizes BERT-based contextual embeddings
+of generated text and reference text in order to calcu-
+late the similarity between them (Zhang et al., 2020).
+3.2.2 Hallucination Detection
+Detecting hallucinations in generated summaries is
+still a challenging task, for which dedicated methods
+are developed. Based on the availability of annotated
+training data, these approaches can be split into unsu-
+pervised and semi-supervised (Huang et al., 2021).
+Unsupervised metrics . These metrics rely on repur-
+posing approaches for other NLP tasks like informa-
+tion extraction (IE), natural language inference (NLI),or question answering (QA) for the task of hallucina-
+tion detection. The motivation behind this is the avail-
+ability of training datasets for these tasks as opposed
+to scarce datasets for hallucination detection. The IE-
+based metrics compare the sets of extracted triples
+(subject, relation, object) and named entities from
+both the source document and generated summary
+to detect hallucination (Goodrich et al., 2019). The
+NLI-based approaches in try to determine whether the
+generated summary logically entails the source docu-
+ment with a high probability (Falke et al., 2019). The
+QA-based approaches work by posing the same set of
+questions to both the original document and the gener-
+ated summary, and then comparing the two sets of ob-
+tained answers. Intuitively, a non-hallucinated sum-
+mary and the source document will provide similar
+answers to the posed questions (Gabriel et al., 2021).
+Semi-supervised metrics. This type of metric re-
+lies on datasets designed speciﬁcally for the task of
+hallucination detection. The data is usually syntheti-
+cally generated from existing summarization datasets.
+For example, the weakly-supervised model FactCC
+(Kryscinski et al., 2020) was trained jointly on three
+tasks: sentence factual consistency, supporting ev-
+idence extraction from source, and incorrect span
+detection in generated summaries. Similarly, in
+(Zhou et al., 2021) a transformer model was trained
+on synthetic data with inserted hallucinations with the
+task of predicting hallucinated spans in summaries.
+3.2.3 Hallucination Mitigation
+The approaches to mitigate hallucinations in summa-
+rization can generally be divided into pre-processing
+methods, that try to modify the model architecture
+or training process so that models can generate more
+factually-aware summaries in the ﬁrst place, and post-
+processing methods, that aim to correct hallucinations
+in already generated candidate summaries.
+Pre-processing methods. The main line of work
+here focuses on augmenting the model architecture
+by modifying the encoder or decoder component
+of sequence-to-sequence models. One way of en-
+hancing the encoders is injecting external knowledge
+into them before the training process, such as world
+knowledge triples from Wikidata (Gunel et al., 2019).
+For improving the decoding process, tree-based de-
+coders were used (Song et al., 2020a). Another line
+of research involves modifying the training pro-
+cess. For example, contrastive learning was used
+in (Cao and Wang, 2021), where positive examples
+were human-written summaries and negative exam-
+ples were hallucinatory, generated summaries.
+Post-processing methods. These methods approachthe problem by detecting the incorrect facts in the
+ﬁrst version of a generated summary and then cor-
+recting them for the ﬁnal version. For this purpose, in
+(Chen et al., 2021) contrast candidate generation was
+used to replace incorrect named entities in summaries
+with those entities present in the source document.
+One promising research direction that has not been
+explored a lot is applying methods of fact-checking
+for hallucination detection and correction. Such an
+approach was used in (Dziri et al., 2021), where re-
+sponses of conversational agents were checked and
+factually corrected before being sent out to users. The
+task of automated fact-checking consists of assessing
+the veracity of factual claims based on evidence from
+external knowledge sources (Zeng et al., 2021). It is
+usually performed in a pipeline fashion, where ﬁrst
+relevant documents and sentences are retrieved as ev-
+idence, and then veracity is predicted by inferring if
+there is entailment between the claim and evidence.
+Recently, there is an increasing interest in automat-
+ically verifying claims related to science, medicine,
+and public health (Kotonya and Toni, 2020).
+3.3 Domain Adaptation of Language
+Models
+Domain adaptation of Language Models has been a
+hot research area recently giving rise to several ap-
+proaches. Some approaches relevant to abstractive
+text summarization are discussed below:
+Fine-tuning-based. The most commonly used ap-
+proach involves ﬁne-tuning a pre-trained language
+model on a smaller task-speciﬁc dataset. In general,
+ﬁne-tuning means retraining an existing model to ad-
+just its weights to the speciﬁc-domain dataset or task
+so the model can make better predictions. One such
+approach is portrayed by Karouzos et al. where they
+ﬁrst employ continued training on a BERT architec-
+ture utilizing a Masked Language Model loss. This
+approach is different from standard ﬁne-tuning ap-
+proaches because it makes use of an unlabeled corpus
+for domain adaptation. As a second step, they ﬁne-
+tune the domain-adapted model from the previous
+step on a classiﬁcation task (Karouzos et al., 2021).
+Pre-training-based. A pre-training-based approach
+as compared to a ﬁne-tuning-based approach trains
+the model weights from scratch instead of contin-
+ued training on previously trained weights. In the
+past years, there have been many research contribu-
+tions in the area of text summarization but it has been
+mostly restricted to general-purpose corpus. One sim-
+ilar approach involving a pre-training-based approach
+is presented by the authors Moradi et al. where they
+utilize a combination of graph-based and embedding-based approaches for the extractive summariza-
+tion of biomedical article (Moradi et al., 2020). To
+counter the domain shift problem, they ﬁrst re-train
+a BERT architecture on medical documents to en-
+sure the availability of domain-speciﬁc word embed-
+ding. Then they generate sentence-level embedding
+of the input documents using the previously re-trained
+model. To generate summaries, they employ a graph-
+based approach to assign weights to previously gen-
+erated sentence-level embedding and followed a sen-
+tence ranking algorithm to select the candidates for
+the summary generation. Another similar approach
+related to multi-domain adaptive models is presented
+by Zhong et al. for a text summarization task. They
+use the existing BART(Lewis et al., 2019) architec-
+ture and exploit the multitask learning objective (in-
+cluding text summarization, text reconstruction, and
+text classiﬁcation) to expand the coverage area of
+the existing model without changing its architecture
+(Zhong et al., 2022).
+Tokenization-based. A tokenization-based ap-
+proach involves updating the model tokenizer
+(Song et al., 2020b; Kudo and Richardson, 2018) to
+either include new domain-speciﬁc words or inﬂuenc-
+ing its algorithm to prioritize a sequence of sub-words
+belonging to the domain-speciﬁc corpus. While ﬁne-
+tuning and pre-training is a basic yet powerful tech-
+nique for domain adaptation, over the years, some
+authors have contributed to this problem by employ-
+ing tokenization-based techniques. Sachidananda et
+al. for instance propose an alternate approach where
+they adapt the RoBERTa (Liu et al., 2019) tokenizer
+to include words from the domain-speciﬁc corpus.
+Most tokenization schemes typically merge subwords
+to create an individual token if that combination has
+a higher frequency in the domain-speciﬁc corpus.
+Sachidananda et al. approach this by inﬂuencing the
+tokenizer to prioritize such subword sequences from
+the domain-speciﬁc corpus rather than the base cor-
+pus (Sachidananda et al., 2021).
+4 DISCUSSION
+While the end goal of all Efﬁcient Transformers is to
+reduce the quadratic complexity of the self-attention
+matrix, the techniques employed by them can be cat-
+egorized into 1) techniques that assume sparsity of
+the self-attention matrix and compute only a few rel-
+evant entries, or 2) techniques that take advantage of
+mathematical compositions of the self-attention ma-
+trix such as Low Rankness, transformation to a Ker-
+nel Space, and other optimizations to reduce the com-
+plexity. In general, all efﬁcient transformers have per-formance close to the original transformer on bench-
+mark datasets but their performance in the real-life ap-
+plication is yet to be evaluated.
+Effectively evaluating generated summaries is an on-
+going challenge. Recent embedding-based metrics
+such as BERTScore take into account the context and
+semantics of sentences and are better correlated with
+human judgment. Still, these metrics are way more
+computationally intensive, their score is dependent on
+the PLM used, and they lack the intuitive explainabil-
+ity that standard scores like BLEU or ROGUE pro-
+vide. There are domains, such as legislative, where
+speciﬁc terms and sentence structure is important to
+be preserved in the summary, therefore classic word-
+based metrics are preferred for evaluating them.
+To overcome the domain shift in LLMs, several tech-
+niques have been proposed by researchers. When
+working with LLMs, the availability of task-speciﬁc
+training data is a challenge. In most cases, the deci-
+sion between ﬁne-tuning or pre-training can be based
+on the availability of the training resources and data.
+If enough domain-speciﬁc training data and comput-
+ing resources are available, pre-training a domain-
+speciﬁc model might always be the best choice. A
+tokenization-based approach can be used exclusively
+with a ﬁne-tuning-based approach as an additional
+add-on to enhance performance.
+5 CONCLUSION AND FUTURE
+WORK
+We assume that domain-speciﬁc text summarization
+will gain importance in the research ﬁeld of NLP
+due to its ability to automate the task of manual
+summarization. This paper is meant to serve as a
+foundation step for research along the three research
+gaps addressed. While there are several promis-
+ing NLP models for abstractive text summarization
+(Zhang et al., 2019; Lewis et al., 2019), they are not
+efﬁcient in their training techniques as the size of the
+input documents increases. Moreover, when tested
+on the domain-speciﬁc corpus, they suffer from the
+domain-shift problem and often hallucinate because
+they were trained on general-purpose corpora and
+lack domain knowledge. On top of that, the automatic
+evaluation of the generated text is still a challenge.
+To the best of our knowledge, there have been several
+contributions to each of these individual research gaps
+however, an integrated approach addressing them
+from a text summarization perspective is lacking. A
+domain-adapted efﬁcient transformer architecture in
+tandem with external fact-checking mechanisms and
+better automatic evaluation metrics could drasticallyimprove the performance of text summarization mod-
+els. The future work could be contributions towards
+the individual research gaps with the end goal of an
+integrated solution for text summarization.
+REFERENCES
+Allahyari, M., Pouriyeh, S., Asseﬁ, M., Safaei, S., Trippe,
+E. D., Gutierre

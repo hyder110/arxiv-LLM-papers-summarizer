@@ -1,0 +1,454 @@
+ARITHMETIC WITH LANGUAGE MODELS : 
+FROM MEMORIZATION TO COMPUTATION  
+ 
+Davi de Maltoni  and Matteo Ferrara 
+Department of Computer Science and Engineering, University of Bologna,  Italy  
+Abstract.  A better understanding of the emergent computation and problem -solving  capabilities of recent  
+large language models  is of paramount  importance to further improve them and broade n their applicability.  
+This work  investigates  how a language model , trained to predict the next token,  can perform arithmetic 
+computation s generalizing beyond  training  data . Binary addition and multiplication constitute a good test bed 
+for this purpose, since they require a very small vocabulary and exhibit relevant input/o utput discontinuities  
+making smooth input interpolation ineffective for novel  data . We successfully trained a light language model  
+to learn these tasks and ran a number of experiments to investigate the extrapolation capabilities and internal 
+information processing. Our findings  support  the hypotheses that the language model  works as an Encod ing-
+Regress ion-Decod ing machine where the computation takes place in the value space once the input token 
+representation is mapped to an appropria te internal representation.  
+Keywords: Language Models, Transformers, Arithmetic computation, Reasoning, Explanatory AI . 
+1 Introduction  
+Large Language Models (LLM) based on Transformer architecture  [Vaswani, 2017 ] have recently 
+demonstrated surprising problem -solving  capabilities that require logic reasoning, advance d information 
+processing and common sense [ Bubek et al., 2023 ] [Wei et al., 2022]  [Zoph et al, 2022] . Their huge storage 
+capacity combined with a  massive train ing on terabytes of heterogeneo us data could suggest that the 
+memorization of an enormous amount of knowledge is enough to perform well on similar test data. However, 
+validations on carefully selected Out-of-Distribution (OoD ) data proved their reasoning capabilities on novel 
+examples r equiring non -trivial generalizations. The emergence of such remarkable capabilities from a simple 
+training procedure, such as predicting the next token, remains  rather  unclear. Unfortunately, the depth and 
+width of such models is so high that decoding and understanding the internal information processing is very 
+challenging.  
+Focusing on arithmetic calculation, some studies [ Yuan et al., 2023 ] demonstrate th at recent LLM (such 
+as GPT -4) can perform additions and multiplications  with long -digit  operands, for which the number of 
+variants  is so high to exclude the exhaustive memorization of  the training set. Nevertheless,  the 
+computational approach put in place by the LLM, as well as the interpolation/extrapolation capabilities 
+remain unexplained.  
+In this work  we design  some controlled experiments , consisting of simple computation tasks such as 
+binary addition and multiplication,  and solve them with a Language  Model  (LM)  based on Transformer 
+architecture. In spite of their simplicity,  these tasks c annot be solved by pure memorization  or smooth 
+interpolation  and investigating how an LM learn them can improve our understanding of the underlying 
+mechanisms.  In particular, using a tiny vocabulary of just 4 tokens  and a small training set allows to opera te 
+with a light  (non -pretrained)  LM and compute interesting statistics t o investigat e internal information 
+processing.  
+After presentation of related works in Section 2, in Section 3 we introduce the experimental testbed and 
+the architecture of the LM used.  Section 4 presents the results achieve d and introduced further control 
+experiments and elaboration s to shed light on the computation approach used to solve the tasks. Finally in 
+Section 5 we draw some conclusions.  2 Related Works  
+In [Yuan et al., 2023] recent LLM  have been benchmarked in arithmetic tasks, including long -digits sum and  
+multiplication, showing that large models such as ChatGPT and GPT -4 con perform reasonably well on these 
+tasks even with no specific tuning . The accuracy of s maller LLM is markedly lower, and in general they are 
+not able to work with  long operands and generalize to OdD data.  
+[Nogueira et al., 2021] tune d T5-based pre -trained LM on additions and subtractions, and argued  that 
+tokenization and input representation are critical to achieve good accuracy. In particular, in their experiments 
+character -based  tokenization work s better than sub-word tokenization, and making explicit the digit position 
+in the input string (i.e., inserting after each digit a marker to denote its position  in the sequence) generally 
+leads to better accuracy. They also train ed vanilla non -pretrained LM on smaller numbers and f ound  that 
+classical sinusoidal -based positional embedding does not perform well, so they propose d a tailor ed position -
+wise masked embe dding . Their paper contains other interesting finding such as the impact of the digit order 
+(big or little endian) and the size of the training set.  
+[Muffo , Cocco and Bertino,  2022 ] tuned pre -trained GPT -2 models on 5 -digit addition s and 2-digit 
+multiplication s. They also found that making explicit the digit position in the input sequence helps  to improve 
+accuracy . While good accuracy is reported for addition, the tuned models struggle to learn multiplication 
+even on two-digit  operands.  
+The aim of  this paper is different with respect to the above studies. In fact, we are not interested in finding 
+the best LM architecture and setup to achieve good accuracy on arithmetic tasks, but we look for the simplest 
+architecture and setup that allows to effect ively solve the task s in order to be able to investigate the 
+underlying computational approach es. 
+3 Experiment design  
+3.1 The task s 
+We focus on two simple computation tasks: binary addition and binary multiplication. Using binary 
+encoding allows keeping the voca bulary very compact, since we need to encode only the symbols ‘0’, ‘1’ and 
+few other tokens . The selected tasks have other nice properties such as computing input similarities by 
+Hamming distance and easily generating all combinations. Of course,  a classical  artificial  neural network can 
+be trained to learn to sum and multiply two integer or floating -point  numbers, but adding/multiplying strings 
+of tokens  with a n LM is trickier .  
+More formally, given two integers 𝐴, 𝐵 (both in the range [0,127 ]) our input sequence (or prompt) is a 
+14-token  string taking the form:  
+𝑎0 𝑎1 𝑎2 𝑎3 𝑎4 𝑎5 𝑎6 〈𝑜𝑝〉 𝑏0 𝑏1 𝑏2 𝑏3 𝑏4 𝑏5 𝑏6  
+where 𝑎𝑖,𝑏𝑖∈{‘0’,‘1’}  are the symbols corresponding to bits in 𝑖-th position in  the binary representation of 
+𝐴 and 𝐵 respectively , and 〈𝑜𝑝〉 can be either ‘+’ or ‘ ×’. 
+The expected  output string (or input completion) is: 
+𝑅=𝑟0 𝑟1… 𝑟𝑚 
+where : 
+𝑟𝑖={𝑖𝑡ℎ bit of 𝐴+𝐵,𝑖=0..7 𝑖𝑓 〈𝑜𝑝〉=′+′ 
+𝑖𝑡ℎ bit of 𝐴×𝐵,𝑖=0..13 𝑖𝑓 〈𝑜𝑝〉=′×′  
+ 
+ It is worth noting that : 
+• we are using a fixed -length input/output representation  (with zero padding  for unused most 
+significant bits ) to make the digit positions more explicit.  
+• in both the input and output the lowest significant bits are provided before the most significant ones 
+(a.k.a., reverse or little -endian  order) since  this was supposed to simplify  the model learning1. 
+If we consider the sequence -to-sequence mapping underlying the proposed tasks we note that even in a 
+simple binary addition  a slight change in the input ( i.e., a single bit)  can produce a relevant change in the 
+output because of the carries propagation.  In the example below a single bit modification in the input 
+produces an 8 bit modification in the output:  
+ 
+1 0 0 0 0 0 0+ 0 1 1 1 1 1 1→ 1 1 1 1 1 1 1 0 
+1 0 0 0 0 0 0+ 1 1 1 1 1 1 1→ 0 0 0 0 0 0 0 1 
+ 
+Such  input -output discontinuity is made more explicit for addition in Table 1 . Given  an input/output pair we 
+consider  the (214) variants  obtained by perturbing (i.e. , 0-1 swap) the input bits and count the res ulting 
+changes in the output. Th ese values, averaged over all possible input /output pairs  (again 214) and normalized 
+by row are inserted  in the table cell s. So, for example the  value  in cell (row = 2, column = 3) means  that in 
+the 27.9% of the cases a perturbation of 2 (over 14) bits in the input leads to a change of 3 (over 8) bits in the 
+output.  
+ 
+ 
+Table 1. Addition input -output discontinuities. Details are explained in the main text.  
+ 
+Input -output discontinuities , which are further  amplified in case of  multiplication s, make it very unlikely to 
+solve the se tasks by smooth interpolation of the input representation.  
+ 
+ 
+ 
+ 
+                                                           
+1 in binary arithmetic the addition/multiplication algorithms start processing the lowest significan t bits, in order to 
+correctly propagate the intermediate carries . Furthermore, in [Nogueira et al., 2021]  such a reverse order provided a 
+little advantage to learn additions.  
+0 1 2 3 4 5 6 7 8
+0 100.0% 0.0% 0.0% 0.0% 0.0% 0.0% 0.0% 0.0% 0.0%
+1 0.0% 50.0% 28.6% 12.5% 5.4% 2.2% 0.9% 0.3% 0.1%
+2 3.8% 8.8% 30.6% 27.9% 16.4% 7.9% 3.3% 1.1% 0.2%
+3 0.8% 8.0% 16.5% 27.0% 24.3% 14.6% 6.5% 2.0% 0.3%
+4 0.8% 4.3% 14.2% 22.7% 25.9% 19.4% 9.4% 2.9% 0.4%
+5 0.5% 3.8% 11.3% 21.9% 26.1% 21.2% 11.2% 3.5% 0.5%
+6 0.4% 3.2% 11.0% 20.9% 26.5% 22.0% 11.8% 3.7% 0.5%
+7 0.4% 3.3% 10.7% 21.2% 26.4% 22.1% 11.8% 3.6% 0.5%
+8 0.5% 3.4% 11.1% 21.2% 26.5% 21.8% 11.5% 3.6% 0.5%
+9 0.5% 3.6% 11.3% 21.3% 26.0% 21.4% 11.7% 3.6% 0.5%
+10 0.6% 3.8% 11.4% 20.6% 25.2% 21.5% 12.0% 4.3% 0.6%
+11 0.6% 3.7% 10.5% 19.1% 23.8% 21.7% 14.4% 5.1% 1.1%
+12 0.6% 3.3% 8.5% 15.2% 22.1% 23.4% 15.9% 9.9% 1.1%
+13 0.7% 2.6% 4.8% 9.4% 16.5% 25.0% 26.8% 7.1% 7.1%
+14 0.8% 0.8% 1.6% 3.1% 6.3% 12.5% 25.0% 50.0% 0.0%3.2 The architecture  
+A non-pretrained encoder -decoder transformer  based on the original architecture introduced by [Vaswani  
+et al. , 2017]  was used as LM. Table 2 report s the model setup and parametrization . The small vocabulary 
+used allows  to keep the model small  (just 701K learnable parameters) and trainable from scratch with a 
+limited number of examples.  
+ 
+vocabulary size  5 
+vocabulary  {0: unused, 1: <start>, 2: ‘+’ or ‘ ×’, 3: ‘0’, 4: ’1’}  
+token embedding  learned  
+positional encoding  fixed (sinusoidal)  
+𝑑𝑚𝑜𝑑𝑒𝑙  64 
+𝑑𝑓𝑓 𝑑𝑚𝑜𝑑𝑒𝑙 ×4 
+num_heads  ℎ 8 
+encoder layers  6 
+decoder layers  6 
+dropout  0.1 
+learnable parameters  701K 
+Table 2.  Details  of the LM model used in our experiments. The total number of learnable parameters is  just 701K, that is several 
+order s of magnitudes smaller than recent billion -parameters LLM.  
+The LM was trained to learn separately the addition/multiplication tasks. For both problems,  we 
+exhaustively generated all the 214=16384  input /output  combinations, which were then randomly split in 
+training (3/4  → 12288 ) and validation  (1/4  → 4096 ).  
+An additional control experiment was run where the input sequences are the same of the addition 
+experiment but the output completion was randomly generated (with the same length of the addition, i.e. , 
+8 tokens). In this case, the lack of any dependencies between input and output makes it impossible to learn 
+an algorithmic approach (or smooth mapping) to solve the problem and the only strategy to learn the training 
+set is memorizing all the sequences.  
+When  the trained LM is used in inference mode, we always pick the most probabl e token from the logit 
+outputs  (i.e., greedy decoding) . Two metrics are used to denote the LM accuracy: token accuracy  refers to 
+the probability of generating the next token correctly, while sequence accuracy  refers to the probability of 
+generating the whole output string correctly in autoregressive mode (i.e., generating one token at a time and 
+appending it at the curren t prompt ). 
+4 Results  and Discussion  
+4.1 Learning Addition and Multiplication  
+Figure 1 and 2 show that our simple  LM is able to learn addition  in less than 50 epochs, and multiplication in 
+about 250 epochs2. As expected multiplication is more complex and require more training: this is due to the 
+high non -linearity of this operation (more on this later) and, referring to the sequence accuracy, to the higher 
+length of the output (14 vs 8 tokens). On the Workstation used (with a single Titan RTX GPU) training  can be 
+completed in  just 8 and 46 minutes respectively.  
+The accuracy on the validation set is very close to the training set, denoting almost perfect generalization 
+on numbers  never seen before . This is a somewhat surprising results, especially considering the limited size 
+of the training data . Unlike [ Nogueira et al., 2021]  (see their Appendix B for a somewhat similar setup) we 
+                                                           
+2 We used standard CrossEntropy loss , Adam optimizer with learning rate 0.0001 and betas = 0.9 and 0.98 , and 
+minibatch size = 128 . were able to learn addition with the native sinusoidal positional enc oding, probably due to the lower 
+complexity determined by a  small vocabulary  and fixed -length input/output representations . Differently 
+from [ Muffo , Cocco and Bertino,  2022 ], whose experiments on learning multiplication were not successful, 
+our model effec tively learnt multiplication of 7 binary digits operands. Again,  the simplified setup may have 
+been the key.  
+ 
+ 
+Figure 1: Addition . From the left: token and sequence accuracies . 
+ 
+ 
+Figure 2: Multiplication.  From the left: token and  sequence acc uracies. 
+4.2 Control experiment: random output  
+If the output is randomly generated and therefore there is no relation with the input, the only possibility of 
+learning the training set is memorizing the whole data. Figure 3 shows the training resul ts: a much larger 
+number of epochs  (i.e., 1000)  was necessary to reach a sequence accuracy of 87.8%, and, a s expected,  the 
+validation accuracy did not increase over the epochs. The difficulty of memorizing the training set ( many 
+more  epochs) is due to the high discontinuity  of the input -output mapping. In fact, because of the random 
+output generation, very similar input sequences can be associate d to completely different outputs.  
+ 
+405060708090100
+0 10 20 30 40 50
+EpochsTrain
+Val
+0102030405060708090100
+0 10 20 30 40 50
+EpochsTrain
+Val
+5060708090100
+0 50 100 150 200 250
+EpochsTrain
+Val
+0102030405060708090100
+0 50 100 150 200 250
+EpochsTrain
+Val 
+Figure 3: Random operator.  From the left: token and sequence accuracies . 
+Therefore, even if we only consider  the accuracy on the training set, t his result  show s that a n exhaustive 
+memorization of the input is much more complex for the LM than solving the addition and multiplication 
+tasks. This lead s us to assume that to efficiently solve the  above  computation task s the LM ha s found a 
+computational approach (or algorithm ) to simplify the output prediction . Now the question is: what is the 
+approach ?  
+4.3 The computation approach  
+Let us consider two  alterna tive approaches:  
+Symbol ic Manipulation  (SM) : a first idea is that the LM could learn the binary integer addition/multiplication 
+algorithms used by an ALU inside a CPU (see Appendix A for a short reminder).  Indeed , the addition algorithm 
+is not complex and can be solved by using a  3-bit truth  table (to sum each pair of corresponding bits  with the 
+carry -in) and iterative carry -out propagations.  However, multiplication (by iterative addition s) is much more 
+complex and trickier to learn  by using a symbolic mani pulation approach . 
+Encoding -Regression -Decoding (ER D): if we consider the model architecture (Transformer) used for the LM 
+and the underlying word embedding by vector representations, it is more likely that  the LM  solve the problem 
+by decomposing it in the  following  three stages : 
+1. Encoding  (token to values) : mapping the input sequence  (i.e.,  𝑎0 𝑎1 𝑎2 𝑎3 𝑎4 𝑎5 𝑎6 〈𝑜𝑝〉 𝑏0 𝑏1 𝑏2 𝑏3 𝑏4 𝑏5 𝑏6) 
+to a suitable vector representation. In principle , two scalars  𝑣𝐴 and 𝑣𝐵 representing the value s (or 
+magnitude s) of 𝐴 and 𝐵 are enough .  
+2. Regression: learn the computation as a supervised  regression problem in the vector  space : 𝑣𝑅=
+𝑟𝑒𝑔𝑟𝑒𝑠𝑠 (𝑣𝐴,𝑣𝐵).  
+3. Decoding  (value to token) : map the output vector  encoding the value  𝑣𝑅 back to token  representation  
+(i.e., 𝑟0 𝑟1… 𝑟𝑚 ). 
+The experiments reported in Sections 4.4 and 4.5 support the ERD assumption . It is worth noting that the 
+above Encoding and Decoding stages does not need to be mapped onto the transformer encoder and 
+decoder (more on  this later).  
+4.4 Interpolation vs Extrapolation  
+The random training/validation split performed for the experiment s reported in Section 4.1 constitute s a 
+somewhat simplified testbed to learn the two tasks. In fact, random split lead s to a complete (even if sparse) 
+coverage of the input space by both the training and validation set, where each example in the validation set 
+has high chance  to be close to a training set example , and interpolation is enough to fill the gaps . 
+Hereafter we considered two different  criteria to isolate specific portion of the input space  for the 
+validation set , in order to better investigate extrapolation capabilities :  
+405060708090100
+0 200 400 600 800 1000
+EpochsTrain
+Val
+0102030405060708090100
+0 200 400 600 800 1000
+EpochsTrain
+Val• 𝑉𝑆𝑡={(𝐴,𝐵)| (𝐴,𝐵) ∈ 𝑁𝑁 4096 ((𝐴∗,𝐵∗)) } 
+where 𝑁𝑁 4096 ((𝐴∗,𝐵∗)) is the set of 4096 pairs (𝐴,𝐵) which are the nearest neighbors to  a centroid 
+(𝐴∗,𝐵∗) according to the H amming distance  between the corresponding sequence representations 
+(i.e., number of different tokens at corresponding positions).  As centroid (𝐴∗,𝐵∗) in the token space  
+we used : 1 0 1 0 1 0 1 〈𝑜𝑝〉 0 1 0 1 0 1 0. 
+• 𝑉𝑆𝑣={(𝐴,𝐵)|32≤𝐴<96 𝑎𝑛𝑑  32≤𝐵<96} 
+here the centroid is located in the middle of the value  space (64, 64), so 𝑉𝑆𝑣 is a squared region (of 
+side 64) center ed in the value  space.  
+Both 𝑉𝑆𝑡 and 𝑉𝑆𝑣 isolate a contiguous data region of 4096 samples to be included in the validation set, but 
+in the former the samples are close in the token representation space, while in latter are close in the value 
+space . Being such conti guous  portions of space excluded from the training se t, we can expect a worse 
+generalization. From the results ( see Figure 4) we note that 𝑉𝑆𝑡 is not hurting LM training and generalization 
+while 𝑉𝑆𝑣 has a certain impact: in fact, in the second case, for both addition and multiplication th e sequence 
+accuracy on validation  set is always lower than on training  set and the final sequence accuracy i s 5…10 % 
+points lower. This result strengthen the ERD hypothe sis, since: (i) using 𝑉𝑆𝑣 lead s to the exclusion of a specific 
+contiguous portion of value  space during  stage 2  and does not allow to properly train the regressor in this 
+region; (ii) the encoding performed during stage 1 makes irrelevant the selection perfo rmed according to 𝑉𝑆𝑡 
+because after encoding the corresponding data point remains  scattered in the v alue  space  and the regressor 
+can easily interpolate among them .  
+ 
+ 
+Figure 4: Sequence accuracy on the random, 𝑉𝑆𝑡, and 𝑉𝑆𝑣 validation subsets. From left to right: addition and multiplication.  
+4.5 Looking at internal representations  
+Understanding internal representation (embeddings in the vector space) in a trained transformer is not an 
+easy task. However,  in the specific setting considered  we can gain some hints looking at the distances 
+between the embedding of different data point (at different layers) and correlating them with the 
+corresponding distances at input/ou tput levels.  
+Given a n LM trained on addition (or multiplication) we consider the dataset 𝑆 including the 128 input pairs 
+where the two operands have identical value3:  
+𝑆={(𝑁,𝑁)|0≤𝑁<128 } 
+                                                           
+3 since the inp ut prompt contain s two operands, we select only the cases with identical value s in order to easily 
+determine the “magnitude” of the input, and thereafter compute meaningful distances.  
+0102030405060708090100
+0 10 20 30 40 50
+EpochsRandom split
+VSt
+VSv
+𝑉𝑆𝑡 
+𝑉𝑆𝑣 
+0102030405060708090100
+0 50 100 150 200 250
+EpochsRandom split
+VSt
+VSv
+𝑉𝑆𝑡 
+𝑉𝑆𝑣 At input level ( 𝑖𝑛) we can compute two ordered set of 16256 (128 ×127) distances  each : 
+𝑑𝑖𝑛,𝑡={ℎ𝑑𝑖𝑠𝑡 (𝐴,𝐵)|(𝐴,𝐴),(𝐵,𝐵)∈𝑆,𝐴<𝐵 }  
+𝑑𝑖𝑛,𝑣={ |𝐴−𝐵|  |(𝐴,𝐴),(𝐵,𝐵)∈𝑆,𝐴<𝐵 } 
+where ℎ𝑑𝑖𝑠𝑡 (𝐴,𝐵) is the Hamming distance between the token representation of 𝐴 and 𝐵, and the subscript 
+letter s 𝑡 and 𝑣 denote token and value level, respectively.  
+At output level ( 𝑜𝑢𝑡) we can compute the two corresponding set s of distances as:  
+𝑑𝑜𝑢𝑡 ,𝑡={ℎ𝑑𝑖𝑠𝑡 (𝑃,𝑄)|(𝐴,𝐴),(𝐵,𝐵)∈𝑆,𝐴<𝐵 }  
+𝑑𝑜𝑢𝑡 ,𝑣={ |𝑃−𝑄|  |(𝐴,𝐴),(𝐵,𝐵)∈𝑆,𝐴<𝐵 } 
+where (𝑃=𝐴+𝐴 and 𝑄=𝐵+𝐵) for addition , and (𝑃=𝐴×𝐴 and 𝑄=𝐵×𝐵) for multiplication.  
+Finally, for each intermediate level of the transformer encoder ( 𝑒𝑛𝑐) or decoder ( 𝑑𝑒𝑐) we can  compute the 
+Euclidean distances among the corresponding embedding vectors.  
+𝑑𝑒𝑛𝑐 𝑖={ ‖𝑒𝑛𝑐 𝑖(𝐴,𝐴)−𝑒𝑛𝑐 𝑖(𝐵,𝐵)‖  |(𝐴,𝐴),(𝐵,𝐵)∈𝑆,𝐴<𝐵 }  
+𝑑𝑑𝑒𝑐 𝑖={ ‖𝑑𝑒𝑐 𝑖(𝐴,𝐴)−𝑑𝑒𝑐 𝑖(𝐵,𝐵)‖  |(𝐴,𝐴),(𝐵,𝐵)∈𝑆,𝐴<𝐵 }  
+where 𝑒𝑛𝑐 𝑖 and 𝑑𝑒𝑐 𝑖 are the output vectors (of dimensionality 64) after the i-th encoder and decoder layer, 
+respectively.  
+Even if  the distances in the different sets have different ranges, we can use correlation to find out 
+similarities . If two set of distances are correlated we can expect that the corresponding 
+representation s/embeddings  are correlated as well.  Since both Pearson  and Spearm an [Schober , Boer and 
+Schwarte , 2018 ] correlation s provided similar outputs, for simplicity in Table 3 we report only Pearson 
+correlations.   
+The yellow cells in Table 3 confirm the low correlation between the token and value representation at 
+both input and output level. The blue cells shows  that correlation remains quite similar across the encoder 
+layers as if the encoder was not performing any significant computation (this is confirmed in Section 4.6 
+where by totally removing the encoder we achieve similar results). More interesting is the trend of 
+correlations across the decoder layers (green cells). In particular, for the addition the token representation 
+have high correlation with the first and last layers and low with central layers, while the value representation 
+has opposite trend (se also graphical representation in Figure 5.left). These results support the ERD 
+hypothesis and in particular that the initial and final layers in the decoder transform from token to value 
+representation (and vice versa ) while the central layers perform regr ession in the value space. In particular, 
+at layer 3, the correlation at token level is minimum while the correlation at value level is maximum.  
+For multiplication the low -high -low trend at value level is less evident (Figure 5.right orange curve), 
+probabl y because the quadratic dependence of the output from the input (at value level) does not allow to 
+learn a simple regressor smoothly working in the whole vector space, and the mapping is performed by 
+piecewise linear approximation in different space region s, which introduces discontinuities that makes global 
+distances in the vector space unsuitable to quantify data similarity.  
+ 
+ 
+ Addition 
+ 𝑑𝑖𝑛,𝑡 𝑑𝑖𝑛,𝑣 
+𝑑𝑖𝑛,𝑡 1.000 0.339 
+𝑑𝑒𝑛𝑐 1 0.990 0.358 
+𝑑𝑒𝑛𝑐 2 0.988 0.384 
+𝑑𝑒𝑛𝑐 3 0.983 0.413 
+𝑑𝑒𝑛𝑐 4 0.969 0.455 
+𝑑𝑒𝑛𝑐 5 0.970 0.410 
+𝑑𝑒𝑛𝑐 6 0.963 0.309 
+𝑑𝑑𝑒𝑐 1 0.964 0.246 
+𝑑𝑑𝑒𝑐 2 0.815 0.740 
+𝑑𝑑𝑒𝑐 3 0.610 0.889 
+𝑑𝑑𝑒𝑐 4 0.745 0.729 
+𝑑𝑑𝑒𝑐 5 0.802 0.625 
+𝑑𝑑𝑒𝑐 6 0.962 0.450 
+ 𝑑𝑜𝑢𝑡 ,𝑡 𝑑𝑜𝑢𝑡 ,𝑣 
+𝑑𝑜𝑢𝑡 ,𝑡 1.000 0.071 
+𝑑𝑒𝑛𝑐 1 0.911 0.358 
+𝑑𝑒𝑛𝑐 2 0.902 0.384 
+𝑑𝑒𝑛𝑐 3 0.886 0.413 
+𝑑𝑒𝑛𝑐 4 0.867 0.455 
+𝑑𝑒𝑛𝑐 5 0.897 0.410 
+𝑑𝑒𝑛𝑐 6 0.929 0.309 
+𝑑𝑑𝑒𝑐 1 0.957 0.246 
+𝑑𝑑𝑒𝑐 2 0.633 0.740 
+𝑑𝑑𝑒𝑐 3 0.358 0.889 
+𝑑𝑑𝑒𝑐 4 0.538 0.729 
+𝑑𝑑𝑒𝑐 5 0.630 0.625 
+𝑑𝑑𝑒𝑐 6 0.844 0.450 
+ Multiplication  
+ 𝑑𝑖𝑛,𝑡 𝑑𝑖𝑛,𝑣 
+𝑑𝑖𝑛,𝑡 1.000 0.339 
+𝑑𝑒𝑛𝑐 1 0.989 0.371 
+𝑑𝑒𝑛𝑐 2 0.988 0.372 
+𝑑𝑒𝑛𝑐 3 0.985 0.381 
+𝑑𝑒𝑛𝑐 4 0.979 0.373 
+𝑑𝑒𝑛𝑐 5 0.976 0.379 
+𝑑𝑒𝑛𝑐 6 0.970 0.364 
+𝑑𝑑𝑒𝑐 1 0.497 0.530 
+𝑑𝑑𝑒𝑐 2 0.498 0.561 
+𝑑𝑑𝑒𝑐 3 0.550 0.620 
+𝑑𝑑𝑒𝑐 4 0.582 0.651 
+𝑑𝑑𝑒𝑐 5 0.552 0.607 
+𝑑𝑑𝑒𝑐 6 0.522 0.489 
+ 𝑑𝑜𝑢𝑡 ,𝑡 𝑑𝑜𝑢𝑡 ,𝑣 
+𝑑𝑜𝑢𝑡 ,𝑡 1.000 0.128 
+𝑑𝑒𝑛𝑐 1 0.341 0.337 
+𝑑𝑒𝑛𝑐 2 0.343 0.337 
+𝑑𝑒𝑛𝑐 3 0.342 0.340 
+𝑑𝑒𝑛𝑐 4 0.337 0.334 
+𝑑𝑒𝑛𝑐 5 0.321 0.329 
+𝑑𝑒𝑛𝑐 6 0.300 0.319 
+𝑑𝑑𝑒𝑐 1 0.669 0.399 
+𝑑𝑑𝑒𝑐 2 0.407 0.378 
+𝑑𝑑𝑒𝑐 3 0.261 0.430 
+𝑑𝑑𝑒𝑐 4 0.242 0.498 
+𝑑𝑑𝑒𝑐 5 0.310 0.541 
+𝑑𝑑𝑒𝑐 6 0.594 0.546 
+ 
+Table 3. Pearson c orrelation between ordered sets of distances for addition (left) and multiplication (right). Each cell denotes the 
+correlation between the two ordered set of distances specified in the corresponding row and column. Note that since for addition in 
+this expe riment the output value is always twice the input, the correlation values (blue and green cells) are the same for 𝑑𝑖𝑛,𝑣 and 
+𝑑𝑜𝑢𝑡 ,𝑣 block of values.  
+ 
+   
+Figure 5. Correlation s of output distances 𝑑𝑜𝑢𝑡 ,𝑡 (at token level - blue curves) and 𝑑𝑜𝑢𝑡 ,𝑣 (at value level - orange curves) with the 
+embedding distances 𝑑𝑑𝑒𝑐 𝑖 across the  6 decoder layers.   
+ 
+00,10,20,30,40,50,60,70,80,91
+1 2 3 4 5 6Addition
+token value
+00,10,20,30,40,50,60,70,80,91
+1 2 3 4 5 6Multiplication
+token value4.6 Ablation study  
+This section presents the results of an ablation stud y where the LM architecture was simplified, to understand 
+what components are necessary to learn the addition/multiplication computation. Table 4 summarize s the 
+results.  
+Configuration  Addition  Multiplication  
+Full (see Table  2) 29 141 
+Decoder only  60 426 
+num_heads  ℎ=1 25 225 
+Reduced dimensionality ( 𝑑𝑚𝑜𝑑𝑒𝑙 =32) 66 309 
+No positional embedding  - (2.4% ) - (1.8% ) 
+No attention layers  - (0.9% ) - (1.7% ) 
+No fully connected layers  56 398 
+Table 4.  Number of epochs necessary to reach a 95% sequence accuracy on the validation  set. A dash is used when the target 
+validation accuracy is not achieved after 1000 epochs : in such case the validation accuracy reached is reported within brackets . 
+Consistently with other studies, our results show that a de coder only architecture [Liu et al., 2018] can 
+achieve similar results  w.r.t. an encoder -decoder transformer . A simplification of the architecture in terms of 
+(i) reduction of dimensionality; (ii) reduction of number of heads; (iii) removal of fully connected layers is well 
+tolerated, while  positional embedding and attention layer s are mandatory for the LM in order to properly 
+perform token to value transformation (and vice versa ). 
+5 Conclusions  
+In this paper we introduced  a simplified setup to allow a light transformed -based LM to learn binary 
+additions and multiplication s. The model  easily learn the two tasks and generalize well on unseen data , 
+proving that memorization of the training data is neither necessary nor efficient . The experiments on the 
+interpolation/extrapolation capabilities and correlation of input -output representatio ns with internal 
+embedding suggest that the model solve the computational task as a supervised regression problem in the 
+value space after an initial encoding from token to values, and a final decoding from output value to tokens. 
+Under this hypotheses: (i ) any task that can be solved by a neural network regressor can be solved by a LM 
+as well, with the extra burden of end-to-end learning decoding/encoding  steps; (ii)  when looking at 
+interpolation/extrapolation capabilities of an LM applied to mathematical task, we should not concentrate 
+on the input token representation but on the internal representation  after encoding, keeping in mind the 
+difficulties of a numerical regressor to work on region spaces not covered by the training set ; (iii) on a more 
+specula tive side, we could guess  that modern LLM learn the number encoding/decoding once and reuse it 
+across different tasks whereas a specific regressor is learn t for each task.  
+Extending this work to the computation of other mathematical problem s that can be approach ed by 
+learning an input/output mapping (e.g., the root square) is quite trivial. A more challenging objective , which 
+is one of the aims  of our future research,  is designing simplified experiments/setups for LM to gain insight s 
+in tasks than cannot be easily mapped to regression problems such as chain of reasoning and logic 
+deductions .  
+ 
+ 
+ 
+ 
+ 
+ 
+  
+ACKNOWLEDGMENTS  
+This research did not receive any specific grant from funding agencies in the public, commercial, or not -for-
+profit sectors.  
+ 

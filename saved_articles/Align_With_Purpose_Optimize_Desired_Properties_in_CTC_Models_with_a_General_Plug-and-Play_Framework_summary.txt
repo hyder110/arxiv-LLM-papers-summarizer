@@ -1,0 +1,16 @@
+Summary:
+The paper introduces a framework called Align With Purpose (AWP) for enhancing specific properties in models trained with the Connectionist Temporal Classification (CTC) criterion. The AWP framework adds an additional loss term to the CTC loss that prioritizes alignments according to a desired property. The method does not require any modifications to the CTC loss function and can be implemented using only a few lines of code. The framework is evaluated on two applications: low latency and minimum Word Error Rate (WER) optimization. Experimental results show that AWP successfully reduces latency and improves WER in ASR models.
+
+Bullet Points:
+1. The paper presents the Align With Purpose (AWP) framework for enhancing specific properties in models trained with the CTC criterion.
+2. AWP adds an additional loss term to the CTC loss that prioritizes alignments based on a desired property.
+3. The framework does not require any modifications to the CTC loss function and can be implemented using only a few lines of code.
+4. AWP is evaluated on two applications: low latency and minimum Word Error Rate (WER) optimization.
+5. Experimental results show that AWP successfully reduces latency in ASR models while maintaining transcription quality.
+6. AWP also improves WER in ASR models, leading to better transcription accuracy.
+7. The framework is general and can be applied to other alignment-free loss functions and domains beyond ASR.
+8. The method supports differentiation between perfect and imperfect alignments.
+9. AWP is versatile and can be applied to models trained with different scales of datasets and architectural choices.
+10. The framework offers a simple and efficient way to optimize desired properties in CTC models.
+
+Keywords: Align With Purpose, CTC, framework, properties, low latency, Word Error Rate (WER), ASR, alignment

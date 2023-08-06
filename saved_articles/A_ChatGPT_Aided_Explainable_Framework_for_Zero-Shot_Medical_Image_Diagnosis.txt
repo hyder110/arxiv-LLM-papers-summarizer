@@ -1,0 +1,653 @@
+A ChatGPT Aided Explainable Framework for Zero-Shot Medical Image
+Diagnosis
+Jiaxiang Liu* 1 2Tianxiang Hu* 1Yan Zhang* 3Xiaotang Gai1Yang Feng4Zuozhu Liu1
+Abstract
+Zero-shot medical image classification is a criti-
+cal process in real-world scenarios where we have
+limited access to all possible diseases or large-
+scale annotated data. It involves computing simi-
+larity scores between a query medical image and
+possible disease categories to determine the di-
+agnostic result. Recent advances in pretrained
+vision-language models (VLMs) such as CLIP
+have shown great performance for zero-shot natu-
+ral image recognition and exhibit benefits in med-
+ical applications. However, an explainable zero-
+shot medical image recognition framework with
+promising performance is yet under development.
+In this paper, we propose a novel CLIP-based
+zero-shot medical image classification framework
+supplemented with ChatGPT for explainable di-
+agnosis, mimicking the diagnostic process per-
+formed by human experts. The key idea is to
+query large language models (LLMs) with cate-
+gory names to automatically generate additional
+cues and knowledge, such as disease symptoms or
+descriptions other than a single category name, to
+help provide more accurate and explainable diag-
+nosis in CLIP. We further design specific prompts
+to enhance the quality of generated texts by Chat-
+GPT that describe visual medical features. Exten-
+sive results on one private dataset and four pub-
+lic datasets along with detailed analysis demon-
+strate the effectiveness and explainability of our
+training-free zero-shot diagnosis pipeline, corrob-
+orating the great potential of VLMs and LLMs
+for medical applications.
+*Equal contribution1Zhejiang University-University of Illi-
+nois at Urbana-Champaign Institute, Zhejiang University, Haining,
+China2College of Computer Science and Technology, Zhejiang
+University, Hangzhou, China3National University of Singapore,
+Singapore4Angelalign Inc., Shanghai, China. Correspondence to:
+Zuozhu Liu <zuozhuliu@intl.zju.edu.cn >.
+Workshop on Interpretable ML in Healthcare at International Con-
+ference on Machine Learning (ICML) , Honolulu, Hawaii, USA.
+2023. Copyright 2023 by the author(s).1. Introduction
+Large-scale pretrained vision-language models (VLMs),
+such as the Contrastive Language-Image Pre-Training
+(CLIP), have shown great performance in various visual
+and language tasks, especially in zero-shot recognition
+tasks (Radford et al., 2021; Li et al., 2022). In the standard
+zero-shot image classification scenario, CLIP computes sim-
+ilarity scores between a query image and different category
+names (texts), and the category with the highest similarity
+score would be regarded as the classification result (Menon
+& V ondrick, 2022). Recent work extends ideas in CLIP to
+medical image analysis, e.g., how CLIP benefits medical im-
+age classification or the training of large-scale VLMs such
+as MedCLIP in the medical domain (Eslami et al., 2021;
+Shen et al., 2021; Wang et al., 2022).
+One of the key tasks to extend VLMs in medical domains is
+zero-shot medical image classification, which is critical in
+real-world scenarios where we may not have access to all
+possible diseases or annotated medical images are hardly
+available (Mahapatra et al., 2021; 2022). However, this
+significant task remains seldomly explored especially with
+VLMs, let alone frameworks for explainable diagnosis with
+visual or textual medical information. The feasibility of
+directly transferring VLMs like CLIP to medical domains
+remains to be checked for at least two reasons. On one hand,
+CLIP and many other VLMs are pre-trained with natural
+image-text pairs, which could certainly lack the attention
+on medical information and lead to abysmal performance
+(Chen et al., 2019; 2020; Li et al., 2020). On the other
+hand, medical image classification does embrace model in-
+terpretability, while the category texts of medical images
+tend to be highly abstract medical lexicons that are inher-
+ently more challenging to interpret and analyze with existing
+VLMs (Wang et al., 2022; Mahapatra et al., 2021).
+It is reasonable to follow the standard zero-shot classifi-
+cation paradigm in natural image recognition for medical
+image classification (Menon & V ondrick, 2022). As illus-
+trated in Figure 1 (top row), an input image, such as a brain
+MR or fundus image, and the possible categories could
+be fed into the multimodal CLIP model to compute corre-
+sponding similarity scores and subsequently make decisions.
+However, such a standard pipeline suffers from the afore-
+1arXiv:2307.01981v1  [eess.IV]  5 Jul 2023Submission and Formatting Instructions for ICML 2023
++
+Glioblastoma Multiforme
+ChatGPT+
+Presence of contrast
+ enhancement
+Presence of necr osisCLIP  CLIP  
+...
++ChatGPT+
+CLIP  CLIP  
+...
+Vitreous hemorrhage
+Symptoms SymptomsProliferative Retinopathy
+NeovascularizationGlioblastoma MultiformeProliferative Retinopathy
+Figure 1. Attention maps of query image with only diagnostic category or with additional symptoms from ChatGPT, generated with model
+CLIP-ViT-B/32 which is used for all attention maps in the rest of the paper (Chefer et al., 2021).
+mentioned limitations with inferior performance and limited
+interpretability, i.e., the attention map generated by the rep-
+resentations of the image and category name show that the
+model fails to focus on the area of interest for identifying the
+diagnostic category (Chefer et al., 2021). A simple idea is
+providing additional information about each disease to assist
+diagnosis, and if possible, providing them in a scalable way
+to avoid time-consuming hand-crafting. For instance, one
+may consider utilizing generative models to create the de-
+scriptions, with which CLIP can inference based on certain
+symptoms, very much like the diagnostic process performed
+by human experts in practice.
+In this paper, we propose a novel framework for explainable
+zero-shot medical image classification. The key idea is to
+leverage LLMs to automatically generate additional cues
+and knowledge, such as disease symptoms or descriptions
+other than the standalone category name, to help provide
+more accurate and explainable diagnosis. The effectiveness
+of our method is illustrated in Figure 1 (bottom row), where
+the model obviously pays more attention to relevant tissues
+after incorporating the information of more detailed descrip-
+tions. In particular, besides leveraging VLMs like CLIP,
+we supply our model with the recently released ChatGPT
+model to automatically provide detailed category descrip-
+tions. Considering that ChatGPT may deliver inaccurate
+information in medical queries, we further design a prompt
+to query ChatGPT to get textual descriptions of useful visual
+symptoms to identify diagnostic categories. Extensive exper-
+imental results demonstrate the superiority of our method.
+The main contributions could be summarized as:
+•We have shown for the first time in the medical do-
+main the feasibility of incorporating ChatGPT for bet-
+ter CLIP-based zero-shot image classification, reveal-ing the potential of LLMs-aided designs for medical
+applications. Through ablation studies, we have also
+elucidated the considerable scope for augmenting the
+performance of our approach through prompt designs.
+•We propose a novel CLIP-based zero-shot medical im-
+age diagnosis paradigm. In comparison to the conven-
+tional CLIP-based approach, our proposed paradigm
+exhibits significant enhancements in medical image
+classification accuracy while concurrently offering a
+notable level of explainability in various disease diag-
+nosis.
+•We comprehensively evaluate our method on five
+medical datasets, including pneumonia, tuberculo-
+sis, retinopathy, and brain tumor. Extensive experi-
+ments and analysis demonstrate the promising zero-
+shot recognition performance and a considerable level
+of interpretability of our approach.
+2. Related Work
+2.1. Large Language Model
+Large language models use deep neural networks with bil-
+lions of parameters to learn patterns from large amounts of
+text data (Brown et al., 2020; Devlin et al., 2018; Radford
+et al., 2019), the primary objective of which is to generate
+human-like responses based on the context it is provided
+(Ouyang et al., 2022). ChatGPT is a state-of-the-art large
+language model that specializes in language understanding
+and inference. With the advanced transformer architecture
+and massive training dataset, ChatGPT is able to deliver
+coherent and meaningful responses to a wide variety of
+prompts including questions consisting of a few words and
+2Submission and Formatting Instructions for ICML 2023
+ChatGPTCLIP  Text
+Encoder
+CLIP  Visual
+Encoder
+Proliferative RetinopathyVitreous hemorr hage
+...
+×|C|...
+×|C|
+...Tractional r etinal
+ detachment
+Fibrous pr oliferation
+Preretinal or subhyaloid
+hemorr hage
+No Appar ent RetinopathyThe designed prompt
+m.
+...· · · ·
+· · · ·Visual Input: medical image ×|C|Textual Input: medical diagnostic categories
+                          with prompt2.
+3.1.
+4.×|C|
++
+Output: predicted diagnostic categoryNeovascularization
+...
+Figure 2. The pipeline of the proposed method.
+complex dialogues. It has shown an impressive performance
+in many language tasks such as machine translation, text
+summarization, conversation generation, and sentiment anal-
+ysis (Houlsby et al., 2019; Karimi Mahabadi et al., 2021;
+Mahabadi et al., 2021). News popped up that ChatGPT
+earned a decent grade on the US Medical Licensing Exam,
+but the well noticed fact that ChatGPT can generate make-up
+knowledge have raised a dispute over the issue of whether
+ChatGPT can be used in medical diagnosis. Our proposed
+approach introduces an innovative and prospective paradigm
+that can integrate LLMs like ChatGPT into medical diagno-
+sis, yielding promising performance in explainable zero-shot
+medical image diagnosis.
+2.2. Vision-language Pre-training
+Visual-language (VL) pre-training is meant to pre-train
+multi-modal models on large-scale datasets that contain
+both visual and textual information (Chen et al., 2019; Do
+et al., 2021; Liu et al., 2021), eg. images and captions, to
+learn joint representations that capture the complex inter-
+actions between the two modalities. In practice, due to the
+high cost of acquiring manually annotated datasets, most
+visual-language models (Chen et al., 2019; 2020; Li et al.,
+2020; Radford et al., 2021) are trained with image-text pairs
+captured from the Internet (Jia et al., 2021; Sharma et al.,
+2018). As an important example, with pre-training on 400
+million pairs of image and text from the Internet, the modelCLIP (Radford et al., 2021) gained rich cross-modal rep-
+resentations and achieved amazing results on a wide range
+of visual tasks without any fine-tuning. Based on the abun-
+dant knowledge CLIP has learned, we are able to establish
+the framework to tackle medical image diagnosis tasks in a
+training-free manner.
+3. Method
+3.1. Problem Formulation and Method Pipeline
+We focus on zero-shot medical image classification tasks
+where we compute the similarity scores for image-text query
+pairs (x, c), c∈C, and the category ˆcwith highest similar-
+ity score would be regarded as the classification result of
+image x, where Cis the label set. Note that there is no need
+for model training as long as we have pretrained VLMs or
+LLMs in our framework. The pipeline is illustrated in Fig-
+ure 2. The image xis processed through the visual encoder
+of CLIP to obtain its visual representation:
+f=VisualEncoder (x). (1)
+In parallel, ChatGPT is queried with our designed prompt
+to generate major symptoms for each diagnostic category:
+sc
+1, ..., sc
+m=ChatGPT (prompt, c ), (2)
+where mdenotes the total number of generated symptoms,
+see details in next section. The symptom phrases are then
+3Submission and Formatting Instructions for ICML 2023
+sent into the text encoder of CLIP to obtain text representa-
+tions:
+gc
+1, ..., gc
+m=TextEncoder (sc
+1, ..., sc
+m). (3)
+A score function Sis defined to evaluate the similarity of
+the image-text pair (x, c)at the feature level:
+S(x, c) =1
+mmX
+i=1f·gc
+i. (4)
+We use average aggregation to ensure the fair evaluation for
+classes with different sizes of symptom, and more aggrega-
+tion strategies are evaluated in experiments. A high score of
+xandcsuggests a significant degree of relevance between
+the medical image and the class. Going over all categories
+c∈C, the one with the maximum similarity score is finally
+taken as the predicted diagnosis of the input image x:
+ˆc= argmax
+c∈CS(x, c) = argmax
+c∈C1
+mmX
+i=1f·gc
+i.(5)
+3.2. The Designed Prompt
+High-quality symptom descriptions are essential for the
+success of our method. In this work, we query ChatGPT
+useful symptoms for the diagnosis of certain diseases. A
+baseline prompt choice could be “Q: What are useful vi-
+sual features for distinguishing {Diagnostic Category }in
+a photo?”. However, in experiments we found that such
+baseline prompts can produce misleading symptom descrip-
+tions in the returned answer. Hence, we secure the fidelity
+of the generated information by designing the prompts to
+work more professionally. First, noticing that the object of
+the method is basically to replicate the diagnostic process
+carried out by medical professionals, we emphasize that the
+generation should focus on medical features in the prompt
+instead of general descriptions as if we are querying expla-
+nations for the class of a general natural image. In addition,
+we adjust the prompt to direct ChatGPT’s attention more
+toward published literature. Figure 3 exhibits the symptoms
+generated by ChatGPT using our designed prompt. As ex-
+pected, generated symptoms center around the diagnostic
+category, which typically involves the presence or absence
+of certain structure, location and clarity of relevant tissues,
+descriptions of organ boundaries, etc.
+4. Experiments
+4.1. Datasets and Experimental Setup
+4.1.1. D ATASETS
+Pneumonia Dataset: The Pneumonia Chest X-ray Dataset
+consists of images selected from retrospective cohorts of pe-
+diatric patients of one to five years old from GuangzhouWomen and Children’s Medical Center in Guangzhou,
+Guangdong Province, China (Kermany et al., 2018). A
+total of 5,232 chest X-ray images of children are collected
+and labeled, including 3,883 characterized as having pneu-
+monia (2,538 bacterial and 1,345 viral) and 1,349 normal.
+Montgomery Dataset: The Montgomery County X-ray
+Set was made in the tuberculosis control program of the
+Department of Health and Human Services of Montgomery
+County, MD, USA (Jaeger et al., 2014). The dataset con-
+tains 138 posterior-anterior X-rays, of which 80 X-rays are
+normal and 58 X-rays are abnormal with manifestations of
+tuberculosis, covering a wide range of abnormalities includ-
+ing effusions and miliary patterns. Shenzhen Dataset: The
+Shenzhen Hospital X-ray Set was collected by Shenzhen
+No.3 Hospital in Shenzhen, Guangdong Province, China
+(Jaeger et al., 2014), where the X-rays are acquired as part
+of the routine care at the hospital. There are 326 normal
+X-rays and 336 abnormal X-rays showing various mani-
+festations of tuberculosis. IDRID Dataset: The Indian
+Diabetic Retinopathy Image Dataset is the first database
+representative of an Indian population regarding Diabetic
+Retinopathy, and is the only dataset that constitutes typi-
+cal diabetic retinopathy lesions (Porwal et al., 2018). The
+dataset has 516 rentinal images in total, and provides infor-
+mation on the disease severity of diabetic retinopathy(DR)
+for each image according to medical experts’ grading with
+a variety of pathological conditions of DR. BrainTumor
+Dataset: All datasets mentioned previously are composed
+of publicly available images which may potentially be part
+of the resource for CLIP’s pre-training. To check the ca-
+pability of our method on data that is absolutely invisible
+for CLIP, we originally construct a dataset of brain tumor
+images, specifically targeting glioblastoma multiforme and
+primary central nervous system lymphoma which are often
+hard to discriminate, even for medical professionals. The
+dataset encompasses 338 glioblastoma multiforme images
+and 255 primary central nervous system lymphoma images.
+4.1.2. E XPERIMENTAL SETUP
+All implementations are based on the PyTorch framework
+and on an Ubuntu server with a single NVIDIA GEFORCE
+RTX 3090 GPU. For visual and textual encoders, we utilize
+five CLIP versions including RN50, RN101, RN50x64, ViT-
+B/32, and ViT-L/14, covering different levels of parameter
+size.
+4.2. Main Results
+4.2.1. C LASSIFICATION PERFORMANCE
+We evaluate our method on the five datasets across different
+CLIP versions. Results are reported in Table 1 where the
+best accuracies are displayed in the bottom row. Results
+show that our approach can achieve consistent improve-
+4Submission and Formatting Instructions for ICML 2023
+Pneumonia
+Presence of
+consolidation
+Air br onchogram sign
+Presence of cavitation
+Presence of pleural
+effusionGlioblastoma
+Multiforme
+Presence of contrast
+enhancement
+Presence of
+necrosis
+Infiltrative gr owth
+pattern
+Location in the cer ebral
+hemispher esNo Appar ent
+ Retinopathy
+Absence of har d
+exudates
+Clear r etinal
+vasculatur eChatGPT
+Absence of
+microaneurysms
+Absence of intrar etinal
+hemorr hagesNormal Lung Tuber culosis
+Presence of nodules or
+masses
+Cavitary lesions
+Infiltrates
+LymphadenopathyClear and distinct lung
+borders
+Smooth lung textur e with
+ no nodules or masses
+Even and homogenous lung
+parenchyma
+No visible cavities or
+consolidations
+ Normal br onchial and
+ vascular markingsAbsence of pleural
+ effusions
+Q:According to published literatur e, what are useful medical visual featur es for distinguishing {Diagnostic Category} in a photo?
+Figure 3. Visual symptom descriptions generated by ChatGPT with our designed prompt.
+ments over the standard zero-shot classification using CLIP
+across all datasets, where the method has raised the zero-
+shot binary classification accuracy to over 62%, and the
+effectiveness of the method is especially evident on the Pneu-
+monia dataset and Shenzhen dataset with improvements of
+up to 11.73% and 17.37% respectively. Remarkably, on the
+Shenzhen dataset, applying different CLIP versions without
+incorporating LLM yields a uniform accuracy of 50.76%
+due to the incapability of diagnosis which results in the
+misclassification such that all X-ray images are identified
+as abnormal (Shenzhen dataset includes 336 abnormal X-
+rays and 326 normal X-rays, 50.76%≈336
+336+326), yet our
+method can reach accuracy as high as 68.13%. Such findings
+indicate the presence of inherent potential within CLIP for
+undertaking medical image classification tasks such as iden-
+tifying “Tuberculosis”, where the potential remains largely
+untapped when CLIP is employed directly, and can be un-
+leashed to a considerable extent with our designs.
+4.2.2. I NTERPRETABILITY
+As shown in Figure 4, we conduct statistical analysis on
+selected medical images where our method successfully pre-
+dicts the diagnostic category yet CLIP fails. For any such an
+image, specifically, we calculate the similarity degrees be-
+tween the image and generated texts for both the true image
+class and the alternative. The pink bars in our visualizations
+indicate the similarity between the medical images and the
+text characteristics of the true category hinted by ChatGPT,while the green bars indicate the similarity between the
+medical images and the text (identified by ChatGPT) of the
+category inferenced by the CLIP. It is evident that the accu-
+racy of our framework judgment is due to the high similarity
+between the images and the correct category characteristics.
+For instance, Figure 4 (a) shows that the characteristics of
+normal lungs exhibit higher similarity compared to those
+of tuberculosis in a comprehensive manner, as the major-
+ity of normal lung characteristics displays superiority. Our
+framework thereby identifies the image to be normal lungs
+according to prominent texts such as “No visible cavities
+or consolidations”, “Absence of pleural effusions”, “Clear
+and distinct lung borders”. Figure 4 (b) shows that “Venous
+beading and loops” and “Neovascularization” exhibit the
+highest similarity among all characteristics, which leads to
+the identification of “Severe Nonproliferative Retinopathy”.
+In the other two instances as illustrated in Figure 4 (c) and
+Figure 4 (d), dominant characteristics are observed. Specifi-
+cally, Figure 4 (c) and Figure 4 (d) shows the conspicuous
+prominence of the similarity exhibited by “Air bronchogram
+sign” and “Restricted diffusion on MRI” which leads to
+successful identification of “Pneumonia” and “Primary Cen-
+tral Nervous System Lymphoma” respectively. Generally,
+a significant portion of generated visual symptoms for the
+true diagnosis possess a dominant similarity, indicating that
+our framework recognizes unique visual patterns to arrive
+at an accurate diagnosis.
+5Submission and Formatting Instructions for ICML 2023
+Table 1. Accuracy (%) and gains (Ours vs.CLIP with only category names).
+Pneumonia Montgomery Shenzhen BrainTumor IDRID
+Ours CLIP Ours CLIP Ours CLIP Ours CLIP Ours CLIP
+RN50 76.28 27.41 58.70 57.97 50.91 50.76 51.95 53.47 25.24 13.59
+RN101 72.97 27.05 63.77 59.42 50.76 50.76 46.19 57.36 19.45 12.62
+RN50x64 71.26 53.42 57.97 57.97 58.61 50.76 57.02 57.02 07.77 21.36
+ViT-B/32 72.90 27.08 57.25 56.52 51.51 50.76 56.35 56.85 17.48 10.68
+ViT-L/14 73.36 64.55 59.42 60.14 68.13 50.76 62.61 57.36 20.38 06.80
+Best Acc 76.28 +11.73 64.55 63.77 +3.63 60.14 68.13 +17.37 50.76 62.61 +5.25 57.36 25.24 +3.88 21.36
+Prediction(Ours): Normal lungPrediction(CLIP): Tuber culosis
+Normal lung
+Tuber culosis
+Pridiction(CLIP):  Proliferative r etinopathy
+Sever e nonpr oliferative
+retinopathy
+Proliferative
+retinopathy
+Pridiction(Ours): Sever e nonpr oliferative 
+ retinopathy
+Prediction(CLIP): Glioblastoma
+Multiforme
+Prediction(Ours):  Primary Central
+Nervous System L ymphomaPrediction(CLIP):  Normal Lung
+Prediction(Ours): Pneumonia
+Primary Central Nervous
+ System L ymphoma
+Glioblastoma
+ MultiformePneumonia Normal Lung(a)(b)
+(c) (d)
+Figure 4. Explainability analysis with computed similarity scores on various symptoms.
+4.2.3. C ASE STUDY
+Furthermore, we also provide two case studies with visual-
+izations to see how the symptoms generated by ChatGPT
+contribute to classification decisions, as illustrated in Fig-
+ure 5. In particular, we compare attention maps from our
+method with detailed symptoms to those produced by CLIP
+with only diagnostic category names. The first case ex-
+hibits proliferative retinopathy. We can observe that with
+the additional information provided by symptom texts such
+as “Fibrous proliferation”, “Tractional retinal detachment”,
+“Vitreous hemorrhage”, the model’s attention is increasingly
+drawn to the scar tissue on the retina. One notable example
+is “Tractional retinal detachment”, which refers to the sepa-
+ration of the retina from the retinal pigment epithelium due
+to the pull of hyperplasia of fibrous tissue or scar tissue. In
+this case, ChatGPT generates the symptom text “Tractional
+retinal detachment”, while CLIP focuses on the scar tissue in
+accordance with the text generated by ChatGPT, leading to
+the successful identification of “Proliferative Retinopathy”.
+Likewise, the second case of primary central nervous sys-
+tem lymphoma indicates that symptoms such as “Absence ofcalcifications” and “Homogeneous contrast enhancement”
+direct the model to concentrate more on the tumor area.
+4.3. Ablation Study
+4.3.1. E FFECTIVENESS OF THE DESIGNED PROMPT
+We compare the performance of the designed prompt “Q:
+According to published literature, what are useful medical
+visual features for distinguishing {Diagnostic Category }in
+a photo?” to the baseline prompt “Q: What are useful vi-
+sual features for distinguishing {Diagnostic Category }in
+a photo?”. Table 2 shows the superiority of ours on four
+out of five datasets, including the private one that CLIP has
+absolutely never encountered before. We attribute the ad-
+vancement to preciser information acquired through a more
+appropriate querying, which is further demonstrated in Fig-
+ure 6, where our prompt results in more attention around the
+upper lobes of lungs, the area of interest for identifying tu-
+berculosis. Figure 6 also shows that the baseline prompt can
+generate noisy symptoms, which may confuse the diagnosis.
+6Submission and Formatting Instructions for ICML 2023
+Table 2. Accuracy (%) of our framework with the designed and the baseline prompts.
+Pneumonia Montgomery Shenzhen BrainTumor IDRID
+DP BP DP BP DP BP DP BP DP BP
+RN50 76.28 73.00 58.70 59.42 50.91 53.17 51.95 55.84 25.24 23.30
+RN101 72.97 72.95 63.77 59.42 50.76 50.76 46.19 51.27 19.45 13.60
+RN50x64 71.26 75.03 57.97 57.97 58.61 49.85 57.02 57.02 07.77 33.01
+ViT-B/32 72.90 72.92 57.25 46.38 51.51 50.76 56.35 56.68 17.48 14.56
+ViT-L/14 73.36 72.97 59.42 63.77 68.13 64.65 62.61 58.04 20.38 18.45
+Best Acc 76.28 +1.25 75.03 63.77 +0 63.77 68.13 +3.48 64.65 62.61 +4.57 58.04 25.24 33.01
+DP denotes the designed prompt; BP denotes the baseline prompt.
+Case1
+Case2
+Diagnostic
+categoryMedical image Symptom 1 Symptom  2 Symptom  3 Symptom  4
+Proliferative
+RetinopathyFibrous
+proliferationNeovascularizationTractional r etinal
+detachmentVitreous hemorr hage
+Primary Central Nervous
+ System L ymphomaAbsence of
+calcificationsHomogeneous contrast
+enhancementLocation in the periventricular
+ or deep white matterRestricted diffusion on
+MRI
+Figure 5. Attention maps generated by combining medical image with only diagnostic category or additional textual symptoms from
+ChatGPT.
+4.3.2. E FFECTIVENESS OF DIFFERENT AGGREGATIONS
+STRATEGIES TO COMPUTE S(x, c)
+For computing S, we consider operations mean andmax
+to aggregate f·gc
+i. Table 4 in appendix records prediction
+accuracies of each approach across all CLIP versions where
+the best results are displayed in the bottom row. Results
+indicate that aggregation operation mean performs best on
+almost all datasets.
+4.4. Our framework vs.OpenFlamingo
+We conduct a comparison between our framework and ex-
+isting open source multimodal large models, such as Open-
+Flamingo (Awadalla et al., 2023). Flamingo (Alayrac et al.,
+2022)/OpenFlamingo (Awadalla et al., 2023) incorporates
+new gated cross-attention-dense layers within a frozen pre-
+trained LLM to condition the LLM on visual inputs. The
+keys and values in these layers are derived from vision fea-
+tures, while queries are derived from language inputs. Formedical image diagnosis in OpenFlamingo, medical visual
+question answering is adopted, where the question is “Is this
+an image of {Diagnostic Category }?” In our experiments,
+we use OpenFlamingo 9B model, an open-source replica
+of the DeepMind Flamingo, trained on 5M samples from
+the new Multimodal C4 dataset (Zhu et al., 2023) and 10M
+samples from LAION-2B.
+Experiments show that our framework outperforms Open-
+Flamingo in most datasets for medical image diagnosis.
+While OpenFlamingo achieves 100% accuracy for the Shen-
+zhen dataset, it falls short in other datasets. The 100%
+accuracy may be attributed to the inclusion of the Shenzhen
+dataset within OpenFlamingo’s pre-training dataset. In the
+other datasets, our method achieves a performance gain of
+2.59% to 5.80% over OpenFlamingo for the zero-shot task.
+Notably, our interpretable framework surpasses the accu-
+racy of OpenFlamingo by 5.59% in our constructed private
+dataset, BrainTumor. In summary, experimental results indi-
+cate that our interpretable framework can be superior to large
+7Submission and Formatting Instructions for ICML 2023
+Cavitary lesions  Infiltrates
+ Nodules or masses Input Enlarged lymph nodesThe designed pr ompt The baseline pr ompt Medical image
+Presence of nodules or masses
+LymphadenopathyPresence of cavitiesAbnormal density or opacity
+Enlar ged lymph nodes
+Thickened pleuraScarring
+Air br onchograms
+Figure 6. Attention maps with the designed and baseline prompts.
+Table 3. Accuracy (%) comparison of our framework and Open-
+Flamingo.
+Ours OpenFlamingo
+Pneumonia (Kermany et al., 2018) 76.28 72.97
+Montgomery (Jaeger et al., 2014) 63.77 57.97
+Shenzhen (Jaeger et al., 2014) 68.13 100
+BrainTumor 62.61 57.02
+IDRID (Porwal et al., 2018) 34.95 32.36
+multimodal pre-training models such as OpenFlamingo in
+terms of medical diagnosis.
+4.5. Discussion
+Our work presents an initial trial of zero-shot medical image
+diagnosis with LLMs and VLMs. Our proposed paradigm
+can greatly unleash the power of VLMs (We use CLIP in our
+experiments) to provide explainability within the medical
+image diagnosis process and achieve noteworthy zero-shot
+medical image classification accuracy boost. Except for one
+dataset, using our method, the zero-shot image classification
+accuracy with CLIP has been raised to over 62%, and that
+on two datasets over five exhibits an improvement over 10%,
+which certainly increases the optimism of a decent diagnosis
+accuracy using such a low-cost approach that requires no
+extra network training at all, motivating investigation of
+more scenarios with VLMs and LLMs, such as data-efficient
+and few-shot learning in multimodal medical data analysis.
+It is intriguing that with a slight modification of the prompt,
+the prediction accuracy is improved on almost all datasets,
+which indicates the potential of enhancement that can be
+brought by better querying, calling for more works concern-
+ing well-designed prompts. Another aspect to be discovered
+for upgrading is the multi-modal feature aggregation mech-
+anism. We have explored the mean, max approaches in our
+experiments, in which mean performs the best. More strate-
+gies can be examined in future work. For example, instead
+of using mean, one may consider evaluating the significanceof different symptoms, perhaps with the help of ChatGPT,
+and create a more effective weight setting accordingly.
+One shortcoming of our method is its unsatisfactory per-
+formance on the IDRID dataset, which could be a result
+of the inherent challenge in the recognition task. Rather
+than to detect the presence of certain diseases as in every
+other dataset, IDRID requires to evaluate the severity, in
+which the distinction space between classes is undoubtedly
+smaller. The difficulty has also been reflected in the sub-
+optimal accuracy values of supervised learning methods
+(Jang et al., 2022; Luo et al., 2020; Wu et al., 2020), which
+are reported very recently. In addition, the performance of
+zero-shot classification is still not on par with the supervised
+counterparts, as shown in Table 5 in Appendix. We envision
+this gap would soon narrow down with better designs of
+architectures and prompts.
+Another limitation of our method is that it does not address
+the issue of hallucinations or inaccuracies in disease diag-
+nosis that may be caused by ChatGPT in more complex
+medical scenarios. This is a significant concern in medical
+image recognition, and advanced algorithms must be devel-
+oped to improve the accuracy of disease diagnosis provided
+by ChatGPT. While the prompt design proposed in this pa-
+per provides a solution, it is not a perfect one. We plan to
+further investigate this issue in the future to mitigate the
+problem of ChatGPT hallucinations in the medical field.
+5. Conclusion
+In this work, we propose an explainable framework for zero-
+shot medical image classification by integrating ChatGPT
+and CLIP. Extensive experiments on five challenging medi-
+cal datasets, including pneumonia, tuberculosis, retinopathy,
+and brain tumor, demonstrate that our method is able to
+carry out explainable diagnosis and boost zero-shot image
+classification accuracy. We hope our work could encourage
+more in-depth research that leverages VLMs and LLMs for
+efficient, accurate and explainable medical diagnosis.
+8Submission and Formatting Instructions for ICML 2023

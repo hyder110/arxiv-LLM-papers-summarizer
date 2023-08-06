@@ -1,0 +1,31 @@
+Summary:
+This paper provides a comprehensive review of the utilization of Natural Language Processing (NLP) techniques, specifically transformer-based large language models (LLMs) trained using Big Code, in the domain of AI-assisted programming tasks. LLMs have played a crucial role in facilitating various AI-assisted programming applications, including code generation, code completion, code translation, code refinement, code summarization, defect detection, and clone detection. The paper gives an overview of major LLMs and their applications in these tasks, explores the challenges and opportunities associated with incorporating NLP techniques with software naturalness, and discusses extending AI-assisted programming capabilities to Apple's Xcode for mobile software development.
+
+Bullet Points:
+- This paper reviews the use of NLP techniques and LLMs trained on Big Code in AI-assisted programming.
+- LLMs have been used for various programming tasks, including code generation, completion, translation, refinement, summarization, defect detection, and clone detection.
+- Notable examples of applications include GitHub Copilot and DeepMind AlphaCode.
+- This paper provides an overview of major LLMs and their applications in AI-assisted programming.
+- Challenges and opportunities associated with incorporating NLP techniques with software naturalness are discussed.
+- The paper explores extending AI-assisted programming capabilities to Apple's Xcode for mobile software development.
+- Computational expense, quality measurement, software security, software piracy, and integration with existing tools are key challenges and considerations in the field.
+- Future work should focus on designing LLMs for transparency and interpretability, prioritizing fairness, transparency, and privacy in AI-assisted programming applications.
+
+Keywords:
+- Natural Language Processing (NLP)
+- Large Language Models (LLMs)
+- Big Code
+- AI-assisted programming
+- Code generation
+- Code completion
+- Code translation
+- Code refinement
+- Code summarization
+- Defect detection
+- Clone detection
+- Software naturalness
+- Challenges
+- Opportunities
+- Software security
+- Software piracy
+- Integration with existing tools.

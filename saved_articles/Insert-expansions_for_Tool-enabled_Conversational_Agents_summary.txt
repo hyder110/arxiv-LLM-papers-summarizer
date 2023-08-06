@@ -1,0 +1,19 @@
+Summary:
+
+This paper explores the use of insert-expansions in tool-enabled conversational agents. It focuses on the concept of the user becoming the tool to provide necessary details and refine requests.
+
+The paper discusses the sequence organization of dialog, specifically insert-expansions, which are used to shape final responses and reduce friction in interaction.
+
+The concept of augmented language models, which incorporate tools such as search engines or calculators into their reasoning paths, is introduced.
+
+The benefits of insert-expansions in tool-enabled conversational agents are explored, including avoiding side-tracking and improving chat outcomes.
+
+The methodology involves a direct comparison between a vanilla conversational agent and an enabled bot with insert-expansion capabilities.
+
+Human evaluations are used to assess the differences between the two types of conversational agents.
+
+Two empirical studies are conducted, which involve participants interacting with both types of conversational agents and comparing their experiences.
+
+The results indicate that insert-expansions in tool-enabled conversational agents provide benefits in the recommendation domain.
+
+Keywords: Large Language Model, Augmented Language Model, Conversational Agent, Chatbot, Conversation Analysis, Insert-expansion, Tool-enabled, User-as-a-tool, Direct comparison, Human evaluations

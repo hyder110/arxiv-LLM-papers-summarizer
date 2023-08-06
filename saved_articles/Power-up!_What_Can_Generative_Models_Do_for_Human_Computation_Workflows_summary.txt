@@ -1,0 +1,21 @@
+Summary:
+This paper explores the potential for utilizing large language models (LLMs) in crowdsourcing workflows. LLMs have been effective in various domains, but their role in crowdsourcing work has been underexplored. The paper presents a vision for incorporating LLMs into crowdsourcing workflows and proposes means to augment existing design patterns. It discusses the benefits and limitations of LLMs, as well as their potential impact on different stakeholders involved in crowdsourcing.
+
+Bullet points:
+1. Large language models (LLMs) have a range of applications in various domains, but their role in crowdsourcing workflows is underexplored.
+2. LLMs can be seen as a tool to improve the effectiveness of crowdsourcing workflows.
+3. It is currently not well understood how LLMs can enhance crowdsourcing workflows and how these workflows can be evaluated.
+4. LLMs can fit into existing crowdsourcing workflows, such as the Find-Fix-Verify workflow, and improve the process at different stages.
+5. Incorporating LLMs in crowdsourcing workflows can have financial implications for both requesters and workers.
+6. LLMs have drawbacks such as lack of transparency, biases, poor performance in commonsense reasoning, and compositional generalization.
+7. The introduction of LLMs in crowdsourcing workflows requires addressing these limitations and considering trade-offs.
+8. LLMs have the potential to assist in creative crowdsourcing tasks, providing suggestions, starting points, or acting as sounding boards.
+9. The viability and potential risks of incorporating LLMs in crowdsourcing workflows need further investigation.
+10. This paper highlights the need for research on the benefits, challenges, and opportunities of utilizing LLMs in crowdsourcing.
+
+Keywords:
+- Crowdsourcing
+- Generative AI
+- Large language models
+- Workflows
+- Human computation

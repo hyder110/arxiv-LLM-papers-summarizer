@@ -1,0 +1,19 @@
+Summary:
+- Compiler bugs pose a threat to safety-critical applications, and effectively isolating these bugs is important for ensuring the quality of compilers.
+- Existing bug isolation approaches face limitations in terms of mutation strategies and human effort requirements.
+- This paper proposes a new approach called LLM4C BI that leverages pre-trained Large Language Models (LLMs) to generate effective test programs for compiler bug isolation.
+- LLM4C BI includes components for program complexity-guided prompt production, memorized prompt selection, and test program validation.
+- Evaluation results show that LLM4C BI outperforms existing approaches in isolating bugs from popular C open-source compilers.
+- LLM4C BI is also extensible and can be integrated with other LLMs.
+
+Keywords:
+- Compiler bugs
+- Bug isolation
+- Large Language Models (LLMs)
+- Test program mutation
+- Prompt production
+- Prompt selection
+- Test program validation
+- Evaluation
+- C open-source compilers
+- Extensibility

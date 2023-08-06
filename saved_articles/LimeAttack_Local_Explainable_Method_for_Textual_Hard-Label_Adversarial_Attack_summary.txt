@@ -1,0 +1,14 @@
+Summary:
+
+The paper proposes a novel hard-label attack algorithm called LimeAttack, which leverages a local explainable method to approximate word importance ranking and then uses beam search to find the optimal solution.
+The goal of LimeAttack is to generate adversarial examples in a more realistic and challenging setting where the attacker can only query the model and obtain a discrete prediction label.
+Existing hard-label attack algorithms often require a lot of model queries and the attack success rate is limited by adversary initialization.
+LimeAttack achieves better attacking performance compared to existing hard-label attacks under the same query budget.
+The effectiveness of LimeAttack is evaluated on large language models, and the results show that adversarial examples crafted by LimeAttack remain a significant threat and improve model robustness in adversarial training.
+Textual adversarial attacks can be divided into white-box attacks, score-based attacks, and hard-label attacks.
+Score-based attacks calculate word importance based on the change in confidence scores after deleting one word, but cannot do so in a hard-label setting.
+LimeAttack uses the LIME method to estimate token sensitivity and calculate word importance in hard-label attacks.
+LimeAttack substitutes original words with synonyms in the descending order of word importance ranking and uses beam search to find better adversarial examples.
+LimeAttack outperforms other hard-label attacks and compares favorably to score-based attacks.
+
+Keywords: hard-label attack, adversarial examples, textual adversarial attack, LimeAttack, word importance ranking, beam search, LIME method, model robustness, adversarial training, large language models.

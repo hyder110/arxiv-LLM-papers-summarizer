@@ -1,0 +1,469 @@
+arXiv:2308.00081v2  [cs.AI]  2 Aug 2023Neurosymbolic Artiﬁcial Intelligence 0 (0) 1 1
+IOS Press
+Towards Semantically Enriched Embeddings
+for Knowledge Graph Completion
+Mehwish Alama,*, Frank van Harmelenband Maribel Acostac
+aTelecom Paris, Institut Polytechnique de Paris, France
+E-mail: mehwish.alam@telecom-paris.fr
+bVrije Universiteit Amsterdam, the Netherlands
+E-mail: frank.van.harmelen@vu.nl
+cSchool of Computation, Information and Technology, Techni cal University of Munich, Germany
+E-mail: maribel.acosta@rub.de
+Abstract. Embedding based Knowledge Graph (KG) Completion has gained much attention over the past few years. Most of the
+current algorithms consider a KG as a multidirectional labe led graph and lack the ability to capture the semantics under lying the
+schematic information. In a separate development, a vast am ount of information has been captured within the Large Langu age
+Models (LLMs) which has revolutionized the ﬁeld of Artiﬁcia l Intelligence. KGs could beneﬁt from these LLMs and vice ver sa.
+This vision paper discusses the existing algorithms for KG c ompletion based on the variations for generating KG embeddi ngs.
+It starts with discussing various KG completion algorithms such as transductive and inductive link prediction and enti ty type
+prediction algorithms. It then moves on to the algorithms ut ilizing type information within the KGs, LLMs, and ﬁnally to
+algorithms capturing the semantics represented in differe nt description logic axioms. We conclude the paper with a cri tical
+reﬂection on the current state of work in the community and gi ve recommendations for future directions.
+Keywords: Knowledge Graph Embeddings, Semantics in Knowle dge Graph Embeddings, Large Language Models
+1. Introduction
+Knowledge Graphs (KGs) have recently gained attention due t o their applicability to diverse ﬁelds of research,
+ranging from knowledge management, representation, and re asoning to learning representations over KGs. KGs
+represent knowledge in the form of relations between entiti es, referred to as facts, along with schematic information
+in the form of ontologies. KGs have been used for various down stream tasks such as web search, recommender sys-
+tems, and question answering. These tasks can also take adva ntage of Large Language Models (LLMs) which have
+recently revolutionalized the landscape of the ﬁeld of Arti ﬁcial Intelligence. LLMs are used for various downstream
+Natural Language Processing (NLP) tasks such as natural lan guage understanding, question answering, reasoning,
+etc. LLMs include masked language models such as BERT [1], Ro Berta [2], etc. and generative language models
+such as as LLaMa [3], ChatGPT [4], and GPT-4 [5]. LLMs have sho wn high performance in few-shot or zero-shot
+learning paradigms via prompting and in-context learning [ 6].
+Despite their remarkable performance in various NLP tasks, LLMs are trained on general-purpose data and
+have lower performance in domain-speciﬁc tasks leading to t he release of various domain-speciﬁc LLMs such as
+BioBERT, Galactica, etc. Furthermore, LLMs have shown soci etal bias leading to discrimination since the data on
+which the LLMs are trained to contain these kinds of biases. A dditionally, LLMs suffer from hallucination problems.
+Last but not least, LLMs are opaque models that lack interpre tability [4]. A potential solution to these problems is
+to induce the knowledge from KGs to LLMs [7], since KGs explic itly represent factual information in a structured
+way in the form of triples. KGs are known for their reasoning c apabilities and for generating interpretable results.
+*Corresponding author. E-mail: mehwish.alam@telecom-par is.fr.
+2949-8732/$35.00 © 0 – IOS Press. All rights reserved.2 M. Alam et al. / Towards Semantically Enriched Embeddings fo r Knowledge Graph Completion
+KGs and LLMs are thus complementary and can beneﬁt from the ca pabilities of each other. This aspect has attracted
+attention recently where LLMs can be enhanced with external knowledge, KGs can be augmented with LLMs, or
+both can be brought together to enhance reasoning capabilit ies [8].
+KGs, however, suffer from incompleteness because of manual or automated generation. Manual generation leads
+to limited knowledge represented by the curator and contain s curator bias [9], while automated generation may lead
+to erroneous or missing information. KG completion in parti cular includes the tasks of (i) triple classiﬁcation, i.e.,
+deciding if the triple is true or not, (ii) link prediction (L P) to complete the head, tail, or relation in a triple, and
+(iii) entity classiﬁcation, also known as entity type predi ction. To perform KG completion, various rule-based as
+well as embeddings based models have been proposed. These al gorithms are computationally expensive and are
+transductive: they only predict triples involving known en tities. This is not readily usable when the inference has to
+be performed on unseen entities and relations. To this end, i nductive KG completion allows for predicting triples that
+involve unseen entities and relations. These transductive and inductive LP algorithms are mostly based on factual
+information contained in KGs. Various studies leveraging l anguage models as an external source of knowledge
+have been proposed for KG completion. These algorithms lag b ehind in terms of performance w.r.t. KG embedding
+based methods in terms of ranking-based metrics such as Hits@k since KG embedding-based algorithms operate
+under the Closed World Assumption. This led to the need for hu man evaluation since LLMs contain more general
+knowledge and may generate correct answers that are differe nt from what is expected by the ground truth with
+the highest score. Apart from the factual information (i.e. , Assertion Box, ABox), another source of information is
+the ontological information (i.e., Terminology Box, TBox) contained in the KG. This TBox information is almost
+completely ignored by the current methods. For rectifying t his situation various attempts have been made to include
+type hierarchies and ontological information with differe nt expressivity levels such as EL++,ALC , etc. In some
+cases, additional representational capabilities are util ized to capture this information such as box embeddings.
+Contributions. This survey and vision paper provides an overview of the evol ution of methodologies proposed for
+KG completion, starting from the embedding-based algorith ms and LLM-based approaches to the various categories
+of algorithms proposed for incorporating schematic inform ation within KG embeddings for performing different
+kinds of completion tasks. It further discusses each of thes e categories and concludes with critical reﬂections and
+future research directions.
+Related Work. Several studies have surveyed the state-of-the-art (SoTA) in KG completion. The work by Paul-
+heim [10] provides a survey of the articles related to KG reﬁn ement including various classical and rule-based
+approaches for KG completion. Wang et al. [11] organizes the algorithms for embedding-based KG completion ac-
+cording to their scoring functions such as translational mo dels, semantic matching models, etc. However, this survey
+does not discuss the methods proposed for KG completion usin g multimodal information related to an entity or rela-
+tion such as images, text, and numeric literals. These aspec ts are targeted in the survey by Gesese et al. [12], which
+categorizes these methods based on scoring function (inspi red by [11]) as well as based on multiple modalities. The
+survey shows theoretical as well as experimental compariso ns of the existing approaches. As compared to these
+existing studies, the current article targets the semantic aspects of these methods by summarizing and discussing the
+approaches that have been proposed so far for leveraging sem antics provided in the KG.
+2. Preliminaries: Semantics in Knowledge Graphs
+Commonly, KGs are deﬁned as a set of head-relation-tail trip les(h,r,t), where handtare nodes in a graph, and
+ris a directed edge from htot(e.g., [13–16]). In this way, a KG corresponds to a directed, labeled graph, where
+triples in the KG are labeled edges between labeled nodes, as captured in the following deﬁnition.
+Deﬁnition 1 (Knowledge Graph: Triple Set Deﬁnition) .A knowledge graph is a directed, labeled graph G =
+(V,E,l,LG), with V the set of nodes, E the set of edges, L Gthe set of labels, and a mapping l :V∪E→LG. A triple
+t= (h,r,t)is a labelled edge, i.e., (h,r,t) = ( l(h),l(r),l(t))where r∈E and h,t∈V.
+Deﬁnition 1 captures the graph structure of KGs, yet aspects concerning the meaning of nodes and edges in a KG
+are not explicitly deﬁned. First, there is no distinction ab out the kind of nodes that can exist in a KG, i.e., whetherM. Alam et al. / Towards Semantically Enriched Embeddings fo r Knowledge Graph Completion 3
+Table 1
+Axioms in EL++,ALC , andSH. Notation: ⊤top,⊥bottom, a,bare instances, C,Dare concepts, r,sare relations, trans denotes transitivity.
+⊤ ⊥ { a} r(a,b) C(a) C⊓D C⊑D C⊔D¬C∃ ∀ r⊑s trans (r)
+EL++✓ ✓ ✓ ✓ ✓ ✓ ✓ ✗ ✗ ✓ ✗ ✗ ✗
+ALC ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✗ ✗
+SH ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+nodes correspond to entities or text descriptions. This dis tinction exists in data models like the Resource Descriptio n
+Framework (RDF), where nodes can represent entities, label ed with IRIs or blank nodes, or literals that are used
+for values such as strings or different types of numbers like integers, ﬂoat, etc. Distinguishing between entities and
+literals impacts both the structure and connectivity of nod es in the graph as well as the meaning of things in the
+graph. As we will see in Section 3.1, specialised KG embeddin g models are required to handle both kinds of nodes
+and different types of literals in a KG. Second, the semantic s (formal meaning) of classes or relations in the KG is not
+provided in Deﬁnition 1. This is typically the role of ontolo gies in KGs, which specify the deﬁnitions for classes (or
+concepts) and relations (or roles) using labels or symbols c oming from logic. Different logical languages introduce
+different levels of expressivity (cf. Table 1). Expressivi ty here refers to the allowed complexity of statements that
+go beyond simple assertions about individuals (e.g., class assertions) and their relations to other individuals or
+literals, that are comprised in the ABox. More expressive st atements included in the TBox comprise class and role
+deﬁnitions. The constructs and axioms deﬁned in a logic lang uageLcan be transformed into labels and triples to be
+encoded in a KG. Based on this, we provide a deﬁnition for KGs t hat takes into account the semantics of statements.
+Deﬁnition 2 (Knowledge Graph: Semantic Deﬁnition) .LetLbe a logic language that deﬁnes the semantics of
+concepts and roles, and G = (V,E,l,LG)a knowledge graph (KG) as of Deﬁnition 1. G is an L-KG if the labels L G
+contain all the symbols deﬁned in L, and the triples in G correspond to statements that can be exp ressed in L.
+Typical logic languages used in KGs are in the family of Descr iption Logics, due to their convenient trade-off
+between expressivity and scalability [17]. For example, th e existential language ELdeﬁnes the notions of concept
+intersection and full existential quantiﬁcation. The exte nsionEL++introduces the additional notions of concept
+intersection and concept subsumption; the latter is necess ary to model class hierarchies in KGs. ALC provides
+additional expressivity w.r.t. EL++as it includes concept union, negation, and universal quant iﬁcation. Higher
+levels of expressivity are captured in KGs modeled with form alisms deﬁned for the semantic web like the Web
+Ontology Language (OWL). OWL is based on the SH language, which includes more complex deﬁnitions for
+roles, including role subsumption and transitivity. Anoth er important aspect of KG semantics is the concept of data
+types captured in the (D)extension. (D)allows for modeling the meaning of literals in KGs which can b e part of
+statements in the ABox. It is important to note that KGs based on OWL can achieve different levels of expressivity
+beyond the ones described in this section, e.g., OWL-Lite is based on SHIF(D), OWL-DL on SHOIN(D), and
+OWL2 on SROIQ(D), the latter providing deﬁnitions for role reﬂexivity, irre ﬂexivity, and disjointness, inverse
+properties, enumerated classes, and qualiﬁed cardinality restrictions.
+3. Knowledge Graph Embedding Algorithms
+The vast majority of embedding based algorithms for KG compl etion treat KGs as graph structures as presented
+in Deﬁnition 1. Most of these algorithms perform transducti ve LP [18] where the inference is performed on the same
+graph on which the model is trained. On the contrary, inducti ve LP is performed over the unseen graph, i.e., (parts
+of) the graph are not seen during training. This section give s an overview of both transductive LP (§ 3.1), entity type
+prediction (§ 3.2), and inductive LP algorithms (§ 3.3).
+3.1. Transductive Link Prediction
+Translation based models include TransE, TransH, etc. In TransE [13], the relation in a triple is considered a
+translation operation between the head and tail entities on a low dimensional space. TransH [19] extends TransE4 M. Alam et al. / Towards Semantically Enriched Embeddings fo r Knowledge Graph Completion
+by projecting the entity vectors to relation-speciﬁc hyper planes which helps in capturing different roles of an entity
+w.r.t. different relations. Both models have obvious limit ations, such as the inability to represent symmetric or
+transitive relations. The scoring function of RotatE [20] m odels the relation as a rotation in a complex plane to
+preserve the symmetric/anti-symmetric, inverse, and comp osition relations in a KG.
+Semantic matching models are based on a similarity-based scoring function that measu res the plausibility of a
+triple by matching the semantics of the latent representati ons of entities and relations. In DistMult [21], each entity
+is mapped to a d−dimensional dense vector, and each relation is mapped to a di agonal matrix. The score of a triple
+is computed as the matrix multiplication between the entity vectors and the relation matrix. RESCAL [14] models
+the triple into a three-way tensor. The model explains tripl es via pairwise interaction of latent features. The score of
+the triple is calculated using the weighted sum of all the pai rwise interactions between the latent features of the head
+and the tail entities. ComplEx [22] extends DistMult by intr oducing a Hermitian dot product for better handling
+asymmetric relations.
+Neural network models represent an entity using the average of the word embeddings in the entity name.
+ConvE [15] uses 2D convolutional layers to learn the embeddi ngs of the entities and relations in which the head
+entity and the relation embeddings are reshaped and concate nated which serves as an input to the convolutional
+layer. The resulting feature map tensor is then vectorized a nd projected into a k-dimensional space and matched
+with the tail embeddings using the logistic sigmoid functio n minimizing the cross-entropy loss. In ConvKB [23],
+each triple is represented as a 3-column matrix which is then fed to a convolution layer. Multiple ﬁlters are applied
+to the matrix in the convolutional layer to generate differe nt feature maps. Next, these feature maps are concatenated
+into a single feature vector representing the input triple. The feature vector is multiplied with a weight vector via
+a dot product to return a score which is used to predict whethe r the triple is valid. Relational Graph Convolutional
+Networks (R-GCN) [24] extends Graph Convolutional Network s (GCN) to distinguish different relationships be-
+tween entities in a KG. In R-GCN, different edge types use dif ferent projections, and only edges of the same relation
+type are associated with the same projection weight.
+Path-based models such as PTransE [25] extend TransE by introducing a path-bas ed translation model.
+GAKE [26] considers the contextual information in the graph by considering the path information starting from
+an entity. RDF2Vec [27] uses random walks to consider the gra ph structure and then applies the word embedding
+model on the paths to learn the embeddings of the entities and the relations. However, the prediction of head or tail
+entities with RDF2Vec is non-trivial because it is based on a language modeling approach.
+Multimodal KG embeddings make use of different kinds of literals such as numeric, text , or images (see [12] for
+detailed analysis). This group of algorithms considers asp ects of the (D)extension of logic languages (cf. Section 2).
+For example, DKRL [28] extends TransE by incorporating the t extual entity descriptions encoded using a continuous
+bag-of-words approach. Jointly (ALSTM) [29] extends the DK RL model with a gating strategy and uses attentive
+LSTM to encode the textual entity descriptions. MADLINK [30 ] uses SBERT for representing entity descriptions
+and the structured representation is learned by performing random walks where at each step the relations to be
+crawled are ranked using “predicate frequency - inverse tri ple frequency” (pf-itf) .
+3.2. Entity Type Prediction
+SDType [31] is a statistical heuristic model that exploits l inks between instances using weighted voting and
+assumes that certain relations occur only with particular t ypes. It does not perform well if two or more classes share
+the same sets of properties and also if speciﬁc relations are missing for the entities. Many machine learning including
+neural network based models have been proposed for type pred iction. Cat2Type [32] takes into account the semantics
+of the textual information in Wikipedia categories using la nguage models such as BERT. In order to consider the
+structural information of Wikipedia categories, a categor y-to-category network is generated which is then fed to
+Node2Vec for obtaining the category embeddings. The embedd ings of both structural and textual information are
+combined to classify entities into their types. The approac h by Biswas et al. [33] leverages different word embedding
+models, trained on triples, together with a classiﬁcation m odel to predict the entity types. Therefore, contextual
+information is not captured. Scalable Local Classiﬁer per N ode (SLCN) is used by the model in [34] for type
+prediction based on a set of incoming and outgoing relations . However, entities with only a few relations are likely
+to be misclassiﬁed. FIGMENT [35], uses a global model and a co ntext model. The global model predicts entityM. Alam et al. / Towards Semantically Enriched Embeddings fo r Knowledge Graph Completion 5
+types based on the entity mentions from the corpus and the ent ity names. The context model calculates a score
+for each context of an entity and assigns it to a type. Therefo re, FIGMENT requires a large annotated corpus
+which is a drawback of the method. In APE [36], a partially lab eled attribute entity-to-entity network is constructed
+containing structural, attribute, and type information fo r entities, followed by deep neural networks to learn the ent ity
+embeddings. MRGCN [37] is a multi-modal message-passing ne twork that learns end-to-end from the structure of
+KGs as well as from multimodal node features. In HMGCN [38], t he authors propose a GCN-based model to predict
+the entity types considering the relations, textual entity descriptions, and Wikipedia categories. ConnectE [39] and
+AttET [40] models ﬁnd a correlation between neighborhood en tities to predict the missing types. Ridle [41] learns
+entity embeddings and latent distribution of the relations using Restricted Boltzmann Machines allowing to capture
+semantically related entities based on their relations. Th is model is tailored to KGs where entities from different
+classes are described with different relations. CUTE [42] p erforms hierarchical classiﬁcation for cross-lingual ent ity
+typing by exploiting category, property, and property-val ue pairs. MuLR [43] learns multi-level representations of
+entities via character, word, and entity embeddings follow ed by the hierarchical multi-label classiﬁcation.
+3.3. Inductive Link Prediction
+Simply adapting most of the existing transductive LP models for inductive settings requires expensive re-training
+for learning embeddings for unseen entities leading to thei r inapplicability to perform predictions with unseen
+entities. To overcome this, inductive LP approaches were in troduced which are discussed in the following.
+Statistical rule-mining approaches make use of logical formulas to learn patterns from KGs. Syst ems such as
+AnyBURL [44, 45] generalise random walks over the graph into Horn Clause rules which are then used for link-
+prediction: if the body of the rule matches with a path in the g raph, the rule predicts that the triple in the conclusion
+of the rule should also be in the graph. NeuralLP [46] was prop osed which learns ﬁrst-order logical rules in an
+end-to-end differentiable model. DRUM [47] is another meth od that applies a differentiable approach for mining
+ﬁrst-order logical rules from KGs and provides an improveme nt over NeuralLP.
+Embedding based methods have also been proposed to work in an inductive setting. Grap hSAGE [48] performs
+inductive LP by training entity encoders through feed-forw ard and graph neural networks. However, in GraphSAGE,
+the set of attributes (e.g., bag-of-words) are ﬁxed before l earning entity representations, restricting their applic ation
+to downstream tasks [49]. One way to learn entity embeddings is to use graph neural networks for aggregating the
+neighborhood information [50, 51]. However, these methods require unseen entities to be surrounded by known
+entities and fail to handle entirely new graphs [52] (i.e. th ey work only in a semi-inductive setting). KEPLER [53]
+is a uniﬁed model for knowledge embedding and pre-trained la nguage representation by encoding textual entity
+descriptions with a pre-trained language model (LM) as thei r embeddings, and then jointly optimizing the KG em-
+beddings and LM objectives. However, KEPLER is computation ally expensive due to the additional LM objective
+and requires more training data. Inspired by DKRL, BLP [54] u ses a pre-trained LM for learning representations of
+entities via an LP objective. QBLP [55] is a model proposed to extend BLP for hyper-relational KGs by exploiting
+the semantics present in qualiﬁers. Previously discussed m odels only consider unseen entities and not unseen re-
+lations. RAILD [56] on the other hand generates a relation-t o-relation network for efﬁciently learning the relation
+features. Therefore it performs inductive LP for unseen rel ations.
+Discussion. The algorithms discussed so far consider only statements in the ABox for generating KG embeddings
+and performing LP. Some of the algorithms use contextual inf ormation of the entity with the help of graph walks such
+as GAKE and MADLINK. A vast amount of knowledge is captured by LLMs, type hierarchy and the expressivity
+of the description logic axioms has not been considered. The subsequent sections focus on these aspects of LP.
+4. Towards Capturing Semantics in Knowledge Graph Embeddin gs
+4.1. Large Language Models for Knowledge Graph Completion
+Large language models (LLMs) can further be categorized int o encoder-decoder models, encoder-only, and
+decoder-only models. The encoder-decoder models and encod er-only models, such as BERT [1], RoBerta [2], etc.,6 M. Alam et al. / Towards Semantically Enriched Embeddings fo r Knowledge Graph Completion
+are masked language models which are discriminative models and are pretrained for predicting a masked word.
+These models have achieved SoTA performance on the NLP tasks such as entity recognition, sentiment analysis,
+etc. On the other hand, decoder-only models, such as LLaMa [3 ], ChatGPT [4], and GPT-4 [5], are autoregressive
+models which are generative and are pretrained on the task of predicting the next word. The rest of the subsection
+focuses on how these two categories of models have been utili zed in the context of KG completion.
+One of the pioneers of LLM-based approaches for KG completio n is KG Bidirectional Encoder Representations
+from Transformer (KG-BERT) [57] which is ﬁne-tuned on the ta sk of KG completion and represents the triple as
+textual sequences. It takes the entity-relation-entity se quence and computes the scoring function using KG-BERT.
+The model represents entities and relations by their names o r descriptions and takes the name/description word
+sequences as the input sentence of the BERT model for ﬁne-tun ing. Despite being an LLM-based approach, KG-
+Bert does not outperform models considering the structural information of a KG in terms of the ranking-based
+metrics, i.e., hits@k . Kim et al. [58] associates the shortcomings of KG-BERT with the fact that KG-BERT does not
+handle relations properly and it has difﬁculties in choosin g the correct answer in the presence of lexically similar
+candidates. Leading to a multitask learning based model [58 ], that combines the task of relation prediction and
+relevance ranking with LP for leading to better learning of t he relational information.
+The previously described methods still suffer from high ove rheads because of costly scoring functions and a lack
+of structured knowledge of the textual encoders. A Structur ed Augmented text Representation (StAR) model [59]
+was proposed where each triple is partitioned into two asymm etric parts, similar to a translation-based graph em-
+bedding approach. Both parts were encoded into contextuali zed representations with the help of a Siamese-style
+textual encoder. These existing methods still lag in perfor mance w.r.t. structure-based algorithms. PLM-based KGC
+(PKGC) [60] highlights that the reason underlying this lag i s the evaluation setting, which is currently based on a
+Closed World Assumption. The performance of a link-predict ion algorithm is measured by its capability to predict a
+set of links that were removed from the knowledge graph), whi le the LLMs introduce external knowledge. This may
+lead to the prediction of new links which are semantically co rrect, but which were not in the original KG, hence not
+in the removed evaluation set, and hence not counted in the su ccess metric. Additionally, the PLMs are utilized in
+an inappropriate manner, i.e., when triples are used as sent ences it leads to incoherence in the generated sentences.
+PKGC targets the ﬁrst problem by proposing manual annotatio n as an alternative. However, a medium-sized dataset
+containing 10,000 entities and 10,000 triples in the test se t will lead to true labels of at most 200 million triples
+precluding human annotation. This observation leads to a ne w evaluation metric CR@1where the triples are sam-
+pled from the test set and the missing entities are ﬁlled with the top-1 predicted entity. Manual annotation is then
+performed to measure the correct ratio of these triples. The second problem is addressed by converting each triple
+and its support information (i.e., the deﬁnition and the att ribute information) into natural prompt sentences. PKGC
+outperforms structural and LLM-based methods in various mo dalities, i.e., with the attribute and deﬁnition.
+GenKGC [61] converts the KG completion task to a sequence-to -sequence (Seq2Seq) generation task. The in-
+context learning paradigm of GPT-3 learns correct output an swers by concatenating the selected samples relevant
+to the input. GenKGC similarly proposes a relation-guided d emonstration by adding triples of the same relation.
+It introduces an entity-aware hierarchical decoder during generation for better representation learning and reduced
+time complexity. On traditional datasets such as WN18RR and FB15k-237, GenKGC underperforms as compared
+to structural SOTA models on hits@k (conﬁrming the hypothesis made By Lv et al. [60]) and outperf orms masked
+language model based approaches demonstrating the capabil ities of generative models for KG completion. The
+Seq2Seq Generative Framework KG-Completion algorithm (KG -S2S) [62] takes into account the aspect of emerg-
+ing KGs. Given a KG query, KG-S2S directly generates the targ et entity text by ﬁne-tuning the pre-trained language
+model. KG-S2S learns the input representations of the entit ies and relations using entity descriptions, soft prompts,
+and Seq2Seq dropout. The KG elements, i.e., entity, relatio ns, and timestamp are considered ﬂat text, enabling the
+model to generate novel entities for KGs. The method is furth er evaluated in static, few-shot, and temporal settings.
+4.2. Capturing Type Information for Knowledge Graph Comple tion
+Recent initiatives have been taken for leveraging the schem atic information in the form of type information about
+entities, both with and without considering the type hierar chies. TKRL [63] considers the hierarchical information
+of the entity types by using hierarchical type encoders. It i s based on the assumption that each entity should haveM. Alam et al. / Towards Semantically Enriched Embeddings fo r Knowledge Graph Completion 7
+multiple representations for its different (super)types. TransT [64] also proposes an approach that considers the
+entity type and its hierarchical structure. It goes one step further and constructs relation types from entity types and
+captures the prior distribution of the entity types by compu ting the type-based semantic similarity of the related
+entities and relations. Based on the prior distribution, mu ltiple embedding representations of each entity (set of
+semantic vectors instead of a single vector) are generated i n a different context and then the posterior probability
+of the entity and the relation prediction is estimated. Zhan g et al. [65] consider entity types as a constraint on the
+set of all the entities and let these type constraints induce an isomorphic collection of subsets in the embedding
+space. The framework introduces additional cost functions to model the ﬁtness between these constraints and the
+entity and relation embeddings. JOIE [66] employs cross-vi ew and intra-view modeling, such that (i) the cross-view
+association jointly learns the embeddings of the ontologic al concepts and the instance entities, and (ii) the intra-vi ew
+models learn the structured knowledge related to entities a s well as the ontological information (the hierarchy-aware
+encoding) separately. The model is evaluated on the task of t riple completion and entity typing. Another proposed
+method that learns both entity, relation, and entity type em beddings from entity-speciﬁc triples and type-speciﬁc
+triples is Automated Entity Type Representation for KG Embe dding (AutoETER) for LP tasks [67]. It considers
+the relation as a translation between the types of the head an d the tail entity with the help of the relation-aware
+projection mechanism. Type-Aware Graph Attention neTwork s for reasoning over KGs (TAGAT) [68] is one of
+the methods which combines the entity type information with the neighborhood information of the types while
+generating embeddings with the help of Graph ATtention netw orks (GAT). The relation level attention aims at
+distinguishing the importance of each associated relation for the entity. The neighborhood information of each type
+is also considered with the help of type-level attention sin ce each relation may connect different entity groups
+even if the head entity belongs to the same group. Entity-lev el attention aims at determining how important each
+neighboring entity is for an entity under a given relation. T rustE [69] is yet another method that aims at building
+entity-typed structured embeddings with tuple trustworth iness by taking into account possible noise in entity types
+which is usually ignored by the current methods. TrustE enco des the entities and entity types into separate spaces
+with a structural projection matrix. The trustworthiness i s ensured by detecting the noisy entity types where the
+energy function focuses more on the pairs of an entity and its type with high trustworthiness. The model is evaluated
+by detecting entity-type noise as well as entity-type predi ction.
+4.3. Semantically Rich Embeddings
+Even though the previously discussed approaches use some of the schematic information, such as the types of
+entities and the type hierarchy, they still ignore much of th e concept level knowledge, i.e., TBox information in
+terms of description logic axioms. Table 2 presents an overv iew of approaches that do take TBox information into
+account, and their expressivity in regards to the construct s and axioms of logic languages discussed in Section 2.
+A ﬁrst generation of these systems represented concepts as ( high-dimensional) spheres in the embedding space
+(e.g. [70]). However, while the intersection of concepts is a common operation, the intersection of two n-balls is not
+an n-ball, leading to challenges when measuring the distanc e between concepts and inferring equivalence between
+concepts. A second generation instead represents concepts as high-dimensional boxes, since boxes are closed under
+intersection. ELEm [71] is one of the ﬁrst of these approache s and generates low dimensional vector spaces from
+EL++by approximating the interpretation function by extending TransE with the semantics of conjunction, existen-
+tial quantiﬁcation, and the bottom concept. It is evaluated for LP based on protein-protein interaction. EMEL++ [72]
+evaluates the algorithm on the task of subsumption reasonin g and compares it to the ELEm where these semantics
+are represented but not properly evaluated. Similar to Tran sE, EMEL++ interprets relations as the translations op-
+erating between the classes. BoxEL [73] and ELBE [74] extend ELEm by representing concepts as axis parallel
+boxes with two vectors for either the lower and upper corners or the center and offset. In BoxEL [73], the authors
+show the aforementioned advantage of box embeddings over ba ll embeddings with the help of an example related
+to conjunction operator, i.e., the ball embeddings cannot e xpress Parent⊓Male≡Father as properly as compared
+to the box embeddings. Moreover, the translations cannot mo del the relation isChildO f between a Person and a
+Parent when they have two different volumes. In addition to the box r epresentation, ELBE [74] deﬁnes several loss
+functions for each of the normal forms representing the axio ms expressed in EL++(shown in Table 2) such as con-
+junction, the bottom concept, etc. Taking a further step, Bo x2EL [75] learns representations of not only the concepts8 M. Alam et al. / Towards Semantically Enriched Embeddings fo r Knowledge Graph Completion
+Table 2
+Comparison of the expressivity of semantically enriched em beddings. Notation: a,bare instances, C,D,Eare concepts, r,r1,r2,sare relations.
+The symbol ✓(resp. ( ✓) indicates that it has been demonstrated by construction or empirically that the approach supports (resp. partially) t he
+expression; otherwise, ✗is indicated.
+Expressions ELEm EMEL++ BoxEL ELBE Box2EL CatE OWL2Vec* TransOWL
+Constructors⊥ ✓ ✓ ✓ ✓ ✗ ✗ ✗ ✗
+⊤ ✗ ✗ ✗ ✗ ✗ ✓ ✓ ✗
+{a} (✓) ✗ ✓ ✗ ✓ ✗ ✗ ✓
+C(a) ✓ ✓ ✓ ✓ ✓ ✗ ✓ ✓
+r(a,b) ✓ ✓ ✓ ✓ ✓ ✗ ✓ ✓
+EL++C⊑D ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+C⊓D⊑E (✓) ✓ ✓ ✓ ✓ (✓) ✗ ✗
+∃r.C⊑D ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+C⊑ ∃r.D ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+C⊓D⊑ ⊥ ✗ ✓ ✓ ✓ ✓ ✓ ✗ ✗
+∃r.C⊑ ⊥ (✓) ( ✓) ✓ (✓) ✓ ✗ ✗ ✗
+C⊑ ⊥ ✗ ✓ ✓ ✓ ✓ ✗ ✗ ✗
+ALCC⊔D ✗ ✗ ✗ ✗ ✗ ✓ ✗ ✗
+∀r.D ✗ ✗ ✗ ✗ ✗ ✓ ✗ ✗
+¬C ✗ ✗ ✗ ✗ ✗ ✓ ✗ ✗
+C⊑ ∀r.D ✗ ✗ ✗ ✗ ✗ ✗ ✓ ✓
+∀r.C⊑D ✗ ✗ ✗ ✗ ✗ ✗ ✓ ✓
+SHr⊑s ✗ ✓ ✗ ✗ ✗ ✗ ✓ ✓
+r1◦r2⊑s ✗ ✓ ✗ ✗ ✗ ✗ ✓ ✗
+but also the roles as boxes for preserving as much semantics o f the ontology as possible. It uses a similar mechanism
+to BoxEL for the representation of the concepts. The previou s methods deﬁne roles (binary relations) as translations
+as in TransE but Box2EL associates every role with a head box and a tail box so that e very point in the head box
+is related to every point in the tail box with the help of bump v ectors. Bump vectors model interaction between the
+concepts and dynamically move the position of the embedding s of related concepts. CatE [76] on the other hand
+embedsALC ontologies with the help of category theoretical semantics , i.e., the semantics of logic languages that
+formalizes interpretations using categories instead of se ts. This is advantageous because categories have a graph-li ke
+structure. TransOWL [77] and its extensions allow for the in clusion of OWL axioms into the embedding process by
+modifying the loss function of TransE so that it gives a highe r weight to triples that involve OWL vocabulary such
+asowl:inverseOf ,owl:equivalentClass , etc. OWL2Vec* [78] uses a word embedding model to create
+embeddings from entities and words from the generated corpu s. This corpus is generated from random walks over
+the ontology. The method is evaluated on the task of class mem bership prediction and class subsumption prediction.
+Discussion. This section discussed the methods leveraging schematic in formation contained in the KGs starting
+from type hierarchy to the semantics in the description logi c axioms. The approaches utilizing type hierarchies
+for LP still lack uniﬁed evaluation w.r.t. benchmark datase ts leading to unclear performance comparison of the
+existing algorithms and of the impact of adding such schemat ic information for training the models. These models
+in most cases evaluate the approach on the traditional tripl e and entity-type prediction tasks but completely ignore
+tasks related to schema completion. The limited expressivi ty of these models makes them unsuitable for the tasks
+of deductive reasoning. These shortcomings are covered by t he approaches representing the semantics underlying
+different description logic axioms with the help of box embe ddings. Yet, these approaches are limited to certain
+kinds of axioms and do not cover more expressive statements l ike role transitivity. This is evidenced in Table 2
+where only a few approaches can handle certain aspects of SH, yet the expressivity of OWL ontologies (from
+SHIF(D)toSROIQ(D)) is far to be reached.M. Alam et al. / Towards Semantically Enriched Embeddings fo r Knowledge Graph Completion 9
+Table 3
+Overview of the tasks and the datasets used for evaluation fo r each of the categories.
+Category Tasks Datasets
+Transductive Link Prediction Link Prediction, Triple Classiﬁcation, Entity
+ClassiﬁcationFB15K, FB15K-237, WN18, WN18RR,
+YAGO3-10
+Inductive Link Prediction Link Prediction, Triple Classiﬁcation Wikidata5M, Wikidata68K
+LLM-Based Methods Link Prediction FB15K237, WN18RR, FB15K-237N, FB15K-
+237NH, Wiki27K, OpenBG500, Nell-One
+Methods using Type-Hierarchy Link Prediction, Entity Type Prediction WN18RR, WN18, FB15k, FB15KET,
+YAGO43KET, FB15K+, FB15K*, NELL-995,
+JF17K, YAGO26K-906, DB111K-174.
+Methods using Description
+Logic AxiomsInductive Reasoning (Subsumption, Class Mem-
+bership), Deductive Reasoning (Unsatisﬁability
+of the named concept, predicting axioms in de-
+ductive closure of an ontology)FoodOn, HeLIS, GO, SNOMED-CT, GALEN,
+Anatomy, PPI, FOBI, NRO
+5. Existing Evaluation Settings
+Table 3 shows an overview of the evaluation followed by the al gorithms discussed previously. Most of the algo-
+rithms are evaluated on the task of LP since they consider onl y the triple structure in the KG. Exceptions to this are
+the tasks that are used for evaluating the algorithms incorp orating description logic axioms. Most of the algorithms
+usehits@k where kvaries from 1 to 100, Mean Rank (MR) and Mean Reciprocal Rank ( MRR). The benchmark
+datasets vary from task to task, depending on the requiremen ts of the algorithms. Most datasets are based on Word-
+Net, YAGO, and Freebase. ELEm has been evaluated on the Prote in-Protein Interaction (PPI) dataset for the LP task.
+However, the successor algorithms introduced more appropr iate datasets such as Gene Ontology (GO) or FoodOn.
+In the case of transductive LP, studies have shown that the ef ﬁciency of these algorithms greatly depends on
+the choice of hyperparameters. For example, Rufﬁnelli et al . [79] show that RESCAL, one of the earliest models,
+outperforms all the later approaches by training the models with proper hyperparameters. A similar study by Ali et
+al. [80] performs a large-scale evaluation of 21 KG embeddin g models and provides the best set of hyper-parameters.
+This leads to the conclusion that a uniﬁed benchmarking is ne eded which allows for comparing the approaches under
+the same conditions. This will reveal interesting insights , e.g., some models considered not competitive anymore
+can still outperform more sophisticated approaches under c ertain conﬁgurations. While the evaluation setting for
+transductive LP algorithms has been well established, the o ther three categories still lack a uniﬁed evaluation settin g.
+6. Conclusion and Recommendations
+In this section, we take a critical perspective on the SoTA ov er the past decade, based on the overview given in
+the preceding sections. We end with recommendations for fru itful future directions of work.
+6.1. Critical Reﬂection
+Ignoring semantics. The majority of KG completion algorithms only consider the A Box (deﬁnition 1). This effec-
+tively reduces a KG to a "data graph": relations between enti ties, none of which carries any computer-interpretable
+semantics (Deﬁnition 2) except for the recent ones as discus sed in Section 4.2 (to a limited extent) and Section 4.3
+(to a larger extent).
+Limitations of the transductive setting. The majority of the work on KG completion follows a transduct ive setting,
+i.e., not allowing for the completion of a KG with new entitie s or relations. Only a few algorithms set in an inductive
+setting consider only the prediction of new entities, with a lmost no algorithms aiming to predict new relations.
+Limiting algorithms to the transductive setting severely r estricts the downstream tasks to which these algorithms
+can be applied. For example, missing relations between know n proteins and drugs can be predicted (protein-drug
+interaction), but transductive algorithms cannot be used t o predict new drugs from the knowledge of known proteins.10 M. Alam et al. / Towards Semantically Enriched Embeddings fo r Knowledge Graph Completion
+Evaluation settings. The community working on KG completion is severely hampered by a lack of standardised
+evaluation settings. There are multiple concerns in this ar ea:
+–No standard protocols for hyper-parameter sweeping , leading to incomparable and unreproducible results. This
+led to the rather embarrassing result that a paper from 2020 [ 79] threw into doubt the progress of the entire
+ﬁeld over a decade since the early work on RESCAL in 2011 [14].
+–Evaluation datasets with serious limitations . It took years before the widely used FB15K dataset was disco v-
+ered to suffer from serious data leakage from the training to testing and validation splits because many triples
+were simply inverses of other triples, allowing trivial inv erse-triple prediction algorithms to already gain a
+high score [81]. Furthermore, the small number of datasets u sed in the literature (Table 3) carries the risk that
+methods will optimise for the benchmark, instead of optimis e for the task.
+–Dataset size. Datasets used in evaluations are typically small (e.g. on th e order of 105triples for the widely
+used FB15k-237 and YAGO3-10) in comparison to the KGs that ar e currently in routine practical use (often on
+the order of 108triples or beyond).
+–Evaluation metric. The most widely deployed evaluation metric is hits@k on a held-out set of triples. This
+method favours reconstructing known links (that were alrea dy present in the original KG, but held out) over
+the prediction of genuinely new links that are semantically correct but did not appear in the original KG. A
+method may produce many genuinely new links which rank highe r than a predicted held-out link, and such a
+high-value method would end up with a low hits@k score. Ironically, it is these methods which are likely to
+be of most value in downstream tasks. The recently proposed m etric sem@k [82] aims to rectify this to some
+extent, although it remains unclear at the moment how much of this evaluation can be done without expensive
+human annotation of gold standards.
+Bias against external knowledge. Almost all current KG completion methods aim to predict link s in a KG based
+on the properties of the KG itself, and this even holds true fo r most of the inductive methods. On the other hand, the
+new generation of methods that exploit LLMs for KG predictio n uses an external knowledge source (i.e., LLMs, see
+Section 4.1) to predict new links. Not only is this an obvious ly promising step to take in an inductive setting, but it
+also holds the promise of taking LP beyond simply extrapolat ing the structural patterns that are already present in
+the KG. After all, methods that merely extrapolate the exist ing patterns in a KG are likely to simply replicate the
+sources of the incompleteness of the KG and are thus unlikely to actually solve the problem that was motivating
+the KG completion task in the ﬁrst place. It is important to ob serve that LLMs are by no means the only useful
+source of external knowledge that can be injected into the KG completion process. Other KGs can also provide such
+background knowledge, leading to an interesting blurring b etween the tasks of KG linking and KG completion.
+Recent work on exploiting the temporal evaluation of a KG as t he source of information is another example of using
+information outside the KG for KG completion.
+6.2. Recommendations
+The above critical reﬂections lead to a number of recommenda tions for future directions. First, a number of
+methodological issues need to be resolved. Evaluation data sets need to grow larger in size and more diverse in
+nature, and perhaps be more representative of real-world do wnstream tasks. More methodological hygiene needs
+to be practiced in both the protocols for evaluations (e.g. h yper-parameter settings), as well as the reporting about
+these settings. And alternative metrics will need to be deve loped which better reﬂect the actual value of the predicted
+links for downstream tasks. Second, if the work on knowledge graph completion is to go beyond simply data graph
+completion, the effort will need to focus on including the se mantics of the KG. This can be as simply accounting for
+known relations between types such as the subsumption hiera rchy or known disjointness relations between types to
+more sophisticated reasoning about the algebraic properti es of roles (symmetry, anti-symmetry, transitivity, etc.) , or
+properties such as minimal and maximal cardinality of roles . Finally, we believe that the community will need to
+leave the purely transductive setting it has focussed on so f ar and embrace the challenges of an inductive setting. We
+also believe that this will have to go hand in hand with a willi ngness to develop KG completion algorithms that take
+into account knowledge sources beyond the original KG, be th at knowledge from LLMs, from external KGs, from
+temporal evolution, or any other source of information that can help the task of KG completion in a manner that is
+useful in practical downstream tasks.M. Alam et al. / Towards Semantically Enriched Embeddings fo r Knowledge Graph Completion 11
+References
+[1] J. Devlin, M. Chang, K. Lee and K. Toutanova, BERT: Pre-tr aining of Deep Bidi

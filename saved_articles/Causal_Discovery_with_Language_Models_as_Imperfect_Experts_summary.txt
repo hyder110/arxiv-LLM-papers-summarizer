@@ -1,0 +1,26 @@
+Summary:
+This paper explores how expert knowledge can be used to improve the data-driven identification of causal graphs by proposing strategies to amend expert knowledge based on consistency properties. The authors report a case study using a large language model as an imperfect expert.
+
+Bullet points:
+1. Understanding causal relationships is important for accurate decision-making.
+2. Causal discovery methods can uncover causal relationships from observed data.
+3. One limitation of causal discovery methods is their ability to only recover the true graph up to a set of equivalent solutions.
+4. Expert knowledge can be used to reduce uncertainty in causal graphs.
+5. This work explores the use of imperfect experts, such as large language models, to improve causal discovery.
+6. The authors propose strategies for incorporating imperfect expert knowledge based on consistency properties.
+7. A greedy approach is introduced to optimize the use of expert knowledge.
+8. The performance of the approach is evaluated using real data and various types of experts.
+9. The results show that the approach effectively reduces uncertainty in the causal graphs.
+10. Large language models show potential in aiding causal discovery, but more research is needed.
+
+Keywords:
+- Causal discovery
+- Expert knowledge
+- Imperfect experts
+- Causal graphs
+- Equivalent solutions
+- Large language models
+- Greedy approach
+- Uncertainty reduction
+- Consistency properties
+- Real data

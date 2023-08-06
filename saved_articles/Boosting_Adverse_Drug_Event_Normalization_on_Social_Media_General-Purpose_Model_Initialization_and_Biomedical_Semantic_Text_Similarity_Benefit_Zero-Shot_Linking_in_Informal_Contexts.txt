@@ -1,0 +1,316 @@
+Boosting Adverse Drug Event Normalization on Social Media:
+General-Purpose Model Initialization and Biomedical Semantic Text
+Similarity Benefit Zero-Shot Linking in Informal Contexts
+François REMY
+University of Ghent
+francois.remy
+@ugent.beSimone Scaboro
+University of Udine
+scaboro.simone
+@spes.uniud.itBeatrice Portelli
+University of Udine
+portelli.beatrice
+@spes.uniud.it
+Abstract
+Biomedical entity linking, also known as
+biomedical concept normalization, has recently
+witnessed the rise to prominence of zero-shot
+contrastive models. However, the pre-training
+material used for these models has, until now,
+largely consisted of specialist biomedical con-
+tent such as MIMIC-III clinical notes (John-
+son et al., 2016) and PubMed papers (Say-
+ers et al., 2021; Gao et al., 2020). While
+the resulting in-domain models have shown
+promising results for many biomedical tasks,
+adverse drug event normalization on social
+media texts has so far remained challenging
+for them (Portelli et al., 2022). In this paper,
+we propose a new approach for adverse drug
+event normalization on social media relying on
+general-purpose model initialization via Bio-
+LORD (Remy et al., 2022) and a semantic-text-
+similarity fine-tuning named STS. Our experi-
+mental results on several social media datasets
+demonstrate the effectiveness of our proposed
+approach, by achieving state-of-the-art perfor-
+mance. Based on its strong performance across
+all the tested datasets, we believe this work
+could emerge as a turning point for the task
+of adverse drug event normalization on social
+media and has the potential to serve as a bench-
+mark for future research in the field.
+1 Introduction
+Adverse drug events (ADEs) are unexpected and
+possibly undocumented negative effects related to
+the correct use of a drug, and they have the poten-
+tial to result in serious harm to patients. ADEs can
+also increase hospitalization costs, reduce patient
+satisfaction, and erode trust in the health care sys-
+tem. For these reasons, ADEs are a major concern
+for patients, healthcare providers, and regulators.
+However, detecting and reporting emerging
+ADEs (a process known as pharmacovigilance) is
+not an easy task (Pappa and Stergioulas, 2019).
+Most of the information about ADEs is buried in
+Figure 1: Normalization of concepts in the clinical do-
+main made large progresses, but social media content
+remains more challenging due to informal language.
+unstructured text sources, such as medical case re-
+ports, social media posts, or online reviews (Audeh
+et al., 2020). The two latter sources often con-
+tain informal language, abbreviations, slang, or
+misspellings, that make machine learning models
+unable to accurately extract and normalize ADEs
+present within them, a process known as biomedi-
+cal concept normalization. Models trained exclu-
+sively on clinical data are particularly likely to be
+affected (see Figure 1). This is a real concern, as
+mapping ADEs to standardized ontologies, such as
+MedDRA (Brown et al., 1999) or SNOMED CT
+(IHTSDO, 2008), is an important step to facilitate
+the analysis and comparison of ADE data across
+different sources and domains (Adel et al., 2019).
+In a short time span, between the years 2020
+and 2022, the field of biomedical concept normal-
+ization has seen significant advancements with the
+introduction of self-supervised contrastive models.
+Originally introduced by Chen et al. (2020) for
+computer vision, these models are trained to pro-
+duce identical latent representations for multiple
+views of a same concept, yet contrasted represen-
+tations for each concept. In the biomedical do-
+main, these views are usually constructed based on
+biomedical ontologies, by pairing canonical names
+of a concept with some of their known synonyms.arXiv:2308.00157v1  [cs.CL]  31 Jul 2023State of the art biomedical entity normalization
+is now dominated by models relying on this tech-
+nique such as BioSyn (Sung et al., 2020), CODER
+(Yuan et al., 2022), and SapBERT (Liu et al., 2021).
+What makes these models extremely versatile is
+that it is possible to encode a new set of target con-
+cepts at inference time, which means that using the
+same model is possible irrespective of the target
+ontology, enabling smooth system updates.
+2 Our contributions
+2.1 General-Purpose Initialization
+All models cited thus far were initialized from lan-
+guage models pre-trained on text from the biomed-
+ical domain, as this is thought to improve entity
+normalization performance somewhat in the clin-
+ical domain. In this paper, we propose a new ap-
+proach for adverse drug event normalization on
+social media by employing BioLORD, a general-
+purpose model initialization approach pioneered
+by Remy et al. (2022). We hypothesize that its pre-
+training on general texts will help tremendously
+in understanding the informal language used on
+social media, while previous state of the art models
+struggled at that specific task, due to the domain
+shift between clinical and social media languages.
+2.2 MedSTS Finetuning
+In addition, after noticing that semantic-text-
+similarity finetuning helps achieving better perfor-
+mance, we improve this new approach even fur-
+ther by incorporating two distinct semantic-text-
+similarity (STS) fine-tuning phases to the training,
+both before and after the BioLORD pre-training.
+We release the improved BioLORD-STS model as
+part of this paper, and show that it achieves a per-
+formance far exceeding the current state-of-the-art.
+3 Methodology
+In this paper, we set out to show that general-
+purpose models fine-tuned on biomedical defini-
+tions perform better, for the task of ADE normal-
+ization in the social media, than state-of-the-art
+models trained exclusively on biomedical corpora.
+Our hypothesis is based on the following obser-
+vations derived from the extensive ablation stud-
+ies performed in the BioLORD pre-training paper
+(Remy et al., 2022): applying the BioLORD pre-
+training strategy on a general-purpose model can
+help the model learn to generalize across different
+writing styles, including non-clinical ones that are
+Figure 2: Schema of the pre-training and fine-tuning
+steps of the four candidate models: BioLORD-PMB,
+BioLORD-STAMB2, and BioLORD-STAMB2-STS2.
+rare in biomedical corpora; meanwhile, possess-
+ing a strong biomedical knowledge at initialization
+time did not appear essential to achieve good per-
+formance when using the BioLORD pre-training.
+In a final experiment, we also verify that biomed-
+ical text similarity is a useful pre-training step to
+apply before training BioLORD-type models.
+We benchmark all models on four social media
+datasets: CADEC (Karimi et al., 2015), PsyTAR
+(Zolnoori et al., 2019), SMM4H (Weissenbacher
+et al., 2019), and TwiMed (Alvaro et al., 2017),
+which are further described in Section 3.3.
+Through this extensive benchmarking, we aim
+to demonstrate that our proposed approach signif-
+icantly outperforms the previous state of the art
+in informal contexts, which cover a wide range of
+social media activities (such as: forum messages,
+online reviews, and tweets).3.1 Candidate Models
+To disentangle the impact of the base model ini-
+tialization from the impact of the BioLORD pre-
+training strategy, we consider two different base
+models: STAMB21(Reimers and Gurevych, 2019),
+the same general-purpose model used in the Bio-
+LORD paper, and PubMedBERT (Gu et al., 2020),
+a robust domain-specific model pre-trained on
+medical texts. The resulting models are named
+BioLORD-STAMB2 andBioLORD-PMB .
+We also analyze the effect of fine-tuning the
+models on a medical semantic text similarity task
+(STS) in addition to the BioLORD pre-training.
+We do so by fine-tuning some of the models on the
+MedSTS task (Wang et al., 2020), using the same
+hyperparameters described in the BioLORD paper.
+The base STAMB2 model is fine-tuned for STS
+before applying the BioLORD pre-training. This
+model then undergoes a second stage of STS fine-
+tuning, resulting in BioLORD-STAMB2-STS2 .
+Figure 2 illustrates the differences between the
+proposed models.
+3.2 Baseline Models
+We choose two BERT-based models trained
+with contrastive learning strategies as baselines:
+CODER (Yuan et al., 2022) and SapBERT (Liu
+et al., 2021). They are among the best dataset-
+agnostic models for medical term embeddings at
+the time of writing. Both of them are trained
+on the UMLS ontology (Bodenreider, 2004) and
+were tested on several term normalization datasets,
+showing promising results. SapBERT was the first
+large-scale contrastive model to leverage UMLS
+and is based on PubMedBERT. It is trained by us-
+ing UMLS synonyms to create contrastive pairs.
+CODER, on the other hand, leverages both term-
+term pairs and term-relation-term triples.
+3.3 Datasets
+We evaluate all the candidate and baseline models
+using four medical entity normalization datasets
+containing ADEs. All of them contain informal
+texts coming from different social media platforms.
+One of the datasets also contains a subset of formal
+samples (TwiMed-PM). We include this subset in
+our experiments to verify that all the tested models
+perform well on ADE normalization in the clinical
+domain too.
+1https://huggingface.co/sentence-transformers/
+all-mpnet-base-v2TheTwiMed dataset (Alvaro et al., 2017) pro-
+vides a comparable corpus of texts from PubMed
+(abstracts) and Twitter (posts), allowing researchers
+in the area of pharmacovigilance to better under-
+stand the similarities and differences between the
+language used to describe disease and drug-related
+symptoms on PubMed ( TwiMed-PM , clinical do-
+main) and Twitter ( TwiMed-TW , social media do-
+main). Both sets of data contain 1000 samples.
+The CSIRO Adverse Drug Event Corpus
+(CADEC ) dataset (Karimi et al., 2015) is a corpus
+of user-generated reviews of drugs that has been
+annotated with adverse drug events (ADEs) and
+their normalization. It contains 1250 posts from a
+medical forum, which were annotated by a team of
+experts from the University of Arizona.
+The Psychiatric Treatment Adverse Reactions
+(PsyTAR ) dataset (Zolnoori et al., 2019) contains
+patients’ expression of effectiveness and adverse
+drug events associated with psychiatric medica-
+tions, originating from a sample of 891 drugs re-
+views posted by patients on an online healthcare
+forum.
+The Social Media Mining for Health Appli-
+cations ( SMM4H ) dataset (Gonzalez-Hernandez
+et al., 2020) is a dataset for Adverse Drug Event
+(ADE) normalization. It was used in the SMM4H
+2020 shared task on ADE normalization. The aim
+of the subtask was to recognize ADE mentions
+from tweets and normalize them to their preferred
+term in the MedDRA ontology. The dataset in-
+cludes 1212 tweets containing ADEs.
+For each evaluated dataset, we perform zero-
+shot entity normalization using a setup identical to
+Portelli et al. (2022) with four test splits.
+4 Results
+We report the zero-shot evaluation results of the
+various models in Table 1.
+Looking at the results on TwiMed-PM, the sam-
+ples coming from the clinical domain, we observe
+that almost all of the models have a similar perfor-
+mance (between 69.99 and 70.60), showing that all
+models (general-purpose or in-domain) can reach a
+good performance on formal datasets.
+The gap in performance of CODER and Sap-
+BERT between TwiMed-PM and all the social-
+media datasets highlights the existence of a signif-
+icant difference in language distribution between
+texts in the clinical domain, and the less formal
+texts found in online reviews or social media.TwiMed-PM CADEC PsyTAR SMM4H TwiMed-TW
+CODER 65.31 ± 1.85 35.29 ± 1.27 52.40 ± 0.71 33.14 ± 1.28 42.80 ± 2.06
+SAPBERT 70.05 ± 1.56 40.42 ± 1.27 64.82 ± 1.36 43.37 ± 1.07 48.29 ± 2.85
+BIOLORD-PMB 69.99 ± 1.87 58.23 ± 0.36 60.22 ± 0.84 41.80 ± 2.24 47.14 ± 2.21
+BIOLORD-STAMB2 70.44 ± 1.19 58.69 ± 0.97 64.70 ± 0.76 46.51 ± 2.08 48.46 ± 1.53
+BIOLORD-STAMB2-STS2 70.60 ± 1.19 60.28 ± 0.80 65.49 ± 0.74 47.33 ± 1.42 50.57 ± 1.72
+Table 1: Accuracy@1 of the evaluated models on all the datasets. Datasets are ordered according to the formality of
+their language, from more formal (TwiMed-TW) to more informal (SMM4H and TwiMed-TW).
+If we focus on the models trained using only
+the BioLORD pre-training, we can see that they
+perform better than the two state-of-the-art base-
+line alternatives across all the datasets. In par-
+ticular, BioLORD-STAMB2 significantly outper-
+forms SapBERT on CADEC (58.69 vs 40.42) and
+SMM4H (46.51 vs 43.37). We also observe that
+BioLORD-STAMB2, the general-domain model,
+outperforms BioLORD-PMB, the domain-specific
+variant, proving that the findings of the original Bio-
+LORD paper extend to the social media domain.
+Our results also highlight that the newly-
+introduced BioLORD-STAMB2-STS2 manages to
+move the needle even further (with an average ac-
+curacy gain of 1 point with respect to BioLORD-
+STAMB2), indicating that priming general-purpose
+models (STAMB2) for biomedical text understand-
+ing (STS) before and after the BioLORD pre-
+training enables to achieve better performance.
+On the CADEC dataset in particular, our Bio-
+LORD family of models achieves zero-shot accu-
+racy@1 of above 60% for Preferred Term classifi-
+cation. To the best of our knowledge, this is by far
+the best zero-shot performance ever reported for
+this dataset.
+This seems to confirm that ADE normalization
+will continue to move towards self-supervised con-
+trastive models, as these models perform well, are
+very versatile, and can be used to map concepts
+to any new updated ontology at test time without
+requiring any retraining. In a field where such mod-
+els are expected to continue to thrive, the improve-
+ments proposed in this paper should be particularly
+of interest to other researchers.5 Conclusion
+In this paper, we confirmed that BioLORD is an
+effective pre-training strategy for biomedical entity
+normalization. We were additionally able to show
+that applying BioLORD on general-purpose mod-
+els like STAMB2 provides additional benefits, and
+that these benefits are more important for sources
+originating from social media than from clinical
+notes. Finally, we report that STS-fine-tuning of
+models both before and after undergoing the Bio-
+LORD pre-training can bring additional benefits
+even in the ADE normalization task, especially in
+the case when the source originates from social
+media documents.
+Limitations
+This paper did not investigate the impact of the pro-
+posed pre-training strategies on ADE identification,
+the task of finding ADE mentions in a text.
+We also did not investigate the impact of fine-
+tuning models on the task, although we have
+performed some preliminary experiments on this,
+which seem to confirm the conclusions for zero-
+shot models apply to fine-tuned models as well.
+Ethics Statement
+The authors do not foresee that their work would
+raised any particular ethical concern.

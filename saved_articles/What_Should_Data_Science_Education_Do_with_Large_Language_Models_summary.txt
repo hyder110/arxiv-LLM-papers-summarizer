@@ -1,0 +1,16 @@
+Summary:
+This paper discusses the transformative potential of large language models (LLMs), such as ChatGPT, in data science education. LLMs have the ability to automate complex data science tasks and reshape the roles of data scientists. The paper highlights the need for data science education to incorporate LLM-informed creativity, critical thinking, AI-guided programming, and interdisciplinary knowledge. LLMs can also be integrated into the classroom as interactive teaching tools, enriching the learning experience. However, it is important to balance the use of LLMs with human intelligence and creativity. The paper emphasizes the need for careful consideration and ethical awareness when integrating LLMs into education.
+
+Bullet points:
+- Large language models (LLMs) are revolutionizing data science and statistics
+- LLMs automate tasks such as data cleaning, model building, and report writing
+- The role of data scientists is shifting from coding to managing automated AIs
+- Data science education needs to focus on LLM-informed creativity, critical thinking, and AI-guided programming
+- LLMs can be used as interactive teaching tools in the classroom
+- Integrating LLMs into education requires careful consideration and ethical awareness
+- LLMs should supplement human intelligence and creativity, not replace them
+- Future data science education should balance the benefits of LLMs with human expertise and innovation
+- LLMs have the potential to transform data science education by streamlining processes and enhancing personalized learning experiences
+- The integration of LLMs into education calls for equal access and resources to ensure equity in education
+
+Keywords: Large Language Models, ChatGPT, Data Science, Education, AI-guided programming, Personalized learning experiences, Ethical awareness, Data science pipeline, Transformative period.

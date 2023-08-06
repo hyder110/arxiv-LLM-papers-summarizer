@@ -1,0 +1,27 @@
+Summary:
+This paper introduces a framework that uses Large Language Models (LLMs) for building cooperative embodied agents capable of planning, communication, and cooperation with other agents or humans. The framework consists of five modules: observation, belief, communication, reasoning, and planning. The authors demonstrate that LLMs can outperform strong planning-based methods in multi-agent cooperation tasks without requiring fine-tuning or few-shot prompting. They also find that LLM-based agents that communicate in natural language can earn more trust and cooperate more effectively with humans. The research highlights the potential of LLMs for embodied AI and lays the foundation for future research in multi-agent cooperation.
+
+Bullet Points:
+- Large Language Models (LLMs) have impressive planning abilities in single-agent embodied tasks.
+- It remains unclear whether LLMs have the capacity for planning and communication in multi-agent cooperation.
+- This paper presents a novel framework that utilizes LLMs for multi-agent cooperation and demonstrates its effectiveness in various embodied environments.
+- Recent LLMs, such as GPT-4, can surpass strong planning-based methods and exhibit effective communication without requiring fine-tuning or few-shot prompting.
+- LLM-based agents that communicate in natural language can earn more trust and cooperate more effectively with humans.
+- The framework consists of five modules: observation, belief, communication, reasoning, and planning.
+- The Observation Module extracts useful information from the environment for higher-order reasoning.
+- The Belief Module keeps track of the agent's understanding of the environment and other agents.
+- The Communication Module utilizes LLMs to generate messages for effective communication.
+- The Reasoning Module synthesizes information from other modules to generate high-level plans.
+- The Planning Module generates low-level controls based on the high-level plan.
+
+Keywords:
+- Large Language Models
+- Multi-agent cooperation
+- Planning
+- Communication
+- Embodied agents
+- Observation module
+- Belief module
+- Communication module
+- Reasoning module
+- Planning module

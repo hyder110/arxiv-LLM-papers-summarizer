@@ -1,0 +1,483 @@
+Performance Comparison of Large Language Models on VNHSGE English
+Dataset: OpenAI ChatGPT, Microsoft Bing Chat, and Google Bard
+Xuan-Quy DAO
+School of Engineering
+Eastern International University
+Binh Duong, Vietnam
+quy.dao@eiu.edu.vn
+Abstract
+This paper presents a performance comparison
+of three large language models (LLMs), namely
+OpenAI ChatGPT, Microsoft Bing Chat, and
+Google Bard, on the VNHSGE English dataset.
+The results show that BingChat is better than
+ChatGPT and Bard. Therefore, BingChat and
+Bard can replace ChatGPT while ChatGPT is
+not yet officially available in Vietnam. The
+results also indicate that ChatGPT, Bing Chat,
+and Bard outperform Vietnamese students in
+English language proficiency. The findings of
+this study contribute to the understanding of the
+potential of LLMs in English language educa-
+tion. The remarkable performance of ChatGPT,
+Bing Chat, and Bard demonstrates their poten-
+tial as effective tools for teaching and learning
+English at the high school level.
+1 Introduction
+Artificial Intelligence (AI) has revolutionized the
+field of education, by transforming the ways of
+learning and teaching. One of the most prominent
+advancements in this domain is the development of
+large language models (LLMs), such as ChatGPT1,
+BingChat2, and Bard3(developed by OpenAI, Mi-
+crosoft, and Google, respectively). The develop-
+ment and continuous improvement of these LLMs
+have paved the way for AI to be integrated into
+various educational applications and domains (Ope-
+nAI, 2023). These models have advanced conver-
+sational abilities, closely resembling human-like
+interactions. This capability holds great promise
+for educational settings, including the utilization
+of virtual assistants, chatbots, and online learning
+support systems (Kasneci et al., 2023).
+Although these models offer tremendous poten-
+tial for personalized and interactive learning expe-
+riences, creating new opportunities for educational
+1https://chat.openai.com
+2https://www.bing.com/chat
+3https://bard.google.cominnovation and transforming the way we teach and
+learn, the development and deployment of AI in
+education require careful consideration of the ef-
+fectiveness of these AI-powered educational tools
+in different educational and social contexts (Kung
+et al., 2023), (Thorp, 2023).
+Similar to other parts of the world, LLMs hold
+great potential in the field of education in Viet-
+nam. However, it is essential to conduct thorough
+research and evaluation to comprehensively un-
+derstand their capabilities and limitations in the
+specific context of Vietnamese education. Chat-
+GPT scored well on the Vietnamese High School
+Graduation Examination (VNHSGE) (Dao et al.,
+2023a) and obtained a good score on an English
+test case (Dao et al., 2023b). However, it is worth
+noting that ChatGPT has not been officially de-
+ployed in Vietnam. Meanwhile, Vietnamese stu-
+dents have access to BingChat and Bard, two other
+LLMs. Thus, it is crucial to evaluate the capabil-
+ities of BingChat and Bard within the context of
+Vietnamese education.
+We focus on evaluating the performance of
+BingChat and Bard on the VNHSGE English
+dataset, and comparing them to ChatGPT. The ob-
+jective of this evaluation is to determine whether
+BingChat and Bard can serve as potential alterna-
+tives to ChatGPT in English education at the high
+school level. Thus, we ask the following research
+questions:
+•Research Question 1 (RS1): What is the per-
+formance of ChatGPT, BingChat, and Bard
+on the VNHSGE English dataset at the high
+school level in Vietnam?
+•Research Question 2 (RS2): How do the
+LLMs perform in comparison to Vietnamese
+students in English language proficiency at
+the high school level in Vietnam?
+•Research Question 3 (RS3): What potential
+do LLMs hold for English language teachingarXiv:2307.02288v1  [cs.CL]  5 Jul 2023and learning at the high school level in the
+context of Vietnam?
+The main contribution of this paper provides a
+comprehensive evaluation of the performance of
+LLMs, comparing them to human performance on
+the same tasks, and identifying the potential ap-
+plications of LLMs in the context of English lan-
+guage education at the high school level in Vietnam.
+These findings can inform educators, researchers,
+and policymakers in making informed decisions
+regarding the integration of LLMs into the English
+language curriculum and instructional practices.
+2 Related works
+2.1 Large Language Models
+AI is now capable of understanding and engaging
+in human-like communication, thanks to recent ad-
+vancements in LLMs. These breakthroughs have
+opened up new opportunities for their application
+in the field of education. LLMs have demonstrated
+immense potential in areas such as education, con-
+tent development, and language translation. The
+two primary architectures of LLMs are BERT
+(Bidirectional Encoder Representations from Trans-
+formers) and GPT (Generative Pre-trained Trans-
+former). In 2018, Google introduced BERT (De-
+vlin et al., 2018), which has excelled in various
+natural language processing (NLP) tasks. Devel-
+oped by OpenAI (Alec et al., 2018), the GPT al-
+gorithm was trained on extensive unlabeled text
+datasets. Building on Google’s research, Face-
+book’s RoBERTa (Liu et al., 2019) was introduced,
+and in 2019, Google released T5 (Raffel et al.,
+2020). The year 2020 witnessed the creation of
+GPT-3 by OpenAI (Brown et al., 2020), show-
+casing exceptional performance in a wide range
+of NLP tasks. Recently, OpenAI developed GPT-
+4 (OpenAI, 2023), a text-to-text machine learning
+system capable of processing both text and image
+inputs. GPT-4 has demonstrated human-level per-
+formance in many professional and academic crite-
+ria, although its performance may not match that of
+humans in all contexts. These advancements high-
+light the progress made in LLMs and their potential
+impact in various domains.
+2.2 Evaluation of LLMs on English
+ChatGPT scored an average of 7.18 on the national
+high school exam in the Netherlands, which is
+equivalent to the average score of all students partic-
+ipating in the exams in the Netherlands (de Winter,2023). In other research, ChatGPT outperformed
+Vietnamese students by scoring 7.92 in the national
+high school graduation exam in Vietnam (Dao
+et al., 2023b). Additionally, ChatGPT/GPT-4 has
+been shown to be as good as commercial transla-
+tion products at translation (Jiao et al., 2023), as
+well as having the ability to perform multilingual
+tasks (Bang et al., 2023).
+3 Methods
+3.1 Dataset
+The VNHSGE English dataset (Dao et al., 2023c)
+consists of 2500 multiple-choice questions and
+comprises a diverse range of exam questions ex-
+tracted from high school examinations, covering
+various topics and assessing different linguistic
+abilities. The dataset includes questions related to
+pronunciation and stress, vocabulary and grammar,
+communication skills, reading fill-in-the-blank, and
+reading comprehension. The evaluation dataset
+comprises 250 multiple-choice questions corre-
+sponding to 5 exams from the academic years 2019,
+2020, 2021, 2022, and 2023.
+3.2 Prompt
+In this study, zero-shot learning was employed,
+where LLMs were tasked with answering questions
+directly without any prior data or example ques-
+tions. For the VNHSGE English dataset D, let {Q,
+S} denote pairs where Q is the question and S is
+the ground truth solution. Additionally, let P de-
+note the context of words. The LLM’s answer A is
+determined by
+A=f(P, Q) (1)
+where f is the LLM, which takes into account the
+context P and the question Q. The context P in this
+case is a specific structure that guides the LLM’s
+response. It instructs the LLM to provide the an-
+swer in the following format: { Choice: “A” or “B”
+or “C” or “D”; Explanation: Explain the answer;
+The question is: [the actual question] }. By follow-
+ing this structure, the LLM generates its answer
+A, which can be evaluated and compared to the
+ground truth solution S.
+Figure 1 illustrates the process of prompting
+LLMs and retrieving the results. In the case of
+multiple-choice questions from the VNHSGE En-
+glish dataset, the questions are formatted to align
+with the expected answer format. The questions
+are then sent to the LLMs’ API.Multiple
+Choice
+QuestionNew
+QuestionLarge
+Language
+ModelsResponseI want you to answer the question in the
+following structure:
+Choice: "A" or "B" or "C" or "D"
+Explanation: Explain the answer
+The question is:Context
+prompt
+Figure 1: Formatted question and LLMs response.
+3.3 Grading
+To evaluate the performance of LLMs in answering
+questions, we assessed the LLM’s response by com-
+paring it to the ground truth. Given the question Q,
+the corresponding ground truth solution S, and the
+LLM’s answer A, we assessed the LLM’s response
+by comparing it to the ground truth solution S:
+G=g(Q, S, A ) (2)
+The evaluation process resulted in a binary grading
+system, where the LLM’s answer was classified as
+correct or incorrect.
+The answers of LLMs may be different because
+they are trained on different datasets. To capture the
+best and worst cases among the answers of LLMs,
+we introduced two variables: LLM Brepresents the
+case with the highest graded answer among the
+LLMs, while LLM Wrepresents the case with the
+lowest graded answer among the LLMs
+LLM B= max( Gi)
+LLM W= min( Gi)(3)
+where Girepresents the grading corresponding to
+ChatGPT, BingChat, and Bard. These variables
+allow us to analyze the upper and lower bounds of
+the performance of LLMs in terms of grading their
+answers.
+4 Results
+4.1 Answers of LLMs
+In this section, we present the answers provided
+by ChatGPT, BingChat, and Bard on the VNHSGE
+English dataset. We provide illustrative examples
+for different types of questions, including pronun-
+ciation and stress, grammar and vocabulary, com-
+munication, reading fill-in-the-blank, and reading
+comprehension. For detailed information about
+the answers provided by the LLMs, please refer to
+Section A.4.2 Performance of LLMs
+To answer RS 1, we evaluate the performance of
+ChatGPT, BingChat, and Bard on the VNHSGE
+English dataset. The findings provide insights into
+how accurate and effective these LLMs are in an-
+swering questions from the dataset. The contribu-
+tion of this analysis is a comparative assessment
+of the performance of the three models, which can
+guide educators and researchers in selecting the
+most suitable LLM for English language tasks in
+the context of high school education.
+4.2.1 Question order
+Figure 2 illustrates the accuracy of the answers of
+LLMs according to the order of the questions. The
+results show that the LLMs models do not provide
+accurate answers for the first four questions, which
+are related to phonetics. This may be because mod-
+els like ChatGPT, BingChat, and Bard were not
+sufficiently trained in the field of phonetics. LLMs
+perform well on the remaining portions of the exam,
+proving that LLMs have received adequate train-
+ing in English vocabulary, grammar, and reading
+comprehension.
+4.2.2 Performance evaluation
+Table 1 presents the performance of LLMs.
+BingChat demonstrates better results compared to
+ChatGPT and Bard. The accuracy of LLM Bis
+97.2%, demonstrating the significant potential of
+LLMs in English education at the high school level.
+Figure 3 illustrates the stability of LLMs across
+the years 2019-2023. The performance indices
+LLM B, ChatGPT, and Bard demonstrate relatively
+stable results, while BingChat and LLM Wexhibit
+variations between academic years. The consistent
+performance of LLMs over the years indicates their
+ability to maintain stable performance. This demon-
+strates that LLMs are trained on a large amount of
+data and can be valuable tools in education.1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50050100Accuracy
+ChatGPT BingChat Bard
+Figure 2: Correctness average of ChatGPT, BingChat, and Bard in question order.
+Table 1: Performance ( %)
+2019 2020 2021 2022 2023 A VG
+ChatGPT 76 86 76 80 78 79.2
+BingChat 92 96 86 94 94 92.4
+Bard 82 94 82 86 86 8.6
+LLM W 66 82 68 74 70 72
+LLM B 96 100 94 96 100 97.2ChatGPT
+BingChat
+Bard
+LLM W
+LLM B80100Performance (%)
+Figure 3: Stability of LLMs performance.
+4.3 LLMs and Vietnamese students
+4.3.1 LLMs perform better in English than
+Vietnamese students
+To answer RS 2, we examine the performance
+of the LLMs in comparison to Vietnamese stu-
+dents’ English language skills. Our aim is to deter-
+mine whether LLMs possess abilities comparable
+to those of humans, although this comparison is
+challenging due to the dissimilar settings. By con-
+ducting this comparison, we can evaluate whether
+LLMs can serve as effective study aids for Viet-
+namese students in various subject areas.
+The score distribution of the students’ exams
+serves as an indicator for evaluating their perfor-
+mance. The Vietnam Ministry of Education andTraining releases score distribution charts for each
+subject every year, which help assess the candi-
+dates’ competence and determine the difficulty
+level of the exams. By gathering the score dis-
+tributions (2019, 2020, 2021, 2022), we can
+compare the performance of LLMs with that of
+Vietnamese students. To facilitate this compari-
+son, we compare the score of LLMs to the average
+score (A VS) and the most reached score (MVS) by
+Vietnamese students. For instance, in 2023, the
+A VS and MVS were 5.84 and 3.8, respectively (see
+Appendix section B for comparison in Vietnamese
+score spectrum). Table 2 shows the score of LLMs
+on a 10-point scale. Figure 4 shows the effective-
+ness of LLMs with Vietnamese students.
+Table 2: Scores
+2019 2020 2021 2022 2023 A VG
+ChatGPT 7.6 8.6 7.6 8.0 7.8 7.92
+BingChat 9.2 9.6 8.6 9.4 9.4 9.24
+Bard 8.2 9.4 8.2 8.6 8.6 8.6
+The results indicate that LLMs exhibit a higher
+level of English proficiency compared to Viet-
+namese students. One key advantage of LLMs
+is their ability to access vast amounts of infor-
+mation and data, including extensive language re-
+sources and pre-training on large corpora. This en-
+ables them to have a broader knowledge base and
+a deeper understanding of the English language.
+Consequently, LLMs demonstrate superior perfor-
+mance in answering questions and providing accu-
+rate responses compared to Vietnamese students.
+4.3.2 Potential of LLMs in helping
+Vietnamese students learn English
+To answer RS 3, we explore the potential of LLMs
+for English language teaching and learning at the
+high school level in Vietnam. By evaluating the
+performance of the LLMs on the VNHSGE English
+dataset, the research highlights the capabilities of
+these models in assisting with language instruction2019 2020 2021 2022 202346810
+7.6
+8.6
+7.6
+8
+7.89.2
+9.6
+8.6
+9.4
+9.48.2
+9.4
+8.2
+8.6
+8.64.36
+4.58
+5.84
+5.153.2
+3.4
+4
+3.8English Score
+ChatGPT BingChat Bard A VS MVS
+Figure 4: Comparison of the performance of LLMs and Vietnamese students.
+and learning. The findings contribute to identifying
+the specific areas where LLMs can be leveraged,
+such as vocabulary acquisition, grammar compre-
+hension, and reading comprehension. The findings
+of the research can inform the development of ed-
+ucational strategies and materials that incorporate
+LLMs to enhance English language education in
+Vietnam.
+LLMs can indeed provide valuable assistance to
+Vietnamese students in learning English. Here are
+some ways LLMs can be helpful:
+•Language practice: LLMs can act as conver-
+sational partners, allowing Vietnamese stu-
+dents to practice their English communication
+skills. Students can engage in dialogue with
+the model, asking questions, discussing top-
+ics, and receiving responses that simulate real
+conversations.
+•Personalized learning: LLMs have the poten-
+tial to adapt to individual student’s needs and
+provide personalized learning experiences. By
+analyzing students’ performance and identi-
+fying areas of improvement, LLMs can gen-
+erate customized exercises, quizzes, or study
+materials tailored to each student’s specific
+requirements.
+•Language comprehension: LLMs can process
+and understand English text, including arti-
+cles, books, and educational resources. Viet-
+namese students can use LLMs to improve
+their reading comprehension by getting instant
+definitions, explanations, and examples of un-
+familiar words or phrases.
+• Writing support: LLMs can assist students in
+improving their English writing skills. Stu-dents can use LLMs to generate suggestions
+for sentence structure, grammar, and vocabu-
+lary, and even receive feedback on their writ-
+ing. This can help students enhance their writ-
+ten expression and produce more accurate and
+coherent English texts.
+•Language resources: LLMs can serve as a vast
+repository of information, providing access to
+various English learning materials, such as
+grammar rules, idiomatic expressions, vocab-
+ulary lists, and sample essays. Students can
+leverage these resources to enhance their un-
+derstanding of English language concepts and
+improve their overall language proficiency.
+However, it’s important to note that while LLMs
+can be valuable tools for language learning, they
+should not replace traditional learning methods or
+human interaction. Students still benefit from en-
+gaging with teachers, practicing speaking with na-
+tive speakers, and participating in real-life language
+situations to develop their overall language skills
+effectively. LLMs should be seen as a comple-
+mentary resource that supports and enhances the
+learning process for Vietnamese students studying
+English.
+5 Conclusion
+This study compared the performance of three
+LLMs (OpenAI ChatGPT, Microsoft Bing Chat,
+and Google Bard) on the VNHSGE English dataset.
+The results showed that these LLMs have the po-
+tential to be used in education, as they demon-
+strated high accuracy in answering multiple-choice
+questions and were consistent in their performance
+across different years of the dataset.Additionally, LLMs are significantly superior
+to Vietnamese students in English language pro-
+ficiency suggesting that they have the potential
+to be valuable tools for facilitating English lan-
+guage learning among Vietnamese students. By
+leveraging the strengths of language models, edu-
+cators, and students can benefit from personalized
+and adaptive learning experiences that meet indi-
+vidual needs and enhance overall language profi-
+ciency. This highlights the potential of language
+models to revolutionize English language educa-
+tion and empower Vietnamese students to excel in
+their language-learning endeavors.

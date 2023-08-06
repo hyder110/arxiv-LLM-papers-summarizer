@@ -1,0 +1,288 @@
+mPLUG-DocOwl
+ : Modularized Multimodal Large
+Language Model for Document Understanding
+Jiabo Ye∗, Anwen Hu∗, Haiyang Xu†, Qinghao Ye, Ming Yan†, Yuhao Dan,
+Chenlin Zhao, Guohai Xu, Chenliang Li, Junfeng Tian, Qian Qi, Ji Zhang, Fei Huang
+DAMO Academy, Alibaba Group
+{yejiabo.yjb, huanwen.haw, shuofeng.xhy, yeqinghao.yqh, ym119608}@alibaba-inc.com
+Abstract
+Document understanding refers to automatically extract, analyze and comprehend
+information from various types of digital documents, such as a web page. Existing
+Multi-model Large Language Models (MLLMs), including mPLUG-Owl, have
+demonstrated promising zero-shot capabilities in shallow OCR-free text recogni-
+tion, indicating their potential for OCR-free document understanding. Neverthe-
+less, without in-domain training, these models tend to ignore fine-grained OCR
+features, such as sophisticated tables or large blocks of text, which are essential for
+OCR-free document understanding. In this paper, we propose mPLUG-DocOwl
+based on mPLUG-Owl for OCR-free document understanding. Specifically, we
+first construct a instruction tuning dataset featuring a wide range of visual-text
+understanding tasks. Then, we strengthen the OCR-free document understanding
+ability by jointly train the model on language-only, general vision-and-language,
+and document instruction tuning dataset with our unified instruction tuning strat-
+egy. We also build an OCR-free document instruction understanding evaluation
+set LLMDoc to better compare models’ capabilities on instruct compliance and
+document understanding. Experimental results show that our model outperforms
+existing multi-modal models, demonstrating its strong ability of document un-
+derstanding. Besides, without specific fine-tuning, mPLUG-DocOwl generalizes
+well on various downstream tasks. Our code, models, training data and evaluation
+set are available at https://github.com/X-PLUG/mPLUG-DocOwl.
+1 Introduction
+Large language models (LLMs) like ChatGPT [OpenAI, 2022], BLOOM [Scao et al., 2022], and
+LLaMA [Touvron et al., 2023] have undergone rapid development to enable the realization of gen-
+eral artificial intelligence, boasting impressive zero-shot capabilities across diverse linguistic appli-
+cations. With the LLM as the language decoder, Multimodal large language models (MLLMs) such
+as MiniGPT-4 [Zhu et al., 2023], LLaV A [Liu et al., 2023a], and mPLUG-Owl [Ye et al., 2023]
+have demonstrated remarkable zero-shot performance in various open-ended vision-and-language
+tasks. These models are trained to align text and images during the pre-training phase, and then to
+promote diverse abilities during the instruction tuning phase. Interestingly, these MLLMs exhibit
+superficial OCR-free text recognition abilities without explicit training on visual text understanding
+datasets [Ye et al., 2023, Liu et al., 2023b]. Nevertheless, due to lacking specific training, these mod-
+els still face the challenge of comprehending intricate relationships between visual text and objects
+in diverse types of images, such as charts, documents and webpages.
+∗Equal contribution
+†Corresponding author
+Preprint. Under review.arXiv:2307.02499v1  [cs.CL]  4 Jul 2023By performing unified instruction tuning for Document Understanding upon the mPLUG-Owl [Ye
+et al., 2023], we further propose a modularized MLLM [Li et al., 2022, Xu et al., 2023b], namely
+mPLUG-DocOwl. Our approach utilizes a modularized framework similar to mPLUG-Owl [Ye
+et al., 2023], which incorporates a visual abstractor module to link a pre-trained LLM with a vi-
+sual knowledge module, achieving the alignment of text and images. To enhance diverse docu-
+ment understanding capabilities, we reorganize various downstream document understanding tasks
+in the same form of instructions. To maintain general uni/multi-modal abilities, we also include
+language-only and general vision-and-language instruction datasets used by mPLUG-Owl to train
+the mPLUG-DocOwl. During training, both the visual knowledge module and LLM decoder are
+frozen, only the visual abstractor and the Low-Rank Adaption (LoRA) [Hu et al., 2022] in LLM are
+fine-tuned.
+mPLUG-DocOwl achieves ocr-free state-of-the-art performance on multiple commonly used docu-
+ment understanding datasets. Furthermore, our experiments on a carefully-built document instruc-
+tion understanding evaluation set LLMDoc shows that mPLUG-DocOwl achieves significantly bet-
+ter visual text understanding performance on various domains than existing MLMMs.
+Our main contributions can be highlighted as follows:
+• We propose a modularized MLLM, mPLUG-DocOwl , which is the first one to balance
+language-only, general vision-and-language, and document understanding based on unified
+instruction tuning.
+• We carefully construct an instruction understanding test set with human evaluation, dubbed
+LLMDoc , to assess diverse document understanding capabilities.
+• Empirical results demonstrate that our mPLUG-DocOwl surpasses existing methods on
+ocr-free document understanding, including multiple standard benchmarks and LLMDoc.
+2 Related Work
+2.1 Visual Text Understanding
+There are two types of models for understanding images that contain rich textual information. The
+first kind of approaches [Xu et al., 2020, Huang et al., 2022, Hu et al., 2021, Tang et al., 2023,
+Yang et al., 2021] utilize off-the-shelf OCR models or APIs to recognize text from images, and then
+design pretraining tasks to facilitate cross-modality alignment between visual and textual inputs.
+On the other hand, end-to-end approaches [Davis et al., 2022, Kim et al., 2022, Lee et al., 2022]
+utilize a high-resolution image encoder to learn text recognition during the pretraining stage. Both
+two types of models rely on specific finetuning on different downstream datasets and can’t achieve
+open-domain instruction understanding performance like Multimodal Large Language Models.
+2.2 Multimodal Large Language Model
+Large Language Models (LLMs) have demonstrated impressive zero-shot abilities across various
+open-ended tasks. Recent research has also explored the application of LLMs for multi-modal gen-
+eration, utilizing two different paradigms: systematic collaboration and end-to-end trained models.
+Systematic collaboration approaches, such as Visual ChatGPT [Wu et al., 2023] and MM-REACT
+[Yang et al., 2023], leverage various vision experts or tools to express visual information with text
+descriptions. Subsequently, LLMs, such as ChatGPT [OpenAI, 2022], can act as agents and select
+appropriate experts and tools for visual understanding. Finally, LLMs would summarize the output
+of these experts to answer user queries. On the other hand, some approaches, such as MiniGPT-4
+[Zhu et al., 2023], LLaV A [Liu et al., 2023a], and mPLUG-Owl [Ye et al., 2023], leverage LLMs
+to build unified models for multi-modality with limited connected parameters. These methods show
+superficial OCR-free text recognition abilities under the zero-shot setting. However, for complicated
+document understanding, due to lacking in-domain training, they encounter challenges in handling
+diverse image types, recognizing rich texts and comprehending relationships between visual seman-
+tic and text information. In this work, through unified instruction tuning, mPLUG-DocOwl achieves
+much better document understanding performance and maintains general uni/multi-modal abilities.
+2mPLUG-DocOwlmPLUG-OwlTableDocument
+WebPageHuman: juanrománriquelmehave the same score on july11 , 2007 november17 2007, Yes or No? AI: YesHuman: what is the value mentioned in the CID#:AI: 736 00 00
+Human:WhatwillthepresentationaimtoencourageadiscussionaboutAI:ItwillaimtoencourageadiscussionaboutopendataownershiprightsandthedifferingsocialNatural Image
+Human:Createacompactnarrativerepresentingtheimagepresented.AI:SignthatsaysCaleaDorobantilorinblueandwhiteChart
+Language-only
+Human:WhatwasthebusiestcontrolpointinHongKongin2019?AI:LoWuControlPoint
+Human: Could you offer me an elaborated response that demands complex reasoning and requires breaking down the problem into multiple stepsAI: Yes, I can certainly fulfill your request. Please provide me with your specific question or problem that you would like me to elaborate on.
+Chart  Document Table Natural Image WebPageGeneral V&L Language-onlyMultimodalPretrainingUnified Instruction Tuning
+🦉Figure 1: The summary of the instruction tuning paradigm of our mPLUG-DocOwl.
+3 mPLUG-DocOwl
+3.1 Architecture
+The architecture of mPLUG-DocOwl is based on a popular multi-modal language model, mPLUG-
+Owl [Ye et al., 2023], which comprises a pre-trained visual foundation model, a visual abstractor,
+and a language foundation model. The visual foundation model is responsible for extracting visual
+features from the input images, and the visual abstractor distills these features using a set of learnable
+tokens. The resulting visual features are then concatenated with the word embeddings of the input
+sentence and fed into the language model to generate the response. This powerful architecture allows
+for accurate and efficient multi-modal language processing.
+The mPLUG-Owl [Ye et al., 2023] exhibits superficial OCR ability when presented with images
+containing salient text. Inspired by this, we propose to further fine-tune the model with document
+instruction tuning data for better document understanding performance, covering document, table,
+chart and natural image and webpage. During fine-tuning, we freeze the visual encoder and the
+language model and train the visual abstractor. We also adopt the low-rank adaptation approach
+(LoRA) [Hu et al., 2022] to enhance the language model’s ability.
+3.2 Instruction Tuning Data
+This section introduces the composition of our instruction tuning data in detail. To ensure the
+versatility of mPLUG-DocOwl, we collect diverse document understanding datasets with differ-
+ent task formats, including Visual Question Answering (VQA) [Antol et al., 2015], Information
+Extraction (IE), Natural Language Inference (NLI) [Bowman et al., 2015], and Image Captioning
+(IC). mPLUG-Owl [Ye et al., 2023] performs instruction tuning with a unified format as "<im-
+age>Human:{question} AI:{answer}". In this work, we convert different document understanding
+tasks to the same format as mPLUG-Owl [Ye et al., 2023] by replacing the {question} and {answer}
+placeholders as follows.
+Visual Question Answering We simply use the raw question and answer as the {question} and
+{answer} placeholders. We collect VQA datasets on diverse domains, including ChartQA [Masry
+et al., 2022], DocVQA [Mathew et al., 2021], InfographicsVQA (InfoVQA) [Mathew et al., 2022],
+3DocumentDocVQAInfoVQADeepFormKLCTableWTQTabFactChartChartQAWebPageVisualMRCNatural ImageTextVQATextCapsGeneral V&LLLaVALanguage-onlyAlpacaVicunaBaizeFigure 2: Different types of datasets used to train mPLUG-DocOwl.
+WikiTableQuestions (WTQ) [Pasupat and Liang, 2015], TextVQA [Singh et al., 2019] and Vi-
+sualMRC [Tanaka et al., 2021].
+Information Extraction requires the model to extract key-value pairs from the input image. The
+‘keys’ (or ‘categories’) are always a stationary set. To convert this task to the instruction tuning
+format, we treat the value as the {answer} and construct the {question} as ‘What is the value for the
+{key}?’. When the key does not exist in the image, the {answer} is set to ‘None’. We collect Infor-
+mation Extraction data from DeepForm [Svetlichnaya, 2020], and Kleister Charity (KLC) [Stanis-
+lawek et al., 2021].
+Natural Language Inference is a binary classification task with labels ‘Entailed’ and ‘Refuted’.
+Given a statement, we construct the {question} as ‘{statement}, Yes or No?’. The {answer} is ‘Yes’
+or ‘No’ and refers to ‘Entailed’ or ‘Refuted’, respectively. TabFact [Chen et al., 2020], a natural
+language inference dataset about tables, is chosen for instruction tuning.
+Image Captioning aims to briefly describe an image with fluent language. We treat the caption
+as the {answer} and randomly choose a prompt as the {question} like LLaVa [Liu et al., 2023a].
+TextCaps [Sidorov et al., 2020] is an appropriate captioning dataset on natural images with texts.
+Language-only and General Vision-and-language Instruction Tuning. To enhance the model’s
+ability of language comprehension and multi-modal open-ended conversation, we follow mPLUG-
+Owl [Ye et al., 2023] to introduce language-only and general vision-and-language instruction tuning
+data [Taori et al., 2023, Vicuna, 2023, Xu et al., 2023a, Liu et al., 2023a].
+Figure 2 shows the composition of our instruction tuning data grouped by the dataset type. We use
+training sets of these datasets as instruction tuning data and evaluate models on test sets.
+3.3 Training Details
+We adopt a two-stage training paradigm, where the Vision Transformer and Language model are kept
+frozen. In the first stage, both the visual abstractor and LoRA [Hu et al., 2022] in the language model
+are fine-tuned. The first stage only uses the document understanding data and takes 10 epochs. In
+the second stage, we further freeze the visual abstractor and only train the LoRA. Besides document
+understanding data, the language-only and general vision-and-language instruction tuning data are
+further introduced at this stage and up-sampled 6 times. The second stage takes 3 epochs. Other
+training hyper-parameters are the same as mPLUG-Owl [Ye et al., 2023].
+4 Experiment
+4.1 LLMDoc
+Existing benchmarks are hard to evaluate the open-ended instruction understanding results given by
+MLMMs. For better compare the instruction understanding performance in the document domain,
+we further construct a test set with human evaluation, namely LLMDoc.
+4Table 1: Comparison with ocr-free methods on DUE-Benchmark.
+Model DocVQA InfoVQA DeepForm KLC WTQ TabFact
+Dessurt 63.2 - - - - -
+Donut 67.5 11.6 61.6 30.0 18.8 54.6
+Pix2Struct base 72.1 38.2 - - - -
+mPLUG-DocOwl 62.2 38.2 42.6 30.3 26.9 60.2
+Table 2: Comparison with ocr-free methods on chart, natural image and webpage understanding.
+Model ChartQA TextVQA TextCaps VisualMRC
+Donut 41.8 43.5 74.4 93.91
+Pix2Struct base 56.0 - 88.0 -
+mPLUG-DocOwl 57.4 52.6 111.9 188.8
+Data Collection To comprehensively evaluate the model’s abilities, we consider five scenarios
+to construct our evaluation dataset, including table (TabFact [Chen et al., 2020]), chart (ChartQA
+[Masry et al., 2022]), document (DocVQA [Mathew et al., 2021]), natural image (TextVQA [Singh
+et al., 2019]) and webpage (VisualMRC [Tanaka et al., 2021]). Specifically, for each dataset, we
+sample 20 images from the test split. For 10 of these images, we adopt a raw question as the instruc-
+tion. While for the other 10, we ask annotators to write instructions requiring stronger capabilities
+like summarization, inference, and calculation. In total, we obtain 100 test samples.
+Human Evaluation Following the rating criteria proposed in Self-Instruct [Wang et al., 2022], we
+perform the human evaluation to score the model’s responses, where A > B > C > D and A represents
+‘correct and satisfying response’, B means ‘acceptable response with minor imperfections’, C refers
+to ‘response to the instruction but has significant errors’ and D means ‘irrelevant or invalid response’.
+Figure 3: Human evaluation of mPLUG-DocOwl,
+mPLUG-Owl and MiniGPT-4 on LLMDoc.We compare mPLUG-DocOwl with other pop-
+ular mult-modal large language models, includ-
+ing mPLUG-Owl [Ye et al., 2023] and Mini-
+GPT4 [Zhu et al., 2023], on LLMDoc. As
+shown in Figure 3, mPLUG-DocOwl achieves
+significantly better performance, with 37 re-
+sponses being scored as “A”, demonstrating
+the stronger understanding ability of mPLUG-
+DocOwl in diverse document scenarios. Be-
+sides, it’s worth noting that all models have
+some responses scored as “C” or “D”, show-
+ing that instruction understanding performance
+in the document domain is still far from promis-
+ing and needs more endeavor.
+4.2 Benchmark Evaluation
+Besides human evaluation, we also compare
+our mPLUG-DocOwl with ocr-free state-of-
+the-art document understanding models on
+public datasets. Table 1 shows the comparison
+with Dessurt [Davis et al., 2022], Donut [Kim
+et al., 2022] and Pix2Struct [Lee et al., 2022]
+on DUE-Benchmark [Borchmann et al., 2021],
+which mainly requires the text recognition and layout understanding abilities on documents and ta-
+bles. Besides, Table 2 presents the evaluation on the chart, natural image and webpage datasets,
+which ask stronger ability to relate visual semantics and text information. Without finetuning on
+each dataset, our mPLUG-DocOwl achieves comparable or even better performance.
+5Human: Indicate a few pertinent items in this graphic. mPLUG-DocOwl: In 2019, 13% of the population in the United Statesreported that they neverused the internet. 
+Human: Name the companies involved in ‘CRP agreement’? mPLUG-DocOwl: Cone-Mark& R.J. Reynolds Tobacco Co. 
+Human: How many commercial publishers have shown interest in using the license ? mPLUG-DocOwl: At least two commercial publishers have shown interest in using the license.
+Human: on which date did they score the most points? mPLUG-DocOwl: October 11, 1981
+Human: what is the second room on the list? mPLUG-DocOwl: right room
+Human: What % of parents are notpresent at the time of game purchase or rental?mPLUG-DocOwl: 9%
+1−91%=9%(a)
+(c)(b)
+(d)
+(e)(f)Figure 4: Qualitative results of mPLUG-DocOwl. The crucial regions and corresponding words are
+annotated with the same colors for clearer visualization. Wrong answers are colored red.
+4.3 Qualitative Analysis
+Benchmark Results. Qualitative results on different types of images are shown in Figure 4. Cru-
+cial regions and corresponding responses are annotated with the same colors. Case (a) shows that
+mPLUG-DocOwl can accurately find the answer from a webpage screenshot with complex contents.
+Case (b) shows that mPLUG-DocOwl is even able to understand hand-drawn tables and correctly
+recognize handwritten fonts. In case (c), mPLUG-DocOwl can summarize key points from a chart. It
+successfully understands that the table is about internet usage and infers that “Never” means “Never
+used internet”. However, it also generates illusory outputs, such as "in the United States". The ques-
+tion in case (d) requires the model to understand the “Result” column, compare the points and return
+the date with the best results. Case (e) demonstrates that our model is capable of processing scanned
+6Human: Convert each row of the table into jsonformat.mPLUG-DocOwl:{"Game":1,"Date":1,"Location":"Redland Field","Time":1:42,"Attendance":30,511,"Game":2,"Date":2,"Location":"Redland Field","Time":1:42,"Attendance":29,698,"Game":3,"Date":3,"Location":"Comiskey Park (I)","Time":1:30,"Attendance":34,363,"Game":4,"Date":4,"Location":"Comiskey Park (I)","Time":1:37,"Attendance":34,379,"Game":5,"Date":6,"Location":"Redland Field","Time":1:45,"Attendance":32,006,"Game":6,"Date":7,"Location":"Redland Field","Time":2:06,"Attendance":13,923,"Game":7,"Date":8,"Location":"Redland Field","Time":1:47,"Attendance":32,930}Mini-GPT4:| Date | Time |
+Human: What's the name of the shop? What does the shop sell? mPLUG-DocOwl: The shop is called the Scrub Shop, and it sells medical uniforms.Mini-GPT4: The name of the shop is Scrub Shop. The shop sells various types of clothing such as dresses, tops, pants, and accessories.
+Score:BScore:D
+Score:AScore:B(a)
+(b)Figure 5: Qualitative comparison between mPLUG-DocOwl and Mini-GPT4 on LLMDoc. Part one.
+documents and distinguishing company and person names. Case (f) shows that mPLUG-DocOwl
+can not only recognize small and blurry text but also perform simple calculations following the user
+intent.
+LLMDoc Results Figure 5 and Figure 6 present the comparison between mPLUG-DocOwl and
+Mini-GPT4 on LLMDoc. Figure 5 (a) requires models to convert a table into JSON format. Our
+mPLUG-DocOwl correctly understands the instruction and return a string in JSON format, but
+misses the last row. Mini-GPT4 fails to comprehend the instruction and doesn’t understand the
+content within the table. In Figure 5 (b), both mPLUG-DocOwl and Mini-GPT4 correctly recog-
+nize the name of the shop. However, Mini-GPT4 overlooks a smaller sign indicating clothes in this
+shop are medical uniforms. As for chart understanding in Figure 6 (c), Mini-GPT4 gives a wrong
+answer and redundant response, while our mPLUG-DocOwl gives a concise and correct response.
+In Figure 6 (d), Bernadette’s actual purpose is to confirm with Suzy if she would like to have the
+copy sent overnight. This not only requires the model to accurately recognize the text, but also to
+understand the relationships between involved persons. mPLUG-DocOwl recognizes the phrase "re-
+quest a copy of chapter," but misunderstands the subject and object. Mini-GPT4 only comprehends
+that this image is a mail scenario and provides a vague and hallucinatory response. In Figure 6 (e),
+mPLUG-DocOwl gives a correct summary of the two latest news but Mini-GPT4 generates news
+irrelevant to the webpage screenshot.
+7Human: What is Bernadette's intention in sending this message? mPLUG-DocOwl: To request a copy of chapter from MerckMini-GPT4:Bernadette's intention in sending the email is to request the recipient's assistance with completing an important task. The message says, "I need your help with this," indicating that Bernadette needs the recipient's assistance to complete a specific task.
+Human: What are the two latest news? mPLUG-DocOwl: The two latest news are the European Union in the Republic of Moldova and the European Union resources for education. Mini-GPT4: The two latest news in the image are'Amazonto become a member of the US Chamber of Commerce' and 'The US Department of Agriculture has proposed to restrict trade with China due to alleged intellectual property violations.'
+Score:BScore:C
+Score:AScore:C
+Human: Which age group of people needs to pay most attention to stroke?mPLUG-DocOwl:70+ years oldMini-GPT4:The age group that needs the most attention for stroke is 65 and older. … and the older population is at a higher risk of experiencing a stroke than younger people.Score:AScore:C(c)
+(d)
+(e)
+Figure 6: Qualitative comparison between mPLUG-DocOwl and Mini-GPT4 on LLMDoc. Part
+two.
+8Human: What was the average ticket price between 2007 and 2011?mPLUG-DocOwl: 117.84
+Human: How many different speakers appear in the picture?mPLUG-DocOwl: There are three different speakers in the picture.
+(a)(b)Figure 7: Failure cases on LLMDoc. Part one.
+The LLMDoc contains many challenging instruction understanding cases in the document domain.
+Figure 7 and Figure 8 show some wrong responses given by mPLUG-DocOwl. In Figure 7 (a),
+mPLUG-DocOwl only takes note of the three names in the picture, but ignores the fact that the user
+itself is also a speaker. In Figure 7 (b), mPLUG-DocOwl fails to perform multi-step calculations on
+multiple elements in the image. In Figure 8 (c), the model can understand the scene and the text in
+it, but fantasizes about non-existent characters. In Figure 8 (d), mPLUG-DocOwl fails to understand
+the instruction for writing news and only read the texts in the tablet.
+5 Conclusion
+In this work, we infuse diverse ocr-free document understanding capabilities into mPLUG-Owl by
+incorporating document understanding data into instruction finetuning. Experiment results demon-
+strate that our mPLUG-DocOwl achieves comparable or even better performance than existing OCR-
+free methods. Besides, benefiting from language-only and general vision-and-language instruction
+tuning, mPLUG-DocOwl can better comprehend user instructions and intentions, enabling more
+complex interactions. Moreover, human evaluation on LLMDoc reveals that mPLUG-DocOwl still
+struggles with document-related commonsense reasoning, mathematical calculations, and creative
+generation. This provides valuable insights about developing stronger document understanding abil-
+ities with the LLM in the future.
+9Human: Write a news. mPLUG-DocOwl: Medal table Rank Nation Gold | Silver | Bronze | Total Russia 13 9 8 30 Ukraine 6 4 8 21 Japan 3 2 3 8 France 3 1 2 6 Italy 3 2 0 5 Hungary 2 3 0 5 China 2 0 2 5 Germany 0 2 3 5 Poland 0 2 1 4 Canada 0 1 1 3 Czech Republic 1 0 1 1 Estonia 0 1 0 1 United Kingdom 0 0 1 1Human: What kind of scene do the words in the picture convey?mPLUG-DocOwl: The words in the picture convey a comic book or cartoon-like scene, with a character saying "K-Rash" and "Sploosh!" The words are accompanied by a drawing of a person, possibly a character from a comic book or cartoon, and the words are in a speech bubble. The scene appears to be a humorous or lighthearted moment, as the character is likely expressing an exaggerated or unexpected reaction to something.(c)(d)
+Figure 8: Failure cases on LLMDoc. Part two.
+10

@@ -1,0 +1,22 @@
+Summary:
+This paper introduces a benchmark called CODETASK-CL for evaluating continual learning (CL) in code generation models.
+The paper compares popular CL techniques from natural language processing (NLP) and computer vision domains on the CODETASK-CL benchmark.
+The paper shows that Prompt Pooling, an effective CL method, suffers from catastrophic forgetting in coding tasks due to distribution shifts.
+The paper proposes a method called Prompt Pooling with Teacher Forcing (PP-TF) that stabilizes training and improves performance by 21.54%.
+The paper establishes a training pipeline for CL on code models and provides code for further development.
+The experiments show that task-specific prompts and experience replay are effective methods for CL in code generation.
+The CodeT5 model with experience replay achieves the best performance on the CODETASK-CL benchmark.
+The paper explores the training instability of Prompt Pooling and explains why it leads to catastrophic forgetting.
+The paper concludes by highlighting the importance of CL in code generation models and the need for further research in this area.
+
+Keywords:
+- Continual learning
+- Code generation models
+- Benchmark
+- CODETASK-CL
+- Prompt Pooling
+- Prompt Pooling with Teacher Forcing
+- Catastrophic forgetting
+- Task-specific prompts
+- Experience replay
+- Training instability.

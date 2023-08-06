@@ -1,0 +1,17 @@
+Summary:
+This paper explores the verification of generative AI output in a non-deterministic, trustless, decentralized network. The authors generate millions of data samples using open source diffusion and large language models and analyze the outputs to provide empirical evidence for verification. They also release a new training dataset called ImageNet-Gen. With a majority vote between three independent verifiers, the authors show that they can detect image generated perceptual collisions in generated AI with high probability and low chance of intra-class collision. They also achieve 100% consensus using greedy methods or n-way beam searches for large language models. The paper identifies and minimizes the major sources of stochasticity and presents gossip and synchronization training techniques for verifiability.
+
+Bullet Points:
+1. The paper explores the verification of generative AI output in a non-deterministic, trustless, decentralized network.
+2. The authors generate millions of data samples using open source diffusion and large language models.
+3. They analyze the outputs to provide empirical evidence for different parameterizations of tolerance and error bounds for verification.
+4. The authors release a new training dataset called ImageNet-Gen for use in augmenting existing training pipelines.
+5. With a majority vote between three independent verifiers, image generated perceptual collisions can be detected with high probability and low chance of intra-class collision.
+6. For large language models, 100% consensus can be achieved using greedy methods or n-way beam searches.
+7. The paper identifies and minimizes the major sources of stochasticity in generative AI training.
+8. Gossip and synchronization training techniques are presented for verifiability.
+9. The work provides a practical foundation for AI verification and consensus in a decentralized network.
+10. The authors release the ImageNet-Gen dataset, consisting of 1.3 million images, for verification and use in training pipelines.
+
+Keywords:
+Generative Artificial Intelligence, Verification, Trustless Network, Decentralized Network, Data Generation, ImageNet-Gen, Consensus, Perceptual Collisions, Large Language Models, Stochasticity.

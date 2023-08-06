@@ -1,0 +1,31 @@
+SCITUNE: Aligning Large Language Models with Scientific Multimodal
+Instructions
+Sameera Horawalavithana and Sai Munikoti and Ian Stewart and Henry Kvinge
+yasanka.horawalavithana,sai.munikoti,ian.stewart,henry.kvinge@pnnl.gov
+Pacific Northwest National Laboratory, Richland, WA
+Abstract
+Instruction finetuning is a popular paradigm to
+align large language models (LLM) with hu-
+man intent. Despite its popularity, this idea is
+less explored in improving the LLMs to align
+existing foundation models with scientific dis-
+ciplines, concepts and goals. In this work, we
+present SciTune as a tuning framework to im-
+prove the ability of LLMs to follow scientific
+multimodal instructions. To test our method-
+ology, we use a human-generated scientific in-
+struction tuning dataset and train a large mul-
+timodal model LLaMA-SciTune that connects
+a vision encoder and LLM for science-focused
+visual and language understanding. In compar-
+ison to the models that are finetuned with ma-
+chine generated data only, LLaMA-SciTune sur-
+passes human performance on average and in
+many sub-categories on the ScienceQA bench-
+mark.
+1 Introduction
+Instruction tuning has gained significant traction in
+the community as a means of enhancing the capa-
+bilities of large language models (LLMs), allowing
+them to accurately balance desired outcomes, con-
+text, and human p

@@ -1,0 +1,223 @@
+Large Language and Text-to-3D Models for
+Engineering Design Optimization
+Thiago Rios
+Honda Research Institute Europe
+Offenbach am Main, Germany
+thiago.rios@honda-ri.deStefan Menzel
+Honda Research Institute Europe
+Offenbach am Main, Germany
+stefan.menzel@honda-ri.deBernhard Sendhoff
+Honda Research Institute Europe
+Offenbach am Main, Germany
+bernhard.sendhoff@honda-ri.de
+Abstract —The current advances in generative AI for learning
+large neural network models with the capability to produce
+essays, images, music and even 3D assets from text prompts
+create opportunities for a manifold of disciplines. In the present
+paper, we study the potential of deep text-to-3D and text-
+to-text models in the engineering domain, with focus on the
+chances and challenges when integrating and interacting with
+3D assets in computational simulation-based design optimization.
+In contrast to traditional design optimization of 3D geometries
+that often searches for the optimum designs using numerical
+representations, such as B-Spline surface or deformation pa-
+rameters in vehicle aerodynamic optimization, natural language
+challenges the optimization framework by requiring a different
+interpretation of variation operators while at the same time may
+ease and motivate the human user interaction. Here, we propose
+and realize a fully automated evolutionary design optimization
+framework using Shap-E, a recently published text-to-3D asset
+network by OpenAI, in the context of aerodynamic vehicle
+optimization. For representing text prompts in the evolutionary
+optimization, we evaluate (a) a bag-of-words approach based on
+prompt templates and Wordnet samples, and (b) a tokenisation
+approach based on prompt templates and the byte pair encoding
+method from GPT4. Our main findings from the optimizations
+indicate that, first, it is important to ensure that the designs
+generated from prompts are within the object class of application,
+i.e. diverse and novel designs need to be realistic, and, second,
+that more research is required to develop methods where the
+strength of text prompt variations and the resulting variations of
+the 3D designs share causal relations to some degree to improve
+the optimization.
+Index Terms —Large language models, generative AI, text-to-
+3D, simulation-based optimization, design optimization
+I. I NTRODUCTION
+The recent advances in building foundation models [1],
+large language models (LLM) [2], and text-to-image models
+[3] have a major impact on a variety of fields, such as
+natural language processing and understanding, text and image
+generation, and human machine interaction. The maturity
+and ease of use of these novel models even lead to the
+adaptation of business models in some domains e.g., text
+writing, software development, and product design. The ap-
+plication of foundation models to engineering has been less
+discussed compared to other domains. Nevertheless, we see
+great potential in how large language models, text-to-image
+and text-to-3D models could be used in industrial engineering.
+Natural language interfaces between engineers and complex
+software systems in computational aided engineering couldimprove their usage and make them more accessible for
+younger engineers or for non-experts in general. Furthermore,
+text-to-X approaches could improve the interaction between
+engineers and computer-aided design (CAD) and engineering
+(CAE) systems by offering new ways for generating designs
+and realizing design changes (images and 3D objects).
+In computational engineering optimization text-to-3D gen-
+erative models could be used as unique design represen-
+tations. Building on former design data they would allow
+the exploration of the design space through language. From
+a general perspective, there are many alternative ways to
+describe a 3D object. All object representations rely on a
+number of parameters that are manipulated so that a certain
+object is realized. Traditional object representations are spline
+curves and surfaces, which are e.g. parameterized by control
+points and knot points. Free-form deformations, which repre-
+sent object changes, are particularly suitable for representing
+modifications of complex objects especially when combined
+with finite element/volume simulations [4]. CAD systems
+use complex and specific ways to represent objects, and
+computational engineering simulations typically rely on high
+resolution meshes (e.g. triangulated mesh surfaces). These
+meshes are used for approximating physical equations like the
+Navier-Stokes equation for fluid dynamics calculations. The
+choice of the representation of an object depends on the how
+the representation is used in the computational engineering
+process. Recently, also deep learning based representations,
+such as (variational) autoencoders ((V)AEs) have been applied
+to generate point cloud designs [5], [6]. By modifying the
+parameters of the latent space design variations are realized
+and processed in downstream applications like simulation-
+based optimization. Particularly, for engineering optimization,
+the representation largely determines the efficiency of the
+optimization and the quality of solutions that can be reached.
+Using a representation for design optimization that describes
+a 3D-object with natural language offers a very different and
+unique approach to generate 3D shapes. Even though the
+benefit of having a very intuitive description of objects and
+their changes is evident, the quality of text-to-3D models in
+the context of design optimization is unknown and needs to be
+assessed. Here, not only the meaningfulness of designs for a
+given text prompt is of interest, but also the relation between
+prompt variations and resulting design variations. Since thearXiv:2307.01230v1  [cs.CL]  3 Jul 2023models rely on curated data sets, it is important to understand
+in how far ”novel” designs can be generated. By ”novel”,
+here we refer to designs which are different from the training
+data, yet realistic for a given application. In an engineering
+design optimization framework, we need to ensure that the
+generated designs are consistent with the optimization target,
+e.g. a prompt including the word ”car” should result in a
+vehicle-like geometry, while (subtle) variations like additional
+attributes or adjectives result in recognizable variations, e.g., a
+”compact car” should be different from a ”sports car” (Fig. 1).
+Fig. 1. Examples of car shapes generated using Shap-E based on the prompts
+“A car” ,“A sports car” , and “A compact car” .
+It is also important to get insights into the transition between
+generated designs of similar shapes to ”hallucinated” designs
+to identify if a generated design is ”novel”, maybe part
+of a larger design group, or if it is an outlier or artefact.
+Therefore, in the present paper, we discuss the potential of
+multi-modal large language models as representations of 3D
+objects for simulation-based engineering design optimization
+from a practitioners perspective.
+Firstly, we propose a fully automated computational 3D
+design optimization framework for vehicle development that
+integrates the recently published Shap-E [7] as a text-to-3D
+generative model. Secondly, we analyze our optimization
+results to identify benefits for interacting with engineering
+tools through natural language models. For example, replacing
+standard representations, such as spline curves/surfaces or
+free form deformations [4], [8], with text prompts has direct
+implications not only on the quality of the automatically
+generated models but also potentially improves the interpreta-
+tion of the characteristics of the optimized design. Although
+we use automotive applications in this paper, the methods
+and conclusions equally apply to other design optimization
+problems such as from aviation, or marine.
+The remainder of this paper is outlined as follows: In
+Section II, we discuss deep learning models for evolutionary
+design optimization, like generative models for text-to-3D
+tasks and prompt engineering. Section III details our proposed
+design optimization framework with a focus on the different
+approaches for representing text prompts. In Section IV, we
+demonstrate the application of our framework to a simulation-
+based design optimization for the minimization of vehicle
+drag coefficients and discuss the results of our experiments.
+Section V concludes the paper.II. L ITERATURE REVIEW
+In this section, we will describe evolutionary design opti-
+mization in engineering with learning-based shape representa-
+tions. Then, we highlight the current state in text-to-3D and
+text-to-image generative models followed by approaches for
+prompt engineering.
+A. Geometric deep learning for 3D vehicle optimization
+The optimization of the shape of 3D objects is an important
+step in product design. For automotive engineering, the shape
+of cars is optimized e.g for fuel efficiency, or crash safety. A
+computational engineering optimization framework typically
+consists of the shape parameterization, i.e., the representa-
+tion(s), the optimization algorithm for modifying the shape pa-
+rameters and simulation tools for determining the design per-
+formance. Many different approaches for representing shapes
+have been proposed and all have certain advantages and dis-
+advantages. It is important to note that for almost all realistic
+engineering frameworks the shape is represented at least two,
+realistically even three times: the first representation is used for
+the optimization algorithm, i.e., the optimization modifies the
+parameters of this representation. The second representation
+is used for the simulation algorithm, which usually uses a
+high resolution mesh for solving differential equations. The
+third representation is finally used for the actual manufacturing
+process. When we describe shape representations in this paper,
+we mostly refer to the first one, the one whose parameters
+are subject to optimization. However, the transition between
+the different representations is of high practical relevance and
+should not be overlooked in the computational engineering
+optimization framework.
+The introduction of geometric deep learning architectures
+[5] enabled the development of 3D deep-generative models
+for engineering tasks. Most of the currently available works
+focus on learning compact representations of 3D objects for
+shape generation and performance prediction. In [9], Umetani
+proposes a system for generating 3D car designs and for
+predicting the corresponding aerodynamic performance. The
+system is based on a deep autoencoder architecture, where, by
+manipulating the values of the learned latent representation,
+the user quickly generates 3D car designs and obtains an
+estimate of the aerodynamic drag of the shape.
+Rios et. al build upon a 3D point cloud autoencoder [6] and
+propose an automated framework for car design optimization
+based on evolutionary algorithms [10] and multi-task opti-
+mization methods [11]. The authors show that the point-based
+networks learn variations of local geometric features better
+than global transformation methods, e.g., principal component
+analysis, which yields better performance in nonlinear design
+optimization problems. Saha et. al evaluate point-based (vari-
+ational) autoencoders ((V)AEs) with respect to their shape-
+generative and performance prediction capabilities [12], [13].
+One target is to understand whether V AEs are able to generate
+novel yet realistic designs. The authors claim that, compared
+to the standard architecture of variational autoencoders, a
+proposed regularization of the latent space enables smootherdesign variations with less artifacts, which is beneficial for
+3D shape synthesis. However, this comes at the expense
+of a reduced accuracy of surrogate models, which learn to
+predict the performance of 3D designs using the latent space
+representation as input.
+Learned design representations have a number of advantages
+compared to traditional representations like splines or free
+form deformation. For complex shapes, the parameterization
+of traditional representations requires an experienced engineer
+who balances the freedom of design variations with the dimen-
+sionality of the search space. It is not uncommon that during
+the search process these representations have to be adapted in
+order to increase the design flexibility of a certain part of the
+3D object. Apart from the additional effort and the dependence
+on the expertise of the engineer, the freedom of generating
+truly novel and unique designs is restricted by the choice of the
+representation, i.e., by the inherent assumption of the engineer
+where in the 3D object successful variations are most likely to
+be realized. Of course learned design representations also have
+their challenges. Firstly, the flexibility of the representation
+depends on the variations in the data set that is used for
+training. The capability to extrapolate from the seen data is
+unclear and unpredictable. Secondly, representations learned
+by deep neural networks are difficult to interpret. Therefore, it
+is impossible to interfere during the optimization process or to
+insert some design p

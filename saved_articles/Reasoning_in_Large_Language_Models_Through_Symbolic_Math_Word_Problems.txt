@@ -1,0 +1,386 @@
+Reasoning in Large Language Models Through
+Symbolic Math Word Problems
+(Appears in Findings of ACL 2023. First submitted on January 20, 2023)
+Vedant Gaur∗
+Aragon High School
+vedantgaur101@gmail.comNikunj Saunshi†
+Google Research, New York
+nsaunshi@google.com
+Abstract
+Large language models (LLMs) have revolu-
+tionized NLP by solving downstream tasks
+with little to no labeled data. Despite their
+versatile abilities, the larger question of their
+ability to reason remains ill-understood. This
+paper addresses reasoning in math word prob-
+lems (MWPs) by studying symbolic versions
+of the numeric problems, since a symbolic
+expression is a “concise explanation” of the
+numeric answer. We create and use a symbolic
+version of the SV AMP dataset and find that
+GPT-3’s davinci-002 model also has good zero-
+shot accuracy on symbolic MWPs. To evaluate
+the faithfulness of the model’s reasoning, we
+go beyond accuracy and additionally evaluate
+thealignment between the final answer and
+the outputted reasoning, which correspond to
+numeric and symbolic answers respectively for
+MWPs. We explore a self-prompting approach
+to encourage the symbolic reasoning to align
+with the numeric answer, thus equipping the
+LLM with the ability to provide a concise
+and verifiable reasoning and making it more
+interpretable. Surprisingly, self-prompting also
+improves the symbolic accuracy to be higher
+than both the numeric and symbolic accuracies,
+thus providing an ensembling effect. The
+SV AMP-Sym dataset will be released for
+future research on symbolic math problems.
+1 Introduction
+Large language models (LLMs), with hundreds
+of billions of parameters, can solve a wide
+range of NLP tasks such as machine translation,
+question-answering, etc., taking us closer to
+general-purpose intelligent agents. The initial
+success of GPT-3 (Brown et al., 2020) has led
+to many other LLMs (Rae et al., 2021; Smith
+et al., 2022; Chowdhery et al., 2022) which have,
+∗Currently attending the University of Pennsylvania, al-
+though all work was done while at Aragon High School.
+†Most of the work was performed while at Princeton
+University and after graduating, but before joining Google.perhaps surprisingly, taken big strides in solving
+difficult tasks like common sense reasoning, math
+and science problems (Lewkowycz et al., 2022),
+and writing code (Li et al., 2022).
+Despite the incredible successes, we have little un-
+derstanding of why LLMs are effective at problems
+that require reasoning. In fact we have limited
+techniques to quantifiably study the question of
+reasoning beyond just evaluating accuracy. Recent
+ideas like Chain-of-Thought prompting (CoT)
+(Wei et al., 2022b; Kojima et al., 2022) encourage
+the model to “think step by step” and output a
+verbose reasoning in text. However, verifying such
+reasoning at scale will incur the infeasible cost of
+manually going over the text outputs. Furthermore,
+we would like the model’s reasoning to be con-
+sistent with its outputted answer, in order to trust
+the presented reasoning. For these considerations,
+we would like our models to output a concise
+reasoning or explanation for its answer that can
+beautomatically verified . In particular, we desire
+reasoning in the form of explanations that are
+•Verifiable: For ease of evaluating correctness
+of the outputted reasoning, and
+•Concise: For scalability of verification. Manu-
+ally going through text reasoning can quickly
+get cumbersome
+For instance, instead of a text description of
+an algorithm to solve a problem, a Python
+implementation of the algorithm would be a more
+concise explanation for the reasoning behind
+the algorithm1. Similarly, a simple linear model
+or decision tree explaining the answers of a
+black-box neural network also achieves the same
+goal (Ribeiro et al., 2016). Concise explanations
+can provide clearer insights into the reasoning
+abilities of models, and verifiable explanations aid
+1We can automatically verify the answer not just for one
+problem, but for all instance of that problemarXiv:2308.01906v1  [cs.CL]  3 Aug 2023interpretability and help foster trust in models, in
+line with explainable AI (Samek et al., 2019).
+In this work we use concise and verifiable
+explanations to study reasoning abilities of LLMs
+in math word problems (MWPs). LLMs have
+shown to achieve good zero-shot accuracy on many
+numeric MWP benchmarks (Kojima et al., 2022).
+Chain-of-thought like ideas encourage LLMs to
+first general a step-by-step explanation (in text)
+before generating the answer. However, this does
+not satisfy the criteria of being concise or easily
+verifiable2. We address reasoning by considering
+symbolic versions of numeric MWPs, because a
+symbolic expression can be viewed as a concise
+explanation for a numeric answer and can also be
+automatically evaluated. Thus in this reasoning
+framework for MWPs, we require an LLM to out-
+put both, a numeric answer and a concise symbolic
+expression, such that we have: (1) high accuracy
+for the predicted numeric answer, (2) high align-
+ment of the symbolic expression with the predicted
+numeric answer. While most prior studies focus on
+goal (1), we argue that goal (2) is equally important
+for interpretability of these models and to trust
+the its reasoning. Our main finding is that LLMs
+can also do reasonably well on goal (2), either
+by generating a numeric answer and symbolic
+explanation together, or by generating the answer
+first and then a post-hoc symbolic explanation. In
+this context, we make the following contributions:
+Symbolic evaluation. We construct a symbolic
+version of the SV AMP dataset (Patel et al.,
+2021) called SV AMP-Sym to evaluate LLMs.
+Firstly we find, perhaps surprisingly, that GPT-3’s
+davinci-002 model already achieves good zero-shot
+accuracy on symbolic problems ( 64.2%), compa-
+rable to the numeric accuracy of 68.9%. Secondly,
+this observation provides a simple way to get good
+accuracy and alignment for numeric problems by
+first solving symbolic versions and then substitut-
+ing back the values for variables. This approach
+generates the numeric answer and a symbolic
+explanation in one go, thus trivially achieving3an
+accuracy of 64.2% and alignment of 100%.
+Self-prompting. There are two key drawbacks
+with the above approach: (a) symbolic accuracy of
+64.2% is lower than the numeric accuracy ( 68.9%),
+2It is not uncommon for the outputted reasoning to be
+inconsistent with the final answer
+3If a “calculator” can evaluate symbolic expressions.(b) alignment of symbolic expressions, as post-hoc
+explanation to the original numeric answers, is very
+low (∼50%). To get a better post-hoc explanation,
+we propose a novel self-prompting approach that
+first prompts the LLM with the numeric problem
+and its response to the problem, and then asks
+it to solve the symbolic problem; see Figure 1.
+Self-prompting significantly improves alignment
+with numeric answers to 74% (a 24% absolute
+improvement). Surprisingly, self-prompting also
+improves the symbolic accuracy to 71.7%, higher
+than both the raw numeric and symbolic accuracies
+of68.9% and 64.2% respectively. This suggests
+that self-prompting has an ensembling effect.
+We perform further ablation studies and analyses
+and hope that these insights will aid future work
+on using LLMs for reasoning problems.
+1.1 Related Work
+Language models like GPT-3 (Brown et al., 2020)
+and MLMs like BERT (Devlin et al., 2019) have
+demonstrated impressive emergent behaviors (Wei
+et al., 2022a) at scale. For math problems, Minerva
+(Lewkowycz et al., 2022) was fine-tuned from
+PaLM (Chowdhery et al., 2022) to do well on many
+MWP benchmarks. Instead of fine-tuning, Wei
+et al. (2022b) uses in-context learning and finds
+that asking the model to “think step by step” (CoT
+prompting) improves few-shot accuracy on MWPs;
+Kojima et al. (2022) verify this for zero-shot
+setting as well, which is the focus of our work.
+There is limited theoretical work for the down-
+stream success of LMs (Saunshi et al., 2021;
+Xie et al., 2022) and the emergent behaviors of
+LLMs through scaling laws (Kaplan et al., 2020).
+Our idea of self-prompting is motivated by the
+efficacy of in-context learning (Brown et al., 2020)
+and prompting (Liu et al., 2023) in LMs. The
+ensembling effect of self-prompting idea could
+be related to self-calibration abilities of LMs
+(Kadavath et al., 2022). Finally, Ho et al. (2022)
+survey the progress of LMs on various notions
+of reasoning; we consider a weaker notion of
+“concise post-hoc explanations” here.
+2 Math Word Problems with LLMs
+2.1 SV AMP-Sym Dataset
+We choose the SV AMP dataset (Patel et al.,
+2021) for testing LMs on MWPs because it
+provides numeric answers in the form of numericFigure 1: LMs can be queried to solve numeric/symbolic math problems. Self-prompting includes the numeric
+problem and the LM’s solution to it before passing the symbolic problem. This encourages the model to output the
+answer that aligns with the numeric answer. The symbolic expression w-x-y serves as a concise explanation/reason-
+ing for the numeric answer of 2.
+expressions (rather than just numeric values). This
+lets us automatically convert the dataset into a
+symbolized version, without manual annotation.
+The main idea is to replace all occurrences of
+numbers in the problem statement with newly
+introduced variables, e.g. (w,x,y,z) . Appendix A
+provides more details on the dataset construction.
+The dataset is released in https://github.com/
+vedantgaur/Symbolic-MWP-Reasoning .
+2.2 Querying and Evaluating LMs
+Broadly, our evaluation pipeline has four phases:
+(1) get a verbose response from the LLM for the
+math problem, (2) prompt the LLM to extract just
+the answer (number or symbolic expression) from
+its initial response, (3) refine the extracted answer
+using a novel filtering step, (4) compare the filtered
+answer to the ground-truth answer.
+Initial response. We query the LM with the
+problem statement and an optional CoT prompt,
+i.e."Q: <Problem> A:" or"Q: <Problem> A:
+Let’s think step by step." .<Problem> could
+either be a numeric or symbolic problem. Table 3
+summarizes the prompts used for various settings.
+Answer extraction. Since the LLM outputs a
+long text response (Figure 1), we use an extraction
+prompt to isolate the answer, similar to Kojima
+et al. (2022). We query the LM with the transcript
+so far, followed by the question and the prompt
+"The final answer (only the number) is:"
+to isolate the numeric answer. Table 3 has the
+similar prompt for symbolic problems.
+Answer filtering. The extraction prompt does
+not always isolate the final answer and sometimes
+outputs a sentence, especially for symbolic
+problems. Thus we add a LM-independent filtering
+step which includes stripping escape sequences,removing commas, de-latexifying equations,
+picking the longest symbolic expression, among
+others; more details in Appendix C.2.
+Answer evaluation. We compare the filtered
+answer to the ground-truth answer (symbolized
+expression or numeric value). Since there are mul-
+tiple ways to express the same symbolic expression
+(e.g. "w + (y + x)" and"w + x + y" ), we
+compare two expressions through their evaluations
+on 20 random variable assignments. If they match
+on all 20 assignments, we adjudge them to be
+equivalent, making a (reasonable) assumption that
+20 random assignments will avoid false positives.
+3 Experimental Results
+We pick 150/1000 examples from the SV AMP
+dataset (due to budget constraints) and run each
+examples 5 times. We use GPT-3’s davinci-002
+model with temperature 0.0 for (mostly) determin-
+istic outputs, with a max token length of 256.
+3.1 Numeric and Symbolic Evaluations
+We discuss the accuracies for solving numeric
+and symbolic math problems from SV AMP and
+SV AMP-Sym respectively.
+Numeric accuracy. The zero-shot numeric
+accuracy both with chain-of-thought (CoT) prompt
+and without (vanilla) are presented in Table 1;
+they are 68.9% and 65.6% respectively. This good
+performance is unsurprising given prior work
+(Kojima et al., 2022). Our accuracies are ∼5-7%
+higher than Kojima et al. (2022), due in part to
+better answer extraction and filtering.
+Symbolic accuracy. We also evaluate raw
+symbolic problems from SV AMP-Sym in the
+vanilla and CoT settings with 3 natural choices for
+variables: (w,x,y,z) ,(i,j,k,l) and(p,q,r,s) .Numeric Symbolic
+(w,x,y,z) (p,q,r,s) (i,j,k,l)
+Evaluation Raw (-F) Raw (-F) SP (-F) SP + AP Raw Raw
+AccuracyVanilla 65.6 (61.6) 59.7 (47.6) 61.9 (40) 68.3 62.3 53.5
+CoT 68.9 (65.9) 64.2 (48.8) 67.9 (48.6) 71.7 64.4 58.4
+AlignmentVanilla - 52.9 (40.7) 60.3 (40) 64.9 56.3 44.7
+CoT - 51.2 (39.1) 63.1 (44.9) 74 51.9 47.1
+Similarity Vanilla - 27.8 44.2 49.8 27.1 26.8
+(BLEU) CoT - 21.3 53.9 57.6 22.7 21.4
+Similarity Vanilla - 56.5 65.2 71.3 56.8 55.4
+(Levenshtein) CoT - 44.9 75.6 79.8 45.4 43.9
+Table 1: Zero-shot accuracy and alignment evaluations using GPT-3. All values are reported in %. “Raw” refers to
+evaluation on the SV AMP and (SV AMP-Sym) dataset for numeric (symbolic) MWPs; (-F) refers to the output before
+the filtering step. “SP” is the new self-prompting method and “SP + AP” refers to two-stage self-prompting where
+we an additional “Alignment Prompt” is added when needed; see Section 3.3. CoT prompting consistently elicits
+higher accuracy from the model for numeric and symbolic problems. While accuracy and alignment only look at the
+final answers, we also measure similarity between the full responses for numeric and symbolic problems. As evident,
+self-prompting significantly improves the similarity under BLEU score and Levenshtein metric; Appendix B.1 has
+more details on these metrics.
+Firstly we observe, in Table 1, that GPT-3 can
+achieve pretty high symbolic accuracies with
+variables (w,x,y,z) : vanilla and CoT settings
+achieve 59.7% and 64.2% respectively, which is
+just4-5% lower than numeric accuracy. Further-
+more, we notice that variables (i,j,k,l) have
+slightly worse accuracy than other variable settings,
+possibly because (w,x,y,z) and(p,q,r,s) are
+more popular choice for variables in the training
+data for language models.
+Effect of filtering. We report the accuracies
+without the filtering step in Table 1; these are
+the (-F) entries. While there is a 4-5% drop in
+the numeric accuracy without filtering, the drop
+is12-14% for symbolic problems, suggesting
+that filtering is much more crucial for symbolic
+problems4. Our extraction and filtering steps still
+have issues and there is scope for improvement.
+3.2 Reasoning and Alignment
+While prior work only cares about the accuracy
+on MWPs, we also study of reasoning abilities
+of LLMs by requiring them to generate a concise
+explanation for numeric answers in the form of
+a symbolic expressions. We evaluate “reasoning
+ability” through an alignment metric that checks
+if the outputted numeric answer and symbolic
+expression compute to the same value. In general
+there is no consistent zero-shot method to return
+4Intuitively it makes sense that extracting an expression/e-
+quation is harder than extracting a single numbera perfectly aligned symbolic expression. A natural
+attempt to generate such an expression is to
+directly solve the symbolic versions of numeric
+problem. However this approach has very low
+alignment, i.e. the symbolic output does not reflect
+the way in which the model solved the numeric
+problem. Specifically in Table 1, the average
+alignment score for raw symbolic outputs is only
+52.9%and51.2%for Vanilla and CoT respectively.
+This motivates self-prompting.
+3.3 Self-prompting
+In order to improve alignment, we propose a two-
+step procedure that first inputs the numeric MWP
+and the LM’s response to it, followed by the
+symbolic version of the MWP. In particular the
+prompt looks like "Q: <Numeric Question> A:
+<Model Response> Q: <Symbolic Question>
+A:". Given the in-context tendencies of LMs, we
+hope that this encourages the symbolic response to
+imitate the numeric response and thus return a well
+aligned expression. We find in Table 1 that this ap-
+proach (termed SP) indeed improves the alignment
+by∼10% over the naive approach.
+We take this one step further: whenever the
+numeric and symbolic answers do not align,
+we add another “alignment prompt” before the
+symbolic problem that explicitly asks the model
+to copy the numeric answer; see Table 3 for the
+exact format. Results in the SP+AP column
+of Table 1 verify that this leads to another 11%improvement over SPand∼22% improvement
+over raw symbolic. Surprisingly we find that
+SP+AP has higher accuracy than raw numeric and
+raw symbolic, suggesting a “best of both worlds”
+or ensembling phenomenon in action. Further
+analysis in Figure 7 reveals how self-prompting
+combines the benefits of numeric and symbolic.
+We also compute the similarity between the full
+numeric and symbolic responses. Table 1 reveals
+that the average similarity is significantly higher for
+SPandSP+AP compared to raw symbolic. So not
+only do the answers align more but also the full text
+responses are very similar. Histograms of similarity
+scores can be found in Appendix B.1. Additional
+analyses and results can be found in Appendix B.
+4 Conclusions and Future Work
+This paper studies reasoning in LLMs for MWPs
+and results suggest that LMs are good at zero-shot
+solving of symbolic MWPs, and that this ability
+can lead to concise explanations. Self-prompting
+emerges as a promising idea to generate better ex-
+planations and the ensembling effect demonstrated
+by it can potentially have other applications (left
+for future work). Alignment with self-prompting,
+while significantly better than with raw symbolic
+outputs, still has a lot of scope for improvement.
+Aspects that are not considered are few-shot learn-
+ing of explanations and the role of temperature,
+which could improve accuracy and alignment.
+Finally the notion of “concise explanation” to study
+reasoning can have implications beyond MWPs.
+Broader Impact Statement. Given the incredi-
+ble successes of LLMs, it is becoming increasingly
+important to study why they work and how to de-
+bug them when they are wrong. There are ongoing
+debates and discussions about whether LMs are
+simply “stochastic parrots” (Bender et al., 2021)
+or they actually “understand” language. Besides
+there are also privacy concerns (Carlini et al., 2021)
+associated with LLMs trained on extremely large
+corpora. Our work attempts to formalize a weak
+notion of “reasoning” in math problems that could
+help with improving the intepretability, and thus
+trustworthiness, of such models. This is extremely
+important if LLMs are to be deployed in real-life
+applications. That said, any preliminary notion or
+definition of “reasoning in LLMs”, including the
+one in this paper, should be taken with a healthy
+dose of skepticism.Acknowledgments. We thank Misha Khodak for
+comments on an earlier version of this draft. We
+also thank the anonymous ACL reviewers for useful
+suggestions.

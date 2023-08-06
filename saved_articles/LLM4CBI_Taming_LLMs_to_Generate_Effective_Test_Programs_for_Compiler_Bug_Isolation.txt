@@ -1,0 +1,1438 @@
+IEEE TRANSACTIONS ON SOFTWARE ENGINEERING 1
+LLM4C BI: Taming LLMs to Generate Effective
+Test Programs for Compiler Bug Isolation
+Haoxin Tu, Zhide Zhou, He Jiang∗, Imam Nur Bani Yusuf, Yuxian Li, Lingxiao Jiang
+Abstract —Compiler bugs pose a significant threat to safety-critical applications, and promptly and effectively isolating these bugs is
+crucial for assuring the quality of compilers. However, the limited availability of debugging information on reported bugs complicates
+the compiler bug isolation task. Existing compiler bug isolation approaches typically convert the problem into a test program mutation
+problem, but they are still limited by ineffective mutation strategies or high human effort requirements. Drawing inspiration from the
+recent progress of pre-trained Large Language Models (LLMs), such as ChatGPT, in code generation, we propose a new approach
+named LLM4C BIto tame LLMs to generate effective test programs for compiler bug isolation. However, using LLMs directly for test
+program mutation may not yield the desired results due to the challenges associated with formulating precise prompts and selecting
+specialized prompts. To overcome the challenges, three new components are designed in LLM4C BI. (1) LLM4C BIutilizes a program
+complexity-guided prompt production component, which leverages data and control flow analysis to identify the most valuable variables
+and locations in programs for mutation. (2) LLM4C BIemploys a memorized prompt selection component, which adopts reinforcement
+learning to select specialized prompts for mutating test programs continuously. (3) A test program validation component is proposed to
+select specialized feedback prompts to avoid repeating the same mistakes during the mutation process. Compared with the state-of-
+the-art approaches (DiWi and RecBi) over 120 real bugs from the two most popular C open-source compilers, namely GCC and LLVM,
+our evaluation demonstrates the advantages of LLM4C BI: It isolates more bugs, ranging from 13.6% to 90.9% in various settings, than
+the other approaches. Additionally, we demonstrate that LLM4C BIis extensible, allowing for easy integration with other LLMs.
+Index Terms —Software Debugging, Bug Isolation, Compilers, GCC, LLVM, Reinforcement Learning, Large Language Models (LLMs)
+✦
+1 I NTRODUCTION
+COMPILERS serve a fundamental role in building reliable
+software systems, and bugs in compilers can have
+catastrophic consequences [1], [2]. To mitigate such threats,
+a crucial task is to isolate the bugs promptly and effec-
+tively. However, isolating compiler bugs poses significant
+challenges due to the limited debugging information. A
+prevalent direction for resolving the problem is to transform
+the bug isolation problem into a test program mutation
+problem [3], [4]. The core idea behind such approaches is
+first to generate a set of passing test program mutants by
+mutating the given failing test program and then collect the
+passing and failing spectrum. Finally, combined with no-
+table Spectrum-based Fault Localization (SBFL) techniques,
+suspicious files are ranked.
+However, existing program mutation strategies in DiWi
+[3] and RecBi [4] exhibit limitations in terms of effectiveness
+and demand substantial human effort. First, these strate-
+gies are limited in generating diverse test programs. DiWi
+* He Jiang is the corresponding author.
+•H. Tu is with the School of Software, Dalian University of Technology,
+Dalian, China. H. Tu is also with the School of Computing and Infor-
+mation Systems, Singapore Management University, Singapore. E-mail:
+haoxintu@gmail.com.
+•Z. Zhou and H. Jiang are with the School of Software, Dalian University
+of Technology, Dalian, China, and Key Laboratory for Ubiquitous Net-
+work and Service Software of Liaoning Province. H. Jiang is also with
+DUT Artificial Intelligence, Dalian, China. E-mail: jianghe@dlut.edu.cn,
+cszide@gmail.com.
+•I. Yusuf, Y. Li, and L. Jiang are with the School of Computing
+and Information Systems, Singapore Management University, Singa-
+pore. E-mails: imamy.2020@phdcs.smu.edu.sg, liyuxianjnu@gmail.com,
+lxjiang@smu.edu.sg.only supports the local mutation, such as changing the
+type of a variable. Although RecBi supports more mutation
+strategies, such as structural mutation, i.e., changing the
+control flow of the program, it can only synthesize statement
+conditions ingredients without statement body (see more
+details in Section 2.2). Moreover, the random selection of
+variables and locations for mutation in both DiWi and RecBi
+is limited by the diversity of the generated test programs.
+Second, the mutation process in DiWi and RecBi requires
+significant human effort. Before mutation, DiWi and RecBi
+require manual code additions to collect necessary con-
+text information, and RecBi necessitates the construction
+of ingredients from existing test programs. Additionally,
+these strategies pay insufficient attention to the validity
+of the generated programs that contain undefined behav-
+iors, thereby reducing their effectiveness of bug isolation.
+Overall, these limitations in ineffective mutation and the
+associated human effort emphasize the need for improved
+program mutation strategies in bug isolation.
+Inspired by the recent progress of pre-trained Large Lan-
+guage Models (LLMs) (e.g., ChatGPT [5]), in code genera-
+tion, we propose LLM4C BI, i.e., pre-trained Large Language
+Models for Compiler BugIsolation. Our key insights are
+that (1) LLMs were trained by ultra-large-scale code, so
+the test programs produced by LLMs tend to be diverse;
+(2) LLMs have a good learning & reflection mechanism to
+help generate better outputs based on the users’ feedback
+following a prompt-response dialog paradigm; (3) prompts
+used by LLMs can be expressed in a natural language,
+easier for users to use and reducing the human effort to
+finish a task. Thus, adapting LLMs to generate effective
+test programs could be promising. However, directly usingarXiv:2307.00593v1  [cs.SE]  2 Jul 2023IEEE TRANSACTIONS ON SOFTWARE ENGINEERING 2
+LLMs to generate effective test programs for compiler bug
+isolation presents several difficulties, raising the following
+two challenges that need to be addressed.
+Challenge 1: Formulation of Precise Prompts .The quality
+of prompts plays a crucial role in unleashing the program
+mutation capabilities of LLMs [6], but using existing natural
+mutation descriptions as prompts may not be effective.
+For example, the mutation rule “ insert an if statement ” is
+a mutation description used in existing work RecBi [4].
+Such description lacks precision on which variables to use
+and where to insert the statement, limiting the possibility of
+mutating failing test programs (i.e., those that can trigger
+the bug) into passing ones (i.e., those that can not trigger
+the bug). Due to the difficulties in selecting precise variables
+and locations, the existing approaches DiWi [3] and RecBi
+[4] randomly select them, which is shown to be ineffective
+(see more evaluation results in Section 4.4). Therefore, it is
+necessary to formulate precise mutation prompts to assist
+LLMs in generating effective test programs.
+Challenge 2: Selection of Specialized Prompts .When several
+prompts are collected, selecting the specialized ones for
+mutating specific failing test programs is important and
+challenging. The reasons are two-fold. First, compiler bugs
+tend to be different and have different language features.
+One prompt may be useful for mutating one particular
+failing test program but may not be helpful for another
+failing test program. Randomly selecting prompts to mu-
+tate test programs may be ineffective (see more evaluation
+results in Section 4.4). Second, LLMs may make different
+mistakes when mutating different test programs, and dif-
+ferent feedback prompts should also be given to different
+test programs. Therefore, a new prompt selection strategy is
+needed to select specialized prompts.
+To overcome the above challenges, three new compo-
+nents are designed in LLM4C BIto tame LLMs for gen-
+erating effective test programs for compiler bug isolation.
+First, a precise prompt production component is designed
+to address the first challenge. A precise prompt pattern that
+could accurately represent the desired mutation operations
+is first introduced. Then, program complexity metrics mea-
+sured data and control flow analysis are utilized to identify
+the most relevant variables and optimal insertion locations.
+Second, two new components, i.e., a memorized prompt
+selection component and a lightweight test program val-
+idation component , are proposed for selecting specialized
+prompts. In the prompt selection component, LLM4C BI
+incorporates memorized search via reinforcement learning
+to track and accumulate rewards based on the performance
+of LLMs, which allows LLM4C BIto continually select the
+specialized prompts for mutating specific test programs. In
+the test programs validation component, LLM4C BIlever-
+ages a static analysis to detect and filter out potential invalid
+test programs that may contain undefined behaviors, thus
+mitigating the risks associated with invalid programs.
+Empirical evaluations over 120 real bugs from the two
+most popular C open-source compilers, i.e., GCC and
+LLVM, are conducted to demonstrate the effectiveness
+of LLM4C BI. First, we have compared LLM4C BIwith
+two state-of-the-art approaches (i.e., DiWi [3] and RecBi
+[4]) in terms of compiler bug isolation capabilities. Theresults show LLM4C BIcan isolate 90.91%/35.14% and
+50.00%/13.64% more bugs than DiWi and RecBi within
+Top-1/Top-5 ranked results, respectively. Second, we have
+evaluated the effectiveness of three new components of
+LLM4C BI, and the results show that all the components
+contribute to the effectiveness of LLM4C BI. Third, we show
+that LLM4C BIis extensible to integrate with other LLMs.
+Contributions. We make the following contributions:
+•To our knowledge, LLM4C BIis the first work aiming
+to leverage the capabilities of LLMs for compiler bug
+isolation tasks in the field.
+•Three new components, i.e., precise prompt production,
+memorized prompt selection, and lightweight test pro-
+gram validation, are proposed to guide LLMs to generate
+effective test programs for compiler bug isolation.
+•Empirical evaluations are conducted to demonstrate
+the effectiveness of LLM4C BI. The results show that
+LLM4C BIis effective for compiler bug isolation and is
+extensible to other LLMs.
+•LLM4C BI1paves the way for future research in compiler
+bug isolation, opening exciting opportunities to further
+explore and leverage the capabilities of LLMs for more
+efficient and effective bug isolation techniques.
+Organizations. Section 2 gives the background and our mo-
+tivation. Sections 3 describe the design of LLM4C BI. Section
+4 presents the implementation and the evaluation results.
+Section 5 and 6 discuss the limitations of our approach and
+threats to validity. Section 7 describes related work, and
+Section 8 concludes with future work.
+2 B ACKGROUND AND MOTIVATION
+In this section, we first give the background about test
+program mutation for compiler bug isolation and Large
+Language Models (LLMs). Then, we use an example to il-
+lustrate the limitations of existing approaches and highlight
+the advantages of our approach.
+2.1 Background
+2.1.1 Test Program Mutation for Compiler Bug Isolation
+Fig. 1 exemplifies the prevalent workflow of existing com-
+piler bug isolation approaches [3], [4]. Given a failing test
+program that can trigger the compiler bug, existing ap-
+proaches first use different mutation strategies to produce
+a passing test program that does not trigger any bug. Then,
+both the failing and passing test programs are subjected to
+compilation, enabling the collection of code coverage infor-
+mation of the compiler source files. All the compiler files
+that are touched by a failing test program during compila-
+tion are considered suspicious. Conversely, the passing test
+program serves to mitigate suspicions regarding innocent
+files that may have been implicated. To eventually isolate
+the buggy files, following the well-established principles
+of Spectrum-Based Fault Localization (SBFL) [7], [8], they
+compare the execution traces (or spectra) between failing
+test programs and passing test programs using a formula
+such as Ochiai [7]. Two recent studies, i.e., DiWi [3] and
+1. We plan to release the source code of LLM4C BIin https://github.
+com/haoxintu/LLM4CBI after the acceptance of this paper.IEEE TRANSACTIONS ON SOFTWARE ENGINEERING 3
+High-level
+Afailingtestprogram(F)FailingandpassingspectrumRankedListofSuspiciousFiles(action)Promptsstatistics(state)(reward)updateupdate
+mutateApassingtestprogram(P)+SBFL1,0,11,1,11,0,01,0,01,0,11,0,0compilecompilecollect
+Fig. 1. General workflow of existing compiler bug isolation
+RecBi [4], follow the same strategy, and their goal is to
+generate a set of programs that have slightly different control-
+and data-flow information compared with the falling test program
+to flip the compiler execution results (i.e., from failing to passing).
+We aim to achieve the same goal by leveraging a new
+approach based on LLMs in this study.
+2.1.2 Large Language Models (LLMs)
+Recently, pre-trained Large Language Models (LLMs) such
+as ChatGPT [5] have become ubiquitous and have exhibited
+remarkable performance in numerous tasks, such as ma-
+chine translation [9], text summarization [10], classification
+[11] and code generation [12]. Technically, LLMs can be
+directly employed to tackle specific downstream tasks by
+providing the task description to the model, which is known
+as prompt, without fine-tuning on specialized datasets. This
+is achieved through a technique known as prompt engi-
+neering [13], [14], [15]. Prompt engineering aims to find the
+prompt that yields the best performance on specific tasks.
+Prior studies show that prompt engineering can achieve
+state-of-the-art performance on various downstream tasks
+[16], [17]. Benefiting from the huge potential of LLMs, there
+are increasing recent works showing that LLMs can be used
+for solving different tasks in software engineering tasks [6],
+[15], [18], [19], [20]. In this study, we aim to unleash the
+power of LLMs in the field of test program generation tasks.
+Many existing LLMs adopt the decoder of the Trans-
+former architecture [21]. Given a prompt containing the task
+description, the decoder generates the test programs Yas a
+sequence of tokens, token-by-token by following Equation 1,
+yt= arg max
+yP(y|p, y<t) (1)
+where ytis the current token to be predicted, y<trefers
+to all the previously predicted tokens, and pis the input
+prompt. The equation states that the current token ytto
+be predicted is determined by selecting the token ythat
+maximizes the conditional probability P(y|p, y<t), given the
+prompt pand the previously generated tokens y<t. Because
+a generated test program Ydepends on the input prompt p
+and the search space for the input prompt pis huge, finding
+the best prompt pto generate the effective test program
+Ycan be challenging. In this work, we propose LLM4C BI
+to automatically find the prompt pthat can generate more
+effective test programs Yfor the compiler bug isolation task.
+Two main categories of LLMs are available to the com-
+munity for code generation tasks: infiling and general [12],
+[18], [20], [22]. Infilling models (e.g., CodeGen [23], Incoder
+[24], and PolyCoder [25]) are used to insert the most natural
+code based on bi-directional context (e.g., in the middle of
+a code snippet), while general models (e.g., LLaMA [26],
+(a) failing test program
+ (b) passing test program
+Fig. 2. LLVM bug #16041 (the highlighted gray code in (b) is generated
+by LLM4C BI)
+Alpaca [27], ChatGPT [5], Vicuna [28], and GPT4ALL [29])
+target to generate a complete code snippet given the left con-
+text only by a natural language description. In this study, we
+consider general models mainly due to the fact that general
+models follow the prompt-response dialog paradigm, which
+involves minimal human effort and fits our objective.
+2.2 Motivating Example
+Fig. 2(a) showcases a failing test program that exposes
+a bug in the LLVM-3.4 compiler at the -O3 optimization
+level. The program introduces a division by zero in
+theinduction variable elimination optimization pass in LLVM,
+causing the miscompilation bug. Notably, Fig. 2(b) repre-
+sents a passing test program generated by our proposed
+solution (LLM4C BI), which can not trigger the bug in the
+LLVM compiler. Next, we show the limitation of existing
+approaches and the advantages of our approach in generat-
+ing the passing test program.
+2.2.1 Limitations in Existing Approaches
+Existing approaches, such as DiWi [3] and RecBi [4], face
+limitations in generating the above passing test programs
+due to three primary reasons. First, the mutation strategies
+employed in DiWi and RecBi exhibit certain limitations. For
+instance, DiWi only supports local mutation operators that
+do not alter the control flow of the failing test program.
+Consequently, it cannot generate crucial elements such as
+the highlighted gray ifstatement “if (a == 0)” shown in
+Fig. 2(b). Similarly, RecBi allows the insertion of structural
+conditions, like “if (a == 0)”, but lacks the capability to
+generate the corresponding statement bodies, such as “s
+= v;”. Moreover, both DiWi and RecBi rely on a random
+selection strategy for determining which variables to use
+and where to insert them during the mutation process,
+leaving the transformation outcomes largely dependent on
+chance. Second, the mutation process involved in existingIEEE TRANSACTIONS ON SOFTWARE ENGINEERING 4
+SMU Classification: Restricted
+High-level:LLM4CBI
+Afailingtestprogram(F)TestProgramValidationAnewtestProgram(P)MemorizedPromptSelectionFailing&passingSpectrumRankedListofSuspiciousFilescalculatereward/lossoftheprompt+LLMse.g.,“PleasegenerateavariantPofprogramFbyinsertinganifstatementandreusingthevariablesinthelist{a,b}betweenlines11-27”
+Pattern:PleasegenerateavariantPofprogramFby<mutation>andreusing<variables>between<location>inputoutputvalidatecompileselectfeedback1243567+a=b+1;b=10;c=10;b=11;b=-1;a=a+b;
+(similarityanddiversityofthegeneratedprogram)+SBFLe.g.,“insertinganifstatement”MutationDescriptione.g., {a, b}Data-flowanalysise.g., {(11, 27)}Control-flowanalysis+24568
+793
+1PrecisePromptProduction
+Fig. 3. Overview design of LLM4C BI
+approaches necessitates substantial human effort. Prior to
+mutation, additional code must be written to collect essen-
+tial contextual information (e.g., the names of variables like
+s, a, b, c and their defined types) and extract relevant
+elements (e.g., ifstatements) from the existing test pro-
+grams. Manual coding is required to randomly determine
+suitable locations for inserting the new code snippets into
+the failing test programs during the mutation. Third, they
+pay little attention to the validity of generated test program,
+which can have the side effect of compiler bug isolation.
+In summary, the aforementioned limitations underscore the
+ineffectiveness and high demand of human efforts of ex-
+isting approaches in generating high-quality test programs.
+These challenges highlight the need for a new solution
+that overcomes these shortcomings and effectively generates
+passing test programs.
+2.2.2 Advantages of Our Approach
+Compared to DiWi [3] and RecBi [4], LLM4C BIexcels
+in generating effective passing test programs by taming
+the capabilities in LLMs. First, a precise prompt such as
+“Please generate a variant program P of the input program F
+by inserting an if statement and reusing the variables in the list
+{a, s, v} between lines 12-18 ” is produced to guide LLM in
+mutating the given program following certain requirements.
+Instead of using a vague prompt, LLM4C BIconsiders more
+detailed information in the program that can increase the
+likelihood of flipping from failing to passing to construct
+a precise prompt. In this way, the new test program is
+generated by LLM4C BIvia inserting the new if-statement
+shown in gray in Fig. 2(b). Notably, LLM4C BIsupports the
+insertion of bodies (such as “s = v;”) in structural mutation,
+which increases the diversity of the generated test program.
+Second, benefiting from the LLMs’ prompt-response dialog
+paradigm, the whole mutation process only involves little
+human effort compared with previous studies. In addition,
+LLM4C BIdetects and filters potential invalid test programs
+that contain undefined behaviors, further boosting the capa-
+bilities of LLM4C BIin terms of compiler bug isolation.
+3 T HE DESIGN OF LLM4C BI
+Overview. Fig. 3 illustrates the general workflow of
+LLM4C BI, which address the two main challenges and
+leverages the capabilities of LLMs to generate effectivetest programs for compiler bug isolation. LLM4C BIfirst
+generates precise prompts and collects all the generated
+prompts ( 1) in the precise prompt production component .
+Then, LLM4C BIselects a prompt ( 2) via a memorized
+prompt selection component and utilizes it as input for
+the LLMs ( 3). Next, the LLM4C BIproduces a new test
+program ( 4), which undergoes a test program validation
+component (5). If the generated program is valid, it is com-
+piled ( 6), and coverage information of compiler source files
+is collected. Also, the quality of the generated test program
+will be measured with similarity and diversity metrics in
+(7), which are served as the input of memorized prompt
+selection component to help select better prompts. However,
+if the program is invalid due to semantic errors, LLM4C BI
+provides the feedback ( 8) prompts to the LLMs, guiding
+them not to make the same mistakes again. Ultimately, upon
+reaching the termination condition (e.g., 1 hour), LLM4C BI
+employs SBFL along with the failing and passing spectra
+to rank suspicious files ( 9). Specifically, the precise prompt
+production component is designed to address the first chal-
+lenge of the formulation of precise prompts, and two other
+components, i.e., memorized prompt selection component
+and lightweight test program validation component, are
+utilized to tackle the second challenge of the selection of
+specialized prompts. We provide further details regarding
+this in the subsequent sections.
+3.1 Precise Prompt Production
+This section presents the precise prompt production compo-
+nent, which addresses the first challenge of the formulation
+of precise prompts. We first outline the design of the prompt
+production pattern for LLMs and then show how to utilize
+program complexity metrics, e.g., data-flow and control-
+flow complexity, to populate the pattern.
+3.1.1 Prompt Pattern for Program Mutation
+The following is the pattern designed in LLM4C BIfor
+constructing effective prompts for LLMs.
+Pattern: Please generate a variant program Pof the
+input program Fby<mutation rule > and reusing the
+<variables > between <location > .
+In the pattern, Prefers to the newly generated test
+program, and Frefers to the given failing test program. InIEEE TRANSACTIONS ON SOFTWARE ENGINEERING 5
+the rest, <mutation rule > means the actual mutation oper-
+ation; <variables > and <location > describe the specific
+requirements when conducting the mutation.
+We reuse the existing mutation rules (cf Table 1) in the
+pattern. Since compilers use different strategies to optimize
+the programs that have different data or control flow [2], our
+intuition is that, instead of randomly mutating programs
+in existing approaches, mutating the most complex part of the
+failing program is more likely to flip the failing into passing . To
+this end, LLM4C BImeasures the most complex part by two
+means: the variable that holds complex data flow and the
+location that involves complex control flow.
+3.1.2 Data-flow Complexity-guided Variable Selection
+The data-flow analysis aims to output the most complex
+variables defined and used in the given failing test program.
+Due to the fact that we aim to investigate the complexity
+of a variable by examining how this variable can affect and
+to what extent, we deem that the more a variable is defined
+(or assigned), the more complex dependence is held on the
+variable, thus contributing to the data-flow complexity.
+Following the existing definition of data-flow complexity
+[30], we follow the existing work [31] and opt for the vari-
+able def-use chain [32] to analyze the data-flow complexity
+of a program. Specifically, we calculate the complexity of a
+variable ( Comp var) by the following Equation:
+Comp var=Ndef+Nuse (2)
+where the Ndefcounts the number of times that a variable
+is defined, including redefining or assigning. Note that Def
+keeps track of the changes in a variable, so the data depen-
+dency analysis is included. Nusecounts the number of times
+that a variable is used. This refers to the value of a variable
+value being used in some computation with no modification
+to the variable’s value. Under the above Equation, the data
+flow analysis upon the failing test program in Fig. 2(a) will
+produce a variable list {a, s, v} , which represents the
+Top-3 complex variables used in the program.
+3.1.3 Control-flow Complexity-guided Location Selection
+The aim of the control-flow analysis is to output the location
+of the most complex statement in the program. We leverage
+the control-flow graph of the input failing program, where
+each node represents the statement and the edge indicates
+the execution flow. When the Control-Flow Graph (i.e., CFG)
+is available, we calculate the complexity of each statement
+using the following Equation (3) based on cyclomatic com-
+plexity [30]:
+Comp control =Neage−Nnode+ 2 (3)
+where Neage andNnode represent the number of edges
+and nodes in the CFG, respectively. Since the cyclomatic
+complexity is not designed to measure the complexity at the
+statement level, we count the complexity of each statement
+by obtaining the complexity values during cyclomatic com-
+plexity calculation. Note that we intentionally ignore the
+statement that includes the oracle (i.e., having the printf
+orabort function). The reason is that changing the code
+block, including the test oracle, is more likely to break the
+oracle, meaning a fake passing test program is probablyTABLE 1
+Mutation rules applied in the prompt pattern
+ID Rule
+1 inserting an if statement
+2 inserting a loop (i.e., while or for) statement
+3 inserting a function call
+4 inserting a goto statement
+5 inserting a qualifier (i.e., volatile, const, and restrict)
+6 removing a qualifier (i.e., volatile, const, and restrict)
+7 inserting a modifier (i.e., long, short, signed, and unsigned)
+8 removing a modifier (i.e., long, short, signed, and unsigned)
+9 replacing a constant with another valid one
+10 replacing a binary operator with another valid one
+11 removing a unary operator on the variables
+12 replacing a unary operator on the variables
+13 replacing a variable with another valid one
+generated [3], [4]. Taking the code example shown in Fig.
+2(a) again, the control-flow analysis designed in LLM4C BI
+will indicate that the most complex control flow lies in the
+for loop between Lines 12 - 18. In this way, after getting
+the variable list and the desired location to be inserted,
+LLM4C BIgenerates certain prompts based on the designed
+pattern. For example, one of the generated prompts is:
+“Please generate a variant program P of the input pro-
+gram F by <inserting an if statement > and reusing the
+<variables in the list {a, s, v} > between <lines 12-18 > ”.
+As aforementioned in Section 1, not every prompt con-
+tributes equally to a specific failing test program. Further-
+more, LLMs may make different mistakes when mutating a
+program: e.g., LLMs may incur a syntax error in a failing test
+program but a semantic error in another program. Giving all
+the error information as feedback prompts is not necessary.
+Hence, a specialized prompt selection strategy is supported
+and developed in LLM4C BI.
+3.2 Memorized Prompt Selection
+This subsection and the next subsection present memorized
+prompt selection and lightweight test program validation
+components to address the second challenge of the selection
+of the specialized prompts. In this subsection, we first give
+the background of reinforcement learning and then detail
+the memorized prompt selection.
+3.2.1 Reinforcement Learning
+Reinforcement learning (a kind of memorized search) is a
+field of study that aims to teach an agent how to take
+actions within an environment in order to maximize its
+cumulative reward over the long term [33], [34]. Key roles
+in reinforcement learning include (1) Agent : the role of a
+learner and decision-maker; (2) Environment : Everything
+that is composed of and interacts with something other than
+the agent; (3) Action : The behavioral representation of the
+agent body; (4) State : The information that the capable body
+obtains from the environment; (5) Reward : Feedback from
+the environment about the action. Reinforcement learning
+can generally be classified into value-based algorithms (e.g.,
+Deep Q Learning algorithm [35]) and policy-based algo-
+rithms (e.g., Policy Gradients algorithm [36]).IEEE TRANSACTIONS ON SOFTWARE ENGINEERING 6
+With the advancement of reinforcement learning, a class
+of algorithms known as Actor-Critic (AC) algorithms have
+been proposed [37], combining elements of value-based and
+policy-based strategies. In this study, we employ the Advan-
+tage Actor-Critic (i.e., A2C [38]) framework to address the
+challenge of compiler bug isolation, as it is both effective
+(in comparison to AC [37]) and suitable for single-thread
+and multi-thread systems (compared to Asynchronous Ad-
+vantage Actor-Critic, i.e., A3C [38]). In this study, LLM4C BI
+adopts the A2C (Advantage Actor-Critic) framework [38]
+to learn the effects of prompt, enabling the generation
+of effective passing test programs for a specific compiler
+bug. We opt for the A2C framework mainly because it has
+demonstrated practical effectiveness, efficiency, and stability
+with low variance [39], making it a suitable choice.
+3.2.2 Reinforcement Learning for Prompt Selection
+The effectiveness of randomly applying mutations upon a
+given failing test program can be limited [4]. Consequently,
+we do not randomly select prompts for LLMs to generate
+program variants; we need to efficiently generate more ef-
+fective passing test programs within a given time tailored to
+a specific compiler bug. To accomplish this goal, we employ
+reinforcement learning in LLM4C BI, where the quality of
+the generated passing test programs serves as the reward
+metric of a prompt.
+Fig. 4 provides an overview of the reinforcement
+learning-based strategy for selecting prompts in LLM4C BI.
+Following the A2C framework, LLM4C BIfirst initializes
+two neural networks: the Actor Neural Network (ANN) and
+the Critic Neural Network (CNN) in the agent. The ANN
+predicts the probability distribution of actions based on
+historical knowledge, enabling the subsequent selection of
+an optimal action by LLM4C BI. CNN predicts the potential
+reward that can be accumulated from the current state to a
+future state after executing the selected action, incorporating
+future knowledge. LLM4C BIchooses an action atto select
+a prompt (randomly chosen for the first time) and measure
+the quality ( Qt) of the newly generated test program. To
+facilitate learning, LLM4C BIemploys an advantage loss
+function ( Aloss) based on the predicted potential reward
+(PR) and the actual reward ( R) obtained from the selected
+prompt. Finally, LLM4C BIupdates the status of all the
+ANN, CNN, and states to the agent. LLM4C BIrepeatedly
+selects a prompt to generate test programs until the termi-
+nation condition (e.g., 1-hour limit is reached or 10 program
+variants are generated) is reached.
+Consistent with existing A2C-based approaches [37],
+[38], both ANN and CNN in LLM4C BIare with a single
+hidden layer to ensure lightweight and fast convergence.
+The following provides detailed explanations of the most
+important parts, including the actual reward and advantage
+loss function calculations.
+Measuring Actual Reward. An essential factor contribut-
+ing to the effectiveness of the A2C-based approach lies in
+determining the actual reward subsequent to applying a
+prompt. Drawing the inspiration from previous research [3],
+[4], a collection of proficient passing test programs needs
+to meet both similarity and diversity criteria. The similarity
+entails that each passing test program should exhibit a
+SMU Classification: Restricted
+34PromptSelection
+AnewtestprogramAction𝑎!State𝑠!
+ActorNeuralNetwork(ANN)
+EnvironmentAgent
+𝑠!"#
+𝑅!"#CriticNeuralNetwork(CNN)
+programquality(𝑄!)
+𝑅!𝑃𝑅!
+AdvantageLoss
+𝐴$%&&(𝑡)predictWeights𝑤predict
+mutate(𝑚')
+*PRt: potential reward at time t
+*Rt: actual reward at time t
+*Aloss: advantage loss function at time t
+*mj: a selected prompt ( j∈ {1,13})
+Fig. 4. Memorized prompt selection guided by reinforcement learning:
+The agent uses an ANN to predict an actor at(i.e., a prompt mjused for
+mutating a program). After obtaining the new test program from LLMs,
+the environment calculates the actual reward Rtbased on the quality
+(Qt) of the newly generated test program. In the meantime, CNN in the
+agent predicts a potential reward PRt. Next, the advantage loss ( Aloss)
+is measured by combing the actual reward and potential reward. Later,
+the weight ( w) of ANN and CNN and state ( st) will be updated to the
+agent and help the agent generate a better prompt.
+comparable compiler execution trace to that of the given
+failing test program. Consequently, following the principles
+of SBFL, the suspicion associated with a greater number of
+buggy-free files can be diminished. The diversity requires
+that different passing test programs possess distinct com-
+piler execution traces from one another to reduce suspicion
+regarding various buggy-free files. By doing so, aggregating
+a set of passing test programs that have undergone mutation
+facilitates the effective isolation of genuinely faulty files by
+circumventing bias. Both similarity and diversity rely on the
+distance metric, which is defined as:
+dist(a, b) = 1−Cova∩Covb
+Cova∪Covb(4)
+where the dist(a, b)represents the coverage distance be-
+tween two test programs aandb, which is determined
+using the Jaccard Distance measurement [3]. CovaandCovb
+represent the sets of statements covered in compilers by test
+programs aandb, respectively.
+Denoting the set of generated passing test programs as
+p={p1, p2, ..., p n}and the failing test program as f, we
+formalize the metrics of similarity and diversity achieved by
+the set of passing test programs, represented as Equation 5
+and Equation 6, respectively.
+sim=PN
+i=1(1−dist(pi, f))
+N(5)
+div=PN−1
+i=1PN
+j=i+1dist(pi, pj)
+N(N−1)/2(6)
+where Nis the number of passing test programs.
+At time step t, once a passing test program is generated,
+LLM4C BIevaluates the effectiveness of the current set ofIEEE TRANSACTIONS ON SOFTWARE ENGINEERING 7
+passing test programs by linearly combining the attained
+measures of similarity and diversity in Equation 7.
+Qt=n(α×divt+ (1−α)×simt) (7)
+where the coefficient αrepresents the weighting factor for
+the linear combination of diversity and similarity in Equation
+7. Additionally, following the existing study [4], Equation 7
+also incorporates another coefficient n, which corresponds
+to the size of the set of passing test programs.
+Subsequently, LLM4C BIdetermines whether to accept
+the generated passing test program based on whether it can
+enhance the overall quality of the set of passing programs
+compared to the previous time step denoted as t−1. The
+Equation 8 outlines the computation of the enhanced quality
+relative to the previous time step.
+△Qt=Qt−Qt−1 (8)
+Nevertheless, in each state, only one prompt is chosen
+to generate a passing test program, and the performance
+of a prompt can vary significantly depending on different
+bugs. To balance the influence of the diverse performance of
+prompts, LLM4C BIincorporates both the current time step
+improvement and the historically accumulated improve-
+ment attributed to the current prompt. This combined value
+serves as the actual reward obtained at the current time step,
+which is defined as follows:
+Rt=Pt
+i=1△Qi
+T(mj)(9)
+Here, T(mj)represents the count of times the mj(a prompt)
+has been chosen to mutate the failing test program. △Qi
+is defined as zero ( △Qi= 0) if the selected prompt at the
+ithtime step is not mj; if the selected prompt is mj,△Qi
+is computed using Equation 8. Whether selecting a new
+prompt mjor previously selected prompt mjdepends on
+the decision made by ANN in the agent.
+Calculating Advantage Loss. While the actual reward ( Rt)
+is obtained at the current time step t, LLM4C BIalso utilizes
+CNN to predict the potential reward ( PRt+i). To effectively
+consider future factors, A2C incorporates an advantage loss
+function. This function is designed to address the issue
+of high variance in the two neural networks and prevent
+convergence towards local optima [38]. The advantage loss
+function is expressed as follows in Equation 10:
+Aloss(t) =t+uX
+i=t(γi−tRi) +γu+1PRt+u−PRt (10)
+the variable uindicates that the CNN considers the future u
+consecutive states and actions when predicting the potential
+reward. γrepresents the weight assigned to the actual future
+reward. PRt+uandPRtdenote the predicted potential
+rewards at the (t+u)thandtthtime steps, respectively,
+as determined by CNN. Notably, LLM4C BIrepeats this
+process for utimes within a time step to approximate the
+actual future reward.
+Using the loss computed by the advantage function in
+Equation 10, LLM4C BIproceeds to update the weights of
+both the ANN and CNN following Equation 11.
+w=w+β∂(logPw(at|st)Aloss(t))
+∂w(11)where strepresents the current state, while atdenotes
+the corresponding action. Pw(at|st)Aloss(t)represents the
+probability of performing action atat state stbased on the
+parameters win both the ANN and CNN. βrepresents the
+learning rate of the weight updates.
+3.3 Lightweight Test Program Validation
+Existing studies [3], [4] pay little attention to the validity of
+the mutated test programs. First, the test programs gener-
+ated by these approaches may contain undefined behaviors.
+As demonstrated in our evaluation results in Section 4.4,
+such test programs reduce the effectiveness of compiler bug
+isolation. Second, existing approaches may generate test
+programs that do not have a test oracle, which can also affect
+the effectiveness of bug isolation. Third, existing studies
+are unaware of the errors they made during the mutation
+process, so they frequently make the same mistakes when
+mutating test programs.
+To address the above limitations, LLM4C BIdesigns a
+semantic validation to filter away semantically invalid test
+programs and utilizes a test oracle validation to fix the test
+programs that violate test oracles. Additionally, LLM4C BI
+collects all the validation errors in the test programs gen-
+erated by LLMs and gives such information as feedback
+prompts to LLMs to avoid repeating the same mistakes.
+Next, we detail the validation processes.
+3.3.1 Program Semantic Validation
+We chose static analysis checks on the newly generated test
+program that may contain any undefined behavior, which
+proved to be lightweight compared with dynamic analysis
+approaches [40]. As shown in step 5in Fig. 3, the newly
+generated test program is transferred to this component
+for checking the semantic validity. Based on the analysis
+capabilities from Frama-C [40], we opt for five different
+categories of undefined behaviors in LLM4C BI:
+•memem_access : invalid memory access, such as out-of-
+bound read or out-of-bound write.
+•shift : invalid RHS (Right-Hand Shift) or LHS (Left-
+Hand Shift) operand for right or left shift operation.
+•index_bound : accessing out-of-bounds index of an array.
+•initialization : accessing uninitialized left-value, i.e.,
+use a variable before it was uninitialized.
+•division_by_zero : a number is divided by zero.
+If one of the above undefined behaviors is detected,
+the semantic error information will be updated to LLMs to
+avoid repeating the same mistakes. For example, if a new
+test program contains an undefined divided by zero be-
+havior, an additional prompt, “ The above program contains an
+undefined behavior divided by zero , please do not generate
+such test programs again. ”, will be fed to LLMs in step 8.
+3.3.2 Test Oracle Validation
+Test Oracles . It is also required to check whether a gen-
+erated test program is passing or failing [3], [4], [41], [42].
+According to the types of compiler bugs (i.e., crash bugs
+and wrong-code bugs), following the existing work [3], [4],
+LLM4C BIconsiders two types of test oracles: (1) Regarding
+crash bugs (i.e., the compiler crashes when using some
+compilation options to compile a test program), the testIEEE TRANSACTIONS ON SOFTWARE ENGINEERING 8
+oracle is whether the compiler still crashes when using
+the same compilation options to compile a generated test
+program. (2) Regarding wrong-code bugs (i.e., the compiler
+mis-compiles a test program without any failure messages,
+causing the test program to have inconsistent execution re-
+sults under different compilation options), the test oracle is
+whether a generated test program still produces inconsistent
+execution results under the compilation options producing
+the previous inconsistencies. Similar to DiWi [3] and RecBi
+[4], LLMs may not put in the test oracles in a generated
+test program; so, we apply another heuristic validation to
+check for missing oracles. E.g., we check if the generated test
+program contains the same number of abort orprintf
+statements as the given failing test program.
+If a newly generated test program passes the above
+validations, the buggy compiler is used to compile the
+generated test program in step 6. LLM4C BIcollects the
+semantic error or test oracle information and uses it as
+feedback prompts to guide LLMs not to generate programs
+with the same kinds of errors. It is worth noting that since
+different test programs may contain different kinds of errors,
+the feedback prompts could be different.
+3.4 Suspicious Files Ranking
+LLM4C BIutilizes the concept of SBFL (Spectrum-Based
+Fault Localization) to identify potentially buggy compiler
+files by comparing the coverage of failing and passing tests
+in9, as outlined in previous research [3], [4]. To be specific,
+since Ochiai [7] perform well, LLM4C BIemploys the Ochiai
+Equation score (s) =efs √
+(efs+nfs)(efs+eps)to calculate the
+suspicious score of each statement. In the Equation, efsand
+nfsrepresent the number of failing tests that execute and
+do not execute statement s, and epsrepresents the number
+of passing tests that execute statement s. In LLM4C BI, since
+there is only one given failing test program, the number
+of failing tests that execute statement s(efs) is fixed at
+1. Additionally, LLM4C BIfocuses solely on the statements
+executed by the given failing test program, implying that
+the number of failing tests that do not execute statement
+s(nfs) is 0. As a result, the Ochiai Equation is simplified
+to:score (s) =1√
+(1+eps). Once the suspicious score of each
+statement is obtained, LLM4C BIproceeds to calculate the
+suspicious score of each compiler file. Similar to previous
+research [3], [4], LLM4C BIaggregates the suspicious scores
+of the statements executed by the given failing test program
+within a compiler file to determine the suspicious score of
+the file SCORE (f) =Pnf
+i=1score (si)
+nf. The number of state-
+ments that the failing test program executes in the compiler
+filefis denoted as nf. LLM4C BIutilizes this information
+to calculate the suspicious score of each compiler file. By
+arranging the compiler files based on their suspicious scores
+in descending order, LLM4C BIyields a ranking list.
+4 E VALUATION
+4.1 Experimental Setup
+Implementation of LLM4C BI.LLM4C BIwas implemented
+utilizing OClint [43] (v22.02), srcSlice [31] (v1.0), Gcov [44]
+(v4.8.0), and PyTorch [45] (v1.10.1+cu113). OClint is servedto calculate the cyclomatic complexity of each statement;
+srcSlice is used to get the data-flow complexity of the vari-
+ables defined and used in the program; Gcov is applied for
+collecting compiler coverage information; PyTorch supports
+the A2C framework. For A2C, we set the hyperparameters
+with the default settings in the previous study [4]. For
+the implementation of test program validation, we adopt
+Frama-C [40] (Phosphorus-20170501) to check the semantic
+validity of the test program, and we write Python scripts
+(python 3.8.5) to check if there are any test oracle violations.
+We adapt GPT-3.5 as the default LLMs in LLM4C BI, with
+thetemperature parameter 1.0 in GPT-3.5 (see more detailed
+discussions on temperature settings in Section 5).
+Study Subjects . We use GCC and LLVM as our subjects to
+assess the effectiveness of LLM4C BI. Both two compilers are
+widely used in existing literature [3], [4], [41], [42], [46], [47],
+[48] and therefore constitute a comprehensive evaluation.
+On average, a GCC buggy version contains 1,758 files with
+1,447K source lines of code (SLOC), while an LLVM buggy
+version comprises 3,265 files with 1,723K SLOC.
+Benchmark . We utilize a benchmark consisting of 120 real
+compiler bugs, with an equal distribution of 60 GCC and 60
+LLVM bugs, which includes all bugs studied in prior works
+[3], [4]. Specifically, each bug is accompanied by relevant
+buggy details, including the faulty compiler version, the
+failing test program, the buggy compilation options, and
+the faulty files which serve as the ground truth.
+Running Platform . We conduct all the experiments on a
+workstation equipped with a 12-core CPU, Intel(R) Xeon(R)
+W-2133 CPU @ 3.60GHz, 64G RAM, and Ubuntu 18.04
+operating system, without GPU support.
+Evaluation Metrics. Each approach for isolating compiler
+bugs generates a list of suspicious compiler files. To evaluate
+the effectiveness of each approach, we measure the position
+of each buggy file in the ranking list with the help of the
+ground truth. In cases where multiple compiler files had
+the same suspicious scores, we follow the precedent set
+by prior research [49], [50] and assign the worst ranking.
+Specifically, we compute the following metrics commonly
+used in compiler bug isolation studies [3], [4], [41], [42].
+•Top-N . This metric denotes the number of bugs that
+are effectively isolated and contained within the Top-N
+position, where N is a member of the set 1, 5, 10, 20 as
+specified in our study. A higher value of Top-N indicates
+a better performance of an approach.
+•Mean First Ranking (MFR) . This metric represents the
+average rank of the first faulty file within the ranking
+list for each bug. The objective of MFR is to promptly
+isolate the initial defective element in order to expedite
+the debugging process. A smaller value is better, as it
+indicates that developers could localize the corresponding
+bug as quickly as possible.
+•Mean Average Ranking (MAR) . This metric measures the
+average of the mean rank of every faulty file within the
+ranking list for each bug. The MAR metric is intended to
+isolate all faulty elements accurately. Similar to MFR, the
+approach with a smaller value of MAR is better.IEEE TRANSACTIONS ON SOFTWARE ENGINEERING 9
+TABLE 2
+Compiler bug isolation effectiveness comparison with two state-of-the-art approaches (under Setting-1 in RQ1)
+Subject ApproachNum. ⇑Top−1Num. ⇑Top−5Num. ⇑Top−10 Num. ⇑Top−20MFR⇑MFRMAR⇑MAR
+Top-1 (%) Top-5 (%) Top-10 (%) Top-20 (%) (%) (%)
+GCCDiWi [3] 7 57.14 19 36.84 32 18.13 43 16.28 22.60 42.92 22.93 40.25
+RecBi [4] 8 37.50 24 8.33 36 13.89 45 11.11 19.67 34.42 20.13 31.94
+LLM4C BI 11 - 26 - 41 - 50 - 12.90 - 13.70 -
+LLVMDiWi [3] 4 150.00 21 33.33 27 22.22 40 20.00 27.05 49.24 27.06 48.63
+RecBi [4] 6 66.67 23 20.00 29 13.79 44 9.09 24.65 44.30 24.70 43.72
+LLM4C BI 10 - 24 - 33 - 48 - 13.73 - 13.90 -
+ALLDiWi [3] 11 90.91 41 35.14 59 25.42 83 18.07 24.83 46.36 25.00 44.79
+RecBi [4] 14 50.00 45 13.64 65 13.85 89 10.11 21.16 39.91 21.42 38.43
+LLM4C BI 21 - 48 - 74 - 98 - 13.32 - 13.80 -
+Note: Columns “ ⇑ ∗” present the improvement rates (%) of LLM4C BIover the compared approaches in terms of various metrics.
+4.2 Research Questions
+In this study, we aim to answer the following main research
+questions (RQs):
+•RQ1 : Can LLM4C BIoutperform state-of-the-art ap-
+proaches (i.e., DiWi [3] and RecBi [4]) in terms of the
+effectiveness and efficiency of compiler bug isolation?
+•RQ2 : Can each main component, i.e., precise prompt pro-
+duction, memorized prompt selection, and lightweight
+test program validation, contribute to LLM4C BI?
+•RQ3 : Can LLM4C BIbe easily extended with other LLMs
+for the compiler bug isolation task?
+4.3 Answers to RQ1
+4.3.1 Experimental Settings
+We set up the following two settings to investigate RQ1:
+•Setting-1: terminate with the same running time (i.e., one
+hour). This is the standard comparison strategy used in
+existing compiler bug isolation studies [3], [4], [41], [42]
+for evaluating their effectiveness.
+•Setting-2: terminate when generating the same number
+(i.e., 10) of passing test programs. This setting aims to
+demonstrate the efficiency of LLM4C BIfurther. We opt
+for the number suggested by the existing empirical stud-
+ies [7]. We gave the timeout of 2 hours if an approach
+can not generate the desired number of test programs of a
+bug. We add this setting because during the experiments
+in Setting-1, we find the number of generated passing
+test programs by comparative approaches is different, and
+LLM4C BIcould generate a larger number of passing test
+programs. Thus, whether the superior performance on
+LLM4C BIbenefited from the more test programs or the
+quality of the newly generated programs is unknown. We
+conduct Setting-2 to investigate it further.
+Comparison Strategies . For both settings, we repeatedly
+run all the comparative approaches three times and calcu-
+lated the median results of Top-N, MFR, and MAR metrics
+to reduce the influence of randomness. Additionally, for
+Setting-2, we compare the execution time for each approach
+and speedups achieved by LLM4C BI.
+4.3.2 Experimental Results
+Results for Setting-1 . The comparison results of Setting-
+1 are presented in Table 2. The first column representssubject compilers, and the second column shows different
+approaches. Columns 3-10 provide the Top-N metrics de-
+rived from the median values obtained from three iterations
+of each approach, including the number of Top-N (i.e.,
+Num. Top-N ) and improvements (i.e., ⇑Top−N(%)) made by
+LLM4C BI. Columns 11-14 represent the MFR (Mean First
+Ranking) and MAR (Mean Average Ranking) metrics, as
+well as the improvements achieved by LLM4C BI.
+Notably, LLM4C BIdemonstrates its capability by suc-
+cessfully isolating 21, 48, 74, and 98 compiler bugs (out of
+a total of 120 compiler bugs in GCC and LLVM) within
+the Top-1, Top-5, Top-10, and Top-20 files, respectively. This
+accounts for the improvement of 17.50%, 41.67%, 61.67%,
+and 81.67% than DiWi and 17.50%, 41.67%, 61.67%, and
+81.67 than RecBi, respectively. Further analysis of the ef-
+fects across different subject compilers revealed interesting
+findings. Despite the larger number of compiler files in
+LLVM compared to GCC, LLM4C BIexhibited slightly better
+results in the case of GCC. For instance, LLM4C BIachieved
+MFR and MAR values of 12.90 and 13.70 for GCC, while
+corresponding values for LLVM were 13.73 and 13.90.
+Compared with DiWi and RecBi, the evaluation reveals
+that LLM4C BIoutperforms DiWi and RecBi across all
+metrics and for both GCC and LLVM compilers. Notably,
+LLM4C BIdemonstrates significant improvements of 90.91%
+and 35.14% over DiWi in terms of Top-1 and Top-5. For
+RecBi, LLM4C BIcould isolate 50.00% and 13.64% more
+bugs than RecBi in terms of Top-1 and Top-5. In particular,
+the practical significance of the Top-5 metric is highlighted
+by previous research, which indicates that developers often
+discontinue the use of automated debugging tools if the
+faulty elements cannot be localized within the Top-5 po-
+sitions. Consequently, LLM4C BIshows better practicality
+compared to DiWi and RecBi by substantially improving
+the effectiveness of compiler bug isolation, specifically in
+relation to the Top-5 metric.
+Furthermore, in terms of MFR and MAR, LLM4C BI
+achieves a considerable improvement of 46.36% and 44.79%
+over DiWi and 39.91% and 38.43% over RecBi, respectively.
+The improvement of MFR and MAR demonstrates that
+LLM4C BIcan promptly and accurately isolate more com-
+piler bugs than DiWi and RecBi.
+Results for Setting-2 . From Table 3, for all the 120 bugs,
+we can know that LLM4C BIalso outperforms comparativeIEEE TRANSACTIONS ON SOFTWARE ENGINEERING 10
+TABLE 3
+Compiler bug isolation effectiveness comparison with two state-of-the-art approaches (under Setting-2 in RQ1)
+Subject ApproachNum. ⇑Top−1Num. ⇑Top−5Num. ⇑Top−10 Num. ⇑Top−20MFR⇑MFRMAR⇑MAR
+Top-1 (%) Top-5 (%) Top-10 (%) Top-20 (%) (%) (%)
+GCCDiWi [3] 6 33.33 20 20.00 33 6.06 41 7.32 20.87 23.43 22.20 26.58
+RecBi [4] 7 14.29 22 9.09 34 2.94 42 4.76 18.40 13.15 18.73 12.97
+LLM4C BI 8 - 24 - 35 - 44 - 15.98 - 16.30 -
+LLVMDiWi [3] 5 60.00 21 14.29 29 20.69 39 10.26 20.61 20.61 20.86 18.12
+RecBi [4] 7 14.29 23 4.35 34 2.94 40 7.50 18.25 7.89 18.45 7.43
+LLM4C BI 8 - 24 - 35 - 43 - 16.81 - 17.08 -
+ALLDiWi [3] 11 45.45 41 17.07 62 12.90 80 8.75 20.74 20.95 21.53 22.48
+RecBi [4] 14 14.29 45 6.67 68 2.94 82 6.10 18.33 10.53 18.59 10.22
+LLM4C BI 16 - 48 - 70 - 87 - 16.40 - 16.69 -
+Note: Columns “ ⇑ ∗” present the improvement rates (%) of LLM4C BIover the compared approaches in terms of various metrics.
+(a) Distribution of execution time
+ (b) Speedups over DiWi and RecBi
+Fig. 5. Performance comparison over DiWi, RecBi, and LLM4C BI(under
+Setting-2 in RQ1)
+approaches: LLM4C BIcan isolate more bugs and hold the
+lowest MFR and MAR.
+For the efficiency side, Fig. 5 presents the detailed per-
+formance results. The x-axis in box Fig. 5(a) show different
+approaches in GCC and LLVM, and y-xais represents the
+time spent by isolating each bug. For the figures, we can
+observe LLM4C BItakes less time when isolating most of
+the bugs. We can see the time taken on LLVM is generally
+larger than on GCC. This is justifiable as the number of
+files of LLVM is larger than GCC, and the more files means
+the more time spent on calculating the coverage. We also
+calculate the speedups achieved by LLM4C BI. Specifically,
+we follow the Equation below to calculate the speedups:
+Tbaseline −TLLM4C BI
+Tbaseline×100 (12)
+where Tbaseline represents the time spent by the baselines
+(i.e., DiWi and RecBi) for generating 10 passing test pro-
+grams on average, and TLLM4C BIdescribes the time our
+proposed LLM4C BIspent generating the same number
+of passing test programs on average. Fig. 5(b) shows the
+results. We can see LLM4C BIis able to achieve 53.19% and
+64.54% as well as 47.31% and 63.19% than DiWi and RecBi,
+for GCC and LLVM, respectively.
+It is interesting to note that the overall results of
+LLM4C BIare better in Setting-1 compared with Setting-2.
+This is reasonable as LLM4C BIcould generate more passing
+test programs in one hour, improving the results. Therefore,
+we suggest developers run a long time of LLM4C BIto get
+better isolation results.
+Summary for RQ1. The evaluation clearly demonstrates
+that LLM4C BIsignificantly outperforms two state-of-the-art approaches in two different settings: LLM4C BIis able
+to effectively and efficiently generate passing test programs
+for compiler bug isolation than DiWi and RecBi.
+4.4 Answers to RQ2
+4.4.1 Experimental Settings
+We use the following variants of LLM4C BIaiming to differ-
+entiate the effects of main components in LLM4C BI:
+•LLM4C BIepuses a simple prompt without data flow and
+control flow analysis. That is, LLM4C BIeponly keeps the
+<mutation rule > and does not rely on the <variables >
+and <location > information to fill in the designed pattern.
+•LLM4C BIsputilizes a specific prompt by giving the
+“the most complex data and control flow”. That means,
+LLM4C BIspreplaces the <variables > with “the most
+complex variables” and <location > with “in the most
+complex statements”, which depends on the program
+understanding capabilities of LLMs to fill in the pattern.
+•LLM4C BIrand randomly selects a prompt without the
+memorized prompt selection, meaning LLM4C BIrand
+performs a random selection of the prompt during the
+prompt selection process.
+•LLM4C BIselnov removes the test program validation com-
+ponent in the prompt selection process in LLM4C BI:
+LLM4C BIselnov does not care about test program validity
+for compiler bug isolation.
+Among these variants, LLM4C BIepand LLM4C BIspaim
+to investigate whether the new program complexity-guided
+prompt production pattern is effective, while LLM4C BIrand
+and LLM4C BIselnov target to understand whether the mem-
+orized prompt selection and test program validation could
+contribute to LLM4C BI, respectively.
+Comparison Strategies . We run the four variants with the
+same strategy as Setting-1 as RQ1. We then compare the Top-
+N, MFR, and MAR metrics for each approach to articulate
+the contribution of those components.
+4.4.2 Experimental Results
+The comparison results between LLM4C BIand the com-
+parative variant approaches are presented in Table 4, where
+each column and row has the same meaning as in Table 2.
+Contribution of Prompt Production . As shown in Table 4,
+LLM4C BIis better than both LLM4C BIep(i.e., the approachIEEE TRANSACTIONS ON SOFTWARE ENGINEERING 11
+TABLE 4
+Compiler bug isolation effectiveness comparison with four variants of LLM4C BI
+Subject ApproachNum. ⇑Top−1Num. ⇑Top−5Num. ⇑Top−10 Num. ⇑Top−20MFR⇑MFRMAR⇑MAR
+Top-1 (%) Top-5 (%) Top-10 (%) Top-20 (%) (%) (%)
+GCCLLM4C BIep 7 57.14 24 8.33 36 13.89 42 19.05 20.87 38.19 21.48 36.22
+LLM4C BIsp 6 83.33 23 13.04 33 24.24 39 28.21 20.50 37.07 24.42 43.90
+LLM4C BIrand 6 83.33 25 4.00 33 24.24 42 19.05 18.23 29.24 18.72 26.82
+LLM4C BIselnov 8 37.50 22 18.18 35 17.14 38 31.58 19.38 33.44 19.62 30.17
+LLM4C BI 11 - 26 - 41 - 50 - 12.90 - 13.70 -
+LLVMLLM4C BIep 8 25.00 20 20.00 31 6.45 43 11.63 18.98 27.66 19.31 28.02
+LLM4C BIsp 7 42.86 23 4.35 32 3.13 39 23.08 17.75 22.65 17.87 22.22
+LLM4C BIrand 8 25.00 23 4.35 30 10.00 41 17.07 16.28 15.66 16.40 15.24
+LLM4C BIselnov 8 25.00 20 20.00 32 3.13 45 6.67 14.85 7.54 14.88 6.59
+LLM4C BI 10 - 24 - 33 - 48 - 13.73 - 13.90 -
+ALLLLM4C BIep 13 61.54 44 13.64 67 10.45 85 15.29 19.93 31.17 20.40 32.34
+LLM4C BIsp 12 75.00 46 8.70 65 13.85 78 25.64 19.13 30.38 21.15 34.74
+LLM4C BIrand 14 50.00 49 2.04 67 10.45 83 18.07 17.26 22.83 17.56 21.41
+LLM4C BIselnov 16 31.25 42 19.05 70 5.71 83 18.07 17.12 22.20 17.25 20.00
+LLM4C BI 21 - 50 - 74 - 98 - 13.32 - 13.80 -
+Note: Columns “ ⇑ ∗” present the improvement rates (%) of LLM4C BIover the compared variant approaches in terms of various metrics.
+uses a simple prompt without data flow and control flow
+analysis) and LLM4C BIsp(i.e., the approach utilizes specific
+prompt by giving the “the most complex data and control
+flow”) in terms of all the metrics over all the 120 bugs in
+GCC and LLVM. Notably, LLM4C BIis able to isolate more
+61.54% and 13.64% bugs within the Top-1 and Top-5 files
+and also improves 31.17% and 32.34% than LLM4C BIepin
+terms of MFR and MAR. Compared with both LLM4C BIep
+and LLM4C BIsp, LLM4C BIshows better results on Top-N
+metrics. In addition, LLM4C BIalso holds a smaller value of
+MFR and MAR, indicating LLM4C BIhas a better compiler
+bug isolation capability.
+The above results indicate that the program complexity
+metrics are helpful for producing precise prompts, and
+removing data flow and control flow analysis or replacing it
+with explicit descriptions to LLMs are not effective. This is
+reasonable, as LLMs have shown to be limited at semantic
+understanding [51]. Therefore, with limited prompt descrip-
+tion, LLMs may randomly select interesting variables and
+locations when mutating the failing test program, making it
+difficult to flip the execution from failing to passing for gen-
+erating effective test programs for compiler bug isolation.
+Contribution of Prompt Selection . We run LLM4C BIrand
+(i.e., an approach randomly selects a prompt) and LLM4C BI
+to investigate the contribution of memorized prompt selec-
+tion component. Table 4 presents the overall results. The
+results indicate that LLM4C BIoutperforms LLM4C BIrand
+as well. Specifically, LLM4C BIdemonstrates better perfor-
+mance compared to LLM4C BIrand, with substantial im-
+provements of 50.00%, 2.04%, 10.45%, 18.07%, 22.83%, and
+21.41% across Top-1, Top-5, Top-10, Top-20, MFR, and MAR
+metrics, respectively. These results underscore the superior-
+ity of our memorized prompt selection based on reinforce-
+ment learning over the random strategy.
+Contribution of Test Program Validation . Compared with
+the approaches shown in rows 4 and 5 in Table 4, LLM4C BI
+outperforms LLM4C BIselnov (a variant approach removes
+the test validation component) for all the metrics for both
+GCC and LLVM. For the overall benchmarks, LLM4C BI
+could isolate 31.25% and 19.05% more bugs with Top-1
+(a) LLVM Bug #18000: ( invalid
+shift value in Line 12 caused
+by the mutation in the same line)
+(b) GCC Bug #64682 : invalid
+memory access in Line 11
+caused by the mutation in Line 2
+Fig. 6. Side effects of the test programs with undefined behaviors (the
+commented code in green is the original code in the failing test program,
+and the code with the red box contains undefined behavior)
+and Top-5 files than LLM4C BIselnov , respectively. In terms
+of MFR and MAR, LLM4C BIalso exhibited significant
+improvements of 22.20% and 20.00% over LLM4C BIselnov .
+These results provide compelling evidence that incorporat-
+ing the test program validation component enhances the
+effectiveness of compiler bug isolation, thereby confirming
+its valuable contribution in LLM4C BI.
+To further understand why filtering the semantically
+invalid test programs is important, we showcase two exam-
+ples with undefined behaviors in Fig. 6 and indicate their
+side effects for compiler bug isolation. The first example
+shown in Fig. 6(a) includes an undefined behavior shift ,
+which is generated by the mutation rule replacing a constant
+value (from “1” to “-1”) in Line 12. RecBi ranked this bug
+at 23thdue to the interference of the undefined behav-
+ior. The second example exposes an undefined behavior
+memem_access , which is produced by the mutation rule
+inserting a modifier of a variable (from int toshort int )
+in Line 2. Because the size of short int (2 bytes in 64-bit
+system) is shorter than int (4 bytes in 64-bit system), thereIEEE TRANSACTIONS ON SOFTWARE ENGINEERING 12
+TABLE 5
+Evaluated open-source LLMs in LLM4C BI
+Models Size Release-Date Popularity(GitHub)
+Alpaca [27] 7B March 2023 25.0K star
+Vicuna [28] 7B March 2023 22.8K star
+GPT4ALL [29] 13B March 2023 46K star
+is an out-of-bound read from the variable b, which makes
+RecBi rank this bug at 28th. Benefiting from the test program
+validation process, LLM4C BIfilter those examples before
+ranking the suspicious files and finally rank the LLVM bug
+and GCC bug at 9thand 5th, respectively. This is reasonable,
+as demonstrated in previous studies [2], [46], [52], modern
+compilers can have unexpected consequences if the program
+is semantically invalid. In summary, the semantically invalid
+test programs can have side effects on the effectiveness
+of compiler bug isolation, and filtering them could help
+LLM4C BIimprove the ranking results.
+Summary for RQ2. All three components, including pre-
+cise prompt production, memorized prompt selection, and
+lightweight test program validation, contribute to the effec-
+tiveness of LLM4C BI.
+4.5 Answers to RQ3
+4.5.1 Experimental Settings
+Table 5 presents the evaluated LLMs in this study, with
+column Sizes reflecting the model sizes in billions of param-
+eters, Release-Date showing when the LLM is released, and
+Popularity indicating the number of GitHub stars or users
+counted by 1st June 2023. We evaluate three of the most rep-
+resentative and popular LLMs. We choose the above LLMs
+mainly because (1) they are very popular that the number of
+stars soared to 20k+ in a few months and (2) they are proven
+to be effective in code generation tasks [12], [26], [27], [29].
+Based on the selected LLMs, we design three new variant
+approaches, i.e., LLM4C BI(Alpaca), LLM4C BI(Vicuna), and
+LLM4C BI(GPT4ALL), by replacing the LLMs in LLM4C BI
+to answer this RQ.
+Setting Up Different LLMs . For the three LLMs, we down-
+load the GGML2format of these models from HuggingFace
+website3and use the python binding llama-cpp-python4
+ofllama.cpp5to run these models in the machine that only
+supports CPU. Specifically, we use a web server supported
+byllama-cpp-python , which aims to act as a drop-in
+replacement for the OpenAI API. This feature allows us
+to use llama.cpp compatible models with any OpenAI-
+compatible client (language libraries, services, etc.). Note
+that it would be easy and invoke little human effort to
+support any other interesting models in LLM4C BI. The only
+thing users need to do is to provide the GGML format model,
+either directly download from the HuggingFace website or
+product using the detailed and actively maintained tutorials
+inGGML ’s homepage2, forllama-cpp-python web server.
+2. https://github.com/ggerganov/ggml
+3. https://huggingface.co/
+4. https://github.com/abetlen/llama-cpp-python
+5. The goal of llama.cpp is to run LLMs using 4-bit integer quanti-
+zation on a MacBook only with CPU.TABLE 6
+Compiler bug isolation capability of different LLMs in LLM4C BI
+Subject Approach Top-1 Top-5 Top-10 Top-20
+GCCLLM4C BI(Alpaca) 1 10 16 22
+LLM4C BI(Vicuna) 5 15 19 27
+LLM4C BI(GPT4ALL) 2 7 15 21
+LLM4C BI 11 26 41 50
+LLVMLLM4C BI(Alpaca) 1 9 18 23
+LLM4C BI(Vicuna) 1 9 19 32
+LLM4C BI(GPT4ALL) 1 5 18 26
+LLM4C BI 10 24 33 48
+ALLLLM4C BI(Alpaca) 2 19 34 45
+LLM4C BI(Vicuna) 6 24 38 59
+LLM4C BI(GPT4ALL) 3 12 33 47
+LLM4C BI 21 48 74 98
+Note: LLM4C BIuses GPT-3.5 as the default LLM.
+Comparison Strategies . We run those variants within one
+hour limit and then compare the Top-N metrics for each
+approach. We do not repeatedly run those models mainly
+because we aim to demonstrate the extendability of replac-
+ing different LLMs in LLM4C BI.
+4.5.2 Experimental Results
+Table 6 shows that all the designed variant ap-
+proaches, i.e., LLM4C BI(Alpaca), LLM4C BI(Vicuna), and
+LLM4C BI(GPT4ALL), contribute to the compiler bug isola-
+tion task. The results indicate that different LLMs can have
+different capabilities for generating test programs for com-
+piler bug isolation, and GPT-3.5 (used as the default model
+in LLM4C BI) achieves the best performance compared with
+other LLMs. Serval reasons made the performance of other
+LLMs not as good as GPT-3.5 used in LLM4C BI:
+•Only give suggestion responses. Many outputs from those
+models are suggestions telling users how to change the
+code rather than the actual code. For example, on iso-
+lating LLVM #17388 with the prompt “replacing a binary
+operator with another valid one on the variables in the list
+[’a’, ’c’]”, LLM4C BI(Alpaca) responses, “You can replace
+the binary operator ‘||‘ with the logical operator ‘&&‘”.
+Such output did not directly contain the complete test
+programs, but that information is still useful for helping
+users manually write a good passing test program.
+•Limited code generation capabilities. Although other
+LLMs are targeting a comparable performance compared
+with GPT-3.5 or GPT-4, they may still be limited by the
+scale of training data. For example, The model Alpaca
+used text-davinci-003 model to generate 52K in-
+struction data as training data, which may still be lim-
+ited compared with the training data scale of GPT-3.5
+(although OpenAI did not disclose the actual number).
+•Performance issue. Running LLMs typically requires a
+powerful GPU to get better performance. Since our ex-
+periments run only in CPUs without GPUs, the response
+time for other LLMs is larger. Based on our observation,
+the response time of getting an answer from those LLMs
+takes appropriately 300 seconds, which significantly re-
+duces the effectiveness of those approaches. In contrast,
+GPT-3.5 only invokes API for the code generation, andIEEE TRANSACTIONS ON SOFTWARE ENGINEERING 13
+the response time is less than 10 seconds, which makes
+LLM4C BIhave a better capability.
+Although the results from other LLMs are not as good
+as GPT-3.5, we show the ease in adopting new LLMs in
+LLM4C BI. With the rapid development of more powerful
+LLMs, such as Falcon [53], [54], we believe advanced
+techniques can mitigate the above limitations and further
+assist the compiler bug isolation task in the near future.
+Summary for RQ3. LLM4C BIis extensible, allowing for
+easy integration with other LLMs.
+5 D ISCUSSION
+In this section, we first discuss the comparison results with
+GPT-4 and then evaluate the impact of different temperature
+values used in LLM4C BI. Finally, we discuss some limita-
+tions of LLM4C BI.
+5.1 Comparison with GPT-4
+In this study, we are unable to conduct large-scale experi-
+ments using GPT-4 in LLM4C BIdue to its higher API cost6
+compared to GPT-3.5. However, we did run two cases us-
+ing a variant of LLM4C BI, called LLM4C BI(GPT-4), which
+incorporates GPT-4. Interestingly, the results demonstrated
+that LLM4C BI(GPT-4) outperformed LLM4C BI, with both
+Top 20+ bugs being ranked in the Top-5. The improved
+performance of LLM4C BI(GPT-4) can be attributed to two
+main factors. First, GPT-4 generated a smaller number of test
+programs with syntax errors, indicating a higher quality of
+output. Second, GPT-4 exhibits a better understanding of
+the prompt, leading to improved results [12], [28]. As LLMs
+continue to advance rapidly, we anticipate the availability
+of more capable and user-friendly models that can be inte-
+grated into LLM4C BI, further enhancing the compiler bug
+isolation capabilities of LLM4C BI.
+5.2 Different temperature Settings in LLMs
+The temperature parameter in LLMs, such as GPT-3.5, plays
+a crucial role in controlling the randomness of the generated
+output. A lower temperature value makes the output more
+deterministic, while a higher temperature value increases
+randomness. In the context of LLM4C BI, it is important to
+investigate the impact of different temperature values on
+the performance of test program generation for compiler
+bug isolation. To this end, we conducted experiments using
+temperature values of 0.4, 0.6, 0.8, 1.0, and 1.2. The bug iso-
+lation capabilities of LLM4C BIwere compared under these
+different temperature settings, and the results are shown
+in Fig. 7. The results show that the default temperature
+value of 1.0 performs the best for LLM4C BI. This finding
+aligns with expectations since OpenAI has fine-tuned this
+parameter and set it as the default value, indicating that it
+yields optimal results.
+6. https://openai.com/pricing
+(a) GCC
+ (b) LLVM
+Fig. 7. The results of the impact of different temperature settings
+5.3 Limitations of LLM4C BI
+The limitations in LLM4C BIinherit the issues from SBFL
+techniques and LLMs. First, SBFL suffers from tie issues [55],
+[56]. A possible solution is to address this issue by incorpo-
+rating the use of commit history information [57]. Second,
+LLMs may generate syntax invalid programs, which may
+reduce the effectiveness of LLM4C BI. However, based on
+the experimental results, the number of invalid test pro-
+grams is acceptable and does not affect the results much.
+A more effective approach could leverage the program
+repair technique [19] to repair the code generated by LLMs
+automatically. We leave further investigation on the above
+two directions as our future work.
+6 T HREATS TO VALIDITY
+This section discusses the internal ,external , and construct
+threats of LLM4C BI.
+The internal validity concerns stem from the implemen-
+tation of LLM4C BIand comparative approaches (DiWi [3]
+and RecBi [4]). To mitigate this threat, we have adopted the
+implementation provided by the previous studies [3], [4].
+As for LLM4C BI, we have meticulously developed its im-
+plementation by leveraging well-established libraries, as ex-
+pounded upon in Section 4.1, and have conducted thorough
+code checking of the code. For the tool used in test program
+validation, Frama-C [40] can not detect all the undefined
+behaviors in the programs as the identification of undefined
+behavior in the programs is typically a challenging problem
+[58], [59]. We plan to leverage more advanced techniques to
+detect potential undefined behaviors in the test programs.
+The external validity of our study can be influenced by
+two key factors: the selection of compilers and the pres-
+ence of bugs. To ensure the reliability of our findings, we
+have followed the established practices in prior research
+on compiler bug isolation [3], [4] when selecting compilers.
+Following these approaches, we have employed two widely
+used open-source C compilers, GCC and LLVM, which are
+renowned for their popularity and extensive usage within
+the community. Regarding the bugs used in our study,
+we chose a comprehensive set of 120 real compiler bugs,
+encompassing all known bugs from prior investigations
+in the field of compiler bug isolation. To further bolster
+the external validity of our research and address potential
+threats, we are committed to expanding our bug dataset by
+incorporating additional real compiler bugs.IEEE TRANSACTIONS ON SOFTWARE ENGINEERING 14
+The construct validity threats are subject to potential
+threats related to randomness, evaluation metrics, and pa-
+rameter settings during the evaluation process. We address
+these concerns by (1) repeating experiments three times
+and calculating median results to account for randomness,
+thereby reducing the impact of random variations; (2) em-
+ploying widely-used bug localization metrics to assess the
+effectiveness of LLM4C BIto ensure the reliability and com-
+parability of our evaluation results; (3) providing explicit
+parameter configurations and thoroughly investigating their
+impact in Section 5. By doing so, we enhance transparency
+and enable a deeper understanding of the influence of
+different parameter settings.
+7 R ELATED WORK
+This section surveys the most related works in this study,
+namely compiler debugging and LLMs for code generation.
+Compiler Debugging. Our study is primarily related to
+two recent works: DiWi [3] and RecBi [4]. Both are gen-
+eral solutions for isolating all kinds of bugs in compilers.
+These works address the problem of isolating compiler bugs
+by transforming them into the generation of passing test
+programs. DiWi and RecBi achieve this by first utilizing
+mutation operators (DiWi focuses on local mutation opera-
+tors while RecBi supports structural mutation operators) to
+generate a set of passing test programs similar to the failing
+test program, but without triggering the bug. Then, they
+employ spectrum-based bug localization techniques [7], [57]
+to rank the buggy compiler files by comparing execution
+traces between the generated passing test programs and the
+failing test program. LocSeq [41] focuses on isolating opti-
+mization bugs only in LLVM, while ODFL [42] aims to iso-
+late bugs only in GCC. We did not compare LLM4C BIwith
+either LocSeq or ODFL mainly because they are not general
+enough and can only be applicable to specific middle-
+end compiler optimization bugs. In contrast, LLM4C BIis
+capable of isolating all kinds of bugs in compilers, including
+syntax analyzer, semantic analyzer, and back-end bugs.
+In addition, Zeller [60] introduces a method to facili-
+tate GCC debugging by calculating the cause-effect chain
+through a comparison of program states between a passing
+run and a failing run. Holmes and Groce [61], [62] propose
+a method to localize compiler bugs by comparing a set
+of compiler mutants. Regarding compiler debugging tech-
+niques for other programming languages, Ogata et al. [63]
+present an approach for debugging the just-in-time compiler
+in a Java virtual machine. HeuiChan et al. [64], [65] leverage
+dynamic analysis to locate bugs in JIT compilers.
+Different from those works, we follow the existing strat-
+egy to generate a set of effective test programs for compiler
+bug isolation. In contrast, we propose a new structural mu-
+tation strategy to mutate failing test programs effectively:
+we support complete control-flow statements mutation that
+includes both statement conditions and bodies. Besides,
+LLM4C BIonly involves little human effort to accomplish
+the test program mutation process.
+LLMs for Code Generation. The emergence of LLMs has
+sparked significant interest in their application to code
+generation tasks. Ling et al. [66] follow an encoder-decoder
+design and use a sequence-to-sequence LSTM model withattention and a copy mechanism to generate Java and
+Python codes. Iyer et al. [67] use a grammar-aware decoder
+to generate syntactically valid Java parse trees followed by
+Java codes using a two-step attention mechanism. Code-
+BERT [68] and GraphCodeBERT [69] inherit the design of
+BERT [70] which are encoder -only models to generate codes.
+Moreover, CodeT5 [71] and PLBART [72] leverages encoder-
+decoder architecture for generating codes. GLAsT [73] and
+VGen [74] apply decoder -only LLMs for generating Verilog
+RTL Code. Other recent LLMs, such as ChatGPT [5], Vicuna
+[28], WizardLM [75], and StableLM [76], all follow decoder -
+only architecture to generate various codes in Python, Java,
+C/C++, and SQL.
+In this study, we opt for the decoder -only models that
+follow the prompt-response dialog paradigm to generate the
+whole test program for compiler bug isolation tasks. Differ-
+ent from existing approaches, we design a new pattern for
+precisely producing prompts in LLM4C BI. The program’s
+data and control flow complexity are measured to fill in the
+designed pattern. Furthermore, a memorized selection and
+a test program validation strategy are proposed to select the
+proper prompt for effectively taming LLMs for test program
+mutation. We also demonstrate LLM4C BIcan be extensible
+for adopting different LLMs for compiler bug isolation.
+8 C ONCLUSION AND FUTURE WORK
+This paper presents LLM4C BI, a new approach to tame
+LLMs for generating effective test programs for compiler
+bug isolation. In LLM4C BI, three new components, i.e., pre-
+cise prompt production, memorized prompt selection, and
+lightweight test program validation, are designed to tackle
+the two main challenges of formulating precise prompts and
+selecting specialized prompts. Empirical evaluation using
+120 real-world bugs from GCC and LLVM demonstrates the
+effectiveness of LLM4C BIover state-of-the-art approaches.
+Notably, LLM4C BIachieves significant improvements rang-
+ing from 13.6% to 90.9% in various settings than DiWi
+and RecBi, respectively. Furthermore, we demonstrate that
+LLM4C BIis extensible, highlighting its ease of extension to
+other LLMs for the compiler bug isolation task.
+Future Work . In addition to the promising results presented
+in this paper, there are several exciting directions for further
+enhancing the capabilities of LLM4C BI. We are actively
+exploring the following directions:
+•Interactive bug isolation. Taking inspiration from interac-
+tive fault localization techniques that leverage user feed-
+back [77], we may incorporate interactive elements into
+LLM4C BI. In detail, by treating LLMs (e.g., ChatGPT) as
+a user, we can enable them to learn continuously from
+the feedback received during the bug isolation process,
+thereby improving the isolation capability.
+•Intelligent bug isolation. To empower LLMs with more
+detailed information, such as coverage data, we can en-
+able them to make intelligent decisions regarding poten-
+tially buggy files. Specifically, we plan to guide LLMs
+to employ different evaluation strategies (e.g., different
+formulas used in SBFL) and fine-tune the parameters of
+LLMs to facilitate compiler bug isolation.IEEE TRANSACTIONS ON SOFTWARE ENGINEERING 15

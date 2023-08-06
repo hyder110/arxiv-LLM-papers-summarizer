@@ -1,0 +1,752 @@
+Multilingual Language Models are not Multicultural: A Case Study in
+Emotion
+Shreya Havaldar, Sunny Rai, Bhumika Singhal, Langchen Liu
+Sharath Chandra Guntuku, & Lyle Ungar
+University of Pennsylvania
+{shreyah,sunnyrai,bhsingha,langchen,sharathg,ungar}@upenn.edu
+Abstract
+Emotions are experienced and expressed differ-
+ently across the world. In order to use Large
+Language Models (LMs) for multilingual tasks
+that require emotional sensitivity, LMs must
+reflect this cultural variation in emotion. In this
+study, we investigate whether the widely-used
+multilingual LMs in 2023 reflect differences
+in emotional expressions across cultures and
+languages. We find that embeddings obtained
+from LMs (e.g., XLM-RoBERTa) are Anglo-
+centric, and generative LMs (e.g., ChatGPT)
+reflect Western norms, even when responding
+to prompts in other languages. Our results show
+that multilingual LMs do not successfully learn
+the culturally appropriate nuances of emotion
+and we highlight possible research directions
+towards correcting this.
+1 Introduction
+The global reach of Large Language Models (LMs)
+today prompts an important question – Are multilin-
+gual LMs also multicultural? We are specifically in-
+terested in the multicultural behavior of LMs from
+the lens of emotion. LMs are used for many multi-
+lingual tasks that require emotional sensitivity and
+therefore must be able to reflect cultural variation
+in emotion. For instance, LM-powered Therapy
+Bots must delicately adapt the way they speak to
+patients in different languages (Wang et al., 2021),
+LMs as creative writing assistants must produce
+content that will elicit the appropriate emotional
+response in an author’s desired audience (Shakeri
+et al., 2021), LMs used for workplace communica-
+tion must understand the subtleties of interpersonal
+interaction (Thiergart et al., 2021), etc.
+We define cultural variation in emotion as the
+nuances in meaning and usage of emotion words
+across cultures. For example, in English, we have
+many different words that express Anger. One can
+say "I feel angry," but may also choose to say "frus-
+trated", "irritated", or "furious." The Anger invoked
+"I would feel that facing off against a friend at a
+friend's house is a fun and exciting experience
+and a good way to deepen friendships."
+"I would feel nervous and anxious, but also
+determined to resolve any issues between us."
+(B) 友達の 家で 友達と 対決 することについてどう 思 いますか。
+(How would you feel about confronting your friend in their home?)1.   Provide cultural context  via (A) English or (B) native language
+2.   Query GPT-4 and annotate response for cultural awareness
+(A) You live in Japan. How would you feel about confronting
+your friend in their home?
+Figure 1: Do LMs always generate culturally-aware
+emotional language? We prompt GPT-4 to answer "How
+would you feel about confronting your friend in their
+home?" like someone from Japan. We provide cultural
+context either via English (stating "You live in Japan"
+in the prompt) or via a Japanese prompt. GPT-4 returns
+two drastically different completions, with the Japanese
+completion annotated as not culturally appropriate.
+by a baby crying on an airplane is different from
+the Anger invoked by an unfair grade on an exam;
+different situations that cause Anger will invoke dif-
+ferent language to best express it. These nuances in
+meaning and usage patterns of emotion words exist
+differently across cultures (Mesquita et al., 1997;
+Wierzbicka, 1999).
+Therefore, there is not a perfect one-to-one map-
+ping between languages for emotion words coupled
+with their meaning and usage patterns. The direct
+translation for "I feel frustrated" from English to
+Chinese (simplified), for example, is " 我感到沮
+丧". However, in a situation where a native English
+speaker would likely say "I feel frustrated," a native
+Chinese speaker may use a different phrase than
+"我感到沮丧", based on situation, context, and the
+cultural norms of emotion expression in China.
+As we rely on multilingual LMs today for emo-
+tionally sensitive tasks, they must reflect this cul-
+tural variation in emotion. However, the widely-arXiv:2307.01370v1  [cs.CL]  3 Jul 2023used multilingual LMs are trained on Anglocen-
+tric corpora and encourage alignment of other
+languages with English (Reimers and Gurevych,
+2020), both implicitly and explicitly, during train-
+ing. The key problem in this approach to building
+multilingual LMs is that any form of alignment
+destroys a model’s ability to encode subtle differ-
+ences, like the difference between “I feel frustrated”
+in the United States and " 我感到沮丧" in China.
+In this paper, we investigate whether widely-
+used multilingual LMs reflect cultural variation in
+emotion. We select four high-resource written lan-
+guages, two Western and two Eastern, to focus on
+in this work – English, Spanish, Chinese (Simpli-
+fied), and Japanese.
+Specifically, we investigate two facets of LMs:
+embeddings and language generation.
+1. Emotion embeddings
+(a)Does implicit and explicit alignment in
+LMs inappropriately anchor emotion
+embeddings to English? We compare
+embeddings from monolingual, multilin-
+gual, and aligned RoBERTa models.
+(b)Do emotion embeddings reflect known
+psychological cultural differences? We
+project embeddings onto the Valence-
+Arousal plane to visualize American vs.
+Japanese differences in Pride and Shame.
+2. Emotional language generation
+(a)Do LMs reflect known psychologi-
+cal cultural differences? We ana-
+lyze whether GPT-3 probabilities encode
+American vs. Japanese differences in
+Pride and Shame.
+(b)Do LMs provide culturally-aware emo-
+tional responses? We prompt GPT-3.5
+and GPT-4 with scenarios that should
+elicit varied emotional responses across
+cultures and conduct a user study to as-
+sess response quality.
+We make our code public1and encourage re-
+searchers to utilize the analyses outlined in this
+work as a baseline to measure the cultural aware-
+ness of future multilingual models.
+2 Related Work
+A large body of work in NLP focuses on detecting
+emotion in multilingual text . However, a major
+1https://github.com/shreyahavaldar/
+Multicultural_Emotion/oversight in this line of research is that it treats emo-
+tion as culturally invariant . Work from Bianchi
+et al. (2022) gathers a corpus of annotated social
+media data from 19 languages, but uses machine
+translation to transfer annotations from one lan-
+guage to another, assuming that translation cor-
+rectly captures emotional variation. Work from
+Buechel et al. (2020) generates lexica to analyze
+emotion across 91 languages, relying on transla-
+tions from English lexica and assuming that the
+affective state of parallel words will be identical.
+Psychologists have characterized emotion as hav-
+ing multiple components – an emotional experi-
+ence, a physiological response, and a behavioral
+response tendency (Kensinger and Schacter, 2006).
+Each of these components vary from culture to
+culture (Mesquita et al., 1997), a complexity com-
+pletely ignored when emotion is treated as a static,
+transferable label on an utterance of text. Using
+machine translation to transfer emotion labels be-
+tween languages incorrectly assumes that emotion
+is experienced identically across cultures.
+Others have also observed that LMs can fail to
+account for cultural context and variation. Cao
+et al. (2023) find that ChatGPT strongly aligns
+with American values. Magno and Almeida (2021)
+use word embeddings to globally measure human
+values across cultures, and find that these values
+overlap more when measured via data in English
+vs. native languages. Arora et al. (2023) probe
+multilingual LMs and discover weak alignment
+with the cultural values reflected by these LMs and
+established values surveys.
+In this paper, we focus on emotion, showing a
+wider variety of Anglocentric anchoring by eluci-
+dating the underlying mechanisms of this align-
+ment. We investigate emotion embeddings and LM
+probabilities, as well as affective language gener-
+ated from multilingual LMs.
+3 Investigating Emotion Embeddings
+Many tasks in multilingual NLP utilize em-
+beddings from pre-trained LMs such as XLM-
+RoBERTa (Conneau et al., 2019) and mBERT (De-
+vlin et al., 2018). Researchers fine-tune these mod-
+els for downstream tasks, relying on their learned
+representations of words and concepts.
+We scope our investigation to embeddings from
+the widely used XLM-RoBERTa models. XLM-
+RoBERTa was trained on text that includes parallel
+and comparable corpora (e.g., Wikipedia) in mul-Monolingual
+RoBERTa
+HappinessSadnessAngerElation
+2.239.85 13.05
+12.55
+Multilingual
+RoBERTa
+HappinessSadnessAngerElation
+4.256.68
+28.44
+28.48JoyJoyFigure 2: We determine the similarity between the em-
+beddings of monolingual Joy and multilingual Joy by
+comparing the distances from Joy to other emotions em-
+beddings in both settings. Specifically, we calculate the
+correlation between <13.05,9.85,12.55.2.23>and
+<28.44,6.68,28.48,4.25>to infer similarity.
+tiple languages. The nature of Wikipedia, which
+has topic-aligned articles in different languages,
+causes implicit alignment in training. Worse, XLM-
+RoBERTa variants trained via multilingual knowl-
+edge distillation (Reimers and Gurevych, 2020)
+enforce English sentences and their translations to
+map to the same point in embedding space, giving
+explicit alignment of other languages with English.
+This section investigates the effect of alignment
+– both implicit and explicit – by analyzing emotion
+embeddings from monolingual, multilingual, and
+aligned RoBERTa models (See Table A2). We fur-
+ther investigate whether this anchoring impacts our
+ability to visualize known cultural differences (e.g.
+differences between Pride and Shame in the US vs.
+Japan (Tsai et al., 2006)) when projecting embed-
+dings into the two-dimensional Valence-Arousal
+plane (Russell, 1980).
+3.1 Does implicit and explicit alignment
+inappropriately anchor emotion
+embeddings to English?
+We analyze whether implicitly aligned embeddings
+become Anglocentric by comparing emotion em-
+beddings from XLM-RoBERTa to emotion embed-
+dings learned in a parallel, monolingual setting.
+We further analyze explicit alignment by compar-
+ing embeddings from vanilla XLM-RoBERTa to
+an explicitly aligned variant of XLM-RoBERTa
+(Reimers and Gurevych, 2020).Distance-Based Similarity How do we compare
+the emotion embeddings of two models? Let us
+take Joy, one of the six Ekman emotions (Ekman
+et al., 1999), as an example – can we compare the
+similarity of embeddings from two models for the
+phrase "I feel joy"?2A direct numerical compari-
+son is challenging, as we would need to align the
+embedding spaces of these two models and possi-
+bly distort the Joy embeddings. Taking this into
+account, we pose the following solution:
+The more similar two models are, the more sim-
+ilarly we expect them to embed the same phrases
+in embedding space. For example, let us embed
+phrases x, y, and, z using Model A and Model B.
+This gives us the embedding vectors ⃗ xA, ⃗ yA, ⃗ zA
+and⃗ xB, ⃗ yB, ⃗ zBrespectively. Figure 2 illustrates
+this, showing the embeddings of Joy, Anger, Ela-
+tion, Sadness, and Happiness using a monolingual
+and multilingual RoBERTa model.
+If Model A and Model B have embedded phrases
+x, y, and z in a similar way, then we expect to see a
+high correlation between the numerical distances
+x→y, x→z,andy→zin the respective em-
+bedding spaces of Model A and B. We calculate
+the correlation between the following two vectors:
+<∥⃗ xA−⃗ yA∥,∥⃗ xA−⃗ zA∥,∥⃗ yA−⃗ zA∥>
+<∥⃗ xB−⃗ yB∥,∥⃗ xB−⃗ zB∥,∥⃗ yB−⃗ zB∥>
+to inform how similar the embeddings of x, y, and,
+z are between Model A and Model B.
+Using this idea, we can compare the distances
+from "I feel joy" to other contextualized emotion
+phrases (e.g. "I feel anger", "I feel happiness", etc.)
+in embedding space A to those same distances in
+embedding space B. For example, if the monolin-
+gual and multilingual RoBERTa models shown in
+Figure 2 have learned similar representations of Joy,
+then we can expect to see a high Pearson correlation
+between the vectors <13.05,9.85,12.55.2.23>
+and<28.44,6.68,28.48,4.25>. We use this
+distance-based similarity metric to answer the fol-
+lowing three questions:
+1.Do implicitly aligned multilingual LMs em-
+bed emotion words differently than monolin-
+gual LMs?
+2.Do implicitly aligned multilingual LMs em-
+bed emotion words in an Anglocentric way?
+3. Does explicit alignment further anchor multi-
+lingual emotion embeddings to English?
+2We prepend each emotion word with the phrases "I feel"
+and "I am" to add context and circumvent polysemy when
+generating embeddings for analysis.Do implicitly aligned multilingual LMs embed
+emotion words differently than monolingual
+LMs? We compare the emotion representations
+from monolingual andmultilingual RoBERTa mod-
+els across English, Spanish, Chinese, and Japanese.
+We select the four monolingual RoBERTa models
+most downloaded on Huggingface, additionally en-
+suring the four models selected have the same num-
+ber of parameters. Table A2 contains additional
+details on the models used in our experiments.3
+Figure 2 illustrates this experiment. In practice,
+we use a list of 271 emotions (Davis, 2023) for
+our distance-based similarity computation. Addi-
+tionally, to account for variance in descriptions of
+experiencing emotion, we average the embedding
+of two contextualized phrases for each emotion –
+"I feel <emotion> " and "I am <emotion> ".
+For non-English languages, we machine trans-
+late the two contextualized English phrases for each
+emotion (e.g. a representation of Joy in English is
+the average of the embeddings of "I feel joy" and
+"I am joyful". The representation of Joy in Spanish
+is the average of the embeddings "siento alegría"
+and "soy alegre", etc.). In order to ensure quality,
+we have native speakers evaluate a subset of the
+machine-translated emotion phrases, and we find
+that translation does yield sufficient results.
+We then apply our distance-based similarity met-
+ric to compare the monolingual and multilingual
+emotion embeddings across languages. The "Mono
+vs. Multi" column in Table 1 shows the average
+distance-based similarity across all 271 emotions.
+The lower similarities for non-English languages
+indicate that XLM-RoBERTa embeds non-English
+emotions differently compared to monolingual mod-
+els. We can thus say that multilingual LMs do not
+preserve the embedding space of monolingual non-
+English LMs.
+Do implicitly aligned multilingual LMs embed
+emotion words in an Anglocentric way? We
+compare the emotion representations of English
+vs.non-English languages. We apply our distance-
+based similarity metric to measure the similarity
+between English and non-English emotion repre-
+sentations in two settings – monolingual and multi-
+lingual. Figure 3 illustrates this experiment.
+3We note that differences in training data for the monolin-
+gual RoBERTa models affect how these models are able to
+capture emotion. However, it is important to investigate LMs
+actively used in NLP research rather than explicitly creating a
+perfectly parallel set of monolingual models.
+Spanish
+RoBERTa
+FelicidadTristezaEnojoElación
+0.350.41
+0.39
+0.37AlegríaHappinessSadnessAngerElation
+2.239.85 13.05
+12.55JoyEnglish
+RoBERTaFigure 3: We compare the similarity between the embed-
+dings of Joy in English and Joy(Alegría) in Spanish by
+comparing the distances from Joy to other emotion em-
+beddings in both languages. Specifically, we calculate
+the correlation between <13.05,9.85,12.55.2.23>
+and<0.39,0.41,0.37,0.35>to infer similarity.
+The "English vs. Non-English" columns in Ta-
+ble 1 show the average distance-based similarity
+between English and non-English emotion embed-
+dings across all 271 emotions, in monolingual and
+multilingual settings respectively. Results reveal
+low similarity between non-English and English
+emotion embeddings in monolingual space. In a
+multilingual setting, however, the non-English emo-
+tion embeddings become more similar to English
+ones. This suggests that implicit alignment in mul-
+tilingual LMs anchors non-English emotion embed-
+dings to their English counterparts.
+Does explicit alignment further anchor multi-
+lingual emotion embeddings to English? We
+compare emotion embeddings from an unaligned
+RoBERTa model to a RoBERTa model trained via
+forced alignment across English, Spanish, Chinese,
+and Japanese (Reimers and Gurevych, 2020).
+The average distance-based similarity between
+aligned and unaligned emotion embeddings across
+all 271 emotions is shown in column "Aligned vs.
+Unaligned" in Table 1. Emotion embeddings from
+explicitly aligned models are most similar to un-
+aligned embeddings in English , indicating explic-
+itly aligned embedding space fails to preserve the
+structure of non-English embedding spaces.
+Finding 1: Multilingual LMs embed non-English
+emotion words differently from their monolingual
+counterparts, whereas English emotion embed-Mono vs. Multi English vs. Non-English Aligned vs. Unaligned
+Language (L) ¯r(Lmono, Lmulti ) ¯ r(En, L )mono ¯r(En, L )multi ¯r(Lalgn, Lunalgn )multi
+English (En) 0.758 (0.35) — — 0.483 (0.22)
+Spanish 0.318∗(0.20) 0.222∗(0.14) 0.628∗(0.36) 0.280∗(0.19)
+Chinese 0.378∗(0.10) 0.213∗(0.12) 0.437∗(0.35) 0.102∗(0.06)
+Japanese 0.332∗(0.18) 0.055∗(0.09) 0.485∗(0.39) 0.332∗(0.18)
+Table 1: We report the average distance-based similarity across 271 emotions for each of our experiments (standard
+deviation given in parentheses).∗indicates the difference in mean correlation between English vs. non-English
+settings (for Mono vs. Multi, Aligned vs. Unaligned) and monolingual vs. multilingual settings (for English vs.
+Non-English) is statistically significant ( p <0.05); we compute this using an independent t-test. See Table A2 for
+models used in each setting.
+dings are more stable and similar in all settings.
+We demonstrate that implicit and explicit alignment
+in multilingual LMs anchor non-English emotion
+embeddings to English emotions. All observed
+trends persist under ablation studies on the effect
+of distance metric and correlation function (see
+Appendix A).
+3.2 Do emotion embeddings reflect known
+psychological cultural differences?
+Though emotion embeddings from multilingual
+LMs are Anglocentric, we nonetheless investigate
+whether they encode any information about known
+cultural variation in emotion. Prior work (Tsai,
+2017; Russell et al., 1989) underlines the differ-
+ences in emotional expression across cultures, and
+often illustrates these differences via the circum-
+plex model of affect (Russell, 1980). The circum-
+plex model assumes all emotions can be classified
+along two independent dimensions – arousal (the
+magnitude of intensity or activation) and valence
+(how negative or positive).
+Pride and Shame are two widely researched emo-
+tions when investigating cultural differences in
+emotional expression. (Lewis et al., 2010; Wong
+and Tsai, 2007). Shame is expressed more com-
+monly and has a desirable affect in Eastern cultures
+compared to Western cultures. Similarly, Pride is
+openly expressed in Western cultures whereas East-
+ern cultures tend to inhibit the feeling of Pride (Lim,
+2016). Moreover, these proclivities are deeply in-
+grained in society and thus acquired at a very young
+age (Furukawa et al., 2012).
+For our experiments, we consider the US and
+Japan, as the subtle differences in expression of
+Pride and Shame between these two cultures are
+well-studied (Kitayama et al., 2000; Tsai et al.,
+2006). We project emotion embeddings from En-
+glish and Japanese onto the Valence-Arousal planeto visualize whether multilingual LMs capture the
+expected differences in Pride and Shame. When
+comparing the embeddings, we expect to specifi-
+cally observe:
+1.The embedding for English Pride should have
+a more positive valence. (as Pride is more
+accepted in the US than Japan) (Furukawa
+et al., 2012)
+2.The embedding for English Shame should
+have a more negative valence. (as Shame is
+more embraced in Japan than the US) (Fu-
+rukawa et al., 2012)
+3.The embeddings for English Pride should have
+higher arousal (as Pride is more internally
+and culturally regulated in Japan than the US)
+(Lim, 2016)
+−1 0 1−101 Fear
+Anger
+JoySadnessDisgustSurprise
+PV NVHA
+LA
+valencearousalEkman Emotions on the V-A Plane
+Figure 4: The six Ekman emotions projected onto the
+Valence-Arousal plane. We replicate the circumplex
+model of affect, enabling visualization and theoretical
+analysis of multi-dimensional emotion embeddings.
+Projection into the Valence-Arousal plane In
+order to define the valence and arousal axes, we
+first generate four axis-defining points by averag-
+ing the contextualized embeddings of the emotionslisted in Table A1. This gives us four vectors in
+embedding space that best represent positive va-
+lence ( PV) negative valence ( NV), high arousal
+(HA), and low arousal ( LA). We can now project
+any emotion embedding onto the plane defined by
+the valence axis ( NV→PV) and the arousal
+axis ( LA→HA). We give a more formal, math-
+ematical description of this projection method in
+the Appendix B. Figure 4 shows the six Ekman
+emotions (Ekman et al., 1999) projected into the
+Valence-Arousal plane, indicating that our projec-
+tion method successfully recreates the circumplex.
+To visualize Pride and Shame in the Valence-
+Arousal plane, we manually translate the axis-
+defining emotions to Japanese and average the En-
+glish and Japanese points of each axis category to
+define multilingual valence and arousal axes . We
+then project the contextualized sentence embed-
+dings "I am proud" and "I am ashamed" in English
+and Japanese. We experiment with both aligned
+and unaligned RoBERTa models; these plots are
+shown in Figure 5.
+Looking at the plots, we observe that English
+Pride is slightly higher in valence than Japanese
+Pride, and English Shame is slightly lower in va-
+lence than Japanese Shame. This does serve as
+a weak confirmation of the first two hypotheses.
+However, we do not observe English Pride to have
+higher arousal than Japanese Pride. This discrep-
+ancy suggests our results are inconclusive, and we
+cannot confirm whether multilingual RoBERTa en-
+codes cultural variation in English vs. Japanese
+Pride and Shame.
+Finding 2: By projecting emotion embeddings
+into the Valence-Arousal plane, we show that LMs
+are not guaranteed to encode the nuances in mean-
+ing and usage of emotion words across cultures.
+Researchers who utilize embeddings from multilin-
+gual LMs for emotion-related tasks assume these
+pre-trained models have learned adequate represen-
+tations of emotion across languages. However, im-
+plicit and explicit alignment during training causes
+multilingual LMs to ignore the subtle differences
+in emotion expression across cultures.
+4 Investigating multilingual LM
+generation
+We now turn from investigating embeddings to an-
+alyzing language generated by Language Models
+(GPT-3, GPT-3.5, and GPT-4) to see if multilin-
+gual LM completions reflect cultural variation in−1 0 1−101
+PV NVHA
+LAShamePride ShamePride
+valencearousalPride & Shame on the V-A Plane
+En (Aligned)
+Ja (Aligned)
+−1 0 1−101
+PV NVHA
+LAShame
+Pride ShamePride
+valencearousalEn (Unaligned)
+Ja (Unaligned)
+Figure 5: We project English and Japanese Pride and
+Shame embeddings into the Valence-Arousal plane. We
+use an aligned (top) and unaligned (bottom) RoBERTa
+model to embed the contextualized emotions. In both
+cases, we do not see all of our hypotheses confirmed.
+emotion. In order for LMs to be used for tasks that
+require emotional sensitivity, their responses must
+align with cultures’ socio-cultural norms (Genesee,
+1982); generated text must reflect users’ cultural
+tendencies and expected affect (Tsai, 2017).
+We first analyze token-level completion proba-
+bilities from GPT-3, to see if they reflect cultural
+differences between American and Japanese Shame
+and Pride. We then prompt GPT-3.5 and GPT-4
+in English and non-English languages to respond
+to scenarios that should elicit different emotional
+responses across cultures and assess their cultural
+appropriateness in a small-scale user study.
+4.1 Do LMs reflect known psychological
+cultural differences?
+Continuing our example of English vs. Japanese
+Pride and Shame, we evaluate whether this known
+cultural difference is reflected in OpenAI’s GPT-3.
+We design a set of 24 prompts (See Table A5)
+for GPT-3 ( davinci ) based on six scenarios that
+would invoke a combination of Pride and Shame
+in the form <context><feeling> . For exam-
+ple, "I received an award in front of my cowork-
+ers. I feel proud." One might feel proud for re-proud ashamed happy embarrassed−30−25−20−15
+-17.83
+-24.93-23.86 -23.89-14.24
+-22.56-20.50
+-27.83
+EmotionGPT-3 Log Probability"I received an award in front of my coworkers. I feel ___."
+English Japanese
+Figure 6: A comparison of GPT-3 sentence completion probabilities in English and Japanese. We show the log
+probabilities for the sentence "I feel X." following the scenario "I received an award in front of my coworkers."
+and test emotion words associated with Pride or Shame in English and Japanese. Contrary to cultural expectation,
+we do not observe a pattern where Pride words have a higher likelihood in English or Shame words have a higher
+likelihood in Japanese.
+ceiving an award or embarrassed for being publi-
+cally praised. We then prompt GPT-3 using various
+<context><feeling> prompts, and analyze
+the log probability of each token of the prompt.
+Finally, we sum the log probability of each to-
+ken in the <feeling> sentence to get a sense
+of how likely the <feeling> is to follow the
+<context> . Based on cultural norms about how
+one would react in situations that elicit both Pride
+and Shame, we expect to see a higher probability
+for "I feel happy" and "I feel proud" in English, and
+a higher probability for "I feel embarrassed" and "I
+feel ashamed" in Japanese across scenarios.
+Figure 6 shows the results of this for the prompt
+"I received an award in front of my coworkers. I
+feel ___." where we test two Pride words: "proud",
+"happy", and two Shame words: "ashamed", and
+"embarrassed". We replicate this experiment in
+Japanese, and compare the summed log probabili-
+ties of "I feel ___." between English and Japanese
+across emotions. The full results, along with the re-
+maining prompts are given in Appendix Table A5.
+Analyzing the results across six scenarios (see Ap-
+pendix C), we do not see any consistent evidence
+that Pride is more likely to be expressed in English
+or Shame is more likely to be expressed in Japanese.
+In Figure 6, for example, we see contradicting re-
+sults for "proud", "happy", and "embarrassed".
+Finding 3: These results suggest that GPT-3
+lacks knowledge of Pride and Shame and the norms
+surrounding their expression in the US and Japan.
+This is a major limitation; such a failure to cap-
+ture cultural variation is likely to limit both the
+utility and applicability of LMs in downstream
+emotionally-sensitive tasks.4.2 Do LMs provide culturally-aware
+emotional responses?
+To further investigate whether LM completions re-
+flect cultural norms, we conduct a small-scale user
+study to see if GPT-3.5 and GPT-4 are capable of
+appropriately adapting when prompted in different
+languages. Annotators assess whether the com-
+pletions parallel the accepted emotional responses
+associated with the user’s culture.
+Prompting with cultural context Prior psycho-
+logical research has detailed scenarios that reveal
+how emotional expressions vary across cultures
+(Mesquita, 2022). We use this work to design a set
+of 19 questions (see Table A6) that should elicit
+different emotional responses across cultures. For
+example, the question "How would you feel if your
+guests chose to keep their shoes on when entering
+your home?" would likely elicit a different response
+from someone culturally American vs. Chinese.
+We use these scenarios to prompt GPT-3.5
+(gpt-3.5-turbo ) and GPT-4 ( gpt-4 ) in the
+form<prefix>+<question> (see Table 2). In
+order to include cultural context and coax the LM
+into returning a culturally appropriate emotional
+response, we experiment with providing cultural
+context in two ways (using Chinese as an example):
+1.via English – we add the sentence "You live
+in China." to the prefix. The LM returns an
+English completion.
+2.via Native Language – we translate the
+<prefix>+<question> prompt to Chi-
+nese. The LM returns a Chinese completion.
+Figure 1 details these two cultural context modes
+and how they may cause conflicting LM responses.Prefix
+You are a helpful chatbot. Your goal is to answer my questions like you are a human capable of feelings and emotions.
+{You live in China. } Answer the following question using a single sentence that begins with "I would feel...".
+Questions
+Your neighbor offers you food. How would you feel turning it down?
+How would you feel if your parents moved in with you right after you were married?
+How would you feel if your guests chose to keep their shoes on when entering your home?
+Table 2: Example prompts ( <prefix>+<question> ) designed to evaluate whether GPT-3.5 and GPT-4 can
+adapt to account for cultural variation in emotion. In our first set of experiments, we include the bold sentence "You
+live in China." and prompt GPT in English. In our second set of experiments, we do NOT include the bold sentence,
+and instead provide cultural context by translating our <prefix>+<question> prompt to Chinese. The full set
+of questions is given in Appendix Table A6.
+User Study To assess the quality of the LM com-
+pletions, we perform a small-scale user study using
+eight volunteers, consisting of four pairs fluent in
+English, Spanish, Chinese, and Japanese respec-
+tively. We ask our volunteers to annotate GPT-3.5
+and GPT-4’s responses for cultural awareness along
+two axes - linguistic norms (how you would expect
+a native speaker to talk), and cultural norms (what
+you would expect a native speaker to say). As these
+two norms are deeply correlated, annotators are
+instructed to take both of these dimensions into
+account and give a single rating to each completion.
+We use a scale of 1-7, where 7 indicates the LM’s
+response is fully expected of a native speaker.
+Across languages, we observe a high agreement
+within each pair of volunteers. Figure 7 details
+the average score across annotators and questions
+for GPT-4 and GPT-3.5 completions. We provide
+the annotator agreement statistics in Appendix Ta-
+ble A4. Analyzing the completions and annotations,
+we notice some interesting trends:
+•We see a large difference in quality between
+the LM responses returned using the two cul-
+tural context prompting modes (even though
+the questions are identical.)
+•For Chinese and Japanese, the LM returns a
+less culturally-appropriate response using the
+Native Language cultural context mode.
+•English completions are the most culturally-
+aware across languages, and English response
+quality is unaffected by cultural context mode.
+Finding 4: GPT-3.5 and GPT-4 fail to infer that
+a prompt in a non-English language suggests a
+response that aligns with the linguistic and cultural
+norms of a native speaker. Additionally, the LM
+completions reflect culturally appropriate emotion
+much better in Western languages than Eastern.English Prompt Native Prompt01234567
+5.195.144.784.585.69
+3.693.834.36
+Cultural Context ModeCultural Awareness ScoreCultural Awareness of GPT-3.5
+English Spanish
+Japanese Chinese
+English Prompt Native Prompt012345676.28
+5.365.195.066.47
+5.41
+44.58
+Cultural Context ModeCultural Awareness ScoreCultural Awareness of GPT-4
+English Spanish
+Japanese Chinese
+Figure 7: Average cultural awareness scores across an-
+notations for GPT-3.5 and GPT-4 completions in each
+language. We observe a consistently higher quality of
+English completions, and poor performance of East-
+ern languages compared to Western, especially when
+prompted using the Native Language context mode.5 Conclusion
+We find that multilingual models fail to fully cap-
+ture cultural variations associated with emotion,
+and predominantly reflect the cultural values of the
+Western world. Emotion embeddings from multi-
+lingual LMs are anchored to English, and the text
+completions generated in response to non-English
+prompts are not in tune with the emotional ten-
+dencies of users’ expected culture. For instance,
+when GPT-4 is prompted in Japanese, it responds
+as an American fluent in Japanese but unaware of
+Japanese culture or values.
+Our results caution against blindly relying on
+emotion representations learned by LMs for down-
+stream applications. Using machine translation to
+transfer labels or utilizing multilingual LMs in a
+zero-shot setting for unseen languages has risks –
+the multilingual representations of emotion learned
+by these models do not perfectly reflect how their
+corresponding cultures express emotion.
+Future Research Directions Our paper moti-
+vates the need for future work that transcends
+current Anglocentric LMs. This could take the
+form of higher performing, non-English models in
+a monolingual setting, or of multilingual models
+trained on more linguistically and culturally bal-
+anced corpora. Future work should additionally
+investigate whether state-of-the-art monolingual
+models in non-English languages succeed in encod-
+ing the respective culture’s norms. Furthermore,
+we encourage the evaluation of multilingual mod-
+els on benchmarks that measure cultural awareness
+in addition to standard metrics.
+6 Limitations
+We only analyze four high-resource languages in
+this study, our analysis could have benefited from
+more languages, especially low-resource ones. Ad-
+ditionally, we only analyze Japanese and English
+Pride/Shame as a known cultural difference; analyz-
+ing other differences could provide stronger results.
+We perform a small user study, and our work could
+have benefited from a larger-scale study with more
+annotators and completions analyzed.
+We recognize the added complexity of inves-
+tigating Pride embeddings from a culture where
+explicit expressions of Pride are discouraged; we
+note this may be a contributing factor to our re-
+sults indicating that LMs do not reflect the cul-
+turally appropriate nuances of Shame and Pride.Additionally, we acknowledge that the experiments
+outlined in this paper are specific to investigating
+cultural awareness from the lens of emotion. These
+experiments are not easily applicable to measur-
+ing cultural awareness from different perspectives;
+therefore, results may not be generalizable.
+At a higher level, we equate language with cul-
+ture. Psychologists have observed higher cultural
+similarities within languages than between them
+(Stulz and Williamson, 2003), however, we rec-
+ognize there are variations within the populations
+that speak each language. For example, Spanish
+is spoken by people in Spain, Mexico, and other
+countries, each having a unique and varied culture.
+7 Ethical Considerations
+Although culturally-aware multilingual LMs are
+critical in uses such as therapy, storytelling, and
+interpersonal communication, these are possible
+misuses for nefarious purposes - persuasion, misin-
+formation generation, etc. Additionally, our analy-
+ses behave as if China, Japan, Spain, and the United
+States are a single culture with a single set of cul-
+tural norms. In reality, this is not the case; we
+recognize there are huge variations in the way peo-
+ple view emotion within each of these cultures.

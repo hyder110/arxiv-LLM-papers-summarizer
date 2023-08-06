@@ -1,0 +1,683 @@
+Your spouse needs professional help: Determining the Contextual
+Appropriateness of Messages through Modeling Social Relationships
+David Jurgens3
+University of Michigan
+jurgens@umich.eduAgrima Seth3
+University of Michigan
+agrima@umich.edu
+Jackson Sargent⋆
+University of Michigan
+jacsarge@umich.eduAthena Aghighi⋆
+University of California, Davis
+aaghighi@ucdavis.eduMichael Geraci⋆
+University of Buffalo
+megeraci@buffalo.edu
+Abstract
+Understanding interpersonal communication re-
+quires, in part, understanding the social context
+and norms in which a message is said. How-
+ever, current methods for identifying offensive
+content in such communication largely oper-
+ate independent of context, with only a few
+approaches considering community norms or
+prior conversation as context. Here, we intro-
+duce a new approach to identifying inappro-
+priate communication by explicitly modeling
+the social relationship between the individuals.
+We introduce a new dataset of contextually-
+situated judgments of appropriateness and show
+that large language models can readily incor-
+porate relationship information to accurately
+identify appropriateness in a given context. Us-
+ing data from online conversations and movie
+dialogues, we provide insight into how the
+relationships themselves function as implicit
+norms and quantify the degree to which context-
+sensitivity is needed in different conversation
+settings. Further, we also demonstrate that
+contextual-appropriateness judgments are pre-
+dictive of other social factors expressed in lan-
+guage such as condescension and politeness.
+1 Introduction
+Interpersonal communication relies on shared ex-
+pectations of the norms of communication (Hymes
+et al., 1972). Some of these norms are widely
+shared across social contexts, e.g., racial epithets
+are taboo, enabling NLP models to readily iden-
+tify certain forms of offensive language (Fortuna
+and Nunes, 2018). Yet, not all norms are widely
+shared; the same message said in two different
+social contexts may have different levels of accept-
+ability (Figure 1). While NLP has recognized the
+role of social context as important (Hovy and Yang,
+2021; Sheth et al., 2022), few works have directly
+incorporated this context into modeling whether
+3These authors contributed equally to this work
+⋆These authors contributed equally to this work
+“You look beautiful today”“You look like you need some help”“When can I see you again?”
+!
+"
+#
+$
+%
+&
+grandpa to grandchildpolice ofﬁcer to personteacher to a studentstudent to a teacherromantic partnercoworker
+✅
+(
+✅
+(
+✅
+(Figure 1: The same message can be appropriate or not
+depending on the social context in which it is said.
+messages violate social norms. Here, we explicitly
+model relationships as the social context in which
+a message is said in order to assess whether the
+message is appropriate.
+NLP models have grown more sophisticated in
+modeling the social norms needed to identify offen-
+sive content. Prior work has shown the benefits of
+modeling context (Menini et al., 2021), such as the
+demographics of annotators and readers (Sap et al.,
+2019; Akhtar et al., 2021) and the online commu-
+nity in which a message is said (Chandrasekharan
+et al., 2018; Park et al., 2021). However, these
+works overlook normative expectations within peo-
+ple’s relationships.
+In this paper, we introduce a new dataset of over
+12,236 instances labeled for whether the message
+was appropriate in a given relationship context. Us-
+ing this data, we show that computation models
+can accurately identify the contextual appropriate-
+ness of a message, with the best-performing model
+attaining a 0.70 Binary F1. Analyzing the judg-
+ments of this classifier reveals the structure of the
+shared norms between relationships. Through ex-
+amining a large corpus of relationship-labeled con-
+versations, we find that roughly 19% of appropriate
+messages could be perceived as inappropriate in
+another context, highlighting the need for models
+that explicitly incorporate relationships. Finally,arXiv:2307.02763v1  [cs.CL]  6 Jul 2023we show that our model’s relationship-appropriate
+judgments provide useful features for identifying
+subtly offensive language, such as condescension.
+2 Social Norms of Appropriateness
+Relationships are the foundation of society: most
+human behaviors and interactions happen within
+the context of interpersonal relationships (Reis
+et al., 2000). Communication norms vary widely
+across relationships, based on the speakers’ so-
+cial distance, status/power, solidarity, and per-
+ceived mutual benefit (Argyle et al., 1985; Fiske,
+1992). These norms influence communication in
+content, grammar, framing, and style (Eckert and
+McConnell-Ginet, 2012) and help reinforce (or sub-
+vert) the relationship between speakers (Brown and
+Levinson, 1987). Prior computational work mostly
+frames appropriateness as exhibiting positive affect
+and overlooks the fact that, in some relationships,
+conversations can be affectively negative but still
+appropriate (King and Sereno, 1984). For example,
+swearing is often considered a norm violation (Jay
+and Janschewitz, 2008), but can also be viewed as
+a signal of solidarity between close friends (Mon-
+tagu, 2001) or co-workers (Baruch and Jenkins,
+2007). In such cases, the violation of taboo rein-
+forces social ties by forming a sense of in-group
+membership where norms allow such messages
+(Coupland and Jaworski, 2003).
+In sociolinguistics, appropriateness is a func-
+tion of both context and speech. Trudgill (1997)
+argues that “different situations, different topics,
+different genres require different linguistic styles
+and registers,” and Hymes (1997) argues that the
+extent to which “something is suitable, effective
+or liked in some context” determines its appropri-
+ateness. Whether a discourse is appropriate de-
+pends strongly on the social context in which it
+is produced and received (Fetzer, 2015), making
+the assessment of appropriateness a challenging
+task due to the need to explicitly model contex-
+tual norms. Behavioral choices are subject to the
+norms of “oughtness” (Harré and Secord, 1972;
+Shimanoff, 1980), and Floyd and Morman (1997)
+suggest relationship types as an important factor in-
+fluencing the normative expectations for relational
+communication. For example, while it may be con-
+sidered appropriate for siblings to discuss their past
+romantic relationships in detail, the topic is likely
+to be perceived as taboo or inappropriate between
+romantic partners (Baxter and Wilmot, 1985).3 Building a Dataset of Contextual
+Appropriateness
+Prior work has shown that interpersonal relation-
+ships are a relevant context for the appropriateness
+of content (Locher and Graham, 2010). While not
+all messages differ in this judgment—e.g., “hello”
+may be appropriate in nearly all settings—building
+a dataset that embodies this context sensitivity re-
+mains a challenge. Here, we describe our effort to
+build a new, large dataset of messages rated for con-
+textual appropriateness, including how we select
+relationships and operationalize appropriateness.
+Due to the challenge of identifying and rating these
+messages, our dataset is built in two phases.
+Selecting Relationships Formally categorizing
+relationships has long been a challenging task for
+scholars (Regan, 2011). We initially developed a
+broad list of relationships, drawing from 1) folk
+taxonomies (Berscheid et al., 1989), e.g., com-
+mon relationship types of friends (Adams et al.,
+2000), family (Gough, 1971), or romantic part-
+ners (Miller et al., 2007); and 2) organizational
+and social roles (Stamper et al., 2009), e.g., those
+in a workplace, classroom, or functional settings,
+as these frequently indicate different social status,
+distance, or solidarity between individuals in the
+relationship. Using this preliminary list, four anno-
+tators performed a pilot assessment of coverage by
+discussing quotes from movie scripts, social media,
+or their imagination and identifying cases where an
+excluded relationship would have a different judg-
+ment for appropriateness. Ultimately, 49 types of
+relationships were included, shown in Table 1.
+Defining Appropriateness Appropriateness is a
+complex construct that loads on many social norms
+(Fetzer, 2015). For instance, in some relationships,
+an individual may freely violate topical taboos,
+while in other relationships, appropriateness de-
+pends on factors like deference due to social status.
+Informed by the theory of appropriateness (March
+and Olsen, 2004), we operationalize inappropri-
+atecommunication as follows: Given two people
+in a specified relationship and a message that is
+plausibly said under normal circumstances in this
+relationship, would the listener feel offended or
+uncomfortable? We use plausibility to avoid judg-
+ing appropriateness for messages that would likely
+never be said, e.g., “would you cook me a ham-
+burger?” would not be said from a doctor to a
+patient. We constrain the setting to what an annota-Category Relationships
+FAMILY parent,†child,†adopted child,†siblings,
+step-siblings, grandparent,†grandchild,†
+niece/nephew,†cousins, uncle/aunt†
+SOCIAL best friend, friend, old friend, childhood
+friend, acquaintance, neighbor, complete
+stranger
+ROMANCE dating, engaged, married, domestic part-
+ner, friends with benefits, a person whom
+one has an affair with, divorcee, ex-
+boyfriend/ex-girlfriend
+ORGANIZATIONAL coworker, colleague, another employee in
+a larger company, boss†(to a direct report),
+direct report†(to a boss)
+PEER GROUP classmate, sports teammate, club member
+PARASOCIAL fan,†hero†
+ROLE-BASED law enforcement,†individual with
+authority†(generic), mentor,†mentee,†
+teacher,†student,†lawyer,†client,†
+doctor,†patient,†landlord†
+ANTAGONIST competitor, rival, enemy
+Table 1: The organization of relationships into folk
+categories. Relationships with asymmetric reciprocal
+roles are marked with a†, e.g., parent and child. In the
+context of annotation, these relationships are interpreted
+as being spoken from that role to the reciprocal role,
+e.g., the parent is interpreted as “parent to a child” and
+the doctor is “doctor to a patient.”
+tor would consider normal circumstances for peo-
+ple in such a relationship when deciding whether
+the message would be perceived as appropriate;
+for example, having a teacher ask a student to say
+something offensive would be an abnormal context
+in which that message is appropriate. Thus, during
+annotation, annotators were asked to first judge if
+the message would be plausibly said and only, if
+so, rate its appropriateness.
+Judging appropriateness necessarily builds on
+the experiences and backgrounds of annotators.
+Culture, age, gender, and many other factors likely
+influence decisions on the situational appropriate-
+ness of specific messages. In making judgments,
+annotators were asked to use their own views and
+not to ascribe to a judgment of a specific identity.
+Raw Data Initial conversational data was se-
+lectively sampled from English-language Reddit.
+Much of Reddit is not conversational in the sense
+that comments are unlikely to match chit-chat.
+Further, few comments are likely to be context-
+sensitive. To address these concerns, we filter
+Reddit comments in two ways. First, we train
+a classifier to identify conversational comments,
+using 70,949 turns from the Empathetic dialogs
+data (Rashkin et al., 2019) and 225,907 turns from
+the Cornell movie dataset (Danescu-Niculescu-Mizil and Lee, 2011) as positive examples of
+conversational messages, and 296,854 turns from
+a random sample of Reddit comments as non-
+conversational messages. Full details are provided
+in Appendix B. Second, we apply our conversa-
+tional classifier to comments marked by Reddit as
+controversial in the Pushshift data (Baumgartner
+et al., 2020); while the decision logic for which
+comments are marked as controversial is propri-
+etary to Reddit, controversial-labeled comments
+typically receive high numbers of both upvotes and
+downvotes by the community—but are not neces-
+sarily offensive. These two filters were applied to
+identify 145,210 total comments gathered from an
+arbitrary month of data (Feb. 2018).
+3.1 Annotation Phase 1
+In the first phase of annotation, four annotators indi-
+vidually generated English-language messages they
+found to differ in appropriateness by relationship.1
+Annotators were provided with a website interface
+that would randomly sample conversational, con-
+troversial Reddit comments as inspiration. Details
+of the annotation instructions and interface are pro-
+vided in Appendix A. The annotation process used
+a small number of in-person annotators rather than
+crowdsourcing to allow for task refinement: During
+the initial period of annotating, annotators met regu-
+larly to discuss their appropriateness judgments and
+disagreements. This discussion process was highly
+beneficial for refining the process for disentangling
+implausibility from inappropriateness. Once an-
+notation was completed, annotators discussed and
+adjudicated their ratings for all messages. Annota-
+tors ultimately produced 401 messages and 5,029
+total appropriateness ratings for those messages in
+the context of different relationships.
+3.2 Annotation Phase 2
+Phase 2 uses an active learning approach to iden-
+tify potentially relationship-sensitive messages to
+annotate from a large unlabeled corpus. A T5
+prompt-based classifier was trained using Open-
+Prompt (Ding et al., 2022) to identify whether a
+given message would be appropriate to say to a per-
+son in a specific relationship. Details of this clas-
+sifier are provided in Appendix C. This classifier
+1This process was developed after pilot tests showed the
+random sample approach was unlikely to surface interesting
+cases, but annotators found it easier to ideate and write their
+own messages after being exposed to some example commu-
+nication.Message Appropriate Relationship Contexts Inappropriate Relationship Contexts
+You’re so grown up now! grandparent, cousins, neighbor, parent, un-
+cle auntdirect report (to a boss), student (to a
+teacher)
+Sorry, were we 2-0 against you? I forget. rival, competitor club member, sports teammate
+Pull your car over! law enforcement complete stranger, competitor
+You need to get out more. friend, domestic partner, sibling, best
+friend, parentcomplete stranger
+She is actually so attractive. sibling, grandchild (to grandparent), do-
+mestic partner, to a person one is dating,
+childhood friend, child, adopted child, best
+friend, classmate, parent, friendcolleague, boss, teacher (to a student), stu-
+dent (to a teacher), mentor, mentee (to
+mentor), direct report (to a boss), law en-
+forcement, co-worker
+I’m afraid you’re right. But it’s also time
+to move onteacher, boss, colleague, sibling, domestic
+partner, childhood friend, ex-lover,mentee (to a mentor), direct report (to a
+boss), student (to a teacher)
+So how was the date last night bro dating, best friend, friend law enforcement, direct report, person
+with authority, employee in large company
+I’m glad we’re friends friend, sibling, childhood friend, old
+friend, cousins, best friend, step siblingcomplete stranger, acquaintance, friends
+with benefits
+How would you know? colleague, boss, sibling, lawyer (to client),
+doctor, best friend, classmate, step sibling,
+friend, dating, law enforcementmentee (to mentor), complete stranger,
+teacher (to a student), patient (to
+doctor), child (to parent), parent (to
+child),neighbor, spouse, old friend,
+Oh I see, I’m sorry I misunderstood colleague, teacher, student, lawyer, boss,
+sibling, club member, grandchild, doctor,
+complete stranger,
+Table 2: Examples of the labeled data with a sample of the relationship contexts that annotators viewed as being
+appropriate or not for the message.
+was run on all sampled data to identify instances
+where at least 30% of relationships were marked
+as appropriate or inappropriate; this filtering biases
+the data away from universally-appropriate or in-
+appropriate messages, though annotators may still
+decide otherwise.
+Two annotators, one of which was not present
+in the previous annotation process, completed two
+rounds of norm-setting and pilot annotations to
+discuss judgments. Then, annotators rated 30 mes-
+sages each, marking each for plausibility and, if
+plausible, appropriateness; they met to adjudicate
+and then rated another 41 messages. This pro-
+duced 2,159 appropriateness ratings across these
+messages. Annotators had a Krippendorff’s αof
+0.56 on plausibility and, for messages where both
+rated as plausible, 0.46 on appropriateness. While
+this agreement initially seems moderate, annota-
+tors reviewed all disagreements, many of which
+were due to different interpretations of the same
+message, which influenced appropriate judgments
+rather than disagreements in appropriateness itself.
+Annotators then revised their own annotations in
+light of consensus in message meaning, bringing
+the plausibility agreement to 0.72 and appropri-
+ateness to 0.92. We view these numbers as more
+reliable estimates of the annotation process, rec-
+ognizing that some messages may have differentjudgments due to annotators’ values and personal
+experiences. We mark the 2,159 ratings in this data
+asAdjudicated data for later evaluation.
+Both annotators then independently annotated
+different samples of the Reddit data in order to
+maximize diversity in messages. Annotators were
+instructed to skip annotating messages that they
+viewed as less context-sensitive (e.g., offensive in
+all relationship contexts) or where the message did
+not appear conversational. Annotators provided
+5,408 ratings on this second sample. We refer to
+this non-adjudicated data as Phase 2 data.
+3.3 Dataset Summary and Analysis
+The two phases produced a total of 12,236 appro-
+priateness judgments across 5299 messages. Of
+these, 7,589 of the judgments were appropriate,
+and 4647 were inappropriate. Table 2 shows ex-
+amples of annotation judgments. In line with prior
+cultural studies of appropriateness (Floyd and Mor-
+man, 1997; Fetzer, 2015), three themes emerged
+during training. First, annotators noted the percep-
+tion of the role of teasing in deciding appropriate-
+ness. Teasing messages are directed insults (mild
+or otherwise) aimed at the other party; comments
+such as “you are so dumb” are likely made in jest
+within close relationships such as best friends or
+siblings but inappropriate in many others. Sec-ond, messages’ appropriateness depended in part
+on whether the relationship was perceived to be
+supportive; for example, the message “At least you
+called him by his correct name” could be one of
+encouragement in the face of a mistake (e.g., if
+said by a spouse) or a subtle insult that implies the
+listener should have known more about the third
+party. Third, differences in the power/status in the
+relationship influenced appropriateness, where very
+direct messages, e.g., “you made a mistake there.”
+were often perceived to be inappropriate when said
+to a person of higher status, a known violation of
+politeness strategies (Brown and Levinson, 1987).
+Ultimately, appropriateness was judged through a
+combination of these aspects.
+As an initial test of regularity in how the relation-
+ship influence perceived appropriateness, we mea-
+sured the probability that a message appropriate
+for relationship riis also appropriate for rjusing
+all the annotations, shown in Figure 2 and grouped
+by thematic categories. Clear block structure ex-
+ists with some categories, e.g., ORGANIZATION ,
+indicating shared norms of appropriateness for rela-
+tionships within the same category. In contrast, the
+FAMILY andSOCIAL categories contain relation-
+ships with different power (e.g., parent) and social
+distance (e.g., friend vs. stranger), leading to varied
+judgments. Figure 2 also reveals the asymmetry
+in which message themes are appropriate: While
+much of what is said for ROLE-BASED relation-
+ships is also appropriate in SOCIAL orROMANCE ,
+the reverse is not true.
+4 Identifying Contextual
+Inappropriateness
+Given the high potential agreement of annotators,
+we test whether models can similarly recognize
+whether a given message is appropriate if said in
+the context of a specific relationship.
+Experimental Setup Two classes of models
+were trained. Given the recent successes of prompt-
+based models, we build models using the Open-
+Prompt library (Ding et al., 2022) and, to sup-
+port larger models, using the PEFT library (Liu
+et al., 2022). The OpenPrompt library was used
+to train t5-base andgpt2-med models using
+the prompt “Is it appropriate for person1 to say
+"quote" to person2, "yes" or "no"? [MASK] ” us-
+ing the verbalization “yes’ or ”no” for the masked
+token. Here, we fill in person1 and person2 to refer
+to the two parties in the relationship. Examples of
+Family
+Social
+Romance
+Organizational
+Peer group
+Parasocial
+Role-Based
+Antagonist
+Family Social
+Romance
+OrganizationalPeer groupParasocialRole-Based Antagonist
+0.00.20.40.60.81.0Figure 2: The probability that, given an appropriate
+message for the relationships represented by a row, the
+message will also be appropriate in another relationship
+listed in the column. Probabilities are calculated across
+the entire data.
+filled-in templates and other prompts are reported
+in Appendix D, though performance varied only
+slightly across different prompts. The PEFT library
+was used to train the large andxlvariants of
+theflan-t5 model (Chung et al., 2022). This
+model has been pretrained for instruction follow-
+ing; therefore, based on suggested guidelines from
+Ziems et al. (2023), we use the following prompt:
+“Rate whether it is inappropriate for this message
+to be said in the following social setting?\n setting:
+relationship description \n message: "quote"\n an-
+swer (yes or no):” Due to the resources required for
+training these larger models, no additional prompts
+were rigorously evaluated outside of initial pilot
+testing.
+The second class of models uses masked lan-
+guage model (MLM) fine-tuning on the [CLS]
+token from an MLM to predict appropriateness.
+Here, we frame the instance using the same lan-
+guage as the OpenPrompt-based models but fill
+in the MASK with “yes” (i.e., indicating that the
+message is appropriate to say in the relationship).
+The classification model is then fine-tuned to clas-
+sify whether this hard-coded judgment is correct
+or not. We test two recent MLMs, MiniLM (Wang
+et al., 2020), a small distilled model, and DeBERTa-
+v3 (He et al., 2021), a much larger model. These
+two models reflect extremes among relatively small
+MLMs and allow us to assess whether more social
+relationship knowledge might be embedded within
+a larger parameter space.Model Type Precision Recall F1
+random n/a 0.436 0.368 0.399
+Perspective API n/a 0.422 0.097 0.157
+DeBERTa-v3 MLM fine-tuning 0.658 0.660 0.659
+MiniLM MLM fine-tuning 0.615 0.705 0.656
+t5-base prompt-based 0.655 0.683 0.669
+gpt2-med prompt-based 0.668 0.650 0.665
+flan-T5-large prompt-based 0.626 0.704 0.661
+flan-t5-xl prompt-based 0.666 0.736 0.698
+Table 3: Performance (Binary F1) at recognizing
+whether a message was inappropriate in a relationship
+context.
+Annotated data was split at the message level
+70:10:20 into train, development, and test sets,
+resulting in 9,107 train, 1,100 development, and
+2,029 test instances. We frame the task similar
+to offensive language detection and use Binary F1
+as our metric where inappropriate is the positive
+class. Model performance is reported as the aver-
+age across five random runs. Additional training
+details and per-seed performance are provided for
+all systems in Appendix E.
+Two baseline systems are included. The first is
+random labels with respect to the empirical distribu-
+tion in the training data. The second uses Perspec-
+tive API (Lees et al., 2022) to rate the toxicity of the
+message, labeling it as toxic if the rating is above
+0.7 on a scale of [0,1]; the same label is used for
+all relationships. While this baseline is unlikely to
+perform well, it serves as a reference to how much
+explicit toxicity is in the dataset, as some (though
+not all) of these messages are inappropriate to all
+relationships.
+Results Models accurately recognized how re-
+lationships influence the acceptability of a mes-
+sage, as seen in Table 3. Prompt-based models
+were largely equivalent to MLM-based models,
+though both approaches far exceeded the baselines.
+The largest model, flan-t5-xl , ultimately per-
+formed best, though even the MiniLM offered
+promising performance, despite having several or-
+ders of magnitude fewer parameters. In general,
+models were more likely to label messages as in-
+appropriate even when appropriate for a particular
+setting (more false positives). This performance
+may be more useful in settings where a model flags
+potentially inappropriate messages which are then
+reviewed by a human (e.g., content moderation).
+However, the performance for models as a whole
+suggests there is substantial room for improvement
+in how relationships as social context are integrated
+into the model’s decisions.
+0.1 0.2 0.3 0.4 0.5 0.6 0.7
+% of training data marked Inappropriate0.20.40.60.81.0Binary F1 on the RelationshipCategory
+Social
+Family
+Organizational
+Peer group
+Role Based
+Antagonist
+Romance
+Parasocial
+Training Examples
+60
+120
+180
+240
+300
+360Figure 3: Performance of the flan-t5-xl model rela-
+tive to the % of training examples marked inappropriate
+per relationship. Colors denote the relationship category
+and sizes the number of training examples.
+Error Analysis Different relationships can have
+very different norms in terms of what content is
+acceptable, as highlighted in Figure 2. How did
+model performance vary by relationship? Figure
+3 shows the binary F1 score of the flan-t5-xl
+model by relationship, relative to the percent of
+training instances the model saw that were inap-
+propriate; Appendix Table 11 shows full results
+per relationship. Model performance was highly
+correlated with the data bias for inappropriateness
+(r=0.69; p<0.01). The model had trouble iden-
+tifying inappropriate comments for relationships
+where most messages are appropriate (e.g., friend,
+sibling) in contrast to more content-constrained
+relationships (boss, student, doctor). These low-
+performance relationships frequently come with
+complex social norms—e.g., the boundary between
+appropriate teasing and inappropriate hurtful com-
+ments for siblings (Keltner et al., 2001)—and al-
+though such relationships have among the most
+training data, we speculate that additional training
+data is needed to model these norms, especially
+given the topical diversity in these relationships’
+conversations.
+5 Generalizing to Unseen Relationships
+Through their pretraining, LLMs have learned se-
+mantic representations of relationships as tokens.
+Our classification experiments show that LLMs
+can interpret these relationship-as-token represen-
+tations to effectively judge whether a message is ap-
+propriate. To what extent do these representations
+allow the model to generalize about new relation-
+ships not seen in training? In particular, are modelsable to generalize if a category of relationship, e.g.,
+all family relations, was never seen? Here, we
+conduct an ablation study where one of our folk
+categories is held out during training.
+Setup Theflan-t5-xl model is trained with
+the same hyperparameters as the best-performing
+system on the full training data. We use the same
+data splits, holding out all training examples of
+relationships in one category during training. We
+report the Binary F1 from the test set on (1) rela-
+tionships seen in training and (2) relationships in
+the held-out category. Note that because training
+set sizes may change substantially due to an im-
+balance of which relationships were annotated and
+because categories have related norms of accept-
+ability, performance on seen-in-training is likely to
+differ from the full data.
+Results Ablated models varied substantially in
+their abilities to generalize to the unseen relation-
+ship types, as well as in their baseline perfor-
+mance (Figure 4). First, when ablating the larger
+categories of common relationships (e.g., FAM-
+ILY,SOCIAL ), the model performs well on seen-
+relationships, dropping performance only slightly,
+but is unable to accurately generalize to relation-
+ships in the unseen category. These unseen cat-
+egories contain relationships that span a diverse
+range of norms with respect to power differences,
+social distance, and solidarity. While other cat-
+egories contain partially-analogous relationships
+along these axes, e.g., parent-child and teacher-
+student both share a power difference, the drop in
+performance on held-out categories suggests the
+model is not representing these social norms in
+a way that allows easy transfer to predicting ap-
+propriateness for unseen relationships with similar
+norms. Second, relationships in three categories
+improve in performance when unseen: ORGA-
+NIZATIONAL ,ROLE-BASED , and PARASOCIAL .
+All three categories feature relationships that are
+more topically constrained around particular situ-
+ations and settings. While the categories do con-
+tain nuance, e.g., the appropriateness around the
+power dynamics of boss-employee, the results sug-
+gest that models may do well in zero-shot settings
+where there is strong topic-relationship affinity—
+and messages outside of normal topics are inappro-
+priate. Viewing these two trends together, we posit
+that the semantic representations of relationships
+inflan-t5-xl currently capture only minimal
+0.0 0.2 0.4 0.6 0.8
+Binary F1Romance
+Family
+Peer group
+Parasocial
+Social
+Antagonist
+Role Based
+OrganizationalHeld-out Category of RelationshipsRelationships Seen in Training
+Held-out RelationshipsFigure 4: Performance by the T5 Prompt-based model at
+rating contextual appropriateness to relationships seen
+in training versus categories of unseen relationships.
+Ablated models are ordered by performance on seen
+relationships with the vertical dashed line marking when
+training on all data on the test set; error bars show 95%
+bootstrapped confidence intervals.
+kinds of social norms—particularly those relating
+to topic—and these norms are not represented in a
+way that lets the model easily generalize to reason-
+ing about relationships not seen in training.
+6 How Much of Conversation is Context
+Sensitive in Appropriateness?
+Our annotation and computational models have
+shown that the relationship context matters in de-
+termining appropriateness. However, it is unclear
+how often conversations are sensitive to this con-
+text. For example, the majority of conversation
+may be appropriate to all relationships. Here, we
+aim to estimate this context sensitivity by testing
+the appropriateness of a message in counterfactual
+settings using an existing dataset labeled with rela-
+tionship types.
+Experimental Setup To estimate context sensi-
+tivity, we use our most accurate model to label
+a large selection of dialog turns from the PRIDE
+dataset (Tigunova et al., 2021). PRIDE consists of
+64,844 dialog turns from movie scripts, each anno-
+tated for the relationship between the speaker and
+receiver, making it ideal as a high-plausibility con-
+versational message said in relationships. However,
+some turns of the dialog are explicitly grounded
+in the setting of the movie, e.g., “How’s it going,
+Pat?” which makes the turn too specific to that
+particular setting to accurately estimate appropri-
+ateness. Therefore, we run SpaCy NER (Honnibal
+and Montani, 2017) on the dialog and remove allturns containing r

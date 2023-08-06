@@ -1,0 +1,26 @@
+Summary:
+This paper introduces OpenFlamingo, an open-source framework for training large autoregressive vision-language models. OpenFlamingo models range from 3B to 9B parameters and achieve high performance on various vision-language tasks. The authors describe the architecture, training data, and evaluation methods used for OpenFlamingo. The results show that OpenFlamingo models perform well, although there are some limitations and areas for improvement.
+
+Bullet points:
+- OpenFlamingo is an open-source framework for training large autoregressive vision-language models.
+- The models range from 3B to 9B parameters and achieve good performance on various vision-language tasks.
+- The architecture of OpenFlamingo is based on the Flamingo models and includes cross-attention modules between images and text.
+- The training data for OpenFlamingo includes a mixture of image-text pairs and interleaved image-text sequences from web-scraped datasets.
+- The evaluation results show that OpenFlamingo models perform well, with an average performance of 80-89% compared to the corresponding Flamingo models.
+- The performance of OpenFlamingo models improves with the number of in-context examples.
+- The frozen <image> and <|endofchunk|> embeddings in the OpenFlamingo-4B models may affect performance.
+- OpenFlamingo models have some limitations, such as struggles with counting and verbosity in answers.
+- The OpenFlamingo models have been used as a foundation for other models, such as Otter and Multimodal-GPT.
+- OpenFlamingo is an ongoing research project, and the authors hope that it enables further study and development of autoregressive vision-language models.
+
+Keywords:
+- OpenFlamingo
+- autoregressive vision-language models
+- large-scale models
+- open-source framework
+- training data
+- evaluation
+- performance
+- limitations
+- counting
+- verbosity

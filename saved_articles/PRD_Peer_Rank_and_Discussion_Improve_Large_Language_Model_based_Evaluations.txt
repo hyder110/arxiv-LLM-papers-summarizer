@@ -1,0 +1,483 @@
+PRD : Peer Rank and Discussion
+Improve Large Language Model based Evaluations
+Ruosen Li†Teerth Patel†Xinya Du†
+Department of Computer Science
+The University of Texas at Dallas
+{ruosen.li, teerth.patel, xinya.du}@utdallas.edu
+Abstract
+Nowadays, the quality of responses generated
+by different modern large language models
+(LLMs) are hard to evaluate and compare au-
+tomatically. Recent studies suggest and pre-
+dominantly use LLMs as a reference-free met-
+ric for open-ended question answering. More
+specifically, they use the recognized “strongest”
+LLM as the evaluator, which conducts pairwise
+comparisons of candidate models’ answers and
+provides a ranking score. However, this intu-
+itive method has multiple problems, such as
+bringing in self-enhancement (favoring its own
+answers) and positional bias. We draw insights
+and lessons from the educational domain (Cho
+and MacArthur, 2011; Walsh, 2014) to improve
+LLM-based evaluations. Specifically, we pro-
+pose the (1) peer rank (PR) algorithm that takes
+into account each peer LLM’s pairwise pref-
+erences of all answer pairs, and outputs a fi-
+nal ranking of models; and (2) peer discussion
+(PD), where we prompt two LLMs to discuss
+and try to reach a mutual agreement on prefer-
+ences of two answers. We conduct experiments
+on two benchmark datasets. We find that our
+approaches achieve higher accuracy and align
+better with human judgments, respectively. In-
+terestingly, PR can induce a relatively accurate
+self-ranking of models under the anonymous
+setting, where each model’s name is unrevealed.
+Our work provides space to explore evaluating
+models that are hard to compare for humans .1
+1 Introduction
+With a rising number of large language models
+(LLMs) being developed ever more quickly re-
+cently, evaluations become increasingly important
+†Contribution distributed as follows. Xinya decided the
+project scope, research questions and proposed the initial ver-
+sion of methodolgies. Ruosen and Xinya designed the exper-
+iments. Ruosen and Teerth conducted experiments, analysis
+and data collection. All authors contributed to paper writing.
+1We release all human/machine annotated pairwise com-
+parisons, generated answers, generated discussions, and imple-
+mentations at https://bcdnlp.github.io/PR_LLM_EVAL/ .as they encode values and priorities that the LLM
+community should improve upon (Jones and Gal-
+liers, 1995; Liang et al., 2022). At the same time,
+the evaluation becomes harder as well. For exam-
+ple, recent models finetuned with human feedback
+(RLHF) align with human preference more, but
+this capability usually cannot be reflected by de-
+cent performance on standard NLP benchmarks
+(e.g. MMLU (Hendrycks et al., 2020), ARC (Clark
+et al., 2018)). Furthermore, human queries span
+a diverse range of settings and scenarios that it is
+nearly impossible to list them all.
+To tackle this discrepancy, open-ended questions
+are being used more often to test LLMs perfor-
+mance (Chiang et al., 2023). Then by default,
+evaluation is done by collecting human prefer-
+ences of pairwise comparisons and then calculating
+scores for each LLM to induce a general ranking.
+While the collection process is costly and time-
+consuming (Zheng et al., 2023), to automate and
+scale up the evaluation, most recent works utilize
+the strongest (a.k.a state-of-the-art) LLM as the
+judge (Dubois et al., 2023; Dettmers et al., 2023).
+However, various studies show that this method is
+problematic, as the pairwise comparison judgment
+provided usually contains various biases such as
+self-enhancement, bias towards long and verbose
+answers, and bias towards the first answer in a pair.
+Motivated by these limitations, we propose peer
+evaluation . The goal is to mitigate the biases in
+automated evaluations while still benefiting from
+LLM’s strong capability in reading and writing
+reviews. We propose PeerRank and Discussion-
+based evaluation framework (PRD). The suit con-
+sists of two alternatives that share the same for-
+mat and goal – involving peer LLMs’ participa-
+tion as reviewers, to reach a more fair evaluation
+result where all peers mutually agree. We draw
+insights and lessons from educational psychology
+research, on methodologies of student peer review-
+ing (Walsh, 2014), as well as their impact and bene-arXiv:2307.02762v1  [cs.CL]  6 Jul 2023 Answer : How do credit/debit cards work? What is the process of putting money in and getting it out?
+  Review  answer of 1 and 2 [...] list the index of the better response in a new line>normalize
+RankA
+B
+CA B C
+   A     >   C    >   BPairwise
+BattlesReviewers
+Weights Score
+normalize
+(multi-rounds)
+1
+2
+3
+Pairwise
+Battles
+A B CReviewers
+dot
+product
+Win Rate Matrix Weight V ector Score V ector
+Better contestants
+score higherBetter contestant weigh more
+ Normalize1
+2
+3
+Pairwise Battles
+A B CReviewers
+dot
+product
+Win Rate Matrix
+Reviewer
+Weight V ectorContestent
+Score V ectorContestent
+(Multi-round)Contestants
+Rank
+>
+A credit or debit card is basically
+just an easy way to allow a shop
+to speak to your bank.
+First you go into the bank, [...]Debit cards are linked to a bank
+account and whenever you pay
+using a debit card, ...
+1
+Answer 1 provides a more detailed and narrative explanation, using an analogy of  [...] 
+Answer 2, on the other hand, is more concise and uses more technical language  [...]
+1
+Answer 1 provides a basic overview of [...] at a high level . However , [...]
+Answer 2 provides a more coherent explanation by separately discussing how [...]
+2
+  Discuss  answer of 1 and 2 with reviews from A and B in mind [...] again output choice on a line
+After considering Reviewer B's perspective, [...]
+While Answer 2 [...], I believe that the accessibility and comprehensiveness  of Answer 1
+outweigh the concise and technical nature  of Answer 2.
+I can appreciate Reviewer A's perspective on [...] Upon reflection, for the purposes of this
+question, accessibility and comprehensiveness  are most important [...] 
+ after considering Reviewer A's perspective, I would change my preference to Answer 1.
+B
+AA2
+B
+3
+1 2
+Better contestants
+score higherBetter contestant's review weigh more
+Normalize
+(Multi-round)1
+2
+3
+Pairwise
+Battles
+A B CReviewers
+dot
+product
+Win Rate MatrixContestantsRank
+3
+1 2
+Reviewer
+Weight V ectorContestent
+Score V ector>
+ >
+Figure 1: The peer rank process (PR), where each model acts both as reviewers (A, B, C) and contestants (1, 2, 3).
+From the battles between contestants (pairwise comparisons), it induces a self-ranking. In this example, models A,
+B, C represent GPT-4, Bard, and Claude, respectively.
+fits (Cho and MacArthur, 2011; Yalch et al., 2019).
+More specifically, peer rank (PR) works for the
+tournament-style benchmarking setting where each
+LLM in pairwise matches produces an answer for
+an open-ended question. Instead of getting the av-
+erage/majority vote to decide the final preference
+scoring, we propose to apply higher weights to
+LLMs reviewers with stronger capabilities (Sec-
+tion 2.1). Peer discussion (PD) works for the
+general pairwise comparison setting. Given two
+“student” LLM’s answers, we prompt two other
+reviewer LLMs to have multi-turn discussions to
+reach a mutual agreement on the pairwise scoring.
+The process shares a similar format of LLM inter-
+acting with each other through conversations like
+two communicative agents (Li et al., 2023; Park
+et al., 2023; Fu et al., 2023b).
+We conduct extensive experiments and analysis
+for testing PR and PD’s performance by provid-
+ing fair pairwise comparisons. PR is tested on Vi-
+cuna80, which contains pairwise judgments from
+human annotators. Our method improves corre-
+lations with human judgments and ranking sub-
+stantially, this paradigm also enables a group of
+LLMs to induce a self-ranking. PD is tested on both
+Vicuna80 and LFQA (Xu et al., 2023), which in-
+cludes annotated pairwise comparisons of Human-
+Machine and Machine-Machine answers. PD en-
+ables LLMs to achieve better pairwise comparisons
+that are more accurate than single model-based
+reviews, especially in improving weaker model’s
+reviews. After, we provide analysis for discussions,including prompting strategies’ effects on multi-
+turn peer discussions; what the discussion bias is;
+and the phenomenon of opinion-altering. Analy-
+sis of discussion bias shows that the model which
+leads discussions is less likely to alter its opinion.
+The opinion-altering analysis supports the previous
+analysis and describes that models’ overall ability
+is highly aligned with whether they can hold their
+opinions.
+2 Methodologies
+In general, peer rank can be applied to induce self-
+rank, e.g. to create a leaderboard of LLMs’ capa-
+bilities, while peer discussion provides more bene-
+fits in comparing the capabilities of two models (a
+more fine-grained and interactive comparison). We
+elaborate on their technical details in this section.
+2.1 Peer Rank and Scoring
+We provide an illustration of the peer rank algo-
+rithm in Figure 1. The general idea is to obtain
+weighted scores of each battle from the peer re-
+viewer’s judgment, then induce self-rankings from
+the scores. This process is iterated multiple times
+until the scores converge.
+Given a set of questions, Q, we generate an an-
+swer to each question for each language model. Let
+Am(q)be the answer generated to question q∈Q
+by model m. We then generate pairwise compar-
+isons between answers to the same question, using
+the language models themselves along with human
+annotators to compare answers.Using these automated and human pairwise com-
+parisons, we create a tournament among models,
+with each battle representing two models (the con-
+testants) competing to answer a question as best
+they can. The comparison of the answers in a battle
+by another model (the reviewer) forms a review .
+LetKr(x, y)be the score given by the reviewer r
+to the pair of answers (x, y). We use a score of −1
+to indicate the first answer is better, 0to indicate
+a tie, and 1to indicate the second answer is better.
+The score given by a model may be dependent on
+the order of answers provided.
+Suppose we have a set of reviewer models Rand
+a set of contestant models C. We form a set of
+battle reviews,
+B={(q, i, j, r, s )|q∈Q,(i, j)∈C2, r∈R}
+where s=Kr(Ai(q), Aj(q))is the score given by
+reviewer rto the answers/responses generated by i
+andjfor question q. We create a shorthand Kij
+r(q)
+for this review.
+Based on these peer reviews, we can evaluate
+models based on their performance, by calculating
+metrics such as the win rate of each contestant,
+and the Elo ratings of each contestant. Since each
+model is being ranked by its peers, we call this Peer
+Rank.
+2.1.1 Win rate Calculation
+The win rate for a contestant is the ratio of wins
+for that contestant divided by the number of battles
+it participates in. Ties are counted as 0.5 wins for
+both contestants.
+Our win rate calculation gives differing weight
+to the scores provided by different reviewers (A, B,
+C) based on the performance of the corresponding
+reviewers as a contestant (1, 2, 3). This operates on
+the assumption that models which are better con-
+testants are also more fit to evaluate and compare
+answers, so they should be given more weight in
+evaluation (Equation 2). In another way, since the
+score is a measure of their ability to review/grade
+correctly, we weigh the win rate an LLM gives an-
+other LLM by their own score (Walsh, 2014).
+Initially, all reviewers are given the same weight.
+On each iteration of the calculation, the win rate
+for each contestant is calculated using the current
+weights. The win rates are scaled to the range of
+[0,1]using a linear scaling, and then again scaled
+so that their sum is 1, and these results are used as
+the weights for the next round.Formally, let Wc
+rbe the raw win rate of contes-
+tantc∈Cfrom the reviews of reviewer r∈R.
+This is equal to the number of times that cwins a
+battle plus half of the number of times that cties,
+divided by the number of battles that cparticipates
+in.
+Wc
+r=X
+qX
+d∈C,d̸=ch
+f(Kdc
+r(q)) +f(−Kcd
+r(q))i
+2|Q|(|C| −1)
+(1)
+where f(score ) =score +1
+2maps a score of ( loss =
+−1,tie = 0 ,win = 1 ) for the second contestant to
+a win count of (0, 0.5, 1), so that ties count as half
+of a win.
+Note that we negate Kcd
+r(q)when inputting it
+intofso that the win value of cis computed in-
+stead of d. Also, since there are |Q|questions,
+|C−1|contestants to battle, and 2 orders for two
+contestants to battle, there are 2|Q||C−1|battles
+involving a fixed contestant c.
+Letαk
+rbe the weight assigned to reviewer raf-
+ter iteration k. Initially, α0
+r= 1/|R|, so that all
+reviewers have the same weight, and the weights
+add to 1. – We assume each reviewer LLM has the
+same capabilities to start. The score of contestant
+c∈Cfor iteration kis the weighted average of the
+raw win rates for contestant c. We set the weights
+for the next iteration to αk:
+scorek
+c=X
+r∈Rαk−1
+r·Wc
+r
+αk= Normalize(MinMax(scorek))(2)
+where the weights are scaled to a range of [0,1]
+and finally normalized to have sum equal to 1:
+MinMax( S) =S−minr∈R(Sr)
+max r∈R(Sr)−minr∈R(Sr)
+Normalize( S) =SP
+r∈RSr(3)
+Given this set of equations, we look for the
+fixed/converging point of the framework. This is
+reminiscent of the problem faced by the PageR-
+ank algorithm (Page et al., 1999). The detailed
+equivalent implementation of PR is shown in the
+Appendix Section 2.
+2.1.2 Elo Calculation
+Another method for calculating the performance
+of a contestant relative to other contestants is the
+Elo rating (Elo, 1967; Askell et al., 2021). The Elo Answer : How do credit/debit cards work? What is the process of putting money in and getting it out?
+A credit or debit card is basically just an
+easy way to allow a shop to speak to
+your bank.
+First you go into the bank, [...]
+  Discuss  answer of 1 and 2 with reviews from A and B in mind [...] again output choice on a line
+BA   Initial  
+ Review  Answer 1 provides a basic overview of
+[...] at a high level . However , [...]
+Answer 2 provides a more coherent
+explanation by separately discussing how
+[...]
+2BDebit cards are linked to a bank account
+and whenever you pay [...] amount is
+deducted[...]
+Answer 1 provides a more detailed and
+narrative explanation, using an analogy
+of [...] Answer 2  the other hand, is
+more concise and uses more technical
+language  [...]
+1A2 1    How do credit/debit cards work? What is the process of putting money in and getting it out?
+"A credit or debit card is basically
+just an easy way to allow a shop to
+speak to your bank.
+First you go into the bank, ...
+Debit cards are linked to a bank
+account and whenever you pay
+using a debit card, ..."Both Answer 1 and Answer 2 accurately describe
+... Answer 1 provides a more detailed and accessible
+explanation , while Answer 2 is more concise ...
+I pick answer 1
+Answer 1 provides a basic overview of how
+credit/debit cards work by explaining ...
+I pick answer 2
+R1: After reading Reviewer 2's evaluation, I understand ... I maintain my preference for Answer 1  due to its
+detailed and accessible explanation , despite its less technical language and analogy-based approach .
+R2: After considering Reviewer 1's perspective, I can understand ... However , I still believe ... Therefore, I
+maintain my preference for Answer 2  as the higher quality response.
+R1: After considering Reviewer 2's perspective, I understand ... I believe that ... Therefore, I maintain my
+preference for Answer 1  due to its detailed and accessible explanation
+R2: After further discussion, I can appreciate Reviewer 1's perspective  on ... Upon reflection ... I would
+change my preference to Answer 1 . Despite its imperfections, Answer 1 provides the most ...Question
+AnswersReviews
+R1R2 discussionAnswer
+1
+Answer
+2
+After considering Reviewer B's perspective, [...]
+While Answer 2 [...], I believe that the accessibility and comprehensiveness  of Answer 1
+outweigh the concise and technical nature  of Answer 2.
+I can appreciate Reviewer A's perspective on [...] Upon reflection, for the purposes of this
+question, accessibility and comprehensiveness  are most important [...] 
+ after considering Reviewer A's perspective, I would change my preference to Answer 1.
+Figure 2: The peer discussion process (PD). Blue and orange texts describe advantages of answer 1 and answer 2.
+In this example, finally the two LLM reviewers reach the mutual agreement of selecting answer 1 (human-written
+answer), which correlates with human reviewer preference. More discussion examples can be found in Appendix
+Section F.
+rating method takes a sequence of pairwise reviews
+and generates ratings for each contestant, with a
+greater rating indicating better performance. Based
+on the simlar idea, we assign different weights to
+reviewers based on their previous performance such
+that a review from a higher-weight reviewer has a
+greater influence upon Elo ratings.
+Similarly to the win rates calculation, we start
+with equal weights on all reviewers and then nor-
+malize the resulting Elo ratings to give weights for
+the next iteration. We repeat the Elo calculation
+with the new weights, update the weights based
+on the new ratings, and continue repeating until it
+converges.
+A brief overview of the actual Elo ratings cal-
+culation follows. All contestants start out with an
+initial rating of 1000. On each battle, the expected
+likelihood of each contestant winning is calculated
+based on the difference between their Elo ratings.
+The Elo rating of the winner is increased, and the
+rating of the loser is decreased. The magnitude
+of the Elo ratings change is inversely related to
+the outcome’s likelihood. In our calculations, we
+weight reviewers so that reviews by a high-weightreviewer cause larger changes in Elo.
+For more details, please refer to Appendix Sec-
+tion 2.
+2.2 Peer Discussions
+In Figure 2, we demonstrate the peer discussion
+process between two LLMs (A and B). The input
+is a given question and two answers, as well as the
+initial reviews by A and B. The two answers may
+be both generated by machines or one by human
+and another by machine (e.g. GPT-3 v.s. human
+answers). The two reviews are generated by LLMs
+(A and B), which are called reviewers/judges. They
+first conduct pairwise comparisons separately, pro-
+viding explanations and indicating their preferred
+answer by outputting the number 1 or 2 by the end
+(the prompt for getting initial reviews is listed in
+Appendix 10).
+Then, the two models have a discussion about
+their reviews for multiple turns (the number of
+turns is fixed). The specific prompt for discus-
+sion is listed in Table 1. At the very beginning,
+a system prompt (role prompt) tells models their
+role – whether it is reviewer A or reviewer B (e.g.Claude or GPT-4). Then, all information, includ-
+ing the question and two comparison answers, as
+well as the initial reviews, are listed line by line.
+The order of initial reviews is the same as the or-
+der of reviewers in discussions. In other words,
+if reviewer A leads the discussion, reviewer A’s
+initial review is listed first. Right before the start
+of the discussion, the system prompt specifies the
+detailed requirements which provide explicit as-
+pects to focus on. Specifically, we draw insights
+from WebGPT (Nakano et al., 2021)’s annotation
+guideline (OpenAI, 2022). For long-form question
+answering, it mainly focuses on
+1.Unsupported information: detecting informa-
+tion with no support, assume the worst case:
+that all of it is false. This aspect is most impor-
+tant and often determines the overall rating;
+2.Core information: about whether the question
+has actually been answered;
+3.Coherence: generally, it is less important than
+the two above.
+Then the overall preference is finally determined.
+An alternative is to repeat the system requirement
+prompt after each turn. It is to ensure that the mod-
+els remember their role (reviewer 1 or 2) through-
+out the discussion history. In the Table and Figure,
+We omit the repeated part.
+3 Experiments
+3.1 Datasets
+We select two “meta-evaluation” datasets with hu-
+man annotations for pairwise comparisons, to mea-
+sure the correlation between our evaluation meth-
+ods and human judgments.
+LFQA (Xu et al., 2023) contains 140 long-form
+questions across seven domains (e.g. economics,
+history, and biology) and two candidate answers
+(from either GPT3 or Human) for each. Similar
+to ELI5 (Fan et al., 2019), it contains more recent
+(i.e. after July 2021) questions from Reddit fo-
+rums “r/explainlikeimfive” and “r/AskHistorians”.
+The authors collected expert-level annotations of
+which answer is better (overall preference). Since
+human p

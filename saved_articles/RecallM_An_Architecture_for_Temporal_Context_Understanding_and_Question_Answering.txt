@@ -1,0 +1,87 @@
+RecallM: An Architecture for Temporal Context
+Understanding and Question Answering
+Brandon Kynoch
+Cisco Systems
+Austin, Texas
+kynochb@utexas.eduHugo Latapie
+Cisco Systems
+Milpitas, CA
+hlatapie@cisco.com
+Abstract —The ideal long-term memory mechanism for Large
+Language Model (LLM) based chatbots, would lay the foundation
+for continual learning, complex reasoning and allow sequential
+and temporal dependencies to be learnt. Creating this type of
+memory mechanism is an extremely challenging problem. In this
+paper we explore different methods of achieving the effect of long-
+term memory. We propose a new architecture focused on creating
+adaptable and updatable long-term memory for AGI systems.
+We demonstrate through various experiments the benefits of
+the RecallM architecture, particularly the improved temporal
+understanding it provides.
+Index Terms —question answering, LLM, vector database,
+graph database, in-context learning, temporal relations, neuro-
+symbolic processing, long-term memory, knowledge graph
+I. I NTRODUCTION
+Since their inception, Large Language Models (LLMs),
+have drastically changed the way that humans interact with
+Artificial Intelligence (AI) systems. In recent years LLMs
+have demonstrated remarkable capabilities across a large
+variety of tasks and domains, making these models an even
+more promising foundation for achieving true Artificial
+General Intelligence (AGI) [8] [2]. However, an ideal AGI
+system should be able to adapt, comprehend and continually
+learn when presented with new information, this is something
+that LLMs cannot achieve on their own. Hence, we have
+started to see a growing interest in supplementing LLMs
+and chatbots with vector databases to achieve the effect of
+long-term memory. This method of storing and retrieving
+information in a vector database allows us to overcome the
+context window limitation imposed by LLMs, allowing these
+models to answer questions and reason about large corpuses
+of text [14]. While vector databases in general provide a very
+good solution to question answering over large texts, they
+struggle with belief updating and temporal understanding,
+this is something that the RecallM architecture attempts to
+solve.
+RecallM, moves some of the data processing into the
+symbolic domain by using a graph database instead of a
+vector database. The core innovation here is that by using
+a lightweight, temporal, neural architecture, we can capture
+and update advanced relations between concepts which
+would otherwise not be possible with a vector database.
+We demonstrate through various experiments the superiorcapability of RecallM for temporal understanding when
+compared to using a vector database. Furthermore, we create
+a more generalized hybrid architecture that combines RecallM
+with a vector database (Hybrid-RecallM) to reap the benefits
+of both approaches.
+Our code is publicly available online at:
+https://github.com/cisco-open/DeepVision/tree/main/recallm
+II. B ACKGROUND AND RELATED WORKS
+Modarressi et al. present Ret-LLM [7], a framework
+for general read-write memory for LLMs. The Ret-LLM
+framework extracts memory triplets from provided knowledge
+to be stored and queried from a tabular database. Ret-LLM
+makes use of a vector similarity search similar to query
+memory. Ret-LLM demonstrates promising capabilities,
+although the athors do not provide any quantitative results
+suggesting the improvement over previous techniques. We
+demonstrate in our works that RecallM can handle similar
+scenarios, furthermore, we conduct large scale question
+answering tests with quantitative results. We show RecallM’s
+promising capabilities even when provided with large text
+corpuses with non-related data that would otherwise confuse
+the system.
+Memorizing Transformers by Wu et al. [13], introduce the
+idea of kNN-augmented attention in transformer models. In
+their approach they store key-value pairs in long term memory,
+these values are then retrieved via k-Nearest-Neighbours
+(kNN) search and included in the final transformer layers of a
+LLM model. Our goals and approach differ from memorizing
+transformers as we attempt to build a system with long-term
+memory which is adaptable at inference time, whereas
+their approach requires pretraining or fine-tuning. They use
+32-TPU cores to run their experiments, whereas we only use
+a consumer-grade pc with a 980Ti GPU and the OpenAI API
+for LLM calls1. Their experiments demonstrate that external
+memory benefited most when attending to rare words such
+as proper names, 

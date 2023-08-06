@@ -1,0 +1,30 @@
+Summary:
+This dissertation presents the results of a study on pre-main sequence (PMS) stars in the earliest stages of stellar evolution.
+
+The main goal of the study is to understand the processes of star formation, formation of circumstellar disks, the structure of the circumstellar environment, and the interaction of the star-disk system.
+
+Photometric and spectral variability of PMS stars is important for modeling star formation processes and tracing the stages of stellar evolution.
+
+The study discusses the photometric and spectral variability as a method to study physical processes in PMS stars and the importance of high-resolution spectra in probing the physical state of circumstellar disks and accretion processes.
+
+Interferometry in the near and mid-infrared regions is also mentioned as a method to determine the parameters of circumstellar disks and understand the relationship between the structure of the inner part of the disk and outbursts.
+
+The study discusses the two types of outbursts observed in PMS stars, FU Ori and EX Lupi type, and the challenges in classifying and understanding these types of outbursts.
+
+The variability of FUors may result from the superposition of variable accretion rates and time-variable extinction.
+
+The study also discusses eclipses of UX Ori type and their prevalence in PMS stars, suggesting that UXor type variability is a widespread phenomenon.
+
+The variability in weak line T Tauri stars, classical T Tauri stars, and Herbig Ae/Be stars is also mentioned, with periodic or aperiodic variability observed, often associated with the presence of spots or hot spots due to accretion from the circumstellar disk.
+
+Keywords:
+- Pre-main sequence stars
+- Stellar evolution
+- Star formation
+- Circumstellar disks
+- Photometric variability
+- Spectral variability
+- Accretion processes
+- Interferometry
+- Outbursts
+- Eclipses

@@ -1,0 +1,380 @@
+Leveraging Denoised Abstract Meaning Representation for Grammatical
+Error Correction
+Hejing Cao1,2, Dongyan Zhao1,2∗
+1Wangxuan Institute of Computer Technology, Peking University
+2Center for Data Science, Peking University
+{caohejing,zhaody}@pku.edu.cn
+Abstract
+Grammatical Error Correction (GEC) is the
+task of correcting errorful sentences into gram-
+matically correct, semantically consistent, and
+coherent sentences. Popular GEC models ei-
+ther use large-scale synthetic corpora or use a
+large number of human-designed rules. The for-
+mer is costly to train, while the latter requires
+quite a lot of human expertise. In recent years,
+AMR, a semantic representation framework,
+has been widely used by many natural language
+tasks due to its completeness and flexibility. A
+non-negligible concern is that AMRs of gram-
+matically incorrect sentences may not be ex-
+actly reliable. In this paper, we propose the
+AMR-GEC, a seq-to-seq model that incorpo-
+rates denoised AMR as additional knowledge.
+Specifically, We design a semantic aggregated
+GEC model and explore denoising methods to
+get AMRs more reliable. Experiments on the
+BEA-2019 shared task and the CoNLL-2014
+shared task have shown that AMR-GEC per-
+forms comparably to a set of strong baselines
+with a large number of synthetic data. Com-
+pared with the T5 model with synthetic data,
+AMR-GEC can reduce the training time by 32%
+while inference time is comparable. To the best
+of our knowledge, we are the first to incorpo-
+rate AMR for grammatical error correction.
+1 Introduction
+Nowadays, high performance of grammatical error
+correction model mainly depends on data augmen-
+tation (Kiyono et al., 2019; Grundkiewicz et al.,
+2019; Raffel et al., 2020; Wan and Wan, 2021; Wu
+and Wu, 2022; Zhang et al., 2022). According to
+the type of additional information, grammatical
+error correction models can be divided into data-
+enhanced models and knowledge-enhanced models.
+Data-enhanced models require millions of synthetic
+data, which is obtained by back-translation or di-
+rectly adding noise. Training on these synthetic
+∗Corresponding author: Dongyan Zhao.
+Figure 1: AMR of sentence " I don’t want to go to school
+on Sunday. "
+datasets is very time-consuming, which is unaccept-
+able in some application scenarios. Knowledge-
+enhanced model is to artificially design a large
+number of grammatical rule templates, and add the
+templates as external knowledge to GEC model.
+This external knowledge is language-dependent
+and it requires the intervention of human grammar
+experts.
+Abstract Meaning Representation (AMR) is a
+type of rooted, labeled graph which contains se-
+mantic structures with fine-grained node and edge
+types. AMR breaks through the limitations of the
+traditional syntax tree structure and supports reen-
+trancy. Figure 1 is a graph of sentence " I don’t
+want to go to school on Sunday. ". In AMR, :arg0
+is typically the agent, :arg1 is typically the patient,
+and other arguments do not have standard defini-
+tions and may vary with the verb being annotated.
+Negative meaning is denoted as " -". Special key-
+words such as entity types, quantities and logical
+conjunctions are supported by AMR. AMR obtains
+a simple representation from natural language sen-
+tence and it is suitable for GEC as extra knowledge.
+A non-negligible concern is that AMRs of er-
+rorful sentences may not be exactly reliable. If
+these AMRs with errors are directly introducedarXiv:2307.02127v1  [cs.CL]  5 Jul 2023into the GEC model as additional information, it
+may confuse the model. We use a pre-trained AMR
+parser to predict AMR of erroneous sentences and
+corrected sentences separately on the BEA-19 de-
+velopment set. If two AMRs are completely consis-
+tent, we assume that the AMR of errorful sentences
+is reliable. After statistical analysis, we found that
+about half of the graphs are reliable.
+We designed a denoising semantic aggregated
+grammatical error correction model. Specifically,
+we added a graph aggregation encoder based on
+a sequence-to-sequence model. The graph en-
+coder aims to update the representation of the se-
+quence encoder by AMR semantic structure. Be-
+sides, we designed two mask strategies to reduce
+the dependence on the model graph information.
+We designed these mask strategies by granularity:
+node/edge level mask and subgraph level mask. Ex-
+periments have proved that the denoising semantic
+aggregated grammatical error correction model sig-
+nificantly improved the error correction accuracy.
+2 Related works
+Data-enhanced GEC models. Lots of works have
+found their way to incorporating additional data
+into GEC model. Kaneko et al. (2020) uses a pre-
+trained mask language model in grammatical error
+correction by using the output of BERT as addi-
+tional features in the GEC model. Kiyono et al.
+(2019) and Grundkiewicz et al. (2019) explore
+methods of how to generate and use the synthetic
+data and make use of Gigaword to construct hun-
+dreds of millions of parallel sentence pairs. Some
+works (Katsumata and Komachi, 2020, Pajak and
+Gonczarek, 2021, Rothe et al., 2021) give a strong
+baseline by finetuning BART (Lewis et al., 2020),
+T5 (Raffel et al., 2020) on a GEC corpus. Malmi
+et al. (2019) casts GEC as a text editing task. Zhao
+et al. (2019) and Panthaplackel et al. (2021) pro-
+pose a copy-augmented architecture for the GEC
+task by copying the unchanged words and spans.
+Knowledge-enhanced GEC models. Wan and
+Wan (2021) use dependency tree as syntactic knowl-
+edge to guide the GEC model. Wu and Wu (2022)
+adds part-of-speech features and semantic class
+features to enhance the GEC model. Omelianchuk
+et al. (2020) design thousands of custom token-
+level transformations to map input tokens to target
+corrections. Lai et al. (2022) proposes a multi-
+stage error correction model based on the previous
+model.Applications of AMR. Song et al. (2019) and Li
+and Flanigan (2022) incorporate AMR in neural
+machine translation. Bonial et al. (2020) makes use
+of AMR by abstracting the propositional content of
+an utterance in dialogue. Xu et al. (2021) constructs
+a dynamic semantic graph employing AMR to cope
+with Multi-hop QA problems.
+3 Model
+We add a graph encoder based on Transformer to
+aggregate denoised semantic information. The ar-
+chitecture of AMR-GEC is shown on Figure 2.
+Figure 2: Denoising Semantic Aggregated GEC Model
+3.1 Semantic Aggregated Encoder
+Transformer is an attention-based encoder-decoder
+model, where the encoder encodes the input sen-
+tence into a context vector, and the decoder con-
+verts the context vector into an output sentence.
+Formally, we denote the tokens of the sentence
+isTn={t1, t2, ..., t n}. Vinilla encoder-decoder
+model works as follows:
+h1, h2, ..., h n= Enc( t1, t2, ..., t n) (1)
+y1, y2, ..., y m= Dec( h1, h2, ..., h n) (2)
+We then designed a semantic graph encoder
+based on a graph attention network to incorporate
+semantic graph information. To preserve the infor-
+mation of the sequence encoder, we use a residual
+connection to combine the outputs of two encoders.
+ˆy1,ˆy2, ...,ˆym= GNN( h1, h2, ..., h n)(3)
+y′
+i=yi⊕ˆyi, i= 1,2, ..., m (4)
+3.2 Denoising Function
+Masked Language Modeling (MLM) is a classic
+pre-trained model modeling method. The task ofMLM is to mask some tokens with a special token
+mask and train the model to recover them. This
+allows the model to handle both the left and right
+context of the masked token. MLM can divided
+into five types: single word masking, phrase mak-
+ing, random span masking, entity masking, whole
+word masking.
+Referring to Bai et al. (2022), we use the mask
+strategy on AMR. We used two ways to add
+masks: node/edge level mask and sub-graph level
+mask. Node/edge level mask refers to mapping
+the nodes/edges in the AMR graph using a noise
+function to generate a graph with noise. Sub-graph
+level mask means randomly removing subgraphs
+and replacing them with a mask label.
+3.3 Sequence-AMR Graph Construction
+In this section, we will show details about the graph
+encoder module. To preserve sequence information,
+we design a graph that fuses sequence and AMR.
+We first use the alignment tool JAMR to get the
+mapping from AMR node to sequence token. First
+connect the sequences through the special labels
+forward-label and backward-label respectively, and
+then map the edges of AMR to the sequence-AMR
+graph.
+Figure 3: sequence-AMR graph
+Algorithm 1 Graph Construction
+Require: AMR, sequence ( x1,x2,...,xn), Aligner
+Ensure: sequence-AMR graph
+1:amr2seq = Aligner(sequence, AMR)
+2:graph= new Graph()
+3:fori=1 to n-1 do
+4: AddEdge( xi,xi+1, label-forward)
+5: AddEdge( xi+1,xi, label-backward)
+6:end for
+7:foredge in AMR.edges() do
+8: AddEdge(amr2seq[s], amr2seq[t], label)
+9:end for
+10:return graph4 Experiments
+4.1 Dataset
+CoNLL-2014. The CoNLL-2014 shared task test
+set contains 1,312 English sentences with error an-
+notations by 2 expert annotators. Models are eval-
+uated with M2 scorer (Dahlmeier and Ng, 2012)
+which computes a span-based F0.5-score.
+BEA-2019. The BEA-2019 test set consists of
+4477 sentences and the outputs are scored via ER-
+RANT toolkit (Felice et al., 2016, Bryant et al.,
+2017). The released data are collected from Write
+& Improve and LOCNESS dataset.
+4.2 Baseline Model
+Following Rothe et al. (2021), we use T5 as the
+baseline model for GEC.
+4.3 AMR Parsing and Alignment
+We adopt SPRING (Bevilacqua et al., 2021) as our
+AMR parsing model. SPRING performs nearly
+state-of-the-art AMR parsing by linearizing AMR
+to sequence and converting text-to-amr task to seq-
+to-seq task. It obtained 84.5 Smatch F1 points on
+AMR 2.0 dataset.We use JAMR (Flanigan et al.,
+2014) to align the AMRs to sentences. JAMR is
+an alignment-based AMR parsing model that finds
+a maximum spanning, connected subgraph as an
+optimization problem. We use the alignment for
+graph information aggregation.
+4.4 Others
+Our models were trained on a single GPU (GeForce
+GTX 1080), and our implementation was based on
+publicly available code1. we set the batch_size
+to 6 and the learning_rate to 2e-5. We use py-
+torch_geometric2to implement the semantic aggre-
+gated encoder.
+5 Results and Analysis
+5.1 Results
+Table 1 shows the results of the BEA-test and
+CoNLL-2014 dataset. 1) Compared with the model
+without synthetic data, the single model of AMR-
+GEC is 2.8 points and 1.8 points higher in BEA-
+19 and CoNLL-14, respectively. Ensemble mod-
+els give similar results. 2) Compared with mod-
+els using synthetic data, AMR-GEC gives com-
+1https://github.com/huggingface/transformers
+2https://github.com/pyg-team/pytorch_
+geometricModels Synthetic dataBEA-test CoNLL-14
+P R F0.5 P R F0.5
+Katsumata and Komachi (2020) - 68.3 57.1 65.6 69.3 45.0 62.6
+Kiyono et al. (2019) ✓ 69.5 59.4 64.2 67.9 44.1 61.3
+Kaneko et al. (2020) ✓ 67.1 61.0 65.6 69.2 45.6 62.6
+Rothe et al. (2021) ✓ - - 67.1 - - 65.1
+Omelianchuk et al. (2020) ✓ 79.2 53.9 72.4 77.5 40.1 65.3
+AMR-GEC - 71.5 58.3 68.4 70.2 48.3 64.4
+Katsumata and Komachi (2020) - 68.8 57.1 66.1 69.9 45.1 63.0
+Kiyono et al. (2019) ✓ 74.7 56.7 70.2 67.3 44.0 67.9
+Omelianchuk et al. (2020) ✓ 79.4 57.2 73.7 78.2 41.5 66.5
+AMR-GEC - 73.5 55.9 69.1 70.3 48.2 64.4
+Table 1: Results of AMR-GEC. The first group shows the results of single models. The second group shows the
+results of ensemble models. The ERRANT for BEA-test and the M2score for CoNLL-14 (test) are reported. we
+simply rerank outputs by generation probabilities of single models.
+parable or even higher F-score, except for GEC-
+ToR (Omelianchuk et al., 2020), which uses both
+synthetic data and human knowledge. For exam-
+ple, our single model achieves 68.4 on BEA-19,
+higher than the models by Kiyono et al. (2019),
+Kaneko et al. (2020), and Rothe et al. (2021). This
+shows that semantic graphs, as additional knowl-
+edge for GEC, have a comparative advantage over
+synthetic data. Our ensemble model does not show
+significant improvements over the single model,
+probably because more optimal ensemble strate-
+gies are needed: averaging generation probabilities
+(Omelianchuk et al., 2020), ensemble editings (Pa-
+jak and Gonczarek, 2021), etc.
+5.2 Advantages of AMR
+Error TypeT5-GEC AMR-GEC
+P R F0.5P R F0.5
+PUNCT 79.8 49.4 71.0 78.7 72.9 77.4
+DET 78.6 64.8 75.4 78.6 65.8 75.7
+PREP 72.9 48.0 66.0 73.1 61.5 70.4
+ORTH 84.6 55.7 76.7 69.5 62.9 68.1
+SPELL 83.0 58.3 76.5 80.9 61.9 76.2
+Table 2: BEA-test scores for the top five error types,
+except for OTHER
+We compared the most common error types in
+BEA-test (except for OTHER) between T5-GEC
+and AMR-GEC. As shown in Table 2, the F-scores
+of PUNCT and PREP in AMR-GEC is 4-6 points
+higher than T5-GEC. AMR dropped prepositions,
+tense, and punctuation to obtain simple and base
+meanings, and exactly these error types are the
+most common errors in GEC scenarios. With such
+error ignored in AMR, sentences generated fromAMR are more likely to get correct results.
+Besides, graphs are good at solving the long sen-
+tence dependency problem. The pain point of the
+sequence model is that it is difficult to pay attention
+to long-distance dependent information. In AMR,
+associative concept nodes are explicitly connected
+with edges, making it easier for the model to focus
+on long-distance information.
+6 Ablation Study
+6.1 Graph Neural Networks Ablation Results
+Graph neural networks have been proven effective
+in dealing with unstructured data problems. How-
+ever, few studies have analyzed the effect of differ-
+ent GNN-encoded AMRs for natural language gen-
+eration tasks. To study the differences of graph neu-
+ral networks of encoding AMR, we carry on a set
+of experiments. We select different graph encoders
+of GCN, GAT, and DeepGCN as variables, and
+conduct experiments on BEA-2019 dataset while
+ensuring the same amount of model parameters.
+We do not use the denoising method in this abla-
+tion study.
+Model P R F0.5
+T5-GEC 71.47 53.46 66.96
+AMR-GCN 72.95 52.17 67.57
+AMR-GAT 68.26 63.41 67.23
+AMR-DeepGCN 66.34 62.57 65.55
+Table 3: Results on BEA-test with GCN, GAT, Deep-
+GCN as AMR encoders
+Table 3 shows the results of BEA-test with differ-
+ent graph encoders. We can draw these conclusions:1) Even if the AMRs of the errorful sentences are
+not reliable, they still benefit GEC. Compared with
+T5-GEC, AMR-GCN and AMR-GAT are about 0.2
+and 0.4 points higher respectively. This shows that
+the model makes use of the semantic information
+and connection relationship of reliable AMR. 2)
+AMR-GCN gives the best performance among the
+three models. When picking a graph encoder, the
+GCN model is sufficient to encode the semantic
+structure information of AMR. It is worth noting
+that GAT and DeepGCN have high recall value and
+low precision. In the grammatical error correction
+task, precision measures the error correction result.
+Generally speaking, precision is more important
+than recall. In the grammatical error correction
+task, most of the errors are local errors, and the
+semantic information required for grammatical er-
+ror correction in AMR can be captured without a
+deeper graph convolution model.
+6.2 Denoise method ablation study
+Model P R F0.5
+T5-GEC 71.47 53.46 66.96
+AMR-GCN 72.95 52.17 67.57
+AMR-GCN (node/edge) 73.52 55.91 69.14
+AMR-GCN (subgraph) 72.12 57.60 68.60
+Table 4: Results on BEA-test with node/edge and sub-
+graph denoising methods
+Table 4 shows the results of BEA-test with
+node/edge and subgraph denoising methods. The
+node/edge level denoising strategy and the sub-
+graph level denoising strategy increased by 1.57
+and 1.03 points, respectively. Node level mask
+strategy performs better because the subgraph may
+mask too much information.
+7 Conclusion
+In this paper, We propose a denoising semantic
+aggregated grammatical error correction model,
+AMR-GEC, leveraging AMR as external knowl-
+edge to the GEC. We believe it gives a strong base-
+line for incorporating AMR in GEC.
+Limitations
+In this paper, we leverage AMR to the GEC model
+as external knowledge, and achieve a high F-score
+on single model. However, we do not use R2L
+reranking, model ensemble and other methods to
+ensemble single model and compare them withstate-of-the-art ensemble models. Our aim is to
+provide a strong baseline for incorporating AMR
+in GEC, so it is easy to generalize AMR-GEC to
+ensemble models.
+Ethics Statement
+The training corpora including the Lang-8, NUCLE
+and the BEA-2019 test data and CoNLL-2014 test
+data used for evaluating our framework are publicly
+available and don’t pose privacy issues. The algo-
+rithm that we propose does not introduce ethical or
+social bias.
+Acknowledgements
+We would like to thank the anonymous reviewers
+for their constructive comments. We would like
+to express appreciation to Yansong Feng for his
+insightful suggestions on the algorithm framework.
+This work was supported by the National Key Re-
+search and Development Program of China (No.
+2020AAA0106600).

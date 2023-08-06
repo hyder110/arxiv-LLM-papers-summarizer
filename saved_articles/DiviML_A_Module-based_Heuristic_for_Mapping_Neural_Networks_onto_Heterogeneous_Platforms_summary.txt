@@ -1,0 +1,16 @@
+Summary:
+
+This paper presents DiviML, a module-based heuristic for mapping neural networks onto heterogeneous platforms. The goal is to leverage the compute capability of modern datacenters, which include specialized hardware for deep learning. The authors develop a compiler-level approach for partitioning deep neural networks onto multiple interconnected hardware devices. They propose a theoretical lower bound formula for the optimal solution, which helps assess the quality of the heuristic solutions. The scheduler is evaluated on both conventional DNNs and randomly-wired neural networks, achieving significantly lower latency and higher throughput compared to naive approaches. They also demonstrate how the framework can be extended to schedule large language models across multiple heterogeneous servers.
+
+Bullet Points:
+
+- DiviML is a module-based heuristic for mapping neural networks onto heterogeneous platforms.
+- The objective is to leverage the compute capability of modern datacenters with specialized hardware for deep learning.
+- The approach involves compiler-level partitioning of deep neural networks onto multiple interconnected hardware devices.
+- A theoretical lower bound formula is proposed to assess the quality of the heuristic solutions.
+- The scheduler is evaluated on conventional DNNs and randomly-wired neural networks.
+- The framework achieves significantly lower latency and higher throughput compared to naive approaches.
+- The scheduler can be extended to schedule large language models across multiple heterogeneous servers.
+- The code is available on GitHub for easy integration with existing frameworks.
+
+Keywords: DiviML, module-based heuristic, mapping, neural networks, heterogeneous platforms, deep learning, compiler-level partitioning, lower bound formula, latency, throughput, conventional DNNs, randomly-wired neural networks, large language models, datacenters.

@@ -1,0 +1,70 @@
+Style Over Substance: Evaluation Biases for Large Language Models
+Minghao Wu1,2∗Alham Fikri Aji1
+1Mohamed bin Zayed University of Artificial Intelligence
+2Monash University
+{minghao.wu,alham.fikri}@mbzuai.ac.ae
+Abstract
+As large language models (LLMs) continue
+to advance, accurately and comprehensively
+evaluating their performance becomes increas-
+ingly challenging. Conventionally, human eval-
+uations are considered the gold standard in
+natural language generation. Recent advance-
+ments incorporate state-of-the-art LLMs as
+proxies for human judges in evaluation pro-
+cesses. Nonetheless, the extent to which hu-
+mans and LLMs are capable evaluators remains
+uncertain. This study aims to investigate the
+behavior of both crowd-sourced human and
+LLM-based judges when comparing outputs
+from different models. To accomplish this, we
+curate a dataset comprising intentionally flawed
+machine-generated answers. Our findings indi-
+cate that despite the potentially greater danger
+posed by factual errors, answers with factual er-
+rors were still rated more favorably compared
+to answers that were too short or contained
+grammatical errors. This highlights a concern-
+ing bias in the evaluation process. To address
+this issue, we propose to independently eval-
+uate machine-generated text across multiple
+dimensions, rather than merging all the evalua-
+tion aspects into a single score. We instantiate
+this idea with the Elo rating system, resulting
+in the Multi-Elo Rating System. Empirical re-
+sults from our study reveal that this proposed
+approach significantly enhances the quality of
+LLM-based evaluations, particularly in terms
+of factual accuracy. However, notable improve-
+ment is not observed in crowd-sourced-based
+evaluations, suggesting the need for further in-
+vestigation and refinement.
+1 Introduction
+Recent advancements in large language models
+(LLMs) have shown that supervised instruction
+fine-tuning and reinforcement learning from human
+feedback (RLHF) can greatly enhance their ability
+to follow instructions effectively (Ouyang et al.,
+∗work done while visiting MBZUAI2022; Wei et al., 2022; Sanh et al., 2022; Chung
+et al., 2022; OpenAI, 2023; Wu et al., 2023; Li
+et al., 2023a; Lyu et al., 2023). This impressive ca-
+pability presents a significant challenge when eval-
+uating the performance of these LLMs, especially
+for more general instructions that NLP benchmarks
+cannot cover. Recently, several studies employ hu-
+man and LLM judges to select the superior output
+between two LLMs. This approach allows for the
+computation of an Elo rating, a ranking system
+commonly utilized in chess (Askell et al., 2021;
+Bai et al., 2022a; Srivastava et al., 2022; Chiang
+et al., 2023; Dettmers et al., 2023; Zheng et al.,
+2023). However, it is still unknown whether human
+and LLM judges are truly qualified as evaluators,
+especially given the many factors to consider when
+determining the best model output.
+In this study, we intentionally introduce errors
+into various aspects of the answers, including
+length, language proficiency, and factual accuracy.
+We collect 40 general questions from Chiang et al.
+(2023) that do not require specialized expertise.
+To evaluate the p

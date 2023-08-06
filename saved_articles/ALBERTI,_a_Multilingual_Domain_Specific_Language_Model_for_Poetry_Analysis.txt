@@ -1,0 +1,64 @@
+ALBERTI, a Multilingual Domain Specific Language Model
+for Poetry Analysis
+Javier de la Rosa1, Alvaro Perez Pozo2, Salvador Ros2and Elena Gonzalez-Blanco3
+1National Library of Norway, Norway
+2Universidad Nacional de Educación a Distancia, Spain
+3IE University, Spain
+Abstract
+The computational analysis of poetry is limited by the scarcity of tools to automatically analyze and scan poems. In a
+multilingual settings, the problem is exacerbated as scansion and rhyme systems only exist for individual languages, making
+comparative studies very challenging and time consuming. In this work, we present Alberti , the first multilingual pre-
+trained large language model for poetry. Through domain-specific pre-training (DSP), we further trained multilingual BERT
+on a corpus of over 12 million verses from 12 languages. We evaluated its performance on two structural poetry tasks:
+Spanish stanza type classification, and metrical pattern prediction for Spanish, English and German. In both cases, Alberti
+outperforms multilingual BERT and other tranformers-based models of similar sizes, and even achieves state-of-the-art results
+for German when compared to rule-based systems, demonstrating the feasibility and effectiveness of DSP in the poetry
+domain.
+Keywords
+Natural Language Processing, Multilingual Language Models, Poetry, Stanzas, Scansion
+1. Introduction
+Poetry analysis is the process of examining the elements
+of a poem to understand its meaning. To analyze poetry,
+readers must examine its words and phrasing from the
+perspectives of rhythm, sound, images, obvious meaning,
+and implied meaning. Scansion, a common approach
+to analyze metrical poetry, is the method or practice of
+determining and usually graphically representing the
+metrical pattern of a line of verse. It breaks down the
+anatomy of a poem by marking the metrical pattern of
+a poem by breaking each line of verse up into feet and
+highlighting the stressed and unstressed syllables [1].
+Having multilingual tools for scansion and analysis of
+poetic language enables large-scale examinations of po-
+etry traditions, helping researchers identify patterns and
+trends that may not be apparent through an examination
+of a single tradition or language [ 2]. By using multilin-
+gual tools, scholars can compare and contrast different
+poetic forms, structures, and devices across languages
+and cultures, allowing them to uncover similarities and
+differences and gain a more comprehensive understand-
+ing of poetic expression.
+SEPLN 2023: 39thInternational Conference of the Spanish Society for
+Natural Language Processing
+/envel⌢pe-⌢penversae@nb.no (J. de la Rosa); alvaro.perez@linhd.uned.es
+(A. Perez Pozo); sros@scc.uned.es (S. Ros);
+egonzalezblanco@faculty.ie.edu (E. Gonzalez-Blanco)
+/orcid0000-0002-9143-5573 (J. de la Rosa); 0000-0001-7116-9338
+(A. Perez Pozo); 0000-0001-6330-4958 (S. Ros); 0000-0002-0448-1812
+(E. Gonzalez-Blanco)
+©2023 Copyright for this paper by its authors. Use permitted under Creative
+Commons License Attribution 4.0 International (CC BY 4.0).
+CEUR
+Workshop
+Proceedingshttp://ceur-ws.org
+ISSN 1613-0073
+CEUR Workshop Proceedings (CEUR-WS.org)However, the analysis of multilingual poetry presents
+significant challenges that must be overcome. It demands
+a deep understanding of diverse linguistic and cultural
+traditions, as each language brings its own unique poetic
+conventions and nuances. Researchers and scholars need
+expertise in multiple languages to navigate the intrica-
+cies of each tradition accurately. Additionally, translation
+and interpretation pose complex obstacles in multilin-
+gual poetry analysis. Figurative language, wordplay, and
+cultural 

@@ -1,0 +1,16 @@
+Summary:
+The paper presents a comparative analysis of the performance of GPT-4 and human graders in evaluating praise given to students in synthetic dialogues.
+The goal is to assess how accurately GPT-4 can identify effective praise criteria.
+The study uses two prompting approaches, zero-shot and few-shot chain of thought, to identify specific components of effective praise.
+Both approaches yield comparable results, with GPT-4 performing moderately well in identifying instances of specific and immediate praise.
+However, GPT-4 underperforms in identifying the tutor's ability to deliver sincere praise, particularly in the zero-shot prompting scenario.
+Future work will focus on enhancing prompt engineering and developing a more general tutoring rubric.
+
+Keywords:
+- Tutor Feedback
+- Tutor Evaluation
+- Math tutors
+- Real-time Feedback
+- Tutor Training
+- ChatGPT
+- GPT-4

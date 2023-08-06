@@ -1,0 +1,469 @@
+Making the V in Text-VQA Matter
+Shamanthak Hegde
+KLE Technological University
+Hubballi, India
+01fe19bcs233@kletech.ac.inSoumya Jahagirdar
+CVIT, IIIT Hyderabad
+Hyderabad, India
+soumya.jahagirdar@research.iiit.ac.in
+Shankar Gangisetty
+IIIT Hyderabad
+Hyderabad, India
+shankar.gangisetty@ihub-data.iiit.ac.in
+Abstract
+Text-based VQA aims at answering questions by reading
+the text present in the images. It requires a large amount
+of scene-text relationship understanding compared to the
+VQA task. Recent studies have shown that the question-
+answer pairs in the dataset are more focused on the text
+present in the image but less importance is given to visual
+features and some questions do not require understanding
+the image. The models trained on this dataset predict bi-
+ased answers due to the lack of understanding of visual con-
+text. For example, in questions like “What is written on the
+signboard?”, the answer predicted by the model is always
+“STOP” which makes the model to ignore the image. To
+address these issues, we propose a method to learn visual
+features (making V matter in TextVQA) along with the OCR
+features and question features using VQA dataset as exter-
+nal knowledge for Text-based VQA. Specifically, we com-
+bine the TextVQA dataset and VQA dataset and train the
+model on this combined dataset. Such a simple, yet effec-
+tive approach increases the understanding and correlation
+between the image features and text present in the image,
+which helps in the better answering of questions. We fur-
+ther test the model on different datasets and compare their
+qualitative and quantitative results.
+1. Introduction
+In recent years, deep learning models that require an un-
+derstanding of visual scenes by answering questions about
+everyday scenes have become important. Towards this,
+many works [3, 27] have introduced datasets and methods
+that present varied types of questions over different scenes.
+A few works [4, 10, 16, 17, 22] have focused on the datasets
+that require models to read the text present in the images.
+Figure 1. (a) Visual cues can provide additional context and help
+clarify meaning, (b) while textual cues can provide more detailed
+information to support understanding. (c) Combined cues that in-
+tegrate both visual and textual information can be powerful.
+Recently a few works have introduced works on text-based
+video question answering [11, 28]. These datasets and
+works provide methods with the ability to learn to answer
+questions belonging to a certain domain. In Fig. 1, we can
+see that dataset are designed by keeping the domain into
+consideration. Question-answer pairs in the VQA dataset
+are framed based on the visual scene only. One such ex-
+ample is seen in Fig. 1(a) “How many slices of pizza are
+there?” .
+On other hand, datasets like TextVQA [22] have ques-
+tions majorly that require textual content in the image to
+answer the questions and little to no visual information
+is needed to obtain the answer. An example is shown in
+Fig. 1(b) where the question is “What is the license plate
+number?” and answers can be obtained just by using the
+OCR information. Ideally, a good VQA system should be
+able to look andread as shown in Fig. 1 (c) where the ques-
+tion is “What is the number on the middle of the bike?” . To
+answer this question, the model should first look at the im-
+1arXiv:2308.00295v1  [cs.CV]  1 Aug 2023age and find the region “middle” as instructed by the ques-
+tion. Then, the model should read the number written on the
+region of interest. Current methods and datasets suffer from
+bias of domain-specific questions that result in these meth-
+ods to learn shortcuts to obtain the answers. In [8], the au-
+thors introduce a technique of augmenting dataset to remove
+these language priors existing in the VQA dataset. Comple-
+mentary images are added to the existing VQA dataset such
+that language priors are removed. On the other hand, au-
+thors of [7, 19], show that there is an obvious gap in the
+TextVQA models to learn to look at the images while an-
+swering the questions and VQA models to learn to read.
+Though the models trained specifically on domain specific
+dataset perform very well, they tend to fail when questions
+from other domains are asked. The language priors in these
+domain-specific datasets make the existing methods under
+exploit combining information from multiple modalities but
+only use these language priors to obtain higher accuracy.
+To subside this effect of language priors for the task of
+Text-based VQA, we propose a method to Make the V in
+TextVQA Matter .
+In this work, to dissolve this bias, we propose a new
+method of multimodal training on the union of Visual Ques-
+tion Answering (VQA) [3] and Text-based Visual Question
+Answering (TextVQA [22] + ST-VQA [4]) datasets. Specif-
+ically, we balance the Text-based VQA dataset by adding
+the images in the VQA dataset which contain text in them.
+We call this merged dataset as Union Dataset . Our dataset
+is more balanced compared to TextVQA only and VQA
+only in terms of types of questions that require both looking
+and reading the image to answer. We train the state-of-the-
+art models of TextVQA task on the union dataset and per-
+form exhaustive experiments. These models include itera-
+tive answer prediction with pointer-augmented multimodal
+transformers for TextVQA [9] and text-aware pre-training
+for Text-VQA and Text-Caption [26]. We provide attention
+maps for a better understanding of the proposed method
+and compare them with attention maps obtained from ex-
+isting methods. We also show the generalization of such a
+method to new datasets like [20] by directly testing on the
+new dataset and also by fine-tuning on it.
+Our main contributions are as follows:
+1. We balance the current Text-based VQA datasets by
+combining (union) images from VQA dataset such that
+the images should contain textual information. This
+results in the dataset twice as only Text-based VQA
+dataset with questions that will make the methods learn
+to look and read.
+2. We evaluate state-of-the-art TextVQA models on the
+proposed union dataset and show that the models
+trained on existing out of balance datasets exploit the
+language prior to obtain answer. This observation
+Figure 2. (a) Wordcloud for words in question in our union dataset.
+(b) Wordcloud for words in answers. (c) Wordcloud for words in
+OCR tokens.
+helps our premise that combining the datasets can help
+in making the visual information matter in TextVQA.
+In addition to this, we test our hypothesis and show that
+it generalizes well on new out of domain test set. We
+show this by evaluating the performance of the model
+trained with our union dataset on KVQA [20] dataset.
+2. Related Work
+2.1. Debiasing in Visual Question Answering
+In VQA bias is ubiquitous, existing VQA [3] dataset
+have biases between the questions and answers. For exam-
+ple, (i) strong correlations between questions and answers,
+i.e., language prior [2, 8] such as answering “green” for
+the question “What color is the grass?” ,“tennis” for the
+question “What sports ... ” will obtain 40% accuracy [18],
+(ii) questioner tends to ask about the objects seen in the im-
+age, i.e., visual priming bias [3,8] such as answering “yes”
+to all the questions “Do you see a ... ” achieves nearly
+90% accuracy because the model is trained and tested on
+the quite different scenarios. Recently, many methods have
+been proposed to overcome the biases in VQA. These meth-
+ods can be classified as (i) non-augmentation-based meth-
+ods [6,12,13,18,21] seek to reduce the language biases ex-
+plicitly or improve attention on the image (ii) augmentation-
+based methods [1, 14, 23, 29] seek to balance the biased
+dataset for unbiased training.
+In [12], the authors use a dual masking strategy, wherein
+they train a VQA model by masking the most relevant im-
+age region or the question words and they use a negative
+answer assignment mechanism for providing the answers
+to the counterfactual samples synthesized which exploits
+the probability distribution of the answers based on their
+frequency in the original training set. In CF-VQA [18],
+the authors make use of both question and image, but use
+the two modalities individually without combining them.
+They subtract the pure language bias effect from the multi-
+modal knowledge of standard VQA models. In [29], the au-
+thors have proposed a self-supervised learning framework
+for VQA to automatically balance the biased data. They
+make use of an auxiliary task named question-image cor-
+2Figure 3. Different models used for TextVQA and VQA and combined tasks.(a) The existing method for Text-based VQA using Multi-
+Modal Transformer. (b) Existing VQA models for VQA tasks. (c) Our method where we pass combined dataset of Text-based VQA and
+VQA datasets for training. (d) Testing our method on different datasets.
+relation estimation (QICE) to estimate the relevance be-
+tween questions and images and generate a set of balanced
+question-image pairs with binary labels as either relevant or
+irrelevant, which are then used by the self-supervised aux-
+iliary task to assist the VQA model to overcome language
+priors. In [23], the authors propose a general method to im-
+prove OOD generalization. The model is discouraged from
+using spurious correlations that only appear in subsets of the
+training data, and rather ensure that it uses reliable ones that
+are more likely to generalize at test time. More precisely,
+data is partitioned into multiple training environments such
+that spurious correlations vary across environments while
+reliable ones remain stable. by using unsupervised cluster-
+ing, prior knowledge, and auxiliary annotations in existing
+datasets. Then, multiple copies of a neural network, one per
+environment are trained. Some of their weights are shared
+across environments, while others are subject to a variance
+regularizer in parameter space. This leads the model to ex-
+tract features that are stable across environments since they
+are optimized to be predictive under a classifier common to
+all environments.
+2.2. Biases in Text-based Visual Question Answer-
+ing
+In text-based VQA we expect a model to answer truth-
+fully based on the visual evidence contained in the image,
+scene text and the correct intention of the question. Unfor-
+tunately, this is not always the case even for state-of-the-art
+methods. Instead of exploiting the image and scene text to
+find the correct answer, most models frequently rely on spu-
+rious correlations and follow the bias that naturally existswithin the training data. This severely limits the general-
+ization of Text-based VQA models in real-world scenarios,
+where the test distribution of facts (e.g., colors, counts, ob-
+jects, position of objects, etc.) is often different from the
+training distribution. Few works such as [15, 19] make use
+of an M4C [9] like multimodal transformer while addition-
+ally having to train a separate decoder to ground the an-
+swer with bounding boxes in LOGOS [15] and a segmen-
+tation network to output segmentation maps of the answer
+region in MTXNet [19]. These work provide a visual anal-
+ysis on the region of interest of the model while answering
+the question. However, as per our knowledge, we are the
+first to propose solution for debiasing text-based VQA.
+3. Benchmarking Text-based VQA Models
+In this section, we explain our method, as shown in
+Fig. 3. Fig. 3a and 3b are models used for text-based VQA
+(TextVQA and ST-VQA) and VQA datasets. Then, we
+train a Multi Modal Transformer on the combined dataset
+wherein we specifically make use of two models M4C [9]
+and TAP [26]. M4C [9] is a multimodal transformer en-
+coder with a dynamic pointer network decoder to select
+the answer from either vocabulary or detected OCR tokens.
+TAP [26] is an extended version of M4C which is pre-
+trained on a large corpus of data, performing tasks such as
+masked language modelling(MLM), relative position pre-
+diction (RPP) and Image-Text Matching (ITM).
+3.1. Union of Visual and Text Based Datasets
+We combine Text-based VQA: TextVQA + ST-VQA,
+Y= (Vt, Ot, Qt)where Vt,Ot,Qtare objects, OCR, ques-
+3Figure 4. (a) Graph showing the distribution of length of OCR tokens in images of Union dataset. (b) Distribution of our Union Dataset.
+Our Union Dataset contains 35.5%of question-answer pairs from TextVQA [22] dataset, 24.0%question-answer pairs from ST-VQA [4]
+dataset, and 40.5%question-answer pairs from VQA [3] dataset. (c) Bar chart showing ablation study when random of 100 QA pairs were
+given to human volunteers to classify each QA pair based on the answer based on Visual, Textual, or Visual+Textual.
+tions and VQA Z= (Vv, Ov, Qv)where Vv,Ov,Qvare
+objects, OCR, questions of VQA and call the combined
+dataset as Union Dataset . Fig. 2 shows the word clouds
+for (a) words in the question of the Union dataset. (b)
+words in answers of Union dataset, and (c) words in OCR
+tokens of Union dataset. In Fig. 4 (a) shows the distribu-
+tion of length of OCR tokens in images of Union dataset
+(TextVQA, VQA, STVQA). (b) Shows the % distribution
+of TextVQA, ST-VQA and VQA dataset in Union dataset.
+It can be seen that, the Union dataset has balanced distribu-
+tion.
+We extract their corresponding object, OCR features
+along with the question feature to obtain dataset W. We
+consider the images from VQA [3] dataset that contains
+OCR tokens. Fig. 4(b) shows the distribution of the
+number of question-answer pairs in each dataset. This
+union or merging of dataset results in balanced question-
+answer pairs which enable the Text-based VQA models
+to look (question-answer pairs from VQA dataset) and
+read (question-answer pairs from TextVQA and ST-VQA
+dataset). This results in current state-of-the-art Text-based
+VQA methods to learn to look and read.
+W=Y∪Z (1)
+3.2. Multi-modal Transformer
+We use a multimodal transformer architecture containing
+three modalities – objects detected V , OCR tokens O and
+question words Q. We pass the feature embeddings to the
+model by projecting them in d-dimensional common em-
+bedding space with the following steps:
+Embedding of detected objects. Given image I, we ob-
+tain N visual objects V (generally N is 100) and their
+corresponding location using a pretrained object detector
+(MaskRCNN). We consider the location of the jthobject
+where j= 1,2, ..., N by obtaining the relative bounding
+boxxb
+j. We combine object feature xfr
+jand bounding boxxb
+jto get the final object embedding xobj
+jof the correspond-
+ing object Vj.
+xobj
+j=xfr
+j+xb
+j (2)
+OCR embedding. We consider the M OCR tokens O (gen-
+erally M is 50) extracted using EasyOCR (for VQA images)
+and Rosetta [5] (for TextVQA and STVQA images). We
+extract the FastText word embedding feature xft
+iof the ith
+OCR token where (i= 1,2, ..., M )along with the appear-
+ance feature xap
+i, and the bounding box of each token, we
+sum it to get the OCR embedding xocr
+iof corresponding
+OCR token Oi.
+xocr
+i=xft
+i+xb
+i (3)
+Question words embedding. We embed the Q question
+words (generally Q is 20) to a feature vector xquesusing a
+pretrained BERT. We only use the first three layers of BERT
+to extract features of question words.
+After embedding all entities from each modality as vectors
+in the d-dimensional joint embedding space, we apply a
+stack of L transformer layers [24] with a hidden dimension
+of d over the list of all entities. Through the multihead self-
+attention mechanism in transformers, each entity is allowed
+to freely attend to all other entities. Using the same trans-
+former layers as a decoder, we predict the answer word by
+word in an autoregressive manner for a total of T steps.
+4. Experiments
+In this section, we experiment and validate the perfor-
+mance of the proposed method of combining VQA and
+Text-based VQA datasets for better generalization of VQA
+systems that can see, read and reason. We first discuss the
+datasets in Sec. 4.1. The quantitative and qualitative results
+are presented in Sec. 4.4 and 4.5 respectively. We also pro-
+vide several ablation studies in Sec. 4.6.
+4Figure 5. Qualitative results of TAP: Comparison on TextVQA and Ours with attention maps.
+Method Data for pretraining Data for Finetuning data Test Acc.
+M4C - TextVQA 39.01
+M4C - TextVQA + VQA + STVQA 39.16
+TAP TextVQA - 49.71
+TAP TextVQA + VQA + STVQA TextVQA 47.75
+Table 1. Evaluation of TextVQA [22] test data on text-based VQA models trained on our Union dataset. It can be seen that combining data
+from multiple sources helps the models that can only read to also look at the images thereby answering questions that require both textual
+and visual reasoning.
+4.1. Datasets
+To showcase the effectiveness of the proposed method,
+we make use of three popular datasets, namely, VQA [3],
+TextVQA [22] and ST-VQA [4]. We obtain the im-
+ages in the VQA dataset that contains text and combine
+them with TextVQA+STVQA dataset to obtain a union
+dataset: VQA+TextVQA+STVQA . We organize the test
+set of TextVQA as a test dataset for the models trained
+on the union dataset. We also evaluate our method on
+KVQA [20] to show the generalization and domain trans-
+fer of the knowledge learned from the union dataset to a
+specific domain dataset such as KVQA. The training set ofunion datasets comprises 97,578 question-answer pairs and
+the test set contains 5,734 question-answer pairs.
+4.2. Performance metrics.
+We use Accuracy as the evaluation metric as it measures
+the percentage of questions for which the predicted answer
+matches exactly with atleast three of the target answers for
+the question.
+Acc(ans) =minNo of humans that said ans
+3,1
+(4)
+We also show attention maps obtained from M4C [9]
+and TAP [26] trained with the original configurations and
+5Figure 6. Qualitative results of M4C: Comparison on TextVQA and Ours with attention maps. It can be seen that M4C trained on Union
+dataset performs better for the questions that require models that need both visual and textual explanations to answer questions.
+trained on the union dataset.
+4.3. Implementation details.
+The proposed method can be applied to different and
+newer approaches proposed in Visual Question Answering.
+The key idea is, making the visual cues important in text-
+based visual question answering. We used AdamW as the
+optimizer. The learning rate for the union dataset is set to
+1e−4. We train M4C [9] and TAP [26] for 24,000 iterations
+with a batch size of 64. We recognize a maximum of 50
+OCR tokens in the union dataset and detect a maximum of
+100 objects from the image. We set the maximum decoding
+steps to 12 and use the answer vocabulary from the union
+dataset. In the case of experiments on test set of TextVQA,
+we train M4C on union dataset (TextVQA+STVQA+VQA)
+and directly evaluate on test set of TextVQA. To evaluate
+the generalization of the proposed method, we evaluate it
+on test set of KVQA.4.4. Quantitative results
+We evaluate the performance of the text-based models
+trained on our Union dataset and compare it against the
+state-of-the-art models, namely M4C and TAP which are
+usually trained on TextVQA and STVQA datasets. The
+comparative results are shown in Table. 1 using accuracy
+as the evaluation metric, although we cannot quantitatively
+display the reduction in bias. Among the two main base-
+lines, M4C trained on our Union dataset slightly outper-
+forms the existing M4C trained on TextVQA however, as
+shown in Sec. 4.5, our model predicts better answers that
+are unbiased and predicted by looking at the appropriate vi-
+sual features of the images. In the case of TAP, our model
+slightly under-performs compared to the TAP model origi-
+nally trained on just the TextVQA dataset. The main reason
+for the decrease in accuracy in case of TAP or the small in-
+crease in accuracy in case of M4C is because the models
+now rely lesser on the bias to answer the questions. With
+the reduced bias, using more relevant and appropriate data
+would assist the model to predict correct answers and thus
+6Figure 7. Qualitative results of M4C and TAP: Answering of KVQA questions based on knowledge with attention maps.
+Method Pre-training data Fine-tuning data Test Acc.
+MemNet [20] - KVQA 50.2
+UNITER [25] - KVQA 69.3
+M4C - - 22.89
+M4C - KVQA 47.38
+TAP TextVQA + VQA + STVQA - 15.68
+TAP TextVQA + VQA + STVQA KVQA 47.49
+Table 2. Evaluation of KVQA [20] test data on text-based VQA models trained on our Union dataset.
+increase the accuracy.
+4.5. Qualitative results
+We showcase a detailed qualitative analysis of our pro-
+posed method. In Fig. 6, we show the predictions of M4C
+model trained on the union dataset and predictions of M4C
+model trained only on TextVQA dataset. It can be seen
+that our method predicts correct answers for the questions
+that require both visual and textual understanding to answerthe question. Example: “What number is on the middle
+bike?” , the answer to this question predicted by our method
+is“30” , whereas the M4C trained only on TextVQA has
+predicted “598” . A model trained only on TextVQA suffers
+from the bias by the type of question-answer pairs present
+in the dataset. M4C trained only on TextVQA fails to com-
+prehend the meaning of the word “middle”, whereas M4C
+trained by our proposed method can answer the question.
+This is because of the questions in the VQA dataset, which
+7Figure 8. Ground Truth Limitations: In a few cases the dataset contains ambiguous answers such as the first case where the number of
+km’s on the sad sign is asked, but the ground truth answer provided is 1, 2, 3 which is incorrect.
+require the models to look at the image to answer a question,
+thereby understanding the spatial positions and image fea-
+tures while reasoning over the image to answer the question
+rather than to just read the text. Fig. 5 shows the qualitative
+results for predictions made by TAP on the question-answer
+pairs in TextVQA dataset that require both visual and text
+reasoning to obtain the answers. It can be seen that, TAP
+trained on Union dataset can look as well as read the content
+in the image, whereas original TAP fails to do so. Attention
+maps for all the examples shown in Fig. 6 and 5 show that
+the proposed method indeed looks at the image based on
+the question asked and can also read the required textual
+content to obtain accurate answers.
+4.6. Ablation study
+We perform two ablation studies to demonstrate the
+performance of our model in the case (i) of an external
+knowledge based VQA dataset named, KVQA - Knowledge
+aware Visual Question Answering [20] and (ii) wherein
+the ground truth of a given question in the TextVQA
+dataset [22] is wrong. It can be seen in the Fig. 7 that
+the text-based models trained on our Union dataset looks
+into the appropriate image regions based on the given ques-
+tion and external knowledge provided. In Table. 2, we
+can see the performance of our text-based models perform-
+ing well on such datasets as well while giving results that
+are comparable to the existing models used for the KVQA
+dataset [20]. UNITER [25] is one of the VQA models gen-
+erally used for datasets like VQA. It achieves a state-of-the-
+art accuracy of 69.3 on the KVQA dataset due to its larger
+pretraining data. Our models get less accuracy (15.68 and
+22.89) when it is tested on it without finetuning on the train-
+ing dataset. However once it has been finetuned, the model
+is also able to answer such questions that focuses more on
+the visual features and it achieves an accuracy of approxi-mately 47.49. Further in Fig. 8, we also show the perfor-
+mance of our models trained on the Union dataset predict-
+ing correct answers for the questions with wrong ground
+truth by looking at the image features and predicting an-
+swers by reasoning over the images. As shown in Fig. 8(a),
+“How many km’s are on the sad sign?” our model can dif-
+ferentiate between parts of the image by localizing to the
+‘sad sign’ and predicting the number of km’s to be ‘3’. On
+the other side in Fig.8(b), “What is the first letter on the
+woman’s back?” is the question to which our model pre-
+dicts ‘w’ which is correct when compared with the wrong
+ground truth to be “trinity” .
+5. Conclusion
+In this work, we address the problem of focusing on the
+text present in the image compared to visual features and
+proposed a method to focus on visual features along with
+the text present in the image. We use a Union dataset, a
+combination of both Text-based VQA and VQA datasets.
+We evaluate our method on the state-of-the-art models. We
+show that our method attends to the corresponding visual
+features while answering a question. The qualitative result
+of the samples with the wrong ground truth show that our
+method outperforms the existing state-of-the-art models in
+terms of reasoning over the image. Our exhaustive quan-
+titative and qualitative analysis suggests that having an un-
+biased dataset can result in better-comprehending models
+thereby taking a step towards well-designed VQA models
+that are capable of reasoning over multiple modalities. With
+more appropriate and unbiased data, we could achieve bet-
+ter results and answering through proper reasoning. Self-
+supervised training on various captioning datasets would
+help in better understanding of the image and can act as
+a substitute for the lack of proper scene-text data.
+8

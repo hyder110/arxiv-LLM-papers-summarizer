@@ -1,0 +1,12 @@
+Summary:
+The paper introduces a method called Knowledge-guided Replay (K-Replay) to enhance image captioning with real-world knowledge using a Vision-Language Pre-Training (VLP) model. The method consists of a knowledge prediction task and a knowledge distillation constraint to retain pre-training knowledge and improve the faithfulness of generated descriptions. The authors construct a novel captioning benchmark called KnowCap to evaluate knowledge-enhanced descriptions. Experimental results show that the approach effectively incorporates knowledge, outperforming strong VLP baselines in terms of CIDEr score and knowledge recognition accuracy.
+
+Bullet points:
+1. The paper presents K-Replay, a method to enhance image captioning with real-world knowledge.
+2. K-Replay consists of a knowledge prediction task and a knowledge distillation constraint.
+3. The method aims to retain pre-training knowledge and improve the faithfulness of generated descriptions.
+4. The authors construct a captioning benchmark called KnowCap to evaluate knowledge-enhanced descriptions.
+5. Experimental results show that K-Replay outperforms strong VLP baselines in terms of CIDEr score and knowledge recognition accuracy.
+
+Keywords:
+Image captioning, Knowledge, Vision-Language Pre-Training, K-Replay, Knowledge-guided Replay, KnowCap, Benchmark, CIDEr score, Knowledge recognition accuracy.

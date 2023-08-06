@@ -1,0 +1,16 @@
+Summary:
+This research explores the use of in-context learning capabilities of large language models (LLMs) for biomedical concept linking. The proposed approach utilizes a two-stage retrieve-and-rank framework: embedding biomedical concepts using LLMs and then incorporating contextual information to re-rank the concepts. The approach achieved high accuracy in disease entity normalization and chemical entity normalization tasks, showing competitive performance compared to supervised learning methods. The framework also showed significant improvement in ontology matching tasks. While the approach has promising results, there are limitations such as slow inference speed and resource-intensive requirements.
+
+Bullet Points:
+- Large language models (LLMs) can be used for biomedical concept linking in a two-stage retrieve-and-rank framework.
+- The approach embeds biomedical concepts using LLMs and incorporates contextual information to re-rank the concepts.
+- The proposed approach achieved high accuracy in disease and chemical entity normalization tasks.
+- The approach showed competitive performance compared to supervised learning methods.
+- Significant improvement was observed in ontology matching tasks.
+- There are limitations such as slow inference speed and resource-intensive requirements.
+- Future research could explore fine-tuning LLMs specifically for biomedical concept linking with low resource requirements.
+- The use of dictionaries and hybrid systems may mitigate some shortcomings of the approach.
+- The framework has potential for accurate and trustworthy artificial intelligence solutions in the biomedical domain. 
+
+Keywords:
+- in-context learning, large language models, biomedical concept linking, retrieve-and-rank framework, entity normalization, ontology matching, accuracy, supervised learning, contextual information, slow inference speed, resource-intensive requirements, fine-tuning, dictionaries, hybrid systems, artificial intelligence.

@@ -1,0 +1,146 @@
+arXiv:2307.02243v1  [cs.HC]  5 Jul 2023Power-up! What Can Generative ModelsDofor Human Computati on
+Workflows?
+GARRETTALLEN ,GAOLE HE , andUJWAL GADIRAJU ,Delft University of Technology,Netherlands
+Weare amidst an explosionof artiﬁcial intelligenceresearch, partic ularly around large language models (LLMs).Thesemodels have
+a range of applications across domains like medicine, ﬁnance, commonsense k nowledge graphs, and crowdsourcing. Investigation
+into LLMs as part of crowdsourcing workﬂows remains an under-explor ed space. The crowdsourcing research community has pro-
+duced a body of work investigating workﬂows and methods for managing co mplex tasks using hybrid human-AI methods. Within
+crowdsourcing, the role of LLMs can be envisioned as akin to a cog in a la rger wheel of workﬂows. From an empirical standpoint,
+littleis currently understood about how LLMs can improve the eﬀec tiveness of crowdsourcing workﬂows and how such workﬂows
+can be evaluated. In this work, we present a vision for exploring this gap from the perspectives of various stakeholdersinvolved in
+thecrowdsourcing paradigm—thetaskrequesters,crowdworker s,platforms,andend-users.Weidentifyjuncturesintypicalcrowd-
+sourcing workﬂows at which the introduction of LLMs can play a beneﬁc ial role and propose means to augment existing design
+patterns forcrowd work.
+AdditionalKeyWords andPhrases:crowdsourcing, generativeAI,lar gelanguage models, workﬂows,human computation
+ACMReference Format:
+GarrettAllen,GaoleHe,andUjwalGadiraju.2023.Power-up!Wh atCanGenerativeModelsDoforHumanComputationWorkﬂows?.
+InProceedings of the Generative AI and HCI Workshop at the ACM C onference on Human Factors in Computing Systems, April 23–2 8,
+2023, Hamburg,Germany. ACM,NewYork, NY, USA, 6pages.
+1 INTRODUCTIONAND BACKGROUND
+Artiﬁcialintelligence(AI)researchisbeingreinvigorat edwithcurrentadvancesinlargelanguagemodels(LLMs).Si nce
+their inception, LLMs have increased in size, eﬀectiveness , and applications.For instance, BERT[ 10],initially trained
+for masked language prediction, has been applied to other do mains such as neural ranking [ 18,31] and document
+classiﬁcation [ 2,22]. OpenAI’s1GPT family of models have been used in language tasks includi ng goal-oriented dia-
+logue [17], patent claim generation [ 23], and story generation [ 29]. The most recent GPT variant, ChatGPT [ 32], has
+seen an explosive growth in popularity, indicating the pote ntial for a promising future where LLMs are deployed as
+workassistants.Duetosuchpowerfulgenerativecapabilit y,moreresearchershavestartedexploringgenerativeLLMs
+inworkassistantroles.Forexample,powerfulgenerativeL LMshaveshownhuman-comparablewritingskillsinstory
+generation [ 44] and scientiﬁc writing [ 16]. LLMs have also exhibited promising assistive capability in complex tasks
+likecoding[ 13],drugdiscovery [ 28],and questiongeneration for educationneeds [ 39].
+The common thread running through all variations in LLMs is t he need of high quality data for training and eval-
+uation. Crowdsourcing has been widely adopted in machine le arning practice to obtain high-quality annotations by
+1https://www.openai.com/
+Permission to make digital or hard copies of all or part of thi s work for personal or classroom use is granted without fee pr ovided that copies are not
+madeordistributedforproﬁtorcommercialadvantageandth atcopiesbearthisnoticeandthefullcitationontheﬁrstpa ge.Copyrightsforcomponents
+of this work owned by others than ACM must be honored. Abstrac ting with credit is permitted. To copy otherwise, or republi sh,to post on serversor
+to redistributeto lists,requirespriorspeciﬁcpermissio nand/or afee. Request permissionsfrompermissions@acm.o rg.
+© 2023 AssociationforComputing Machinery.
+Manuscriptsubmitted to ACM
+1CHI’23, April23–28, Hamburg,Germany Allen,et al.
+relying on human intelligence [ 15,37]. Crowdsourcing is a paradigm in which researchers or other stakeholders re-
+questtheparticipationof adistributedcrowd ofindividua ls, whocancontributewith theirknowledge, expertise, and
+experience[ 12].Suchindividuals,called crowdworkers ,areaskedtocompleteavarietyoftasksinreturnformoneta ry
+orotherforms ofcompensation. Tasks areoftendecomposedi nto smaller atomicunits and canvaryin their purpose,
+includinglabellingimages,editingtext,orﬁndinginform ationonspeciﬁctopics[ 14].Taskscanbestandalone,ororga-
+nizedasaseriesofsmallersub-tasks,dependingontheirov erallcomplexityandthedesignchoicesmadebyrequesters.
+Morecomplexproblems,such as softwareengineering orsyst em design problems,requiretask workﬂows.
+Crowdsourcing workﬂows are distinct patterns that manage how large-scale problems are decomposedinto smaller
+tasks to be completed by workers. The crowd-powered word pro cessor Soylent applies the Find-Fix-Verify workﬂow
+toproducehigh-qualitytextbyseparatingtasksintogener atingandreviewing text[ 6].TheIterate-and-Vote workﬂow
+has been deployed in creating image descriptions, where wor kers are asked to write descriptions of images to assist
+thosewho are blind [ 26].Subsequent voting tasks are usedto decideon theoptimal d escription.Chen et al. [ 9] intro-
+duce CrowdMR, which combines the Map-Reduce workﬂow with crowdsourcing to facilitate the solving of pro blems
+that require both human and machine intelligence, i.e., “AI -Hard" problems [ 42]. With CrowdForge, Kittur et al. [ 21]
+provideaframeworkforcrowdsourcingtosupportcomplexan dinterdependenttasks.Theauthorsfollowupwiththe
+tool CrowdWeaver [ 20] for managing complex workﬂows, supporting such needs as da ta sharing between tasks and
+providingmonitoringtoolsandreal-timetaskadjustmentc apability.Takingamoreholisticlookatworkﬂows,Retelny
+etal.[34]investigatetherelationshipbetweentheneedforadaptat ionandcomplexworkﬂowswithincrowdsourcing,
+ﬁnding that the current state of crowdsourcing processes ar e inadequate for providing the necessary adaptationthat
+complexworkﬂows require.
+Within crowdsourcing, the role of LLMs can be envisioned as a kin to a cog in a larger workﬂow. Typically, LLMs
+are used for supporting individual writing or classiﬁcatio n tasks within a workﬂow, as previous examples expressed.
+ResearchersarealsoexploringtheapplicationofLLMsinas sistingcrowdworkers.Liuetal.[ 27]combinethegenerative
+powerofGPT-3andtheevaluativepowerofhumanstocreatean ewnaturallanguageinferencedatasetthatproduces
+moreeﬀectivemodelswhenusedasatrainingset.Inasimilar vein,Bartoloetal.[ 5]introducea“GenerativeAnnotation
+Assistant"tohelpintheproductionofdynamicadversarial datacollection,signiﬁcantlyimprovingtherateofcollec tion.
+Theseworksmeasuretheeﬀectivenessofthemodelsandthein dividualtasks,yetthereremainsanopengapregarding
+theunderstanding ofhow LLMs improve theeﬀectiveness ofcr owdsourcing workﬂowsand how such workﬂowscan
+beevaluated.
+In this work, we present a vision for exploring the gap from th e stakeholders’ perspectives, e.g., task requesters,
+crowdworkers,andend-users.Insodoing,wehighlightthej uncturesofcrowdsourcingworkﬂowsatwhichintroduc-
+ing LLMs can bebeneﬁcial. Wealso proposemeans toaugment ex isting design patterns forcrowd work.
+2 INCORPORATINGLARGE LANGUAGE MODELSINCROWDSOURCINGWOR KFLOWS
+As LLMs are pre-trained on large text corpora, they show grea t capability in understanding context-speciﬁc seman-
+tics.When further ﬁne-tuned for speciﬁcuses with addition al, smallerdatasets, highly eﬀective and domain-targeted
+models can be produced.Additionally, someLLMs (e.g., BART [24],GPT-3 [ 8]) are also goodat generating responses
+toinput queries, which can beﬂuent, human-like, and even pr ofessional. As it stands, LLMs have beeneﬀectively de-
+ployed within multipledomains such as medicine [ 4], ﬁnance [ 43], and others requiring commonsense reasoning [ 7].
+Assuch,LLMsareanopportuneandpotentiallyveryusefulto oltousewithincrowdsourcingwheredomainknowledge
+maynot always beavailable.
+2Power-up! WhatCan Generative Models Do forHuman Computati on Workflows? CHI’23, April23–28,Hamburg, Germany
+WhileLLMsareeﬀectiveinmanyways,theyarefarfrombeingp erfectandcomewithdrawbacks.Duetotheirblack
+boxneuralbackbone,LLMssuﬀerfromalackoftransparency, whichleadstodiﬃcultyinexplaininghowtheyachieve
+the performances they do [ 45]. Such opacity also makes it diﬃcult to track the factual err or of LLMs, which inhibits
+the potential for improving the models [ 11]. Further, language models are known to capture several diﬀ erent forms
+of biases [ 1,30,38]. Most existing LLMs tend to perform poorlyon tasks that req uire commonsense knowledge [ 33],
+which is a common practice for children. Last but not least, c urrent language models achieve poor compositional
+generalization [ 19], which is required for solving complex tasks. Noticeably, LLMs fall short in aspects that humans
+aregoodat,e.g., commonsense reasoning [ 25]and complextaskplanning [ 3,40].PuttingLLMs intopracticerequires
+either addressing orworking withintheselimitations.
+2.1 The Lens ofComplexCrowdsourcing Workflows
+LLMs can easily ﬁt into existing crowdsourcing workﬂows. Ta ke the Find-Fix-Verify workﬂow as an example. This
+workﬂowiswell-suitedforwritingtasks,whetheritbeedit ing,revisions,ornewcontent.Eachstepisanopportunityt o
+includeLLMsforimprovementsintheprocess.Letustakethe exampleofrevisinganewsstory.Duringthe“Find"stage,
+a workers wouldbe tasked with reading the story and ﬁnding an y errors, e.g., grammar, spelling, or false statements.
+Oncetheseerrorsareidentiﬁed,anewcrowdofworkersisrec ruitedforthenextstage:to“Fix"theerrors.Wearenow
+leftwithanupdateddraftofthenewsstorythathasfewererr orsthantheinitialdraft.Whichbringsustotheﬁnalstage
+oftheworkﬂow,“Verify",whereyet anothergroupofworkers validatetheworkofthepriorgroups.Inthisparticular
+example,itisfairlyclearwhereanLLMcanbeswappedforthe workersateachstage.Aretrievalorerrorclassiﬁcation
+LLM can be deployed for ﬁnding the errors, a generative LLM ca n be used to produce repaired text, and yet another
+classiﬁcation LLM can ﬁnish it all oﬀ as the veriﬁer. However , not all tasks take this form, or follow this particular
+workﬂow. Adapting other workﬂows, i.e., Iterate-and-Vote or MapReduce, can be done in a similar manner. Even so,
+adaptations such as these prompt the question: Once introdu ced,what are the eﬀects of LLMs within crowdsourcing
+workﬂows for each stakeholder ofthecrowdsourcing process ?
+Onthesurface,thisappearslikestraightforwardquestion .Crowdsourcinghasmanydiﬀerentstakeholdersinvolved:
+therequesters ,theworkers,andtheend-users.TheimpactofincludinganLLMintoworkﬂowshasthepotenti altoaﬀect
+each stakeholder in diﬀerent ways. From the perspectiveof t he requester,the monetary cost of completing tasks will
+be reduced as potentially fewer workers will need to be recru ited. The tasks may take less time to complete which
+will result in furthermonetary savings. A reductionin time togather data,completetasks, and/or a reduced need for
+workersmayhaveanegativeimpactontheincomeﬂowforworke rs,however.Withavailabletaskstakinglesstimeand
+therebeingfewertasks,itcreatesthepotentialforcrowdw orkerstoearnless.Thiscanbeoﬀsetbyadjustingincentive
+structuresonplatforms.Ontheotherhand,thereductionin costsforrequesterscouldleadtomoretasksbeingposted,
+leading to more high-quality labels. In turn, LLMs beneﬁt fr om the better labels and improve in performance as well,
+creating a positive cycle that beneﬁts both crowd workers an d requesters. Further work is required to gain a better
+understanding of theﬁnancial opportunitiesand risks surr oundingLLMs as partofcrowdsourcing workﬂows.
+Ofcourse,therearetrade-oﬀsthatcomealongsideanybeneﬁ ts.Thetrade-oﬀfortherequestersisalearningcurve
+aroundtheLLMs.Timewillneedtobededicatedtostrategize andfamiliarizewiththeintegrationofLLMsinworkﬂows.
+Atrade-oﬀthatcrowdsourcingplatformswillshare,accomp aniedbytheadditionalcostofthedevelopmenttoaddthe
+LLMstotheirproducts.AnLLMmustbetrainedbeforeitcanbe appropriatelyusedwithinacrowdsourcingworkﬂow.
+This training, or ﬁne-tuning, creates an overhead for eithe r the crowdsourcing platform or the requester. While the
+overhead is initially a burdenformoststakeholders, there willbeaneﬃciency gain inthelongterm.
+3CHI’23, April23–28, Hamburg,Germany Allen,et al.
+2.2 Risk andOpportunity
+Further consideration is needed regarding the transparenc y of LLMs versus humans. When crowd workers complete
+tasks,suchasannotationorotherdecision-orientedvarie ties,requestershavethecapabilityofperformingafollow -up
+with the workers to elicit reasoning for the outcomes provid ed. This is not a simple job for LLMs. While there exist
+methods for model explainability [ 35,36,41], none have demonstrated a level of eﬀectiveness on par with what a
+requester would achieve with a human-human conversation. T his same lack of transparency also has the potential
+of confounding workﬂows at the worker level. For example, ta ke a scenario where an LLM is tasked with making a
+prediction,andahumanworkertovalidatethepredictionof themodel,andthemodelprovidesapredictionthatisnot
+inlinewithwhattheworkerexpectstosee.Insuchascenario ,theworkermaywanttointerrogatethemodeltogain
+insight into why the prediction was made. However, there is c urrently no such clear way for the worker to request
+such anexplanationfrom theLLM.
+Also worth considering is the concept of accountability. Wh enever a machine is introduced into a system, be it a
+factory,anairplane,oracrowdsourcingworkﬂow,thequest ionofaccountabilityrequiresdeﬁnition.AddingLLMsinto
+crowdsourcingworkﬂowsraisesthequestionofwhoorwhatis accountableifthingsdonotgoaccordingtoplan?Isthe
+model,therequester,theplatform,orthecrowdworkerstob eheldresponsibleformishaps?Therearemanyquestions
+aroundthebeneﬁts,viability,risks,andharmsinvolved wi thintroducingLLMs intocrowdsourcingworkﬂows.These
+questions providerich research opportunitiesforthegene rative AI and humancomputationresearch communities.
+Therealmofcreativecrowdsourcingtasksisanotherplaceo fopportunityforLLMs.Generativemodelscanhelpby
+providingsuggestionsorstartingpointstosparkbrainsto rmingorideagenerationsessions.Alternatively,classiﬁ cation
+LLMscanbeusedtoconsolidatetheideasproduced.Fortasks thataremoreengineering ordesignfocused,LLMsmay
+beabletoserveas“rubberduck"soundingboards.LLMsmayal soprovideperformanceboostsinareassuchascontent
+creation, music composition, or protein discovery. The pos sibilities of how LLMs can be included in crowdsourcing
+arevast, yet theviabilityof theseusecases warrantsfurth er investigation.
+REFERENCES
+[1] AbubakarAbid,MaheenFarooqi,andJamesZou.2021. Pers istentanti-muslimbiasinlargelanguage

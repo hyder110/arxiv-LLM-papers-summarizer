@@ -1,0 +1,15 @@
+Summary:
+
+The paper presents ProPILE, a tool designed to probe the privacy leakage of personally identifiable information (PII) in large language models (LLMs).
+ProPILE allows data subjects to evaluate the level of privacy intrusion in LLMs by formulating prompts based on their own PII.
+The tool can be used by data subjects to assess the likelihood of their PII being included in LLM datasets and potentially revealed.
+It can also be leveraged by LLM service providers to evaluate their own levels of PII leakage and address potential privacy vulnerabilities in their models.
+The experiments on the OPT-1.3B model trained on the publicly available Pile dataset demonstrate that a significant portion of PII can be disclosed through carefully crafted prompts.
+The paper also introduces the concepts of linkability and structurality of PII, which are important for understanding privacy leakage in LLMs.
+The black-box probing approach of ProPILE shows that the likelihood of reconstructing the target PII is significantly higher than random PII.
+White-box probing with soft prompt tuning further increases the leakage of target PII.
+The results highlight the need for comprehensive research and tools to address the privacy concerns associated with LLMs.
+
+Keywords:
+
+Large language models, privacy leakage, personally identifiable information, ProPILE, data subjects, LLM service providers, Pile dataset, linkability, structurality, black-box probing, white-box probing

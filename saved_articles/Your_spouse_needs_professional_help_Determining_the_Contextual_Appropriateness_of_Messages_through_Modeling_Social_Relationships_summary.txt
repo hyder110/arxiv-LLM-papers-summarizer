@@ -1,0 +1,21 @@
+Summary:
+
+The paper introduces a new approach to identifying inappropriate communication by explicitly modeling the social relationship between individuals.
+
+The authors present a new dataset of contextually-situated judgments of appropriateness and show that large language models can accurately identify appropriateness in a given context.
+
+The study demonstrates that contextual-appropriateness judgments are predictive of other social factors expressed in language such as condescension and politeness.
+
+Interpersonal relationships play a crucial role in determining the appropriateness of communication, and different relationship types have different norms and expectations.
+
+The authors trained various models, including prompt-based models and masked language models, to accurately recognize the contextual appropriateness of messages.
+
+The models performed well, with the flan-t5-xl model showing the highest performance in recognizing contextual appropriateness.
+
+Model performance varied depending on the relationship type, with some relationships having more complex norms that were challenging for the models to capture.
+
+The study also explored how well the models generalize to unseen relationship types, finding that models struggled to accurately predict appropriateness for relationships not seen during training.
+
+The authors estimate the context sensitivity of conversations by labeling dialog turns from the PRIDE dataset, finding that a significant portion of conversation is sensitive to the context of the relationship.
+
+Keywords: inappropriate communication, social relationships, context sensitivity, language models, relationship norms, social factors, model performance

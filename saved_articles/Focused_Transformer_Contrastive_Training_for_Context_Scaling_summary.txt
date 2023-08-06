@@ -1,0 +1,17 @@
+Summary:
+The paper introduces Focused Transformer (FOT), a technique that extends the effective context length of language models. FOT uses a training process inspired by contrastive learning to enhance the structure of the key-value space, allowing for fine-tuning of large-scale models.
+
+Bullet Points:
+1. FOT is a technique that extends the effective context length of language models.
+2. FOT uses a training process inspired by contrastive learning.
+3. The key-value structure is enhanced through FOT, which allows for the extension of the context length.
+4. FOT can be used to fine-tune pre-existing, large-scale models.
+5. The resulting models, called LONG LLAMAs, demonstrate advancements in tasks requiring a long context.
+6. FOT improves the model's ability to distinguish relevant keys from irrelevant ones.
+7. FOT achieves high accuracy in passkey retrieval tasks, even beyond the training context length.
+8. FOT performs well in few-shot learning tasks, improving accuracy with longer context lengths.
+9. FOT also facilitates handling distractions in language modeling tasks.
+10. FOT can be combined with other methods to further improve performance and scalability.
+
+Keywords:
+Focused Transformer, FOT, effective context length, contrastive learning, key-value space, fine-tuning, LONG LLAMA, passkey retrieval, few-shot learning, distractions.

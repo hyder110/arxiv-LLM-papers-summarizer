@@ -1,0 +1,128 @@
+RETRIEVAL AUGMENTED GENERATION AND REPRESENTATIVE
+VECTOR SUMMARIZATION FOR LARGE UNSTRUCTURED
+TEXTUAL DATA IN MEDICAL EDUCATION
+S. S. Manathunga
+Department of Pharmacology
+University of Peradeniya
+Sri Lanka
+ssm123ssm@gmail.comY. A. Illangasekera
+Department of Pharmacology
+University of Peradeniya
+Sri Lanka
+yasi04@gmail.com
+ABSTRACT
+Large Language Models are increasingly being used for various tasks including content generation
+and as chatbots. Despite their impressive performances in general tasks, LLMs need to be aligned
+when applying for domain specific tasks to mitigate the problems of hallucination and producing
+harmful answers. Retrieval Augmented Generation (RAG) allows to easily attach and manipulate a
+non-parametric knowledgebases to LLMs. Applications of RAG in the field of medical education
+are discussed in this paper. A combined extractive and abstractive summarization method for large
+unstructured textual data using representative vectors is proposed.
+Keywords AI for Medicine ·Representative Vectors
+1 Introduction
+Large language models (LLMs) are demonstrating amazing zero-shot learning capabilities. They have many applications
+including content generation and general question answering. These models learn the data they were trained on very
+well and the knowledge is retained encoded in the model weights as a parameterized knowledgebase. This also makes it
+difficult to revise or update the knowledge of an LLM later, once it is trained on a large corpus of training data [ 1]. The
+models can hallucinate, producing factually inaccurate, plausible-sounding answers. Retrieval Augmented Generation
+(RAG) tries to mitigate these issues by attaching a non-parametric knowledgebase to the LLM, in the form of a vector
+database [ 2]. Knowledge in the vector database can easily be modified and different kinds of unstructured textual data
+can be vectorized and stored in a single vector database.
+RAG-assisted summarization is an important aspect of document intelligence as well. It poses more challenges than
+retrieval. A well-written summary should highlight the key points and provide an overview of the document’s topics.
+Generating summaries of large documents directly using LLMs is difficult because the input content is often too large
+to fit into the model’s context window. Performance tends to decrease with increasing context lengths even in large
+context window models. Furthermore, the ’Lost in the Middle’ problem, the phenomenon that the LLMs tend to ignore
+facts in the middle of the context and assign more importance to the beginning and the end of the context becomes
+worse with large input contexts [3].
+To overcome these challenges, RAG-assisted Representative Vector Summarization (RVS) is introduced in this paper.
+RVS selects a pre-defined number ( k) of representative text chunks from the non-parametric knowledgebase and applies
+a combined abstractive and extractive summarizing workflow to generate the final summary. The value of parameter k
+is determined based on the maximum token limit that can be afforded. The model can identify keywords of the text
+chunks and their relative importance and create visual representations of the overall content of the document using
+word clouds and scatter plots.
+RVS is implemented in docGPT , a document intelligence program written in Python using langchain framework and
+the source is available at https://github.com/ssm123ssm/docGPT-pharm [4].arXiv:2308.00479v1  [cs.CL]  1 Aug 2023AI for Medicine
+2 Methods
+Described here is the workflow implemented in docGPT.
+2.1 Retrieval
+The model extracts text from unstructured sources including PDFs, text documents, spreadsheets and slide presentations.
+It can extract text from images and scanned PDF files using optical character recognition (OCR) [ 5]. The extracted text
+is initially stored in memory as a Document and then the Document is split into text chunks using recursive character text
+splitting. The chunks are then embedded in a 1536-dimensional vector space using OpenAI text-embedding-ada-002
+embedding engine and stored in Facebook AI Similarity Search ( FAISS ) vector database [ 3]. The FAISS vector database
+is used to find the k-most similar chunks to a given query at the query time. The original query, combined with the
+retrieved chunks is compiled into a prompt and passed to the LLM for generating the answer. The model workflow and
+the steps excecuted at build-time and at query-time are depicted in Figure 1.
+2.2 Summarization
+2.2.1 Representative Vector
+A maximum affordable token limit ( T) is initially defined. The target is to select knumber of chunks which is the
+maximum number of chunks that can be selected without their total token size exceeding T, from the vector database of
+nchunks. Assuming each chunk has an average token size of s,kis simply obtained by optimizing for max k≤n,k×s≤Tk
+Once kis calculated, the chunks in the high-dimension vector space are quantized using the k-means clustering
+algorithm. k-number of clusters which minimize the within-cluster sum of squared Euclidian distances from the
+corresponding centroids are created within the vector space. Since the distribution of chunks in the vector space is based
+on their contextual similarity, we assume each cluster captures different aspects/semantics of the original document.
+After this quantization, one representative chunk, which is the closest to the corresponding centroid from each cluster is
+extracted.
+Let vectors be an n×dmatrix, where nis the number of chunks and dis the dimensionality of the embeddings. Let
+centroids [i]denote the centroid of i-th cluster. The Euclidian distance between the m-th data point and the centroid of
+thei-th cluster is calculated by
+distance m=vuutdX
+j=1(vectors [m][j]−centroids [i][j])2 (1)
+and stored in the distances [i]array.
+Next, the index of the data point that has the minimum distance to the centroid of the i-th cluster, denoted as
+closest _index i, is calculated by:
+closest _index i= argmin distances i (2)
+Finally, the closest _index ivalues for all clusters are stored in a list.
+closest _indices = [closest _index 0, closest _index 1, . . . , closest _index k−1]
+Once the indices of the representative chunks are identified, they are stored in a separate representative Document list.
+2.2.2 Keyword generation and mapping
+Even though the token size of the representative text chunks obtained with this method is relatively smaller compared to
+the original document, it can still be too large to fit into the LLM’s context window. For example, docGPT uses a default
+maximum affordable token limit of 10,000 tokens. The default LLM that docGPT calls is OpenAI gpt-3.5-turbo ,
+which has a maximum context window of 4k. Therefore, the representative Document list undergoes an intermediate
+step of extractive summarization (keyword generation and mapping) for each chunk in it.
+Three keywords are generated for each representative chunk and the keywords are distributed among all the other
+members of the same cluster. A word cloud is generated from all the keywords from the n chunks. The relative
+frequency that each keyword appears is reflected by the size of the word in the word cloud.
+2AI for Medicine
+Figure 1: Retrieval workflow of docGPT
+3AI for Medicine
+Figure 2: Word cloud for Kumar and Clark Clinical Medicine
+The original high-dimensional vectors are then reduced to two dimensions using t-distributed Stochastic Neighbor
+Embedding (t-SNE) and plotted on a scatter plot with colors corresponding to their clusters and keywords. This enables
+the identification of the distribution of the contents of the entire document at a glance.
+Finally, the mapped summaries are used to create a final abstractive summary and to create a list of key points from the
+documents.
+3 Evaluation
+3.1 Retrieval
+Responses for queries on clinical medicine and general pharmacology from LLM without a non-parametric knowledge-
+base and a RAG model with vector databases built from Kumar and Clark’s Clinical Medicine 10th Edition and British
+National Formulary 82 were compared and checked for accuracy [ 6,7]. The responses generated by chatGPT and
+RAG implementation in docGPT are tabulated with the excerpts from the reference books in the supplementary material
+named Queries. For each query, docGPT generated more targetted and accurate answers, while chtGPT answers were
+more generic.
+3.2 Summarization
+Performances of RVS and retrieve-stuff-summarize methods were tested using Kumar and Clark Clinical Medicine 10th
+edition and BNF 82 ebooks. Results are summarized in supplementary material named Summaries.
+Kumar and Clark had 1508 pages with 13024 text chunks, each having an average of 789 tokens. The maximum
+affordable token limit was set at 15,000 and 19 representative chunks were selected. The word cloud and the t-SNE
+visualization are depicted in Figures 2 and 3.
+BNF had 1805 pages with 7278 text chunks with an average token size of 486. The model chose 10 representative
+chunks under the constraints of 5000 maximum affordable tokens. The word cloud and t-SNE are depicted in Figures 4
+and 5.
+4 Implementation
+RVS is implemented in docGPT , a document intelligence program written in Python using langchain framework and
+the source is available at https://github.com/ssm123ssm/docGPT-pharm .
+5 Conclusion
+Clinical medicine is a knowledge-intensive domain. Both clinicians and medical students would benefit from efficient
+methods for retrieving information quickly from large knowledgebases. We believe the proposed retrieval augmented
+4AI for Medicine
+Figure 3: t-SNE visualization of clustering of chunks in embedding space for Kumar and Clark Clinical Medicine
+Figure 4: Word cloud BNF 82
+Figure 5: t-SNE visualization of clustering of chunks in embedding space for BNF
+5AI for Medicine
+generation workflow and representative vector summarization for large documents would be of help in this context.
+Even though the workflow was tested on medical reference books and use cases related to medical education, the
+concept of RAG and RVS can be adopted by other domains as well.

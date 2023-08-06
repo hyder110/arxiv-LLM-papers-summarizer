@@ -1,0 +1,21 @@
+Summary:
+This paper explores the use of tool documentation as an alternative to demonstrations for teaching large language models (LLMs) how to use new tools. The authors show that with tool documentation alone, LLMs can achieve performance on par with or even better than few-shot demonstrations across various tasks in both vision and language modalities. They also demonstrate the scalability of tool documentation by equipping LLMs with a large number of tools without the need for demonstrations. Furthermore, they showcase the potential of using tool documentation to automatically enable new applications, as LLMs can re-invent functionalities of recently released models based on the documentation of other tools. Overall, this work highlights the importance of tool documentation in facilitating zero-shot tool usage with LLMs and opens up possibilities for knowledge discovery.
+
+Bullet points:
+- Tool documentation can be used as an alternative to demonstrations for teaching large language models (LLMs) how to use new tools
+- LLMs with only tool documentation can achieve performance on par with or even better than few-shot demonstrations across various tasks
+- Tool documentation enables the scalability of equipping LLMs with a large number of tools without demonstrations
+- Tool documentation can be used to automatically enable new applications by re-inventing model functionalities based on other tool documentations
+- This work highlights the importance of tool documentation in facilitating zero-shot tool usage with LLMs
+- Tool documentation opens up possibilities for knowledge discovery
+
+Keywords:
+- Large language models
+- Tool documentation
+- Demonstrations
+- Zero-shot tool usage
+- Language modalities
+- Vision modalities
+- Scalability
+- New applications
+- Knowledge discovery

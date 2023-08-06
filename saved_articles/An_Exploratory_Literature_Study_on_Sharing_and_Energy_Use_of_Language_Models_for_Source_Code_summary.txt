@@ -1,0 +1,21 @@
+Summary:
+
+This study explores the sharing and energy use of language models trained on source code for software development tasks. The goal is to investigate whether publications share source code and trained artifacts and analyze the transparency on training energy usage.
+
+- The study identifies 293 relevant publications that use language models for code-related tasks, out of which 27% make artifacts available for reuse.
+- Sharing trained artifacts, such as task-agnostic models or tools, can facilitate code reuse and reduce the need for expensive training processes.
+- The study collects insights on the hardware used for model training and training time, which determine the energy consumption of the development process.
+- Deficiencies in sharing information and artifacts are found, with 40% of surveyed papers not sharing source code or trained artifacts.
+- The study recommends sharing source code and trained artifacts to enable sustainable reproducibility and providing comprehensive information on training times and hardware configurations for transparency on energy consumption.
+
+Keywords:
+- Sustainability
+- Reuse
+- Replication
+- Energy
+- DL4SE
+- Sharing
+- Source code models
+- Large language models
+- Software engineering tasks
+- Artifacts

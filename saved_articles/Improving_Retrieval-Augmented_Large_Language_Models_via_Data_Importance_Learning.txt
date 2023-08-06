@@ -1,0 +1,451 @@
+Improving Retrieval-Augmented Large Language
+Models via Data Importance Learning
+Xiaozhong Lyu1Stefan Grafberger2Samantha Biegel1Shaopeng Wei1
+Meng Cao3Sebastian Schelter2Ce Zhang1
+1ETH Zürich2University of Amsterdam3Apple
+Abstract
+Retrieval augmentation enables large language models to take advantage of external
+knowledge, for example on tasks like question answering and data imputation.
+However, the performance of such retrieval-augmented models is limited by the data
+quality of their underlying retrieval corpus. In this paper, we propose an algorithm
+based on multilinear extension for evaluating the data importance of retrieved
+data points. There are exponentially many terms in the multilinear extension, and
+one key contribution of this paper is a polynomial time algorithm that computes
+exactly , given a retrieval-augmented model with an additive utility function and a
+validation set, the data importance of data points in the retrieval corpus using the
+multilinear extension of the model’s utility function. We further proposed an even
+more efficient (ϵ, δ)-approximation algorithm. Our experimental results illustrate
+that we can enhance the performance of large language models by only pruning or
+reweighting the retrieval corpus, without requiring further training. For some tasks,
+this even allows a small model (e.g., GPT-JT), augmented with a search engine
+API, to outperform GPT-3.5 (without retrieval augmentation). Moreover, we show
+that weights based on multilinear extension can be computed efficiently in practice
+(e.g., in less than ten minutes for a corpus with 100 million elements).
+1 Introduction
+Large language models (LLMs) consisting of neural networks with billions of parameters and
+trained on vast quantities of unlabelled text are the basis of unprecented progress in natural language
+processing tasks [ 6,20,21,13]. With zero-shot or few-shot prompting, LLMs can be adopted for
+a wide range of diverse tasks, such as question answering [ 15] summarization [ 15,2] and data
+imputation [17].
+Drawbacks of large language models . LLMs, however, have two widely acknowledged disad-
+vantages [ 1,22]. Firstly, despite their impressive capabilities, LLMs actually perform badly on tail
+entities [ 1], which they have not seen at training time or cannot remember due to limitations of the
+network capacity. The second drawback is that with the ever-growing number of model parameters,
+training, and fine-tuning costs are exploding as well. As a rough estimate, it costs $80k - $1.6m to
+train a 1.5 billion parameter language model [ 25,22,29]. This makes it difficult to leverage LLMs
+for tasks that require regularly updated data or that regularly need to remove privacy-sensitive or
+copyright-protected data [3].
+Retrieval-augmented models . To address such problems, retrieval-augmented (RAG) models have
+recently been proposed [ 12,14,8]. A typical retrieval-augmented model consists of two parts, a
+retriever fretand a generator fgen. Given a retrieval corpus Dret={d1,···, dM}, the retriever
+fretretrieves Kdata points for an input xiasfret(xi,Dret) ={dα1, dα2, ..., d αK}. Here, αk
+denotes the rank of each data point in the retrieval corpus assigned by the retriever. The generator
+Preprint. Under review.arXiv:2307.03027v1  [cs.LG]  6 Jul 2023  Generator fgen  Data Importance      Evaluator UsersDatabasesWebsitesRetrieval Corpus Dret
+data
+data
+data  Retriever fret0.70.90.1Learned WeightsInference OutputsValidation Set DvalRetrieval-Augmented ModelFigure 1: Data importance evaluation for retrieval-augmented models: The retriever fretretrieves
+Kdata points from the retrieval corpus Dretand provides them to the answer generator fgen. Our
+data importance evaluator learns weights for the data sources in the retrieval corpus based on the
+performance on a validation set Dval. These weights are subsequently used to reweight or prune the
+data sources, and improve the model’s performance without further training.
+fgenthen generates its prediction based on the input and the retrieved data points as evidence
+fgen(xi, fret(xi,Dret)). Recent research indicates that incorporating external knowledge into LLMs
+improves their performance for various tasks and allows them to easily adapt to new knowledge [ 23,
+30].
+Impact of data quality on retrieval-augmented LLMs . The performance of retrieval-augmented
+models is highly limited by the quality of the retrieved data points. For example, GPT-3 is able to
+give the correct answer “ Frank Herbert ” to the question “Who is the author of Old Rambling House?”
+with the help of a retrieved Wikipedia page [ 28], which contains the sentence "Old Rambling House
+is a short story by American science fiction author Frank Herbert ."However, it would with a
+high probability give the wrong answer if the retrieved page contained incorrect text such as “Old
+Rambling House is a short story by American science fiction author J. R. R. Tolkien . ”Retrieval
+corpora are rarely clean in reality (especially if the underlying data comes from the web), and the
+origin of noise and errors in the data is difficult to track down [ 7,5]. For example, according to
+recent estimates, 8.0%to38.5%of labels in real-world datasets are corrupted [ 24]. In the domain of
+natural language processing, which relies on raw text, the rapidly growing number of use cases and
+an increasing amount of text have especially exacerbated data quality issues [5].
+Learning the data importance of retrieval sources . Given this data quality problem, we propose to
+improve retrieval-augmented models by learning the data importance of retrieval sources. Let U(·)
+be the utility function of a retrieval-augmented model with a validation set Dval={x1, x2, ..., x N},
+and let Dret={d1,···, dM}be the underlying retrieval corpus of Mdata points. The performance
+of the model can be written as:
+U(fgen, fret,Dval,Dret) :=X
+xi⊆DvalU(fgen(xi, fret(xi,Dret))) (1)
+Our goal to is find a subset Sof the retrieval corpus Dretthat maximizes the utility function
+U(fgen, fret,Dval,S). We leave out fgen,fret, andDvalfrom the notation and use U(S)for
+readability. It is hard to solve this combinatorial optimization problem since it requires enumerating
+exponentially many possible subsets S. One natural way is to change this problem to an optimization
+problem on continuous functions. Therefore, we define the multilinear extension of the utility function
+as:
+˜U(w1,···, wM) :=X
+S⊆D retU(S)Y
+di∈SwiY
+di̸∈S(1−wi)
+| {z }
+P[S](2)
+Here, P[S]denotes the probability of the sampled retrieval corpus S ⊆ D retbased on the weights
+w1,···, wM. Our goal is to find the optimal weights w1,···, wMthat maximize the multilinear
+extension of the utility function:
+max
+w1,···,wM∈[0,1]˜U(w1,···, wM) (3)
+2The optimal weights can be found with textbook optimization methods like gradient descent. This,
+however, requires enumerating exponentially many sample sets, making the problem infeasible in
+practice. We tackle this challenge with the following main contributions of this paper:
+•We present an efficient algorithm to compute weights for a large family (but not all) of retrieval-
+augmented models with additive utility functions. Our algorithm has polynomial time complexity
+and does not depend on the retrieval corpus size (Sections 2.1 & 2.2), even given that there are
+exponential many terms in Equation 2.
+•We introduce an efficient estimation algorithm to compute the (ϵ, δ)-approximation of weights for
+a large family of retrieval-augmented models (Section 2.3).
+•We experimentally demonstrate that retrieval augmentation and data evaluation based on multilinear
+extension improve the performance of large language models in question answering and data
+imputation tasks. The experiments demonstrate that with external retrieval knowledge, small
+language models can yield comparable performance to large language models. Furthermore, our
+evaluation shows that weights based on multilinear extension can identify noisy data and help
+models adapt to new sources of knowledge (Section 3.3).
+•Our implementation of the algorithm illustrates that weights based on multilinear extension can be
+calculated very fast in practice, even for a large corpus with 100 million data points (Section 3.5).
+•We provide the source code of our implementation and experiments under https://github.com/
+amsterdata/ragbooster .
+2 Algorithms for Deriving Gradients
+We can find the optimal weights for the multilinear extension of the utility function via computing
+the gradient of a particular weight wibased on a validation set Dval:
+∂˜U
+∂wi=X
+S⊆D ret\di(U(S ∪ { di})−U(S))·P[S]
+=X
+xval∈Dval1
+|Dval|·X
+S⊆D ret\di(Uxval(S ∪ { di})−Uxval(S))·P[S]| {z }
+G(xval, wi)
+=1
+|Dval|·X
+xval∈DvalG(xval, wi)(4)
+Infeasability of a naive implementation . However, computing the gradients in Equation (4) is
+challenging. A naive implementation would have to enumerate all possible subsets Sfor each
+validation tuple xval∈ D valto compute the contribution of this subset Sto the gradient value
+G(xval, wi). Such a naive implementation is infeasible in practice due to its inherent exponential
+time complexity.
+Efficient weight computation for retrieval-augmented models . As discussed before, we focus on a
+specific family of machine learning models, called retrieval-augmented (RAG) models. Retrieval-
+augmented models benefit from locality: the predictions of retrieval-augmented models for an input
+sample are only determined by the Top- Kclosest data points in the retrieval corpus and the answer
+generator. Combined with additive utility functions (which are common for both classical KNN and
+state-of-the-art RAG models), this allows us to efficiently compute exact gradients within polynomial
+time complexity (Section 2.1 and Section 2.4). In Section 2.2, we show that we only have to consider
+a small subset of data points for each validation tuple and that the time complexity only depends on
+Kinstead of the retrieval corpus size Mif we apply an ϵ-approximation. Finally, we propose an
+(ϵ, δ)-approximation algorithm in Section 2.3 to calculate gradients for general utility functions.
+2.1 Exact Gradient Calculation for Models with an Additive Utility Function
+A textbook K-nearest neighbor classifier and many state-of-the-art retrieval-augmented models [ 14]
+can be viewed as models with additive utility functions. In this section, we present a polynomial
+3time complexity algorithm to compute the exact gradient of the weights of the multilinear extension
+of the utility function. We follow existing work [ 10] to define the additive utility function of a
+retrieval-augmented model as:
+Uxval(S) =1
+Kmin ( K,|S|)X
+k=1Uxval(fgen(dαxval
+k(S))) (5)
+Here, αxval
+k(S)represents the index of the data point, which is the kth closest to xvalamong
+all the data points retrieved by fretfromS. From now on, we abbreviate αxval
+k(S)toαk.
+Uxval(fgen(dαxval
+k(S)))denotes the utility function for the output generated based on the valida-
+tion tuple xvaland the single data point dαxval
+k. We assume that the possible values of U(·)function
+are within a countable finite set V, where |V|=V, and leave out fgenfrom the notation for readability
+in the following. In this scenario, we can provide an algorithm with PTIME time complexity in Ap-
+pendix A. The overall time complexity of the algorithm is O 
+N·(MlogM+MK2+MKV )
+2.2 ϵ-approximation Algorithm for Calculating Exact Gradient Values
+The overall time complexity for computing gradients for models with an additive utility function
+isO 
+N·(MlogM+MK2+MKV )
+. In this section, we show that if we are allowed to do
+ϵ-approximations, we can significantly speed up the calculation of the gradients∂˜U
+∂wi. We will only
+introduce the main idea here, leaving the details in Appendix B.
+Theorem 2.1. If we calculate the ϵ-approximation ˆG(xval, wi)for the each G(xval, wi), we can
+get the ϵ-approximation for∂˜U
+∂wias the average of ˆG(xval, wi).
+Proof. See Appendix E.1.
+Our next step is to detail how to compute the ϵ-approximation for G(xval, wi). One observation is
+that the absolute value G(xval, wi)is bounded by the sum of the probabilities of the data points di
+in the K-nearest neighbor set of xval. Notice that for a data point with a lower rank, the probability
+of it being in the K-nearest neighbor set is smaller. Therefore we can define the boundary point dbof
+the retrieval corpus.
+Definition 2.1. (Boundary Point ) Given a validation tuple xvaland the retrieval corpus Dret=
+{d1,···, dM}ranked with respect to xval, theboundary point dbis the data point with the highest
+rank in the sorted corpus such that any data point that has a lower rank than dbhas a probability
+less than ϵto be in the K-nearest neighbor set of xval.
+In practice, after we rank the corpus with respect to a validation tuple, we can use binary search to
+find the boundary point. After we find this boundary point db, we can use 0 as the ϵ-approximation
+for the gradient for data points with a lower rank as ˆG(xval, wi) = 0 fori∈ {b, ..., M }. It is because
+the probability of those data points being in the K-nearest neighbor set is less than ϵ. In the following,
+we will show the approximation for data points with a higher rank.
+Theorem 2.2. Given the validation tuple xval, the retrieval corpus Dret={d1, ..., d M}, the
+boundary point db, and the weights W={w1, ..., w M}, if we have an algorithm Ato calculate
+theG(xval, wi) =A(xval,Dret, W), then ˆG(xval, wi) =A(xval,{d1, ..., d b},{w1, ..., w b})is the
+ϵ-approximation for G(xval, wi).
+Proof. See Appendix E.2
+From Theorem 2.2, we can compute the ϵ-approximation for every data point by dis-
+carding the outlier points {db, db+1, ..., d M}. This reduces the time complexity from
+O 
+N·(MlogM+MK2+MKV )
+toO 
+N·(BlogB+BK2+BKV )
+where Bis the rank
+of the boundary point.
+Theorem 2.3. If the value of all wiis greater than a certain constant λ, then the index of the
+boundary point BisO(K).
+4Proof. See Appendix E.3
+The above theorem shows that if all weights Ware greater than a certain constant, the scale of Bis
+only related to Kinstead of the size of the retrieval corpus M. It means that even though we may
+have millions of data points in the retrieval corpus, we only have to consider O(K)data points with
+the highest rank for a validation tuple. The overall time complexity for computing the approximate
+gradients for models with additive utility functions is O(N·(KlogK+KKV )) =O 
+N·K2·V
+.
+This significantly speeds up their computation.
+2.3 (ϵ, δ)-approximation Algorithm for Models with General Utility Functions
+Next, we provide a solution for efficiently approximating gradients for retrieval-augmented models
+with a general utility function. According to what we proposed in the previous section, for every
+validation tuple, we can find the boundary point of the retrieval corpus. When a point has a smaller
+rank score than the boundary point, the epsilon approximation is 0. Using the Markov chain Monte
+Carlo method, we can calculate an approximation of the gradients for a retrieval-augmented model
+with a general utility function. In light of the fact that 0 is the approximate value for most points, we
+only need to perform MCMC on a small number of data points. Detailed proofs and algorithms are
+provided in appendix D.
+2.4 Projected Gradient Descent for Weights on a Data Source Level
+Exact gradients for a grouped retrieval corpus . In the previous section, we introduced the algorithm
+for calculating gradients for weights for the multilinear extension of the utility function. We also
+proved that each validation tuple only contributes gradients to a small part of the retrieval corpus.
+A further problem is how to evaluate the quality of the data points which are not retrieved for the
+validation tuples. In real-world ML applications, a retrieval corpus is commonly generated from
+various data sources. For example, data points in the retrieval corpus may come from the same labeler,
+the same websites, or the same database. As a consequence, we can evaluate data quality at this level,
+which we call the source level. This has the additional advantage that we do not have to inspect every
+data point before identifying if the data is useful. We formulate the corresponding problem as follows.
+Given a series of data sources for the retrieval corpus Oret={o1, o2, ..., o M}, the generated retrieval
+corpus can be represented as a function of these sources Dret=SM
+i=1fsource (oi). We detail how to
+compute the exact gradient of the weights for the K-Nearest Neighbor classifier and a grouped corpus
+in Appendix C. The time complexity of the algorithm is O 
+N·T2·M2
+, where Tis the size of the
+generated retrieval corpus.
+Projected gradient descent for weights on a grouped corpus . In general, given the retrieval
+corpus and the validation set, we can use a textbook batch gradient descent algorithm to find the
+optimal weights for the data points in the retrieval corpus. From the previous paragraph, we can see
+that computing the exact gradient values for a grouped retrieval corpus with several data sources
+can be computationally expensive. Therefore, we propose a projected gradient descent algorithm
+to efficiently learn the optimal weights for retrieval corpus generated from data sources. Given
+the generated retrieval corpus represented as a function of the sources {o1, o2, ..., o M},Dret=SM
+i=1fsource (oi), we assign a weight to each data point in the generated retrieval corpus Dret.
+Suppose there are midata points in fsource (oi), we assign the weights {wi,1.wi,2, ..., w i,mi}to
+each data point in fsource (oi). The original optimization problem can be relaxed to a constrained
+optimization problem as detailed below:
+max
+w1,1,···,wM,mM∈[0,1]˜U(w1,1, ..., w M,m M)
+s.t. w 1,1=w1,2=···=w1,m1
+w2,1=w2,2=···=w2,m2
+···
+wM,1=wM,2=···=wM,m M(6)
+To find the optimum of this function, we use the existing algorithm for a non-grouped corpus to
+compute the gradient of the weight for each wi,j. After we update the parameters using the gradients,
+we project the updated wi,jto satisfy the constraints by computing ˆwi=1
+αPwi,jand set every wi,j
+5toˆwi. Therefore, we can utilize the algorithm introduced in Section 2.2 to calculate the gradient and
+then compute the average. For retrieval-augmented models with additive utility functions, the time
+complexity becomes O 
+N·K2·V+T
+.
+3 Experimental Evaluation
+We conduct a series of experiments for question answering and data imputation tasks. We con-
+firm in Section 3.1 that retrieval augmentation enhances the performance of large language mod-
+els. Section 3.2 and Section 3.3 show that the multilinear extension weights help us identify
+noisy/incorrect data in the retrieval corpus, and that pruning or reweighting the retrieval corpus
+accordingly improves performance without the need to fine-tune the underlying model. The runtime
+of the algorithm is examined in Section 3.5, where we showcase that the weights can be computed
+very fast in practice. We provide the source code of our implementation and experiments under
+https://github.com/schelterlabs/retrieval_importance .
+Datasets and tasks . For question answering , we leverage the WikiFact [15] dataset, in which
+questions are extracted from Wikipedia pages using relation pairs. The answer to each question in
+this dataset can be found on Wikipedia. For example, for the relation "author", a question is "The
+author of Nimmer on Copyright is ?". We filter out relations with less than 500 questions and use
+each of the remaining 70 relations as a separate downstream task. In data imputation , the task is
+to predict missing values of a relational table [ 17]. We experiment with two common benchmark
+datasets for this task: restaurant , where the city column of a table about restaurants must be
+imputed, and buy, where we have to impute the manufacturer column in a table about electronics
+products. For each experimental run on a question answering or data imputation task, we randomly
+split the dataset into validation dataset and test dataset with an equal number of tuples. We repeat
+this for 64 different random seeds, and report the mean accuracy. For the zero-shot baselines in the
+imputation tasks, we use the prompts suggested in [17].
+Language models . We leverage the language model GPT-JT [ 27,26] with 6 billion parameters,
+which we enhance with retrieval augmentation. As a reference, we compare this to the language
+model “text-davinci-003” (to which we refer to as GPT-3.5) from OpenAI’s commercial GPT-3.5
+family [ 19]. For both language models, we generate predictions with zero-shot or few-shot prompting,
+without further fine-tuning.
+Retrieval augmentation . We leverage the Microsoft Bing search engine [ 16] to generate a retrieval
+corpus for each task. We create a query from each validation/test sample (e.g., the question to answer)
+and retrieve the first 50 websites together with their textual snippets provided by Bing as retrieved
+data points for the sample. We sort these data points according to the ranking score provided by
+Bing. We create a few-shot prompt from each retrieved data point, and generate an answer for the
+corresponding validation sample via GPT-JT. We decide on the final prediction via a majority vote
+using the generated answers from the top- Kwebsites.
+Reweighting or pruning the retrieval corpus . In experiments which reweight or prune the retrieval
+corpus based on multilinear extension weights, we proceed as follows. We choose K = 10 and
+set the initial weight to 0.5. We group the retrieved websites by their domain name, and run the
+projected gradient descent algorithm from Section 2.4 for 50 iterations with a learning rate of 500
+on the validation dataset to compute the optimal weights. Next, for reweighting, we compute the
+expectation of the accuracy on the test set by randomly sampling the retrieved data points 32 times
+based on the learned weights to form the retrieval corpus. For pruning, we remove retrieved data
+points with a learned weight below a certain threshold (tuned on the validation set) before computing
+predictions on the test set via majority vote. We use the leave-one-out (LOO) error as a baseline to
+refine the retrieval corpus. We compute the change in accuracy for the removal of each individual
+data source and finally remove all data sources with a LOO error below a certain threshold (tuned on
+the validation set) before computing predictions on the test set.
+3.1 Benefits of Retrieval Augmentation
+Experimental setup . The aim of this experiment is to confirm the well-known fact that retrieval aug-
+mentation alone already enhances the performance of language models. We compare the performance
+6Table 1: Average accuracy for question answering on Wikifact . A small language model with
+retrieval augmentation and learned multilinear extension weights outperforms a large model with 30
+times more parameters.
+(a) Benefits of retrieval augmentation.
+GPT-JT
+(6B)GPT-JT (6B) W/ RETRIEVAL GPT-3.5
+(175B)K = 1 K = 10 K = 50
+0.214 0.332 0.333 0.293 0.339(b) Benefits of weight-based reweighting and pruning.
+GPT-JT (6B) W/ RETRIEVAL GPT-3.5
+(175B)
+VANILLA +LOO +REWEIGHT +PRUNE
+0.333 0.358 0.380 0.392 0.339
+0.250.500.75Accuracyapplies to jurisd... author award received basic form of gov... capital capital of composer continent country country of citize...
+0.250.500.75Accuracycountry of origin creator currency developer director discoverer or inv... drug or therapy educated at employer ﬁeld of work
+0.250.500.75Accuracygenetic associati... genre has part head of governmen... head of state headquarters loca... industry inﬂuenced by instance of instrument
+0.250.500.75Accuracylanguage of work languages spoken located in location location of disco... location of forma... majority opinion ... manufacturer measured physical... medical condition
+0.250.500.75Accuracymember of member of politic... member of sports ... movement named after native language occupation oﬃce held by oﬃcial language operating system
+0.250.500.75Accuracyoriginal language... original network owned by part of participating tea... place of birth place of death position held position played o... programming langu...
+0.250.500.75Accuracyrecommended unit record label religion shares border wit... stock exchange subclass of subsidiary symptoms and sign... twinned administr... work location
+GPT-3.5 (175B) w/o retrieval GPT-JT (6B) w/ retrieval +LOO +Reweight +Prune
+Figure 2: Accuracy for question answering on the 70 relations from WikiFact .
+of GPT-3.5 without retrieval augmentation to the performance of GPT-JT with retrieval augmentation
+on the question answering and data imputation tasks.
+Results and discussion . The results for question answering are shown in Table 1a. The mean accuracy
+of GPT-3.5 over all 70 relations is 0.33, which outperforms the mean accuracy of 0.21 achieved
+by GPT-JT standalone. However, retrieval augmentation raises the mean accuracy of GPT-JT to
+0.33, making it competitive with the 30x larger GPT-3.5. The smaller model even outperforms the
+larger model in the majority of relations (39 out of 70, detailed results available in Appendix F).
+We encounter the analogous behavior for data imputation in Table 2, where retrieval augmentation
+(VANILLA ) makes the small GPT-JT model competitive with the 30x larger GPT-3.5 model, and even
+outperforms it on both datasets.
+3.2 Improving Performance with Multilinear Extension Weights
+Experimental setup . Next, we showcase that pruning or reweighting the retrieval corpus based on
+multilinear extension weights importance improves performance without having to fine-tune the
+underlying model. We group the retrieved websites by domain and refine the corpus as detailed
+earlier.
+7Table 2: Average accuracy for data imputation on buyandrestaurant .
+DATASETGPT-JT
+(6B)GPT-JT (6B) W/RETRIVAL GPT-3.5
+(175B)
+VANILLA +LOO +REWEIGHT +PRUNE
+BUY 0.102 0.789 0.808 0.815 0.813 0.764
+RESTAURANT 0.030 0.746 0.756 0.760 0.761 0.463
+Table 3: Accuracy improvements for GPT-JT (6B) with retrieval augmentation on a noisy corpus.
+CLEAN CORPUSDIRTY CORPUS
+VANILLA +LOO +REWEIGHT +PRUNE
+0.333 0.270 0.311 0.330 0.335
+Results and discussion . The results for question answering are shown in Table 1b (detailed results
+inFigure 2 and Appendix G), and confirm that reweighting and pruning using the learned weights
+increases test accuracy. The mean accuracy of the GPT-JT model retrieval augmentation increases
+from 33.3% to 37.7% after pruning (and to 36.9% after reweighting) using the multilinear extension
+weights, and it clearly outperforms the state-of-the-art GPT-3.5 model with 175 billion parameters. In
+all 70 relations, the performance improved using multilinear extension weights by removing 71.5%
+of the retrieval corpus on average. Analogously, we find that the performance in the data imputation
+tasks is improved by pruning based on the learned weights importance as well (Table 2). For both
+datasets, the smaller model outperforms GPT-3.5 by more than 5% in test accuracy. These results
+confirm that the performance of retrieval-augmented models can be further optimized by evaluating
+the quality and reliability of real-world data sources in their underlying corpus.
+3.3 Mitigating the Impact of Noise in the Retrieval Corpus
+Experimental setup . The aim of the following experiment is to demonstrate how the learned weights
+assist us with mitigating the impact of noise in the retrieval corpus. To achieve this, we manually inject
+noise into the retrieval corpus of the question-answering task as follows. We create five copies of the
+retrieval corpus for each question with noise levels ranging from 0%to80% (resulting in around 250
+retrieved websites per question, of which 40% are corrupted). To inject noise, we randomly replace
+the correct answer in the retrieved websites with an incorrect one according to the noise level. Then,
+for each copy, we randomly split the corpus into ten sources according to rank. Now we have 5·10
+different sources in total with different noise levels. We expect a performance drop when using the
+dirty corpus and aim to demonstrate how data evaluation can help us restore performance.
+Results and discussion . As shown in Table 3, the performance drops from 33.3% on the clean
+corpus to 27.0% on the dirty corpus with injected noise. Using the leave-one-out error to remove
+noise sources improves performance to 31.1%. Both reweighting and pruning using learned weights
+drastically improve the performance on the dirty corpus and both enhance the performance by over
+33.0% on the dirty corpus. Pruning even results in a better performance of 33.5% compared to the
+clean corpus without pruning. The results show that even if we are faced with a situation where
+nearly half of the retrieval corpus is noisy, multilinear extension weights can help the model reach
+performance comparable to the clean corpus.
+GPT-JT (6B)
+W/ R ETRIEVALGPT-JT (6B) W/ R ETRIEVAL + FABRICATED DATA GPT-3.5
+(175B)
+VANILLA +LOO +REWEIGHT +PRUNE
+0.333 0.382 0.399 0.410 0.418 0.339
+Table 4: Accuracy impact of additional fabricated data sources
+for question answering on Wikifact .
+105106107108
+size of retrieval corpus M=N·b101102103104runtime per epoch (ms)
+k=20,c=1
+k=20,c=2
+k=20,c=4k=10,c=1
+k=10,c=2
+k=10,c=4Figure 3: Runtime per epoch on
+corpora with up to 100M elements.
+83.4 Handling Auto-Generated Data Sources in the Retrieval Corpus
+Experimental setup . Next, we illustrate how learned weights allows us to handle new sources in the
+retrieval corpus for question answering. We manually generate five synthetic Wikipedia pages for
+each question using the OpenAI “text-davinci” generator. We adopt the real Wikipedia pages as a
+few-shot example, add the fabricated sources to the retrieval corpus and give them the highest rank
+among the websites. We aim to show that when new knowledge is added to the corpus, the learned
+weights help us to utilize the sources based on their quality.
+Results and discussion . Table 4 shows the results of this experiment. We find that adding fabricated
+Wikipedia pages to the corpus increases the accuracy from 33.3% to 38.2%. This is due to the fact that
+the OpenAI model itself can reach 33.9% and most Wikipedia pages contain the correct information
+if the model memorizes the answer. We see, however (e.g., for the relation "place of death"), that
+adding generated Wikipedia pages will decrease the performance from 38.3% to 33.8%. Using LOO
+to prune the retrieval corpus improves performance by 39.9% on average. Reweighting or pruning
+using the learned multilinear extension weights achieves the highest accuracy of 41.0% and 41.8%,
+improving the performance on the corpus without fabricated Wikipedia sources. The results show
+that the learned weights help the model to easily adapt to new knowledge sources without further
+training.
+3.5 Computational Performance
+Experimental setup . Finally, we illustrate that the weights can be computed very fast in practice. For
+that, we implement our approach in Rust (with a Python frontend), and apply several performance
+optimizations to the code such as parallelization, memory pre-allocation and re-use, operator fusion,
+and predication [ 4,18]. We run the experiments on consumer hardware (a machine with a four-core
+Intel i7-8569U CPU @2.80GHz, 16GB of RAM, and MacOS 12.6). We measure the runtime of our
+implementation on three relations from the Wikifact dataset (“author”, “place-of-birth”, “currency”),
+which contain 1,700-2,700 questions each, with 50 corresponding retrieved answers per question.
+We additionally run experiments on a synthetic retrieval corpus whose size M=N·bwe scale up
+from 50,000 to 100,000,000 (with a validation set size Nfrom 1,000 to 1000,000 times b= [50 ,100]
+retrieved data points per sample). We run each configuration with one, two, and four threads, repeat
+each run seven times, and measure the mean execution time per epoch.
+Results and discussion . For the relations from WikiFact , a gradient update only takes between two
+and four milliseconds. We plot the results for the synthetic corpus in Figure 3. The x-axis is the
+size of the retrieval corpus M=N·b(size Nof the validation set times the number of retrieved
+data points per sample b) and the y-axis denotes the mean runtime in milliseconds with a logarithmic
+scale. We see that with all four cores, we can finish an epoch for corpora with up to 10 million
+elements with a sub-second runtime. Even for the largest corpus with 100 million elements, an epoch
+can be conducted in 6.3 seconds on consumer hardware. Furthermore, we find that the runtime
+grows linearly with the size of the retrieval corpus and that our implementation easily benefits from
+parallelism when multiple cores are utilized. This showcases that data refinement using multilinear
+extension weights is computationally cheaper than model fine-tuning, which (in many cases) has to
+conduct an expensive backpropagation of errors through the underlying model.
+4 Conclusion
+We presented efficient algorithms to compute the optimal weights that maximize the multilinear
+extension of the utility function and use them to refine the retrieval corpus for retrieval-augmented
+large language models. Overall, our results illustrate that the learned weights are a powerful metric
+for evaluating the quality of the retrieval corpus and that retrieval-augmented models can be enhanced
+by only pruning the retrieval corpus without further training the underlying model. Furthermore, the
+weights can be computed efficiently even for a large retrieval corpus, and allow us to easily adapt
+predictions in cases where new sources are added to the retrieval corpus.
+9Refere

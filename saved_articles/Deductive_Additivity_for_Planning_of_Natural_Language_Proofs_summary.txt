@@ -1,0 +1,26 @@
+Summary:
+This paper investigates the property of deductive additivity in sentence embedding spaces for natural language proof generation. The authors explore whether embedding spaces exhibit deductive additivity, which means that the sum of premise statement embeddings should be close to embeddings of conclusions based on those premises. They evaluate multiple sources of off-the-shelf dense embeddings and fine-tuned embeddings from GPT3. They also create a dataset, Single-Step Reasoning Contrast (SSRC), to further evaluate the performance of different reasoning types. The findings suggest that while standard embedding methods frequently embed conclusions near the sums of their premises, they are not effective heuristics and lack the ability to model certain reasoning categories.
+ 
+Bullet Points:
+- This paper investigates deductive additivity in sentence embedding spaces for natural language proof generation.
+- The goal is to determine whether embeddings of premise statements are close to embeddings of conclusions based on those premises.
+- The authors evaluate different sources of embeddings, including off-the-shelf dense embeddings and fine-tuned embeddings from GPT3.
+- They create a dataset, SSRC, to evaluate the performance of different reasoning types.
+- Standard embedding methods often embed conclusions near the sums of their premises but are not effective heuristics.
+- These methods lack the ability to model certain reasoning categories.
+- Fine-tuned embeddings do not lead to better reasoning capabilities.
+- Early-fusion premise rankers like SCSearch outperform vector-based approaches.
+- Skewed datasets provide optimistic benchmarks for weaker models.
+- More complex and structured approaches may be necessary for step-by-step systems in natural language proof generation.
+ 
+Keywords:
+- deductive additivity
+- sentence embeddings
+- natural language proof generation
+- off-the-shelf embeddings
+- fine-tuned embeddings
+- Single-Step Reasoning Contrast (SSRC) dataset
+- reasoning types
+- heuristics
+- early-fusion premise rankers
+- skewed datasets

@@ -1,0 +1,380 @@
+Causal Discovery with Language Models as Imperfect Experts
+Stephanie Long* 1Alexandre Pich ´e* 2 3 4Valentina Zantedeschi* 2Tibor Schuster1Alexandre Drouin2 4
+Abstract
+Understanding the causal relationships that
+underlie a system is a fundamental prerequisite
+to accurate decision-making. In this work, we
+explore how expert knowledge can be used to
+improve the data-driven identification of causal
+graphs, beyond Markov equivalence classes. In
+doing so, we consider a setting where we can query
+an expert about the orientation of causal relation-
+ships between variables, but where the expert may
+provide erroneous information. We propose strate-
+gies for amending such expert knowledge based on
+consistency properties, e.g., acyclicity and condi-
+tional independencies in the equivalence class. We
+then report a case study, on real data, where a large
+language model is used as an imperfect expert.
+1. Introduction
+Understanding the cause-and-effect relationships that under-
+lie a complex system is critical to accurate decision-making.
+Unlike any statistical association, causal relationships allow
+us to anticipate the system’s response to interventions.
+Currently, randomized control trials (RCTs) serve as the
+gold standard for establishing causation (Peters et al., 2017).
+However, RCTs can be costly and oftentimes impractical
+or unethical. As such, there has been growing interest in
+causal discovery , which aims to uncover causal relationships
+from data collected by passively observing a system (see
+(Glymour et al., 2019) for a review).
+Causal discovery methods have been successfully applied in
+various fields, including genetics (Sachs et al., 2005) and cli-
+mate science (Runge et al., 2019). Nevertheless, a fundamen-
+tal limitation of such methods is their ability to only recover
+the true graph of causal relationships up to a set of equivalent
+solutions known as the Markov equivalence class (MEC),
+leading to uncertainty in downstream applications, such as
+*Equal contribution1McGill University2ServiceNow Research
+3Universit ´e de Montr ´eal4Mila - Quebec AI Institute. Correspon-
+dence to: Valentina Zantedeschi <vzantedeschi@gmail.com >.
+Accepted to ICML workshop on Structured Probabilistic Inference
+& Generative Modeling , Honolulu, Hawaii, USA. PMLR 202,
+2023. Copyright 2023 by the author(s).estimating the effect of interventions (Maathuis et al., 2009).
+One approach to reducing such uncertainty is the incorpo-
+ration of expert knowledge, e.g., to rule out the existence of
+certain edges and reduce the set of possible solutions (Meek,
+1995). However, such methods typically assume that the
+knowledge provided by the expert is correct . In this work, we
+consider a more realistic case, where the expert is potentially
+incorrect . Our approach leverages such imperfect experts ,
+e.g., large language models, to reduce uncertainty in the
+output of a causal discovery algorithm by orienting edges,
+while maintaining fundamental consistency properties, such
+as the acyclicity of the causal graph and the conditional
+independencies in the MEC.
+Contributions:
+•We formalize the use of imperfect experts in causal
+discovery as an optimization problem that minimizes
+the size of the MEC while ensuring that the true graph
+is still included (Section 3).
+•We propose a greedy approach that relies on Bayesian
+inference to optimize this objective by incrementally
+incorporating expert knowledge (Section 4).
+•We empirically evaluate the performance of our ap-
+proach, on real data, with an expert that returns correct
+orientations with some fixed probability (Section 5).
+•We then empirically assess if the approach holds when
+taking a large language model as the expert – with
+mitigated results (Section 5).
+2. Background and Related Work
+We now review key background concepts and related work.
+Causal Bayesian networks: LetX:= (X1,...,X d)be a
+vector of drandom variables with distribution p(X)and
+G⋆:=⟨VG⋆,EG⋆⟩be a directed acyclic graph (DAG) with
+vertices VG⋆={v1,...,v d}and edges EG⋆⊂ VG⋆× VG⋆.
+Each vertex vi∈ VG⋆corresponds to a random variable
+Xiand a directed edge (vi,vj)∈ EG⋆represents a direct
+causal relationship from XitoXj. We assume that p(X)is
+Markovian with respect to G⋆, i.e.,
+p(X1,...,X d)=dY
+i=1p(Xi|paG⋆
+i),arXiv:2307.02390v1  [cs.AI]  5 Jul 2023Causal Discovery with Language Models as Imperfect Experts
+where paG⋆
+idenotes the parents of XiinG⋆.
+Causal discovery: This task consists of recovering G⋆
+from data, which are typically sampled from p(X)(Glymour
+et al., 2019). Existing methods can be broadly classified as
+being: i) constraint-based (Spirtes et al., 2000; 2013), which
+use conditional independence tests to rule-out edges, or ii)
+score-based (Chickering, 2002; Zheng et al., 2018), which
+search for the DAG that optimizes some scoring function.
+One common limitation of these approaches is their inability
+to fully identify the true underlying graph G⋆beyond its
+Markov equivalence class (MEC) (Peters et al., 2017).
+Equivalence classes: The MEC, MG⋆, is a set of graphs
+that includes G⋆and all other DAGs with equivalent
+conditional independences. These may have different edge
+orientations, leading to uncertainty in downstream tasks,
+such as treatment effect estimation (Maathuis et al., 2009).
+One common approach to reducing the size of MG⋆is to in-
+clude interventional data (Eberhardt et al., 2005; Brouillard
+et al., 2020; Mooij et al., 2020). However, similar to RCTs,
+the collection of such data may not always be feasible or ethi-
+cal. An alternative approach, which we adopt in this work, is
+to eliminate graphs that are deemed implausible by an expert.
+Expert knowledge: Previous work has considered experts
+that give: (i) forbidden edges (Meek, 1995), (ii) (partial) or-
+derings of the variables (Scheines et al., 1998; Andrews et al.,
+2020), (iii) ancestral constraints (de Campos & Castellano,
+2007; Li & Beek, 2018; Chen et al., 2016), and (iv) con-
+straints on interactions between types of variables (Brouillard
+et al., 2022) (see Constantinou et al. (2023) for a review).
+Typically, all DAGs that are contradicted by the expert are
+discarded, resulting in a new equivalence class ME⊆M G⋆.
+One pitfall is that, realistically, an expert is unlikely to
+always be correct, and thus, G⋆might be discarded, i.e.,
+G⋆̸∈ME. In this work, we attempt to reduce MG⋆as much
+as possible, while ensuring G⋆∈MEwith high probability,
+in the presence of imperfect expert knowledge . We note that
+our work is akin to Oates et al. (2017), but a key difference
+is that they assume a directionally informed expert, i.e., that
+cannot misorient edges in G⋆. Moreover, their approach is
+expert-first , i.e., data is used to expand an initial graph given
+by an expert, while our approach is data-first , i.e., the expert
+is used to refine the solution of a causal discovery algorithm.
+Large language models: In situations where access to
+human experts is limited, Large Language Models (LLMs),
+such as GPT-4 (OpenAI, 2023a), offer promising alternatives.
+Recent studies have demonstrated that certain LLMs possess
+a rich knowledge base that encompasses valuable informa-
+tion for causal discovery (Choi et al., 2022; Long et al., 2023;
+Hobbhahn et al., 2022; Willig et al., 2022; Kıcıman et al.,
+2023; Tu et al., 2023), achieving state-of-the-art accuracy
+on datasets such as the T ¨ubingen pairs (Mooij et al., 2016).
+In this work, we investigate the use of LLMs as imperfectexperts within the context of causal discovery. Unlike prior
+approaches, which typically assume the correctness of ex-
+tracted knowledge,1we propose strategies to use, potentially
+incorrect, LLM knowledge to eliminate some graphs in
+MG⋆, while ensuring that G⋆∈MEwith high probability.
+3. Problem Setting
+We now formalize our problem of interest. Let G⋆represent
+the true causal DAG, as defined in Section 2, and let MG⋆
+be its MEC. We assume that MG⋆is known, e.g., that it has
+been obtained via some causal discovery algorithm. Further,
+we assume the availability of metadata {µ1,...,µ d}, where
+eachµiprovides some information about Xi, e.g., a name,
+a brief description, etc. We then assume access to an expert,
+who consumes such metadata and makes decisions:
+Definition 3.1. (Expert) An expert is a function that, when
+queried with the metadata for a pair of variables (µi,µj),
+returns a hypothetical orientation for the Xi−Xjedge:
+E(µi,µj)=→ if it believes that (vi,vj)∈EG⋆
+← if it believes that (vj,vi)∈EG⋆.(1)
+Of note, E(µi,µj)can be incorrect ( imperfect expert ) and
+thus, our problem of interest consists in elaborating strategies
+to maximally make use of such imperfect knowledge.
+LetU(MG⋆)be the set of indices of all pairs of variables
+related by an edge whose orientation is ambiguous in MG⋆:
+U(MG⋆):={(i,j)|i<j and∃G,G′∈M G⋆s.t.
+(vi,vj)∈EG∧(vj,vi)∈EG′}.(2)
+We aim to elaborate a strategy Sthat uses the expert’s
+knowledge to orient edges in U(MG⋆)and obtain a new
+equivalence class ME,S, such that uncertainty is reduced
+to the minimum, i.e., |ME,S|≪|M G⋆|, butG⋆still belongs
+toME,Swith high probability, that is:
+minME,S (3)
+such that p 
+G⋆∈ME,S
+≥1−η,
+where η∈[0,1]quantifies tolerance to the risk that the true
+graph G⋆is not in the resulting equivalence class. This prob-
+lem can be viewed as a trade-off between reducing uncer-
+tainty, by shrinking the set of plausible DAGs, and the risk as-
+sociated with making decisions based on an imperfect expert.
+4. Strategies for Imperfect Experts
+Instead of blindly accepting expert orientations, we leverage
+the consistency information provided by the true MEC to
+estimate which decisions are most likely incorrect. Indeed,
+1The Bayesian approach of Choi et al. (2022) is an exception.Causal Discovery with Language Models as Imperfect Experts
+among all possible combinations of edge orientations, only
+a few are possible, since many of them would create cycles
+or introduce new v-structures. The different strategies that
+we now propose for solving Problem (3)leverage such
+consistency imperatives, as well as Bayesian inference, to
+increase robustness to errors in expert knowledge.
+Noise model: First, let us define the noise model that, we
+assume, characterizes mistakes made by the expert. Figure 1
+shows the dependency graph for the decision process of a
+type of imperfect expert that we dub “ ε-expert”. For any pair
+pi=(pi1,pi2)∈U(MG⋆), we use the notation Opito denote
+theunknown true edge orientation and Epi:=E(µpi1,µpi2)
+denotes the orientation given by the expert. Further, for any
+subset of indices I⊆U(MG⋆), we use OI:={Opi}|I|
+i=1; the
+same applies to EI. Notice that (i) true edge orientations are,
+in general, interdependent because of the aforementioned
+consistency properties of the MEC, and that (ii) edges already
+oriented in MG⋆are not represented since they are constants
+(i.e., the expert is not queried for those). In this model, we
+assume that, for any pi∈U(MG⋆), the expert’s response de-
+pends only on the true value Opi, i.e.,p(Epi|OU(MG⋆)) =
+p(Epi|Opi)and is incorrect with constant probability ε.
+We now define the components of our Bayesian approach.
+Prior: We consider a simple prior that encodes the knowl-
+edge given by the true MEC. It boils down to an uniform prior
+over the graphs in MG⋆, effectively assigning no mass to any
+edge combination that is not consistent (creates a cycle or a
+new v-structure). Thus, the prior for a partial edge orientation
+OIcorresponds to its frequency in the graphs of MG⋆:
+p(OI) =X
+o¬Ip 
+OI, OU(MG⋆)\I=o¬I
+,
+where we marginalize over all possible combinations of
+values, o¬I, for the remaining unoriented edges OU(MG⋆)\I.
+Posterior: The posterior probability that orientations for
+all edges in U(MG⋆)are correct, given all observed expert
+decisions EU(MG⋆), is then given by:
+p 
+OU(MG⋆)|EU(MG⋆)
+=
+p 
+EU(MG⋆)|OU(MG⋆)
+p 
+OU(MG⋆)
+p 
+EU(MG⋆),(4)
+where, for the ε-expert noise model, the likelihood is s.t.,
+p(EU(MG⋆)|OU(MG⋆)) =Y
+pi∈U(MG⋆)p(Epi|Opi).
+In contrast, due to interdependencies between the true edge
+orientations, the posterior probability cannot similarly be
+factorized and, in general, p(Opi|EU(MG⋆))̸=p(Opi|Epi).
+Note that the posterior for a subset edges I⊆U(MG⋆), e.g,
+oriented by an iterative strategy, can be obtained via simplemarginalization. Finally, note that the posterior can be used
+to estimate p 
+G⋆∈ME,S
+, since any mistake in orienting
+pi∈U(MG⋆)results in excluding G⋆fromME,S.
+Op1Op2... Opu
+Ep1Ep2... Epu
+Figure 1. Theϵ-expert’s dependency graph between true edge ori-
+entations ( Opi) and expert decisions ( Epi), where u=|U(MG⋆)|.
+Greedy approach: We now propose a greedy strategy
+for optimizing Problem (3)that iteratively orients edges in
+U(MG⋆). LetM(t)denote the MEC at the t-th iteration
+of the algorithm and let M(t)
+pidenote the MEC resulting
+from additionally orienting pi∈ U(M(t))at step tand
+propagating any consequential orientations using Meek
+(1995)’s rules. The algorithm starts with M(1)=MG⋆. We
+consider two strategies to greedily select the best pi:
+1.Ssize: selects the edge that leads to the smallest
+equivalence class:
+argmin
+pi|M(t)
+pi|
+2.Srisk: selects the edge that leads to the lowest risk of
+excluding G⋆from the equivalence class:
+argmin
+pi
+1−p
+OU(MG⋆)\U
+M(t)
+pi|EU(MG⋆)
+This procedure is repeated while p
+G⋆∈M(t)
+pi
+, estimated
+according to Equation (4), is greater or equal to 1−η.
+5. Results and Discussion
+We now evaluate the ability of our approach to leverage im-
+perfect expert knowledge using real-world causal Bayesian
+networks from the bnlearn repository (Scutari, 2010).
+Networks: We considered the following networks: (i)
+Asia (Lauritzen & Spiegelhalter, 1988), (ii) ALARM (Bein-
+lich et al., 1989), (iii) CHILD (Spiegelhalter & Cowell,
+1992), and (iv) Insurance (Binder et al., 1997). For each
+network, we extracted variable descriptions from the related
+publication and used them as metadata µi(see Appendix C).
+Experts: We considered two kinds of expert: (i) ε-experts,
+as defined in Section 4, with various levels ε, and (ii)
+LLM-based experts based on GPT-3.5 (Ouyang et al., 2022).
+Details about prompting can be found at Appendix D. For
+each kind of expert, we considered both strategies: Ssize
+andSrisk. Moreover, for the LLM-based expert, we also
+considered a naive strategy that consists of simply orienting
+all edges according to the expert, as in Long et al. (2023).Causal Discovery with Language Models as Imperfect Experts
+0102030
+MEC Size |E,S|
+051015
+SHD
+0.000.250.500.751.00
+insurancep(G* E,S)
+0.10.20.30.40.50.60.70.80.91.0
+Tolerance ()
+246
+0.10.20.30.40.50.60.70.80.91.0
+Tolerance ()
+123
+0.10.20.30.40.50.60.70.80.91.0
+Tolerance ()
+0.000.250.500.751.00
+asia
+0.1-expert
+0.3-experttext-davinci-002
+text-davinci-002-naivetext-davinci-003
+text-davinci-003-naive
+Figure 2. Results for Insurance andAsia and strategy Srisk. For the ε-experts, we consider ε∈{0.1,0.3}. For the LLM-based experts,
+we consider the text-davinci- {002,003}versions of GPT-3.5. We also report results for naive variants that follow Long et al. (2023)
+and do not make use of our greedy approach. Error bars show a 95% confidence interval. For all experts, except for text-davinci-003 ,
+both the MEC size and SHD decrease as tolerance is increased and p(G⋆∈ME,S)≥1−η.
+Metrics: The expert/strategy combinations were evaluated
+based on: (i) the resulting size of their equivalence class,
+|ME,S|, (ii) the structural Hamming distance (SHD)
+between the completed partially DAG (CP-DAG; see
+Glymour et al. (2019)) of ME,Sand the true graph G⋆,
+(iii) an empirical estimate of p(G⋆∈ ME,S), taken over
+repetitions of the experiment.
+Protocol: For each Bayesian network, we extracted the
+MECMG⋆based on the structure of G⋆. This simulates
+starting from the ideal output of a causal discovery algorithm.
+We then attempted to reduce the size of MG⋆by querying
+each expert according to the greedy approach in Section 4
+forη∈[0.1,1], where η=1corresponds to disregarding the
+constraint of Problem 4. Each ε−expert experiment was
+repeated 5times and LLM-expert experiment was repeated
+8 times. Given that the LLM-experts have a deterministic
+output for a given prompt, we randomized the causation verb
+in order to introduce stochasticity (see Appendix D). Figure 2
+shows the results of our experiments for Insurance and
+Asia with strategy Srisk. Results for other networks and
+strategy Ssizeare in Appendix A.
+Results for ε-experts: On all networks, our approach, com-
+bined with both strategies, decreases the MEC’s size for all
+noise levels ( ε), while keeping the true graph in ME,Swith
+probability at least 1−η, as predicted by our theoretical re-
+sults. Consequently, the SHD also decreases as the toleranceto risk increases. This highlights the effectiveness of our ap-
+proach when the expert satisfies the noise model of Section 4.
+Results for the LLM-expert: Overall, we observe a clear
+reduction in SHD for ME,Scompared to the starting point
+MG⋆. This shows that some causally-relevant knowledge
+can be extracted from LLMs, which is in line with the
+conclusions of recent work.
+On all datasets, the LLM-based experts achieve SHDs that are
+on par or better than those of their naive counterparts (Long
+et al., 2023) for η= 1, while additionally enabling the
+control of the probability of excluding G⋆. Further, on
+every dataset, except for ALARM , each LLM-based expert
+performs comparably to at least one of the ε-experts. For
+ALARM , we observe that G⋆is excluded from ME,S, even
+for small tolerance η. This can be explained by ambiguities
+in the metadata, which are sometimes ambiguous even for
+human experts (see Appendix C).
+Finally, another key observation is the poor uncertainty
+calibration of text-davinci-003 compared to
+text-davinci-002 , which is in line with observations
+made by OpenAI (2023b). The text-davinci-003
+model is often over-confident in its answers, which leads it to
+underestimate the probability of excluding G⋆fromME,S.
+Consequently, even for small tolerance η, the resulting
+equivalence classes contain incorrectly oriented edges.Causal Discovery with Language Models as Imperfect Experts
+6. Conclusion
+This work studied how imperfect expert knowledge can
+be used to refine the output of causal discovery algorithms.
+We proposed a greedy algorithm that iteratively rejects
+graphs from a MEC, while controlling the probability of
+excluding the true graph. Our empirical study revealed that
+our approach is effective when combined with experts that
+satisfy our assumptions. However, its performance was
+mitigated when a LLM was used as the expert. Nevertheless,
+our results show the clear potential of LLMs to aid causal
+discovery and we believe that further research in this direc-
+tion is warranted. Possible extensions to this work include
+the exploration of noise models better-suited for LLMs, as
+well as alternative methods for querying such models (e.g.,
+different prompt styles, better uncertainty calibration, etc.,).
+Further, our approach could be coupled with Bayesian causal
+discovery methods, replacing our MEC-based prior by one
+derived from a learned posterior distribution over graphs.

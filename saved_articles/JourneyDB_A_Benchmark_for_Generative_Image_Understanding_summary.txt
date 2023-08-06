@@ -1,0 +1,22 @@
+Summary:
+This paper presents JourneyDB, a large-scale dataset for generative image understanding. The dataset consists of 4 million diverse and high-quality generated images paired with their text prompts. The authors also design four benchmarks to evaluate the performance of generative image understanding models in terms of content and style interpretation. The benchmarks include prompt inversion, style retrieval, image captioning, and visual question answering. The authors evaluate the performance of state-of-the-art multimodal models on JourneyDB and provide insights into their strengths and limitations in understanding generative content.
+
+Bullet Points:
+- JourneyDB is a large-scale dataset for generative image understanding.
+- The dataset includes 4 million high-quality generated images with their text prompts.
+- Four benchmarks are designed to evaluate the performance of generative image understanding models.
+- The benchmarks include prompt inversion, style retrieval, image captioning, and visual question answering.
+- State-of-the-art multimodal models are evaluated on JourneyDB, revealing their strengths and limitations.
+- The dataset and benchmarks aim to facilitate research in the field of generative content understanding.
+
+Keywords:
+- JourneyDB
+- Generative image understanding
+- Dataset
+- Benchmarks
+- Prompt inversion
+- Style retrieval
+- Image captioning
+- Visual question answering
+- Multimodal models
+- Generative content understanding

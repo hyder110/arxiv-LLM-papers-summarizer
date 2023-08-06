@@ -1,0 +1,561 @@
+PROTO -CLIP : Vision-Language Prototypical Network
+for Few-Shot Learning
+Jishnu Jaykumar P1Kamalesh Palanisamy1Yu-Wei Chao2Xinya Du1Yu Xiang1
+1The University of Texas at Dallas2NVIDIA
+{jishnu.p,kamalesh.palanisamy,xinya.du,yu.xiang }@utdallas.edu, ychao@nvidia.com
+Abstract: We propose a novel framework for few-shot learning by leveraging
+large-scale vision-language models such as CLIP [ 1]. Motivated by unimodal
+prototypical networks for few-shot learning, we introduce PROTO -CLIP that
+utilizes image prototypes and text prototypes for few-shot learning. Specifically,
+PROTO -CLIP adapts the image encoder and text encoder in CLIP in a joint fashion
+using few-shot examples. The two encoders are used to compute prototypes of
+image classes for classification. During adaptation, we propose aligning the image
+prototypes and the text prototypes of the corresponding classes. Such alignment is
+beneficial for few-shot classification due to the reinforced contributions from both
+types of prototypes. We demonstrate the effectiveness of our method by conducting
+experiments on benchmark datasets for few-shot learning, as well as in the real
+world for robot perception1.
+Keywords: Robot Perception, Object Recognition, Few-Shot Learning,
+Contrastive-Learning, Vision-Language, Multimodal
+1 Introduction
+Building autonomous robots that can help people perform various tasks is the dream of every roboticist.
+Nowadays, most robots are working in factories and warehouses by performing pre-programmed
+repetitive tasks such as assembling and delivering. In the future, we believe that there will be
+intelligent robots that can perform tasks in human environments autonomously. For example, people
+can instruct a robot by saying “bring me a bottle of water” or “wash the mug on the table”, then the
+robot will execute the instructions accordingly. In these scenarios, robots need to recognize objects
+from sensory data in order to understand the required tasks. In this work, we develop a novel few-shot
+learning method that can enable robots to recognize novel objects from just a few example images
+per object.
+We believe that few-shot learning [ 2] is a promising paradigm to enable robots to recognize a large
+number of objects. The appeal lies in the ease of data collection—just a few example images is
+sufficient for teaching a robot a novel object. On the contrary, object model-based approaches build
+3D models of objects and then use these 3D models [ 3] for object recognition. Object category-based
+approaches focus on recognizing category labels of objects such as 80 categories in the MSCOCO
+dataset [ 4]. The limitation of model-based object recognition is the difficulty of obtaining a large
+number of 3D models for many objects in the real world. Current 3D scanning techniques cannot deal
+well with metal objects or transparent objects. For category-based object recognition, it is difficult
+to obtain a large number of images for each category in robotic settings. Large-scale datasets for
+object categories such as ImageNet [ 5] and Visual Genome [ 6] are collected from the Internet. These
+Internet images are not very suitable for learning object representations for robot manipulation due to
+domain differences. Due to the limitations of model-based and category-based object recognition, if
+a robot can learn to recognize a new object from a few images of the object, it is likely to scale up the
+number of objects that the robot can recognize in the real world.
+1Project page is available at https://irvlutd.github.io/Proto-CLIParXiv:2307.03073v1  [cs.CV]  6 Jul 2023Mustard Bottle Power DrillImage Prototype
+Text Prototype
+Joint Embedding Space of Images and Text
+Query Set
+Support Set Support SetSupport SetFigure 1: Our PROTO -CLIP model learns a joint embedding space of images and text, where image
+prototypes and text prototypes are learned and aligned using support sets for few-shot classification.
+The main challenge in few-shot learning is how to achieve generalization with very limited train-
+ing examples. Learning good visual representations is the key to achieve good performance in
+few-shot learning [ 7]. Although the Internet images are quite different from robot manipulation
+settings, they can be used to learn powerful visual representations. Recently, the CLIP (Contrastive
+Language–Image Pre-training) model [ 1] trained with a large number of image-text pairs from the
+Internet achieves promising zero-shot image recognition performance. Using the visual and language
+representations from CLIP, several few-shot learning approaches [ 8,9,10] are proposed to improve
+the zero-shot CLIP model. [ 9,10] adapt the CLIP image encoder to learn better feature representa-
+tions, while [ 8] learns prompts for the CLIP model. On the other hand, few-shot learning approaches
+are studied in the meta-learning framework [ 11]. These approaches are aimed at generalizing to novel
+classes after training. A notable method is Prototypical Network [ 12] and its variants [ 13,14], which
+demonstrate effective performance for few-shot learning. However, these methods do not leverage
+the powerful feature representation of CLIP.
+These observations motivate us to leverage CLIP in prototypical networks for few-shot learning.
+We notice that existing methods for adapting CLIP models in few-shot learning adapt the image
+encoder [ 9,10] or the text encoder [ 8] in CLIP. We argue that if we can use both the image encoder
+and the text encoder for classification and jointly adapt them using few-shot training images, we can
+improve the few-shot classification performance. To achieve this goal, we propose PROTO -CLIP , a
+new model motivated by the traditional unimodal Prototypical Networks [ 12].PROTO -CLIP utilizes
+image prototypes and text prototypes computed from adapted CLIP encoders for classification. In
+addition, we propose to align the image prototype and the text prototype of the same class during
+adaptation. In this way, both the image encoder and the text encoder can contribute to the classification
+while achieving agreement between their predictions. Fig. 1 illustrates the concept of learning the
+joint embedding space of images and text from P ROTO -CLIP.
+To verify the effectiveness of PROTO -CLIP , we have conducted experiments on commonly used
+benchmarks for few-shot image classification, as well as the FewSOL dataset introduced for few-shot
+object learning in robotic environments [ 15]. In addition, we have built a robotic system that integrates
+Automatic Speech Recognition (ASR), few-shot object recognition using PROTO -CLIP and robotic
+grasping to demonstrate the robotic application of P ROTO -CLIP.
+2 Related Work
+In the context of image recognition, few-shot learning indicates using a few images per image
+category. The problem is usually formulated as “ N-way, K-shot”, i.e., Nclasses with Kimages per
+class. In the traditional image classification setup, these NK images are used as training images.
+Once a model is trained, it can be used to test images among Nclasses. Recent CLIP-based few-shot
+learning methods fall into this setting.
+CLIP-based Few-Shot Learning. The CLIP [ 1] model applies contrastive learning to image-text
+pairs from the Internet. It consists of an image encoder and a text encoder for the extraction of features
+from images and text, respectively. Its training objective is to maximize the similarity between the
+2Method Use Support Sets Adapt Image Embedding Adapt Text Embedding Align Image and Text
+Zero-shot CLIP [1] ✗ ✗ ✗ ✓
+Linear-probe CLIP [1] ✓ ✓ ✗ ✗
+CoOp [8] ✓ ✗ ✓ ✗
+CLIP-Adapter [9] ✓ ✓ ✓ ✗
+Tip-Adapter [10] ✓ ✓ ✗ ✗
+PROTO -CLIP (Ours) ✓ ✓ ✓ ✓
+Table 1: Comparison between our proposed method with existing CLIP-based methods for few-shot
+learning. “Use Support Sets” indicates if a method uses support training sets for fine-tuning. “Adapt
+Image/Text Embedding” indicates if a method adapts the image/text embeddings in CLIP. “Align
+Image and Text” indicates if a method aligns images and text in the feature space.
+corresponding image and text in a pair in a high-dimensional joint feature space. After training, CLIP
+can be used for zero-shot image classification by comparing image features with text embeddings of
+novel class names. This model is denoted as zero-shot CLIP. When a few training images are available
+for each class, several approaches are proposed to improve zero-shot CLIP. The linear-probe CLIP
+model [ 1] trains a logistic regression classifier using CLIP image features. CoOp [ 8] proposes to use
+learnable vectors as a prompt for the CLIP text encoder for few-shot learning. CLIP-Adapter [ 9]
+learns two layers of linear transformations on top of the image encoder and the text encoder with
+residual connections, respectively, to adapt CLIP features for few-shot learning. Tip-Adapter [ 10]
+builds a key-value cache model, where keys are CLIP image features and values are one-hot vectors
+of the class labels. Given a query image, its image feature is compared with the cache keys to
+combine the value labels for classification. Tip-Adapter can also fine-tune the keys by treating them
+as learnable parameters, which further improves the few-shot classification accuracy.
+Table 1 compares our proposed method with existing CLIP-model-based few-shot learning methods.
+By using the image prototypes and text prototypes for classification, our method can adapt both
+the image embeddings and text embeddings from CLIP. In addition, the model aligns the image
+prototypes and the text prototypes, which serves as a regularization term in adapting the feature
+embeddings. We empirically verify our model by conducting experiments on benchmark datasets for
+few-shot learning.
+Meta-learning-based Few-Shot Learning. In parallel with these efforts to adapt CLIP for few-shot
+learning, meta-learning-based approaches are also proposed for few-shot learning. While previous
+CLIP-based models are tested on the same classes in training, the focus here is to learn a model on a
+set of training classes Ctrain that can generalize to novel classes Ctestin testing. Each class contains
+a support set and a query set. During training, the class labels for both sets are available. During
+testing, only the class labels of the support set are available, and the goal is to estimate the labels of
+the query set. Meta-learning-based approaches train a meta-learner with the training classes Ctrain
+that can be adapted to the novel classes Ctestusing their support sets. Non-episodic approaches
+use all the data in Ctrain for training such as k-NN and its ‘Finetuned’ variants [ 16,17,18,7].
+Episodic approaches construct episodes, i.e., a subset of the training classes, to train the meta-learner.
+Representative episodic approaches include Prototypical Networks [ 12], Matching Networks [ 19],
+Relation Networks [ 20], Model Agnostic Meta-Learning (MAML) [ 11], Proto-MAML [ 13] and
+CrossTransformers [ 14]. The Meta-Dataset [ 13] was introduced to benchmark few-shot learning
+methods in this setting. In this work, we consider training and testing in the same classes following
+previous CLIP-based few-shot learning methods [8, 9, 10].
+3 Method
+We consider the N-way K-shot classification problem. In few-shot settings, K≪N. The image
+set with class labels is considered as the support set :S={xs
+i, ys
+i}M
+i=1, where xs
+idenotes a support
+image, ys
+i∈ {1,2, . . . , N }denotes the class label of the support image, and Mis the size of the
+support set. In N-way K-shot settings, M=NK. The goal of few-shot classification is to classify
+thequery set Q={xq
+j}L
+j=1, i.e.,Ltest images without class labels. Specifically, we want to estimate
+the conditional probability P(y=k|xq,S)that models the probability distribution of the class label
+ygiven a query image xqand the support set S.
+3Model Frozen 
+Class 1 Image Support Set 
+shots 
+Class 1 
+Class N       𝜏1(“mustard bottle ”), …  , 𝜏Ḱ(“mustard bottle ”)
+Text Support Set CLIP Image 
+Encoder … … 
+ … 
+Class 2 … 
+… … … … 
+… 
+… Learnable Image Memory 
+Learnable Text Memory N Image Prototypes 
+N Text Prototypes 
+CLIP Image 
+Encoder 
+Learnable 
+Adapter … 
+Mustard BottleClass Probability 
+Distribution 
+… … 
+… … 
+… … 
+… Power Drill
+Rubiks Cube
+A Query Image 
+      𝜏1(“power drill ”),   …   , 𝜏Ḱ(“power drill ”)
+      𝜏1(“rubiks cube ”),  … , 𝜏Ḱ(“rubiks cube ”)
+Prototype 
+Alignment 
+Class 2 
+Class N 
+CLIP Image 
+Encoder 
+… 
+… 
+Softmax Dot Product 
+Figure 2: Overview of our proposed PROTO -CLIP model. The CLIP image encoder and text encoder
+are frozen during training. The image memory, the text memory and the adapter network are learned.
+Given a class name, τireturns the ithout of ˜Kpredefined text prompts.
+Our PROTO -CLIP model (Fig. 2) . We propose to leverage both the image encoder and the text
+encoder in the CLIP model [1] to estimate the conditional probability of class label as
+P(y=k|xq,S) =α P(y=k|xq,Sx)| {z }
+image probability+(1−α)P(y=k|xq,Sy)| {z }
+text probability, (1)
+where Sx={xs
+i}M
+i=1andSy={ys
+i}M
+i=1denote the image set and the label set of the support set
+S, respectively, and α∈[0,1]is a hyper-parameter to combine the two probabilities. To model the
+probability distributions conditioned on SxorSy, we leverage the prototypical networks [12]:
+P(y=k|xq,Sx) =exp(−β∥gw1(xq)−cx
+k∥2
+2)PN
+k′=1exp(−β∥gw1(xq)−cx
+k′∥2
+2), (2)
+P(y=k|xq,Sy) =exp(−β∥gw1(xq)−cy
+k∥2
+2)
+PN
+k′=1exp(−β∥gw1(xq)−cy
+k′∥2
+2), (3)
+where gw1(·)denotes the CLIP image encoder plus an adapter network with learnable parameters w1
+used to compute the feature embeddings of query images. The CLIP image encoder is pretrained and
+then frozen. cx
+kandcy
+kare the “prototypes” for class kcomputed using images and text, respectively.
+β∈R+is a hyperparameter to sharpen the probability distributions. We have the prototypes as
+cx
+k=1
+MkX
+ys
+i=kϕImage(xs
+i),cy
+k=1
+˜Mk˜MkX
+j=1ϕText(Promptj(ys
+i=k)), (4)
+where Mkis the number of examples with label k, and ˜Mkis the number of prompts for label k. To
+compute text embeddings, we can either directly input the class names such as “mug” and “plate”
+into the text encoder, or convert the class names to phases such as “a photo of mug” and “a photo
+of plate” and then input the phrases into the text encoder. These phrases are known as prompts
+of the vision-language models. We can use multiple prompts for each class label. ϕImage(xs
+i)and
+ϕText(Promptj(ys
+i=k))denote the image embedding and the text embedding of the image-label
+pair(xs
+i, ys
+i)computed using the CLIP image encoder and the text encoder, respectively. These
+embeddings with dimension Cof the support set form the image memory and the text memory, as
+shown in Fig. 2. They are learnable embedding vectors initialized by the computed embeddings using
+the CLIP image encoder and text encoder. We use cx
+kandcy
+kto denote the mean of the embeddings
+of the images and the prompts for class k, respectively. Since the image embeddings and the text
+embeddings are of the same dimension, we can compute the distance between the text prototype
+cy
+kand the image embedding gw1(xq)in Eq. (3). As we can see, our model leverages prototypical
+networks with image encoder and text encoder from CLIP. We name it “P ROTO -CLIP”.
+Learning the memories and the adapter. During training, we can construct a support set S=
+{xs
+i, ys
+i}M
+i=1and a query set with ground truth labels Q={xq
+j, yq
+j}L
+j=1. Then we can use SandQ
+4CLIP
+Feature
+1024
+ 1024 1024256MLP MLP Reshape 1@1x1x32 Reshape
+32
+32132
+323232
+321
+1024Residual Connection Residual Connection
+(a) MLP-based Adapter (b) Convolution-based AdapterCLIP
+Feature32@1x1x1
+Conv ConvFigure 3: Two designs of the adapters. (a) A Multi-layer perceptron-based adapter as in [ 9]. (b) A
+convolution-based adapter we introduce. The feature dimension is for CLIP ResNet50 backbone.
+to learn the weights in PROTO -CLIP . First, the support set is used to initialize the image memory
+Wimage and the text memory Wtext. Second, the weights in the adapter network applied to the query
+images gw1(·)need to be learned. Fig. 3 shows two designs of the adapter network, i.e., an MLP-
+based adapter as in [ 9] and a convolution-based adapter we introduce. The convolution-based adapter
+has fewer weights to learn compared to the MLP-based one. We found that the two adapters have their
+own advantages on different datasets in our experiments. Finally, motivated by the CLIP-Adapter [ 9],
+we do not fine-tune the weights in the image encoder and text encoder by freezing these weights
+during training. In this way, we can reuse the weights of CLIP trained on a large number of image-text
+pairs and adapt the image embeddings and the text embeddings.
+Loss Functions. The first loss function is the negative log-probability of the true label for a query
+image: L1(Wimage,Wtext,w1) =−logP(yq=k|xq,S), where P(yq=k|xq,S)is defined in
+Eq.(1). Minimizing L1learns the weights to classify the query images correctly. Second, we propose
+aligning the image prototypes and the text prototypes in training. Let {cx
+1,cx
+2, . . . , cx
+N}be the image
+prototypes computed from the image embeddings for the Nclasses and {cy
+1,cy
+2, . . . , cy
+N}be the
+corresponding text prototypes. We would like to learn the model weights such that cx
+kis close to cy
+k
+and far from other prototypes in the embedding space. We utilize the InfoNCE loss for contrastive
+learning [21]:
+Lk
+2(cx
+k,{cy
+k′}N
+k′=1) =−logexp(cx
+k·cy
+k)
+PN
+k′=1exp(cx
+k·cy
+k′),Lk
+3(cy
+k,{cx
+k′}N
+k′=1) =−logexp(cy
+k·cx
+k)
+PN
+k′=1exp(cy
+k·cx
+k′)
+(5)
+fork= 1, . . . , N , where ·indicates dot-product. Here, Lk
+2(cx
+k,{cy
+k′}N
+k′=1)compares an image
+prototype cx
+kwith the text prototypes {cy
+k′}N
+k′=1, while Lk
+3(cy
+k,{cx
+k′}N
+k′=1)compares a text prototype
+cy
+kwith the image prototypes {cx
+k′}N
+k′=1. In this way, we can align the image prototypes and the text
+prototypes for the Nclasses. This alignment can facilitate classification, since the class conditional
+probabilities are computed using the image prototypes and the text prototypes as in Eqs. (2)and(3).
+The total loss function for training is:
+L=−1
+LLX
+j=1logP(yq
+j=k|xq
+j,S) +1
+NNX
+k=1 
+Lk
+2(cx
+k,{cy
+k′}N
+k′=1) +Lk
+3(cy
+k,{cx
+k′}N
+k′=1)
+(6)
+for a query set Q={xq
+j, yq
+j}L
+j=1. Following previous CLIP-based few-shot learning methods [ 8,9,
+10], the support set and the query set are the same during training in our experiments, i.e., S=Q.
+4 Experiments
+Datasets and Evaluation Metric. Following previous CLIP-based few-shot learning meth-
+ods [ 8,9,10], we conduct experiments on the following datasets for evaluation: ImageNet [ 5],
+StandfordCars [ 22], UCF101 [ 23], Caltech101 [ 24], Flowers102 [ 25], SUN397 [ 26], DTD [ 27],
+EuroSAT [ 28], FGVCAircraft [ 29], OxfordPets [ 30], and Food101 [ 31]. In addition, we also include
+the FewSOL dataset [ 15] recently introduced for few-shot object recognition in robotic environments.
+In the N-way K-shot classification setting, Kimages for each class will be sampled from each
+dataset for training. A validation set of each dataset is reserved for hyper-parameter tuning, and a test
+set is used for evaluation. We report the classification accuracy of the test set as an evaluation metric.
+5Image-Text
+Alignment Gap
+(b) Proto-CLIP  Prototypes after Learning (a) Zero-Shot CLIP  Prototypes Image Prototype Location
+Text Prototype LocationFigure 4: Barnes-Hut t-SNE visualization [ 32] using the FewSOL dataset [ 15]. (a) Image and text
+prototypes from zero-shot CLIP, which are not aligned. (b) Aligned image and text prototypes from
+fine-tuned P ROTO -CLIP.
+Choosing the Hyper-parameters: αandβ.From the experiments, we found that the two hyper-
+parameters αin Eq. (1)andβin Eqs. (2)and(3)play a critical role in classification accuracy.
+Therefore, for each dataset, we conducted a grid search of the two parameters using the validation set.
+Then we finalize their values for all the runs in our experiments.
+PROTO -CLIP Variants. i) “PROTO -CLIP ”: we do not train the image memory and the text memory
+and do not use any adapter in PROTO -CLIP (Fig. 2), we directly run inference using the pre-trained
+CLIP features. ii) “ PROTO -CLIP -F”: we train the image memory and/or the text memory with the
+adapter. During training, for all the query images, we precompute their CLIP image features and
+directly use these stored features for training. This variant can be trained more quickly. Therefore,
+we use it for our ablation studies. iii) “ PROTO -CLIP -F-QT”: During training, for each query image,
+we apply random data augmentation operations such as cropping and horizontal flip. Then we need
+to compute CLIP image features for the transformed query images during training.
+4.1 Ablation Studies
+Adapter Types and Learnable Text Memory. Since the 12 datasets have different characteristics,
+we found that varying adapter types and whether to learn the text memory or not affect performance.
+Table 2 summarizes the result of this ablation study. The architectures of the MLP-based adapter
+and the convolution-based adapter are illustrated in Fig. 3. “2xConv” indicates using 2 convolution
+layers as shown in Fig. 3, while “3xConv” uses 3 convolution layers in the adapter where we add
+a32@3×3×32convolution layer in the middle. By checking the best accuracy for each dataset,
+we can see that there is no consensus on which adapter and trainable text memory to use among
+these datasets. Therefore, we select the best configuration on the adapter and learnable text memory
+for each dataset in the following experiments. Learning both image memory and text memory can
+obtain aligned image-text prototypes. Fig. 4 visualizes the image-text prototypes in the FewSOL
+dataset [15] before and after training.
+Adapter Train-Text-Memory ImageNet FGVC Pets Cars EuroSAT Caltech101 SUN397 DTD Flowers Food101 UCF101 FewSOL
+MLP ✗ 61.06 35.31 85.61 72.19 83.47 92.58 68.54 63.89 95.01 74.05 76.16 28.65
+MLP ✓ 61.06 37.56 85.72 73.61 83.53 92.13 69.71 63.89 96.06 74.05 76.16 32.87
+2xConv ✗ 65.75 34.38 89.62 75.25 81.85 93.40 71.94 67.85 94.76 79.09 77.50 27.13
+2xConv ✓ 58.60 35.82 89.21 74.34 81.78 93.02 69.79 67.32 95.82 78.06 76.37 27.13
+3xConv ✗ 65.37 34.41 88.74 75.25 82.21 93.43 71.63 67.67 94.40 79.11 77.50 29.78
+3xConv ✓ 59.63 36.15 87.93 72.68 81.57 92.74 68.64 68.56 95.78 78.61 77.03 35.22
+Table 2: Ablation study of query adapters with K= 16 andPROTO -CLIP- F. In all cases, the
+adapter and the visual memory keys are trained. In case of tie, an underlined setup was used.
+Loss functions. We have introduced three different loss functions in Sec. 3: L1,L2,L3. We analyze
+the effects of these loss functions in Table 3. We can see that i) the L1loss function is essential
+since it drives the classification of the query images; ii) Overall, both L2andL3loss functions for
+prototype alignment contribute to the performance, which verifies our motivation of aligning image
+and text prototypes for few-shot classification.
+6Loss ImageNet FGVC Pets Cars EuroSAT Caltech101 SUN397 DTD Flowers Food101 UCF101 F EWSOL
+L1 62.67 20.34 73.21 73.77 78.98 92.25 68.34 66.49 96.14 77.39 76.66 34.57
+L2 62.29 4.71 0.00 0.00 38.95 0.28 66.93 67.38 10.31 77.71 57.41 32.70
+L3 62.27 4.14 0.00 0.00 38.09 0.24 64.86 67.38 10.27 77.69 57.55 20.22
+L1+L2 65.39 36.24 88.58 75.39 82.78 93.71 71.65 68.09 96.06 78.69 77.29 33.48
+L2+L3 62.33 3.87 0.00 0.00 36.86 0.24 64.84 68.32 8.20 77.35 57.52 19.61
+L1+L3 65.43 36.84 88.58 75.51 82.84 93.35 71.44 68.32 96.14 78.80 77.53 33.43
+L1+L2+L3 65.75 37.56 89.62 75.25 83.53 93.43 71.94 68.56 96.06 79.09 77.50 35.22
+Table 3: Loss function ablation results with the ResNet50 backbone and shot K= 16 .
+Backbones. Table 4 shows the results of using different backbone networks on the FewSOL
+dataset [ 15]. In general, better backbones can learn more powerful feature representations and
+consequently improve the classification accuracy. CLIP vision transformer backbones achieve better
+performance than CLIP ResNet backbones.
+Model Adapter TextMBackbone
+RN50 RN101 ViT-B/16 ViT-B/32 ViT-L/14
+Zero-Shot-CLIP [1] - - 25.91 32.96 40.70 41.87 54.57
+Tip [10] - - 29.74 37.43 47.00 41.48 56.78
+Tip-F [10] - - 32.52 41.43 50.17 45.48 60.17
+PROTO -CLIP- F MLP ✗ 33.48 39.04 47.96 41.91 58.65
+PROTO -CLIP- F MLP ✓ 34.83 40.74 47.43 42.13 58.91
+PROTO -CLIP- F 2xConv ✗ 35.04 41.04 50.83 46.52 63.74
+PROTO -CLIP- F 2xConv ✓ 35.04 42.52 49.26 43.43 61.61
+PROTO -CLIP- F 3xConv ✗ 34.13 42.83 51.91 46.87 62.35
+PROTO -CLIP- F 3xConv ✓ 35.22 44.09 50.39 46.57 60.39
+Table 4: Backbone ablation study. Dataset= FEWSOL-52 [15].K= 16 . Model= PROTO -CLIP -F.
+“TextM” indicates whether to train text memory.
+4.2 Comparison with Other Methods
+Table 5 shows the performance of PROTO -CLIP compared to the state-of-the-art methods using
+CLIP for few-shot learning in the literature: Linear-Probe CLIP [ 1], CoOp [ 8], CLIP-Adapter [ 9]
+and Tip-Adapter [ 8]. We follow these methods and use ResNet50 backbone for this comparison.
+The fine-tuned variant of Tip-Adapter “Tip-F” is the most competitive method compared to ours.
+The performance of PROTO -CLIP on very few shots, i.e., 1 shot and 2 shots is inferior compared to
+Tip-F. When the number of shots increases to 4, 8 and 16, the fine-tuned variants of PROTO -CLIP
+outperform Tip-F. PROTO -CLIP -F-QTperforms better than PROTO -CLIP -Fon most datasets by
+using the data augmentation of query images during training.
+4.3 Real World Experiments
+1. mustard bottle (96.98%)
+2. wipes bottle (0.37%)
+3. mold star bottle (0.28%)
+4. glue bottle (0.22%)
+5. sunscreen bottle (0.19%)
+1. instant noodle packet (30.05%)
+2. tofu package (19.28%)
+3. tuna can (15.25%)
+4. meat can (9.33%)
+5. sponge (2.34%)1. cracker box (97.59%)
+2. food bag (0.27%)
+3. muf fin mix box (0.23%)
+4. jello box (0.14%)
+5. cereal box (0.13%)
+1. power drill (97.27%)
+2. lighter (0.58%)
+3. screwdriver (0.19%)
+4. flashlight (0.14%)
+5. hammer (0.13%)RGB Image from Fetch
+Unseen Object Segmentation
+Speech-T o-Text + 
+Action  & Noun  DetectionPick the mustard bottle
+Match the Object
+Proto-CLIP
+2. Grasping the desired Object1. Motion Planning Setup
+3. Action  Execution for Placement
+User command 
+(Audio)
+Figure 5: Results for the real world setup with top-5 predictions from the PROTO -CLIP -F(ViT-L/14)
+model trained on F EWSOL-198 [15]. The Speech-To-Text is performed via Whisper [33].
+As an application, we have built a robotic system to verify the effectiveness of PROTO -CLIP for
+object recognition in the real world. Fig. 5 illustrates our pipeline for the system. It takes human
+instruction in the form of voice commands as input such as “pick something” or “grasp something”.
+The system first applies Automatic Speech Recognition (ASR) to convert voice input to text using
+OpenAI Whisper [ 33]. Then the system grounds the noun in the human instruction into a target
+object observed from an input image. This is achieved by joint object segmentation and classification.
+We utilize unseen object instance segmentation [ 34] to segment objects in cluttered scenes and then
+7Dataset ImageNet FGVC Pets Cars EuroSAT Caltech101 SUN397 DTD Flowers Food101 UCF101 F EWSOL
+# classes 1,000 100 37 196 10 100 397 47 102 101 101 52
+Zero-shot CLIP [1] 60.33 17.10 85.83 55.74 37.52 85.92 58.52 42.20 66.02 77.32 61.35 25.91
+1 shots
+Linear-Probe CLIP [1] 22.07 12.89 30.14 24.64 51.00 70.62 32.80 29.59 58.07 30.13 41.43 -
+CoOp [8] 57.15 9.64 85.89 55.59 50.63 87.53 60.29 44.39 68.12 74.32 61.92 -
+CLIP-A [9] 61.20 17.49 85.99 55.13 61.40 88.60 61.30 45.80 73.49 76.82 62.20 -
+Tip [10] 60.70 19.05 86.10 57.54 54.38 87.18 61.30 46.22 73.12 77.42 62.60 27.30
+Tip-F [10] 61.13 20.22 87.00 58.86 59.53 89.33 62.50 49.65 79.98 77.51 64.87 27.91
+PROTO -CLIP 60.31 19.59 86.10 57.29 55.53 87.99 60.81 46.04 76.98 77.36 63.15 27.09
+PROTO -CLIP- F 60.32 19.50 85.72 57.34 54.93 88.07 60.83 35.64 77.47 77.34 63.07 22.22
+PROTO -CLIP- F-QT59.12 16.26 83.62 52.77 61.95 88.48 61.43 32.27 68.53 75.16 62.44 21.65
+2 shots
+Linear-Probe CLIP [1] 31.95 17.85 43.47 36.53 61.58 78.72 44.44 39.48 73.35 42.79 53.55 -
+CoOp [8] 57.81 18.68 82.64 58.28 61.50 87.93 59.48 45.15 77.51 72.49 64.09 -
+CLIP-A [9] 61.52 20.10 86.73 58.74 63.90 89.37 63.29 51.48 81.61 77.22 67.12 -
+Tip [10] 60.96 21.21 87.03 57.93 61.68 88.44 62.70 49.47 79.13 77.52 64.74 26.22
+Tip-F [10] 61.69 23.19 87.03 61.50 66.15 89.74 63.64 53.72 82.30 77.81 66.43 27.43
+PROTO -CLIP 60.64 22.14 87.38 60.01 64.89 89.05 63.12 51.06 83.39 77.34 67.46 28.35
+PROTO -CLIP- F 60.64 22.14 87.38 60.04 64.86 89.09 63.20 49.88 83.52 77.34 67.49 26.17
+PROTO -CLIP- F-QT60.48 20.01 85.28 60.02 63.59 89.49 65.46 45.69 81.20 76.15 68.83 25.91
+4 shots
+Linear-Probe CLIP [1] 41.29 23.57 56.35 48.42 68.27 84.34 54.59 50.06 84.80 55.15 62.23 -
+CoOp [8] 59.99 21.87 86.70 62.62 70.18 89.55 63.47 53.49 86.20 73.33 67.03 -
+CLIP-A [9] 61.84 22.59 87.46 62.45 73.38 89.98 65.96 56.86 87.17 77.92 69.05 -
+Tip [10] 60.98 22.41 86.45 61.45 65.32 89.39 64.15 53.96 83.80 77.54 66.46 28.70
+Tip-F [10] 62.52 25.80 87.54 64.57 74.12 90.56 66.21 57.39 88.83 78.24 70.55 29.13
+PROTO -CLIP 61.30 23.25 87.19 63.33 68.67 89.57 65.51 55.91 88.23 77.58 69.50 29.13
+PROTO -CLIP- F 61.30 23.31 86.95 63.34 68.52 89.62 65.57 57.21 88.27 77.58 69.55 27.09
+PROTO -CLIP- F-QT61.80 27.63 87.11 66.24 80.64 91.81 68.09 56.86 89.85 76.94 70.16 30.30
+8 shots
+Linear-Probe CLIP [1] 49.55 29.55 65.94 60.82 76.93 87.78 62.17 56.56 92.00 63.82 69.64 -
+CoOp [8] 61.56 26.13 85.32 68.43 76.73 90.21 65.52 59.97 91.18 71.82 71.94 -
+CLIP-A [9] 62.68 26.25 87.65 67.89 77.93 91.40 67.50 61.00 91.72 78.04 73.30 -
+Tip [10] 61.45 25.59 87.03 62.93 67.95 89.83 65.62 58.63 87.98 77.76 68.68 29.22
+Tip-F [10] 64.00 30.21 88.09 69.25 77.93 91.44 68.87 62.71 91.51 78.64 74.25 32.43
+PROTO -CLIP 62.12 27.63 88.04 64.93 69.42 90.22 67.37 59.34 92.08 77.90 71.08 29.83
+PROTO -CLIP- F 63.92 31.32 88.55 70.35 78.94 92.54 69.59 62.35 93.79 78.29 74.81 33.26
+PROTO -CLIP- F-QT64.03 35.82 87.46 71.50 81.89 92.62 70.02 64.01 94.28 78.61 75.34 32.70
+16 shots
+Linear-Probe CLIP [1] 55.87 36.39 76.42 70.08 82.76 90.63 67.15 63.97 94.95 70.17 73.72 -
+CoOp [8] 62.95 31.26 87.01 73.36 83.53 91.83 69.26 63.58 94.51 74.67 75.71 -
+CLIP-A [9] 63.59 32.10 87.84 74.01 84.43 92.49 69.55 65.96 93.90 78.25 76.76 -
+Tip [10] 62.02 29.76 88.14 66.77 70.54 90.18 66.85 60.93 89.89 77.83 70.58 28.87
+Tip-F [10] 65.51 35.55 89.70 75.74 84.54 92.86 71.47 66.55 94.80 79.43 78.03 34.04
+PROTO -CLIP 62.77 29.67 88.61 68.11 72.95 91.08 68.09 61.64 92.94 78.11 73.35 29.96
+PROTO -CLIP- F 65.75 37.56 89.62 75.25 83.53 93.43 71.94 68.56 95.78 79.09 77.50 35.22
+PROTO -CLIP- F-QT65.91 40.65 89.34 76.76 86.59 93.59 72.19 68.50 96.35 79.34 78.11 34.70
+Table 5: Few-shot classification results on different datasets using the ResNet50 backbone.
+classify each segmented object with PROTO -CLIP . By matching the noun with the class labels, the
+system can ground the target in the image. Once the target object is recognized, we use Contact-
+GraspNet [ 35] for grasp planning and MoveIt motion planning toolbox [ 36] to pick and place the
+target. See the supplementary material for more real-world results.
+5 Limitations
+PROTO -CLIP performs poorly in low-shot regimes, as is evident from Table 5. A hyperparameter
+grid search is necessary for each new dataset, following the methodology of Tip-Adapter. This
+requirement applies to every combination of the new dataset and the backbone. Embracing the
+diversity of datasets, our system thrives on the need for different set-ups. When encountering a
+new dataset, we actively compare the effectiveness of FandF-QTto determine the optimal choice.
+This dynamic approach transforms the potential weakness into a strength, allowing us to adapt and
+maximize performance for every unique dataset. During our observations, we discovered that data
+transformations play a crucial role in building the cache model.
+6 Conclusion and Future Work
+We have introduced a novel method for few-shot learning based on the CLIP vision-language model.
+Our method learns image prototypes and text prototypes from few-shot training examples and aligns
+the corresponding image-text prototypes for classification. The model is equipped with learnable
+image memory and text memory for support images and a learnable adapter for query images.
+Compared to previous CLIP-based few-shot learning methods, our method is flexible in configuring
+these learnable components, resulting in powerful learned models.
+Good feature representation is the key in few-shot learning. Future work includes how to further
+improve feature representation learning compared to CLIP models. One idea is to adapt more
+powerful vision-language models such as GPT variants. The FewSOL dataset also provides multiview
+and depth information about objects. Exploring this 3D information in few-shot object recognition is
+also a promising direction.
+8Acknowledgments
+This work was supported in part by the DARPA Perceptually-enabled Task Guidance (PTG) Program
+under contract number HR00112220005.

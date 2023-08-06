@@ -1,0 +1,29 @@
+Summary:
+
+The paper investigates the performance of OpenAI's ChatGPT in detecting AI-generated text. The authors evaluate the zero-shot performance of ChatGPT in distinguishing between human-written and AI-generated text using publicly available datasets. They find that ChatGPT has asymmetric performance, performing well in identifying human-written text but struggling to identify AI-generated text. They suggest that this asymmetric performance can be leveraged to build detectors that focus on identifying human-written text and solve the problem of AI-generated text detection indirectly.
+
+Bullet points:
+
+- Large language models like ChatGPT are increasingly being used for text content generation.
+- ChatGPT's performance as a detector of AI-generated text is investigated.
+- ChatGPT performs well in identifying human-written text but struggles to identify AI-generated text.
+- Existing detection methods for AI-generated text include feature-based classifiers and fine-tuned language models.
+- GPT-4 shows poor performance in differentiating between human-written and AI-generated text.
+- GPT-4 tends to label everything as AI-generated, including human-written text.
+- The performance of ChatGPT is consistent across different sources and styles of human-written text.
+- ChatGPT misclassifies a large fraction of ChatGPT-generated text as human-written.
+- GPT-4 shows better performance than ChatGPT in identifying ChatGPT-generated text.
+- Future work may explore the reasons behind the difference in performance and leverage ChatGPT's capability to build automated detection pipelines for AI-generated text.
+
+Keywords:
+
+- ChatGPT
+- AI-generated text
+- human-written text
+- language models
+- detection methods
+- GPT-4
+- performance
+- dataset
+- asymmetry
+- future directions

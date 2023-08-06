@@ -1,0 +1,11 @@
+Summary:
+
+- This paper explores different methods of achieving long-term memory for Large Language Model (LLM) based chatbots.
+- The proposed architecture, RecallM, focuses on creating adaptable and updatable long-term memory for AGI systems.
+- RecallM utilizes a graph database instead of a vector database, allowing for advanced relations and temporal understanding.
+- Various experiments demonstrate the benefits of RecallM for temporal understanding compared to using a vector database.
+- A hybrid architecture (Hybrid-RecallM) that combines RecallM with a vector database is also created to reap the benefits of both approaches.
+- Previous related works include Ret-LLM, which extracts memory triplets from knowledge and uses a vector similarity search, and Memorizing Transformers, which utilizes kNN-augmented attention in transformer models.
+- RecallM showcases promising capabilities in large-scale question answering tests, even when provided with non-related data that could potentially confuse the system.
+- The RecallM code is publicly available on GitHub.
+- Keywords: question answering, LLM, vector database, graph database, in-context learning, temporal relations, neuro-symbolic processing, long-term memory, knowledge graph.

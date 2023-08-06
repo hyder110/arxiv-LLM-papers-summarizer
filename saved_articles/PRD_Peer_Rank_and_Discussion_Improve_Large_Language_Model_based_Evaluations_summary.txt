@@ -1,0 +1,26 @@
+Summary:
+The paper proposes the Peer Rank and Discussion (PRD) framework to improve the evaluation of large language models (LLMs) for open-ended question answering. The current method of using a single LLM as the evaluator leads to biases and limitations. PRD consists of the Peer Rank (PR) algorithm and Peer Discussion (PD). PR considers each peer LLM's pairwise preferences to provide a final ranking of models, while PD prompts two LLMs to discuss and reach a mutual agreement on their preferences. Experimental results show that PRD achieves higher accuracy and aligns better with human judgments compared to the current method. PR can even induce a self-ranking of models under anonymous settings. The PRD framework provides a fair evaluation process for LLMs that are difficult to compare for humans.
+
+Bullet Points:
+1. The paper proposes the PRD framework to improve the evaluation of large language models (LLMs).
+2. The current evaluation method using a single LLM as the evaluator has biases and limitations.
+3. PRD consists of the PR algorithm and PD to provide a more fair evaluation of LLMs.
+4. PR considers each peer LLM's pairwise preferences to create a final ranking of models.
+5. PD prompts two LLMs to discuss and reach a mutual agreement on their preferences.
+6. Experimental results show that PRD achieves higher accuracy and aligns better with human judgments.
+7. PR can induce a self-ranking of models under anonymous settings.
+8. The PRD framework provides a fair evaluation process for LLMs that are difficult to compare for humans.
+9. The PR algorithm calculates weighted scores of battles to determine rankings.
+10. The PD process involves discussions between LLMs to reach a mutual agreement on preferences.
+
+Keywords:
+- Peer Rank and Discussion (PRD)
+- large language models (LLMs)
+- evaluation
+- open-ended question answering
+- biases
+- Peer Rank (PR) algorithm
+- Peer Discussion (PD)
+- pairwise preferences
+- accuracy
+- human judgments

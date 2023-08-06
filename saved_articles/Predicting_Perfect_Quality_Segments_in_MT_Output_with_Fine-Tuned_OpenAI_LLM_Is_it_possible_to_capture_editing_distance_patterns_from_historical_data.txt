@@ -1,0 +1,370 @@
+Predicting Perfect Quality Segments in MT Output with Fine-Tuned
+OpenAI LLM:
+Is it possible to capture editing distance patterns from historical data?
+Serge Gladkoff1, Gleb Erofeev1, Lifeng Han2,andGoran Nenadic2
+1Logrus Global, Translation & Localization
+2The University of Manchester, UK
+lifeng.han, g.nenadic @ manchester.ac.uk
+serge.gladkoff, gleb.erofeev @ logrusglobal.com
+Abstract
+Translation Quality Estimation (TQE) is
+an important step before deploying the
+output translation into usage. TQE is also
+critical in assessing machine translation
+(MT) and human translation (HT) quality
+without seeing the reference translations.
+In this work, we examine if the state-
+of-the-art large language models (LLMs)
+can be fine-tuned for the TQE task and
+their capability. We take ChatGPT as one
+example and approach TQE as a binary
+classification task. Using English-Italian
+and English-German training corpus, our
+experimental results show that fine-tuned
+ChatGPT via its API can achieve a rela-
+tively high score on predicting translation
+quality, i.e. if the translation needs to be
+edited, but there is definitely space to im-
+prove the accuracy.
+Italiano. Affinch ´e una traduzione possa
+essere utilizzata, `e essenziale stimarne la
+qualit `a (TQE). Ma la stima della qualit `a
+(TQE) `e essenziale anche per valutare la
+qualit `a della traduzione, automatica (MT)
+o umana (HT), allorquando manchi una
+traduzione di riferimento. Questa ricerca
+verte ad esaminare se i Large Language
+Models (LLM) possano essere utilizzati
+anche a fini di TQE e a valutarne le rispet-
+tive capacit `a. Per le finalit `a di questo la-
+voro, si utilizza l’LLM ChatGPT e la stima
+TQE viene espressa con classificazione bi-
+naria. Sulla base dei due corpora utiliz-
+zati, nelle combinazioni Inglese-Italiano e
+Inglese-Tedesco, i risultati mostrano che,
+in un contesto sperimentale, ChatGPT, op-
+portunamente ottimizzato tramite API, ri-
+esce a prevedere il livello di qualit `a della
+traduzione con punteggi relativamente altie ad individuare, per esempio, i casi in cui
+sia necessario intervenire con modifiche
+del testo tradotto. Per quanto riguarda
+l’accuratezza di tale stima, si ritiene che
+essa possa essere ulteriormente migliorata.
+1 Introduction
+Most modern translation projects include post-
+editing (PE) of machine-translation (MT) output
+(Gladkoff and Han, 2022). Instead of translating
+from scratch, the MT+PE process increases pro-
+ductivity and allows to speed up global content de-
+livery. However, raw MT output is not suitable for
+final publication due to the inherently stochastic
+nature of neural MT (NMT) (Han, 2022a; Freitag
+et al., 2021). Hallucinations, incorrect terminol-
+ogy, factual and accuracy errors, small and large,
+as well as many other types of mistakes are in-
+evitable to varying degrees of extent, and there-
+fore for premium quality publication human revi-
+sion is required. MT output serves as input for
+a professional human translator, who reviews and
+revises the MT proposals to eliminate factual er-
+rors and ensure that the quality of translated ma-
+terial conforms to the customer specifications. At
+the same time even with those languages that are
+not handled well by MT, there is a significant por-
+tion of segments that are not changed after human
+review. This portion varies from 10% to 70% in
+some cases, and the question arises, “Is it possible
+to use machine learning (ML) methods to mark
+these segments and save time for human reviser
+and make him/her focus on those segments that
+need attention instead”? This could further speed
+up the translation process and decrease the costs
+while preserving the premium quality of the trans-
+lated product.
+This is also very closely related to the tradi-
+tional MT quality estimation (QE) shared task
+that has been held with the Workshop of MT
+(WMT) series since 2012 (Han, 2022b; Callison-arXiv:2308.00158v1  [cs.CL]  31 Jul 2023Burch et al., 2012; Koehn et al., 2022; Zerva et al.,
+2022), where both token-level and segment-level
+QE were carried out. From practical application
+and industrial usage, we formulate the problem
+into a single classification task, i.e. if the trans-
+lated segment (sentence) needs to be edited or not.
+With the development of current large language
+models (LLMs), we choose chaptGPT as one of
+the state-of-the-art LLMs to examine its capability
+for this task. In this work, our Hypothesis is that: it
+is possible for the LLM to learn from the real data
+collected from past post-editing projects to predict
+whether the segment needs to be edited.
+2 Related Work
+The QE of MT has always been a critical topic for
+MT development due to its important role in val-
+idating the MT outputs without seeing the refer-
+ence translations. In many practical situations, ref-
+erence translations are available or event not possi-
+ble to acquire. The earliest QE shared task with the
+annual WMT conference started from 2012 when
+word level QE was introduced by (Callison-Burch
+et al., 2012) to estimate if the translated tokens
+need to be edited or not, such as deletion, substi-
+tution, or keeping it as it is. In the later devel-
+opment of QE, sentence level task was introduced
+to predict the overall segment translation scores,
+which are to be correlated with human judgement
+scores, such as using Direct Assessment (Graham
+et al., 2015). In WMT-2022, a new task on binary
+sentence-level classification was also introduced
+to predict if a translated output has critical errors
+to be fixed on English-German and Portuguses-
+English language pairs (Zerva et al., 2022).
+The deployed methods for such QE tasks from
+recent participation teams have included prompt-
+based learning using XLM-R by KU X Upstage
+(Korea University, Korea & Upstage) from Eo
+et al. (2022), Direct Assessment and MQM fea-
+tures integration into fine-tuning on XLM-R and
+INFOXLM (Chi et al., 2021) by the Alibaba team
+(Bao et al., 2022), and incorporating a word-level
+sentence tagger and explanation extractor on top
+of COMET framwork by Rei et al. (2022), in ad-
+dition to historical statistical methods such as sup-
+port vector machine (SVM), Naive Bayes classi-
+fier (NB), and Conditional Random Fields (CRFs)
+by Han et al. (2013).
+However, to the best of our knowledge, this
+work is the first (or among the first) to investigate
+Fine- 
+Tuning 
+OpenAI API Historical 
+post-editing data 
+Testing 
+SetPost-editing EPR Data 
+SAP MT 
+GPT4QE Figure 1: GPT4QE Methodology Design on Fine-
+tuning ChatGPT for Classification Task to Carry
+out Quality Estimation of Machine Translation
+the ChatGPT LLM model on such MT error pre-
+diction tasks with positive outcomes.
+3 Methodology and Experiments
+As shown in the system pipeline in Figure 1, we
+first collect the historical post-editing data from
+our past projects on eight languages of Enter-
+prise Resource Planning (ERP) content translation
+on English →German, French, Italian, Japanese,
+Dutch, Portuguese, Turkish, and Chinese (DE, FR,
+IT, JA, NL, PT, TR, ZH). This phase is done by
+using a MT engine to automatically translate the
+eight languages followed up by professional post-
+editing from linguists. Two examples on MT and
+PE in English-Italian and English-German lan-
+guages are shown in Figure 2 and 3. Regarding
+MT system selection, since the content was from
+the ERP domain, we used the SAP STH as our MT
+engine.1
+Next step, we use OpenAI’s API access to fine-
+tune the ChatGPT model for our classification
+task. The input is the triple set (English source,
+MT outputs, post-edited gold standard) we pre-
+pared in Phase 1. The goal of this step is to op-
+timise the weights of the model parameters. The
+custom fine-tuned model GPT4QE (GPT for QE)
+is created in our private space on the OpenAI ac-
+count.
+It is important to note that we did not apply
+“prompt engineering” for this task, instead by fine-
+tuning. We did not simply train the LLM for edit
+distance either, instead, the model was trained to
+learn whether the strings were edited or not taking
+into account the full content of the string and the
+entire context of the training data. One of the rea-
+1https://www.sap.com/ SAP is an enterprise and
+business software company.EN-USAEN-IT MTMT PEHave affected personnel in the immediate area of the hazardous work been notified of the work to take place?Il personaleinteressatonell'areaimmediatamenteinteressatadal lavoropericolosoèstatoinformatodeilavorida svolgere?Il personaleinteressatodailavorinell'areavicinaall'interventopericolosoèstatoinformatosui lavorida svolgere?Have all Energy Sources been restored per restart procedures and isolations removed?Sono state ripristinate tutte le fonti energetiche per ogni ripresa e rimozione degli isolamenti?Sono state ripristinate tutte le sorgenti di energia secondo le procedure di riavvio e sono stati rimossi gli isolamenti?Have all equipment and safeguards been completely restoredTutte le attrezzature e le misure di sicurezza sono state completamente ripristinate?Attrezzature e salvaguardie interamente ripristinate?Have all equipment and safeguards been completely restored?Sonostate completamenteripristinatetuttele attrezzaturee le salvaguardie?Attrezzature e salvaguardie interamente ripristinate?Have all safeguards been completely restored?Tutte le salvaguardie sono state completamente ripristinate?Salvaguardie interamente ripristinate?Have conditions changed?Le condizionisonostate modificate?Sonocambiatele condizioni?Hazardous Energy Control (HEC) Procedural FormatFormato procedurale per controllo energetico pericoloso (HEC)Format procedurale per controllo energetico pericoloso (CEP)Hazardous Energy Control PermitPermesso di controllo dell'energia pericolosaPermesso di controllo energia pericolosa (HEC)Hazardous Energy Control Permit completed as plannedPermesso di controllo dell'energia pericoloso completato come previstoPermesso CEP (HEC) completato come pianificatoHazardous Energy Control Permit TemplateModello di permesso di controllo dell'energia pericolosaModello di permesso di controllo energia pericolosa (HEC)Hazardous operations within 35ft (11m) of work area are shut downLe operazionipericoloseall'internodi 35 ft (11 m) dell'areadi lavorovengonochiuseLe operazionipericoloseentro35 ft (11 m) dell'areadi lavorovengonochiuseFigure 2: EN-IT Examples on MT and Post-Editing
+EN-USAEN-DE MTMT PEChemical/Liquid Protective BootsChemische/flüssige SchutzbooteSchutzstiefel für Chemikalien und FlüssigkeitenChild LocationUnterlokationUntergeordneter StandortChild PermitKindgenehmigungUntergeordnete GenehmigungChild StateUntergeordneter BundesstaatUntergeordneter ZustandChild WorkflowUntergeordneter WorkflowUntergeordneter ArbeitsablaufChild Workflow StateUntergeordneter Workflow-StatusUntergeordneter ArbeitsablaufstatusChilled Water -specify PressureKühlwasser -Geben Sie den Druck an.Kühlwasser -Druck angebenChoose Workflows to ImportZu importierendeWorkflows auswählenZu importierendeArbeitsabläufeauswählenThe file size exceeds the limit allowedDie Dateigrößeüberschreitetdas zulässigeLimitDie Dateigröße überschreitet die zulässige GrenzeQualified Person returned service to full operation and notified all affected workers?Qualifizierte Person hat den Dienst in Betrieb genommen und alle betroffenen Mitarbeiter benachrichtigt?Hat die qualifiziertePerson den Betriebwiedervollständighergestelltund alle betroffenenMitarbeiter benachrichtigt?Qualified persons are First Aid/CPR CertifiedQualifizierte Personen sind Erste-Hilfe-Zertifizierung/CPR-zertifiziertQualifiziertePersonenverfügenüberErste-Hilfe-Zertifizierung/CPR-ZertifizierungRecord results every 30 minutes for length of work.Erfassen Sie die Ergebnisse alle 30 Minuten für die Dauer der Arbeit.Ergebnisse alle 30 Minuten für die Dauer der Arbeit erfassen.Record Worst Case Reading of any meter at any level in the space.Erfassen Sie den Worst Case Reading eines beliebigen Zählers auf einer beliebigen Ebene des Bereichs.Aufzeichnungdes Worst-Case-MesswertseinesbeliebigenZählersauf einerbeliebigenEbene imRaum.The symbol displayed at the top left of the application, used as the home button.Das obenlinks in der AnwendungangezeigteSymbol, das alsHome-Drucktasteverwendetwird.Das obenlinks in der AnwendungangezeigteSymbol, das alsStartseiten-Schaltflächeverwendetwird.
+Figure 3: EN-DE Examples on MT and Post-Editing
+sons that we did not use prompting is that “Prompt
+Engineering” of ChatGPT-3 is limited by 3000 to-
+kens, and with ChatGPT-4 the context has been
+increased to 25000 tokens, but still very sizeable
+limitation stays. Our fine-tuning method was not
+constrained by such limitations.
+We took 4000 lines of bilingual data and split it
+into train (large) and test (smaller) sets with the ra-
+tio 9:1. Since the average sentence size is about 17
+words, the training dataset contained about 35000
+words of source data, 35000 words of MT output,
+and 35000 words of post-edited human reference.
+It is also important to note what the model
+learns in this case - in such an experiment it learns
+not to translate, but to spot MT translation errors
+that were made by the specific MT engine in a spe-
+cific language paid on particular content.
+3.1 Experimental Outputs
+For case studies, we have trained the LLM Chat-
+GPT using our data for two languages: Italian and
+German. To evaluate the testing output of the fine-
+tuned model GPT4QE, we draw the confusion ma-
+trix for both two languages we tested in Figures 4
+and 5 for English-Italian and English-German.In the confusion metrics, from top left conor,
+the 1st quadrant means positive X (predicting cor-
+rect) and positive Y (true correct), 2nd quadrant
+negative X (predicting wrong) and positive Y (true
+correct), 3rd quadrant negative X and negative Y ,
+fourth quadrant positive X (predicting correct) and
+negative Y (true wrong/error). So the first and
+third are successful classification, and the other
+two are wrong classification.
+In Italian situation from Figure 4, there are more
+translated sentences that need to be edited (503)
+than sentences that do not (191), from the correct
+prediction categories. From the wrong prediction
+categories, there are 81 sentences that do not need
+to be edited but prediction result from GPT4QE
+model says they need; vice versa, there are 67
+translated sentences that need to be edited, but the
+prediction says they do not.
+In English-German situation from Figure 5,
+there are more translated sentences that do not
+need to be edited (442) than the needed one (256)
+in correct predictions. In the wrong prediction cat-
+egories, such numbers are 46 and 90 respectively.
+In general, the English-German output from
+GPT4QE is better than the English-Italian one re-Figure 4: EN-IT Confusion Metrics of GPT4QE
+Figure 5: EN-DE Confusion Metrics of GPT4QE
+garding prediction error rates.
+3.2 Discussion
+The first and foremost finding is that the GPT4QE
+model actually learned enough information to
+make a very significant prediction of whether the
+segment has to be edited or not. It should be
+noted that such successful classification theoreti-
+cally allows to significantly reduce the volume of
+post-editing effort. There is, however, a problem:
+while it is OK to present the editor with segments
+that are predicted as required for editing, in real-
+ity not (the second quadrant). Real producer risk
+comes from the segments that have been predicted
+as not requiring editing, but in reality they do (the
+fourth quadrant). Such segments represent a sig-nificant portion of segments predicted as not re-
+quiring post-editing: 26% of “leave as is” (let’s
+call them “LAI”) segments for Italian, and 17%
+for German.
+It is possible that for concrete language pair and
+MT engine the portion of LAI segments will de-
+crease with the size increase of the training data
+and further fine-tuning, but it is unlikely to be-
+come zero, since with neural models the error rate
+is never zero.
+Two strategies can be considered for imple-
+menting such prediction in production:
+• 1) The LAI segments are excluded from the
+human loop and go straight into publication.
+In this scenario the error rate for final content
+will be 7.9% for Italian (67/total number of
+segments, i.e. 67+81+191+503) and 11% (90
+/ (90 + 46+ 442 + 256)) for German. It is,
+obviously, a decision of the customer to de-
+cide whether this is acceptable level of risk.
+The savings on post-editing volume would be
+30% for Italian and 63.8% for German.
+• 2) All LAI segments are marked as “100%
+MT matches” in a CAT tool. With this ap-
+proach, translators are requested to review
+them, but with a lower rate, using the tra-
+ditional approach which is well familiar to
+translation providers. In this scenario the
+reduction of the total time, effort and cost
+can be estimated as follows: without this ap-
+proach, translators working on Edit Distance
+Calculation (EDC) model will get 40% pay-
+ment for not changed segments. With such
+prediction, translators may be asked to review
+such LAI segments, but paid only 10% for re-
+view of such segments.
+Simple proportion allows to calculate the sav-
+ings in this scenario: if we assume that 10%
+pay reflects adequate pay for the review of LAI
+segments, the volume of post-editing decreases
+27.6% for Italian and 57.4% for German with zero
+error rate of the output (no producer’s or con-
+sumer’s risk).
+Taking the EDC numbers for various EDC cat-
+egories which we have for this data in the sec-
+ond scenario cost wise the saving for Italian will
+be 14.8% and for German - 38.8%, with premium
+quality (no errors) of the final product. This esti-
+mate of potential economy with guarantee of zeroerror rate begs for further research and implemen-
+tation of this method.
+4 Conclusions and Future Work
+In this work, to investigate the LLM ChatGPT’s
+capability on predicting MT output errors, we car-
+ried out fine-tuning using OpenAI API on GPT3.
+We formulated the task as a classification chal-
+lenge using prepared historical post-editing data
+on English-Italian and English-German. The
+experimental output using fine-tuned GPT4QE
+demonstrated promising results. We also anal-
+ysed the possible solutions on addressing the error
+rates, i.e. if to remove the error outputs or keep
+them into translation memories (TM) with further
+expert-based quality checking, and how much sav-
+ing it will yield to language service providers, in
+comparison to without using GPT4QE model.
+In this future, we are interested to see whether
+the model can continue learning as fed with more
+consecutive chunks of data for the same language,
+so we plan to continue the fine-tuning by increas-
+ing the available training data on these two lan-
+guage pairs. In addition, we plan to carry out the
+GPT4QE fine-tuning on all other language pairs
+for which we have the historical data. We intend
+to explore to what extent the model is capable of
+absorbing data for several languages.
+To further extend this project, it will also be
+interesting to import non-expert human transla-
+tion output into the pipeline, e.g. use crowd-
+source human translation from source sentences,
+plus expert-based post-editing as fine-tuning data
+and check if GPT4QE model can perform similar
+result to such situation on identifying human in-
+troduced errors.
+More granularity design instead of binary clas-
+sification can also be tried, such as a set of
+translation quality (very bad, bad, OK, good,
+very good), which data can be produced using
+our expert-based human-centric evaluation met-
+ric HOPE framework (Gladkoff and Han, 2022).
+We can also explore if it is possible for GPT4QE
+model to produce continuous quality value e.g. (0,
+100) as regression task instead of classification
+task on limited classes.
+We did not use prompt engineering for this
+project, but it is worthy to verify how good it
+perform using zero-shot or few-shorts prompt-
+ing technology, such as the work from Cui et al.
+(2023) using both manual and soft templates.Regarding the explainability of LLMs including
+ChatGPT, following the explainability task from
+Eval4NLP2021 and WMT-QE2022 (Fomicheva
+et al., 2021; Zerva et al., 2022), it will be useful
+to add extra features into the model, e.g. identify-
+ing which words or phrase spans caused the mild
+or sever errors in the translated sentences.
+Limitations
+In this work, we reported MT QE experiments us-
+ing Italian and German data translated from En-
+glish. The positive results produced from Chat-
+GPT model can be further enhanced by more lan-
+guage pairs, as well as broader domains of the cor-
+pus.
+Ethical Statement
+This work has no ethical concerns since we did not
+disclose any private user data.
+Acknowledgements
+We thank Manuela Simonetti from Interlanguage
+Translation Ltd. (ILT Group) for offering help in
+translating the English Abstract to the Italian ver-
+sion. This work has been partially supported by
+grant EP/V047949/1 “Integrating hospital outpa-
+tient letters into the healthcare data space” (funder:
+UKRI/EPSRC).
+Re

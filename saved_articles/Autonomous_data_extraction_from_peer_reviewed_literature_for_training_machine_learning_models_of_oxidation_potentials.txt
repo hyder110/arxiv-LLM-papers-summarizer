@@ -1,0 +1,169 @@
+Autonomous data extraction from peer reviewed literature for training machine
+learning models of oxidation potentials
+Siwoo Lee,1Stefan Heinen,2Danish Khan,1, 2and O. Anatole von Lilienfeld1, 2, 3, 4, 5, 6, ∗
+1Department of Chemistry, University of Toronto, St. George campus, Toronto, ON, Canada
+2Vector Institute for Artificial Intelligence, Toronto, ON, M5S 1M1, Canada
+3Acceleration Consortium, University of Toronto. 80 St George St, Toronto, ON M5S 3H6
+4Department of Materials Science and Engineering,
+University of Toronto, St. George campus, Toronto, ON, Canada
+5Department of Physics, University of Toronto, St. George campus, Toronto, ON, Canada
+6Machine Learning Group, Technische Universit¨ at Berlin and Berlin
+Institute for the Foundations of Learning and Data, Berlin, Germany
+(Dated: August 2, 2023)
+We present an automated data-collection pipeline involving a convolutional neural network and
+a large language model to extract user-specified tabular data from peer-reviewed literature. The
+pipeline is applied to 74 reports published between 1957 and 2014 with experimentally-measured
+oxidation potentials for 592 organic molecules (-0.75–3.58 V). After data curation (solvents,
+reference electrodes, and missed data points), we trained multiple supervised machine learning
+models reaching prediction errors similar to experimental uncertainty ( ∼0.2 V). For experimental
+measurements of identical molecules reported in multiple studies, we identified the most likely value
+based on out-of-sample machine learning predictions. Using the trained machine learning models,
+we then estimated oxidation potentials of ∼132k small organic molecules from the QM9 data set,
+with predicted values spanning 0.21–3.46 V. Analysis of the QM9 predictions in terms of plausible
+descriptor-property trends suggests that aliphaticity increases the oxidation potential of an organic
+molecule on average from ∼1.5 V to ∼2 V, while an increase in number of heavy atoms lowers
+it systematically. The pipeline introduced offers significant reductions in human labor otherwise
+required for conventional manual data collection of experimental results, and exemplifies how to
+accelerate scientific research through automation.
+I. INTRODUCTION
+The accessibility and utilization of literature data
+through systematic reviews and meta-analyses are of
+significant importance across all scientific disciplines to
+rigorously assess the wealth of information contained
+in multiple studies and compile them in large-scale
+data sets1–4. However, reproducibility concerns as
+well as the rapid growth in the number of scientific
+publications5,6poses significant limitations on efficiently
+reading, understanding, and extracting the enormous
+volume of ever growing information. The development
+of automated retrieval of pertinent information7could
+address the challenge of training meaningful machine
+learning (ML) models that require sufficiently large
+scientific data sets8,9. In particular, tabular data
+in literature sources holds immense importance in
+scientific research as they organize a large body of
+information in an easily-readable fashion. Thus, the
+efficient extraction of tabular information would greatly
+streamline data collection from a large number of
+studies. Yet, upon examining different reference sources,
+it is evident that tables are presented in a variety of
+layouts, visual appearances, and encoding formats (eg.
+HTML, PDF, JPG), which poses a significant hurdle in
+the automated detection of tables in the literature10.
+∗anatole.vonlilienfeld@utoronto.caHowever, recent advances in algorithmic designs and
+computing capabilities have seen the development of
+convolutional neural network (CNN) models, such as
+TableNet10–12, that are trained to locate tables in
+document pages displayed as images and are capable of
+reaching state-of-the-art performances on the ICDAR
+2013 table competition data set13. A secondary challenge
+that follows table detection using CNN models is the
+accurate extraction of text from images, a task known
+as optical character recognition (OCR)14. Google’s
+Tesseract-OCR engine15,16and various ML and deep
+neural network (DNN) models have been demonstrated
+to successfully convert images of typed, handwritten,
+or printed text into machine-encoded text with low
+character-level substitution rates and word-level
+error-rates16,17. Then, a third, and closely-related
+problem relevant to scientific research is the ability of
+these models to extract specific text. This presents
+a significant challenge due to the need for semantic
+understanding, especially as documents may display
+several tables containing different types of data with
+irrelevant accompanying information18. The recent
+development of large language models (LLMs) presents
+a promising solution to the challenge of semantic
+understanding as they can leverage their extensive
+training on large volumes of text to recognize and
+interpret the meaning of specified text19. Indeed,
+LLMs have already seen widespread usage for a variety
+of scientific purposes20. For instance, in chemistry,arXiv:2308.00389v1  [physics.chem-ph]  1 Aug 20232
+LLMs have been utilized to generate code, learn complex
+molecular distributions, aid in materials and drug design,
+and to extract chemical information from scientific
+documents21–26. Generative pre-trained transformers
+(eg. GPT-2, GPT-3.5, GPT-4) models developed by
+OpenAI present particularly exciting applications for
+research in chemistry and other scientific disciplines
+for their human-like semantic understanding and their
+ability to generate human-like text when presented with
+a prompt27–31.
+In this work, an automated data-collection pipeline is
+introduced that accurately locates tables and extracts
+text from literature sources using the CNN TableNet,
+and the LLM GPT-3.5, respectively. We demonstrate its
+usefulness by building a chemically-diverse data set of
+experimentally-measured oxidation potentials (measured
+in acetonitrile solvent vs standard calomel electrode,
+SCE) of organic molecules from peer-reviewed literature.
+Oxidation potentials are important electrochemical
+stability and reactivity descriptors; modeling them
+with efficient machine learning and high predictive
+power could crucially accelerate the computational
+design and discovery of superior functional materials,
+such as batteries, supercapacitors, electrolytes, and
+electrocatalysts for applications in fuel cells and
+renewable energy conversion32–35. Based on the
+experimental data extracted using our pipeline, we
+have trained multiple supervised ML models that reach
+experimental uncertainty, and that can be used to
+identify less/more likely values among conflicting data
+entries. The generalizability of the ML models is
+used to predict and analyze the oxidation potential
+distribution in ∼132k organic molecules coming from
+the QM9 data set36. Previous ML studies of redox
+potentials of organic molecules were limited to small
+data sets based on simulated values which typically
+encode severe approximations making it difficult to draw
+direct conclusions relevant for experimental decision
+making.37–46.
+II. METHODOLOGY
+A. From Literature to Data Set
+The first component of the automated tabular data
+extraction pipeline (Figure 1) after the collection of
+literature sources is the detection and localization of
+tables ( CNN step of Figure 1). This is accomplished
+by using TableNet with a DenseNet-121 encoder
+architecture (8,220,550 trainable parameters; 461,504
+non-trainable parameters) with dropout (0.6)48(see
+Section J of Supplementary Information for the Python
+implementation used in this work and Paliwal et al.[12]
+for further details about the architecture). This model
+was trained for 35 epochs on 495 scanned RGB images
+(816×1056 pixels) of document pages containingLiterature PDFs
+Images
+Table locations
+Text
+Molecular NamesOxidation
+Potentials
+SMILES, XYZ
+Data Set:
+{features, labels }pdf2image
+CNN
+pytesseract
+LLM LLM
+Leruli ,RDKit
+FIG. 1. A flowchart representation of the automated data
+acquisition pipeline for extracting experimentally-measured
+oxidation potentials reported in literature. Pages displaying
+tables in 74 reference sources (PDFs) are converted to
+images (JPGs) and inputted into a convolutional neural
+network, TableNet, trained to locate tables in images and
+output images cropped around tables. Text contained in the
+outputted images, extracted using pytesseract47are then fed
+to GPT-3.5 with a prompt to extract the names of molecules
+and their oxidation potentials. Used Python packages for each
+step are shown beside the arrows.
+tables with English text compiled in the Marmot
+data set (80/20 train/test random split) with labelled
+coordinates of the rectangular table regions in each
+image49. The model learns these coordinates such
+that it can output cropped images of the documents
+containing just the detected tables.
+The generalization capabilities of the CNN were
+then assessed by its ability to locate tables in 74
+literature sources (published 1957-2014), saved as PDFs,
+that reported the experimentally-measured oxidation
+potentials of organic molecules (see Bibliography of
+Supplementary Information for the used 

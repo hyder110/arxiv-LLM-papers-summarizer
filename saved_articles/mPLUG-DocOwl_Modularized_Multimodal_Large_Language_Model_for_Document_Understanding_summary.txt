@@ -1,0 +1,26 @@
+Summary:
+The paper proposes mPLUG-DocOwl, a modularized multimodal large language model, for OCR-free document understanding. The model is trained on a diverse range of visual-text understanding tasks and demonstrates strong performance on document understanding benchmarks. It outperforms existing multimodal models and generalizes well on various downstream tasks.
+
+Bullet Points:
+1. mPLUG-DocOwl is a modularized multimodal large language model for OCR-free document understanding.
+2. It incorporates a visual abstractor module to link a pre-trained language model with a visual knowledge module.
+3. The model is trained on language-only, general vision-and-language, and document instruction tuning datasets.
+4. mPLUG-DocOwl achieves OCR-free state-of-the-art performance on document understanding benchmarks.
+5. The model generalizes well on various downstream tasks without specific fine-tuning.
+6. LLMDoc, a test set with human evaluation, is constructed to assess document understanding capabilities.
+7. mPLUG-DocOwl outperforms existing multimodal models on LLMDoc.
+8. The model demonstrates strong understanding abilities in diverse document scenarios.
+9. Qualitative analysis shows that mPLUG-DocOwl accurately understands complex documents, tables, charts, and natural images.
+10. There are still challenges in instruction understanding in the document domain, which require further research.
+
+Keywords:
+- OCR-free document understanding
+- multimodal large language model
+- visual-text understanding
+- document instruction tuning
+- LLMDoc
+- downstream tasks
+- benchmark evaluation
+- human evaluation
+- strong understanding abilities
+- challenges in instruction understanding

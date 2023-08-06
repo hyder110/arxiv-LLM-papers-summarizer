@@ -1,0 +1,1279 @@
+1
+Lowis3D: Language-Driven Open-World
+Instance-Level 3D Scene Understanding
+Runyu Ding, Jihan Y ang, Chuhui Xue, Wenqing Zhang, Song Bai, Xiaojuan Qi
+Abstract —Open-world instance-level scene understanding aims to locate and recognize unseen object categories that are not present
+in the annotated dataset. This task is challenging because the model needs to both localize novel 3D objects and infer their semantic
+categories. A key factor for the recent progress in 2D open-world perception is the availability of large-scale image-text pairs from the
+Internet, which cover a wide range of vocabulary concepts. However, this success is hard to replicate in 3D scenarios due to the
+scarcity of 3D-text pairs. To address this challenge, we propose to harness pre-trained vision-language (VL) foundation models that
+encode extensive knowledge from image-text pairs to generate captions for multi-view images of 3D scenes. This allows us to establish
+explicit associations between 3D shapes and semantic-rich captions. Moreover, to enhance the fine-grained visual-semantic
+representation learning from captions for object-level categorization, we design hierarchical point-caption association methods to learn
+semantic-aware embeddings that exploit the 3D geometry between 3D points and multi-view images. In addition, to tackle the
+localization challenge for novel classes in the open-world setting, we develop debiased instance localization, which involves training
+object grouping modules on unlabeled data using instance-level pseudo supervision. This significantly improves the generalization
+capabilities of instance grouping and thus the ability to accurately locate novel objects. We conduct extensive experiments on 3D
+semantic, instance, and panoptic segmentation tasks, covering indoor and outdoor scenes across three datasets. Our method
+outperforms baseline methods by a significant margin in semantic segmentation ( e.g.34.5% ∼65.3%), instance segmentation ( e.g.
+21.8% ∼54.0%) and panoptic segmentation ( e.g.14.7% ∼43.3%). Code will be available.
+Index Terms —3D scene understanding, instance segmentation, panoptic segmentation, point clouds, open vocabulary, open world.
+✦
+1 I NTRODUCTION
+3D instance-level scene understanding, which involves local-
+izing 3D objects and understanding their semantics, is a
+crucial perception component for real-world applications such
+as virtual reality (VR), robot manipulation, and human-machine
+interaction. Deep learning has achieved remarkable success in
+this area [2, 3, 4]. However, deep models trained on human-
+annotated datasets can only comprehend semantic categories that
+are present in the dataset; that is, they are confined to close-set
+prediction. Consequently, they fail to recognize novel categories
+that are not seen in the training data, as shown in Fig. 1. This
+severely limits their applicability in real-world scenarios such
+as robotics and autonomous driving with unlimited potential
+categories. Furthermore, the high annotation costs on 3D datasets
+(e.g. 22.3 minutes for a single scene with 20 classes [1]) make
+it impractical to rely solely on human labor to cover all real-
+world categories. This motivates us to investigate open-world
+3D instance-level scene understanding, which allows a model to
+recognize and localize open-set classes that are not included in the
+label space of an annotated dataset (see Fig. 1). This involves two
+key components: open-world semantic comprehension and open-
+world instance localization.
+Recently, vision-language (VL) foundation models [5, 6, 7]
+have demonstrated the ability to learn effective vision-language
+embeddings that connects textual descriptions and correspond-
+ing images by training on web-crawled image data along with
+•Runyu Ding, Jihan Yang and Xiaojuan Qi are with the Department of Elec-
+trical and Electronic Engineering at The University of Hong Kong, Hong
+Kong. Chuhui Xue, Wenqing Zhang and Song Bai are with ByteDance Inc.
+•Email: ryding@eee.hku.hk, jhyang@eee.hku.hk, xuec0003@e.ntu.edu.sg,
+wenqingzhang@bytedance.com, songbai.site@gmail.com,
+xjqi@eee.hku.hk
+•Runyu Ding: Part of the work done during an internship at ByteDance Inc.semantic-rich captions [8]. These embeddings are further lever-
+aged to solve various 2D open-world tasks including object
+detection [9, 10], semantic segmentation [11, 12, 13], panoptic
+segmentation [14] and etc.. Although the pre-training paradigm
+has significantly advanced open-vocabulary image understanding
+tasks, its direct applicability in the 3D domain is hindered by the
+lack of large-scale 3D-text pairs.
+To address this challenge, some recent efforts [15, 16] have
+tried to convert the 3D data into 2D modalities such as RGB
+images and depth maps. By leveraging pre-trained VL foundation
+models, these methods aim to analyze the projected 2D data to
+enable open-world recognition of 3D objects. However, this line
+of methods has several major drawbacks, rendering it suboptimal
+for scene-level understanding such as instance segmentation. First,
+to represent a 3D scene, multiple RGB images and depth maps
+are needed for processing, which results in high memory and
+computation costs during both training and inference. Secondly,
+the projection from 3D to 2D causes information loss and prevents
+direct learning from geometry-rich 3D data, resulting in poor
+performance. Our preliminary study reveals the state-of-the-art 2D
+open-world semantic segmentation approach, MaskCLIP [13], can
+only achieve 17.8% mIoU yet with a 20-fold increase in latency
+when tasked to segment projected 2D images from the 3D ScanNet
+dataset [1].
+Thus, inspired by the remarkable success of vision-language
+foundation models for various VL tasks [9, 10, 11, 12, 13, 15,
+16], we ask: can we leverage the abundant knowledge encoded
+in VL foundation models to build an explicit association between
+3D and language for open-world understanding? In pursuit of
+this goal, our core idea is to use pre-trained VL models [17, 18]
+to caption readily-available image data that is aligned with 3D
+data — specifically, the point set within the corresponding frustumarXiv:2308.00353v1  [cs.CV]  1 Aug 20232
+(b)Close-setvs.open-worldinstancelocalization
+bookshelf(unseenclass)
+(a)Close-setvs.open-worldsemanticclassification
+bookshelfcabinetwall
+Mistake“bookshelf”as“cabinet”Miss“bookshelf”Successfullysegment“bookshelf”
+Fig. 1. An example of 3D open-world instance-level scene understanding on ScanNet [1], where the unseen class is “bookshelf”. In this case,
+the close-set model mistakenly classifies the“bookshelf” as a“cabinet” or fails to recognize it entirely. However, our open-world model accurately
+localizes and recognizes the “bookshelf”.
+that generates the image. These images can be obtained either
+through neural rendering [19, 20] techniques or directly from the
+3D scene collection pipeline [1].In this way, we are able to transfer
+rich semantics to the 3D domain, thereby enabling an explicit
+connection between 3D data and vocabulary-rich text descriptions
+for open-world 3D scene understanding.
+After establishing the point-language association, the subse-
+quent question arises regarding how to empower a 3D network
+to acquire semantic-aware embeddings from (pseudo) captions.
+The primary obstacle lies in the complex object compositions in
+the 3D scene-level data (see Fig. 3), which makes it hard to link
+objects with their corresponding words within the caption. This is
+different from object-centric image data that typically consists of
+a single centered object [5]. However, there is a fortunate aspect to
+consider: the 3D geometry relation between captioned multi-view
+images and a 3D scene can be exploited to construct hierarchical
+point-caption pairs. These pairs encompass captions at various
+levels, including scene-level, view-level, and entity-level captions,
+which provide coarse-to-fine supervision signals to enable the
+effective learning of visual-semantic representations from a rich
+vocabulary corpus through contrastive learning.
+Although point-language association gives the model the
+strong ability to recognize novel semantic concepts, the model
+still struggles to correctly localize the 3D objects, leading to
+predictions of incomplete instance masks or incorrectly predicting
+multiple instances as one (see PLA results in Fig. 6). This is be-
+cause the existing close-set 3D instance localization network tends
+to overfit annotated/base categories and thus easily fails to localize
+unseen objects with novel shapes, scales, or contexts. To the best
+of our knowledge, this problem has not been addressed in current
+open-world 3D scene understanding studies [21, 22]. To tackle this
+challenge, we propose a debiased instance localization module that
+provides instance-level pseudo supervision for clustering potential
+novel objects into candidate proposals. This module improves the
+localization ability of our framework for unseen objects, thereby
+rendering our method more effective for 3D open-world instance
+and panoptic segmentation tasks.
+Overall, our holistic framework, named Lowis3D, combines
+point-language association for semantic recognition and debiased
+instance localization for object localization, offering a flexible
+and general solution for open-world 3D scene understanding. By
+comprehensively addressing the two essential problems of scene
+understanding, our framework provides a solid foundation for
+advancing the field of open-world 3D scene understanding.We conduct extensive experiments on three scene understand-
+ing tasks across three popular large-scale datasets [1, 23, 24]
+covering both indoor and outdoor scenarios. Results show that
+Lowis3D significantly surpasses the baseline models, achieving
+improvements of 21.8% ∼54.0% hAP 50on instance segmenta-
+tion, 14.7% ∼43.3% hPQ on panoptic segmentation and 34.5% ∼
+65.3% hIoU on semantic segmentation, manifesting its effective-
+ness. Besides, when compared with PLA [25], Lowis3D exhibits a
+performance gain of 2.4% ∼12.6% on tasks that require instance-
+level understanding. In addition, our model shows its scalabil-
+ity and extensibility by achieving 0.3% ∼3.5% improvements
+in semantic recognition when utilizing more advanced image-
+captioning model that provides higher-quality caption supervision.
+This further highlights the potential of our approach to adapt and
+excel with more advanced techniques.
+Difference to our conference paper: This manuscript substan-
+tially extends the conference version [25] in the following aspects.
+(i). We provide an in-depth analysis of the challenges in open-
+world 3D scene understanding in terms of unseen semantic recog-
+nition and instance localization, which helps to better understand
+and address this task. (ii). We propose a lightweight proposal
+grouping module that effectively reduces the bias toward base
+classes by incorporating pseudo-offset supervision signals. This
+greatly enhances the adaptability of instance localization for novel
+classes. (iii). We conduct extensive experiments on three large-
+scale scene understanding datasets that cover both indoor and
+outdoor scenarios, surpassing PLA in instance-level understanding
+by a large margin. (iv.) We further attempt our Lowis3D on the 3D
+panoptic segmentation task, achieving significant improvements
+on nuScenes [24] dataset. Overall, these enhancements contribute
+to a more comprehensive and effective framework for open-world
+3D scene understanding with high potential and applicability in
+various real-world scenarios.
+2 R ELATED WORK
+3D scene understanding targets at comprehending the semantic
+meaning of objects and their surrounding environment through
+the analysis of point clouds. In this study, we focus on three
+integral scene understanding tasks: semantic, instance and panop-
+tic segmentation. 3D semantic segmentation aims to produce
+point-wise semantic predictions for point clouds. Representative
+works involves point-based architecture [26, 27] with elaborately
+crafted point convolution operations [28, 29], transformers [30]3
+that capture long-range point contexts with attention mecha-
+nisms, and voxel-based [2, 31] approaches using efficient 3D
+sparse convolutions [32] to generate context-aware predictions.
+3D instance segmentation goes a step further by distinguishing
+distinct object instances based on semantic segmentation. Existing
+methods typically adopt either a top-down solution [33, 34],
+that is to predict the 3D bounding box followed by the mask
+refinement, or a bottom-up [35, 3] approach through predicting
+point offsets towards object centers and grouping points into
+mask proposals. 3D panoptic segmentation , on the other hand,
+strives to unify instance and semantic predictions to generate
+coherent scene segmentation. Based on how to obtain instance
+IDs, it can be coarsely categorized into proposal-based stream [36]
+with top-down proposal generation manners and proposal-free
+stream [37, 38] with bottom-up instance grouping approaches.
+Though achieving promising results on close-set benchmarks,
+existing methods struggle to recognize or localize open-set novel
+categories. Addressing this limitation is the main focus of our
+work.
+Open-world learning targets at recognizing novel classes that
+are not present in training annotations. Early approaches pri-
+marily adhere to the zero-shot setting, which can be coarsely
+categorized into generative methods [39, 40] and discriminative
+methods [41, 42]. 3DGenZ [43] extends [39] to the realm of
+3D understanding for zero-shot semantic segmentation. Moving
+beyond the zero-shot learning, the more general open-world
+setting presumes the accessibility of a large vocabulary bank
+during the training phase [44]. In the context of 2D open-world
+learning , existing approaches take different approaches. Some
+leverage massive annotated image-caption pairs to provide weak
+supervision for vocabulary enhancement [44, 45]. Others utilize
+pre-trained vision-language (VL) models, such as CLIP [5] that
+is trained on extensive image-caption pairs to tackle open-world
+understanding.
+In comparison, 3D open-world learning is still in its infancy
+with only a few endeavors so far. Some papers [15, 16] focus
+on object-level classification. They explore techniques to project
+object-level 3D point clouds onto multi-view 2D images and depth
+maps, and leverage the pre-trained VL model for producing open-
+world predictions. Nevertheless,they suffer from heavy computa-
+tion and subpar performance when applied to 3D scene under-
+standing tasks. More recent work [21, 46, 47] address semantic-
+level scene understanding by aligning 3D points with 2D boxes
+or pixels and distilling dense semantic-aware embeddings, which
+relies on time-consuming image processing or heavy disk storage.
+In this work, we focus on instance-level scene understanding,
+proposing a language-driven 3D open-world paradigm that learns
+visual-semantic embeddings and a debised instance localization
+for generalizable objectness learning. Our Lowis3D framework
+can be generally applied to various scene understanding tasks and
+offers efficiency with only the 3D network deployed in training
+and inference.
+3 P RELIMINARY
+3D open-world instance-level segmentation targets at localizing
+and recognizing unseen categories without using human anno-
+tation as supervision. Formally, annotations on semantic and
+instance levels Y={(ysem,yins)}are divided into two sets: base
+categories CBand novel categories CN. During the training phase,
+the 3D model has access to all point clouds P={p}, but it onlyhas annotations for the base classes, denoted as YB. The model is
+unaware of the annotations YNand the category names associated
+with the novel classes CN. However, the 3D model is required to
+localize objects and classify points belonging to both the base and
+novel categories CB∪ CNduring inference.
+A typical 3D instance understanding network consists of a 3D
+encoder F 3Dfor feature extraction, a dense classification head F sem
+for semantic comprehension, and an instance head for instance
+localization and mask prediction. Specifically, we use a bottom-up
+strategy for the instance head that includes an offset branch F offto
+predict point offsets towards object centers, an instance grouping
+module F group to cluster offset-shifted points into proposals, and
+a proposal scoring network F score to score each proposal for
+post-processing and confidence ranking. The inference pipeline
+is shown below:
+fp=F3D(p),s=σ◦Fsem(fp), (1)
+o=Foff(fp),r=Fgroup(p,o,s),z=Fscore(r,fp), (2)
+where pis the input point cloud, fpis the point-wise 3D feature,
+σis the softmax function, sis the semantic score, ois the point
+offset, ris the grouped proposal, and zis the proposal scores.
+With these network predictions, we can then calculate semantic
+classification loss Lsemwith semantic label ysem, point offset loss
+Loffwith offset label yoffset as well as proposal scoring loss Lscore
+with proposal label ypplsimilar to [35, 3] as Eq. (3) and Eq. (4),
+where the yoffset andypplcan be obtained from yins. Notice that
+during training ysemandyinsonly relate to base categories CB.
+Lsem=Loss(s,ysem), (3)
+Loff=Loss(o,yoff),Lscore=Loss(z,yppl). (4)
+For panoptic segmentation, we fuse semantic prediction swith
+instance proposals rto generate a coherent segmentation map
+following [24].
+4 O PEN-WORLD INSTANCE -LEVEL SCENE UN-
+DERSTANDING AND CHALLENGES
+This section elaborates on our design to extend the close-set
+network into an open-world leaner. We then analyze its main
+challenges to achieve optimal performance on open-world tasks.
+4.1 Open-World Setups
+Although it is possible to train a scene understanding model using
+the loss functions in Eq. (3), the resulting model is actually a
+close-set model with a close-set classifier F semand a close-set
+design in proposal grouping generation using F off, F group, and
+Fscore. As a close-set model, it is unable to handle the task of
+recognizing or localizing unseen categories. To address this issue,a
+text-embedded semantic classifier is introduced to obtain an open-
+world model. Furthermore, we modify the instance prediction
+branch into a class-agnostic one that can be naturally extended
+to arbitrary categories.
+4.1.1 Text-Embedded Semantic Classifier
+First, as shown in Fig. 2, to enable the model to become an open-
+world learner, we replace its learnable semantic classifier F semwith
+pre-trained category text embeddings fland a learnable vision-
+language adapter F θto align the dimension between 3D features
+fpandflas follows,
+fv=Fθ(fp),s=σ(fl·fv), (5)4
+DebiasedInstanceLocalization(Fig.4)𝐟!𝐟"CaptionPointcloud𝐩CategorynameBackboneF!"𝐟.
+ℒ#$$ℒ%&'ℒ()𝐭:alivingroomwith…TextEncoderF$%&$𝐶ℬ:floor,cabinet,…𝐶𝒩:desk,sofa,…Image-bridgedPoint-LanguageAssociation(Fig.3)BinaryHeadF)VLAdapterF*ℒ*+,
+FixedmoduleTrainablemoduleOffsetHead𝐅+,,ScoreHead𝐅-.+/%𝐫ℒ%*#-&Grouping𝐅0/+12𝐨𝐬𝐟!:Pointembedding𝐟":Captionembedding𝐟.:Categoryembedding𝐬:Semanticscore𝐨:Offset𝐫:Proposal𝐳:Proposalscore𝐳
+Fig. 2. Our language-driven 3D instance-level scene understanding framework that can handle open-world queries. The model learns rich semantics
+through point embeddings that are aligned with caption embeddings using point-language association (details in Fig. 3). A binary head is used to
+adjust predicted semantic scores based on the probabilities of belonging to base and novel classes. A debiased instance localization module
+generates confident pseudo supervisions on novel categories to enhance the open-world objectness learning (details in Fig. 4). Best viewed in
+color.
+where fvis the projected feature obtained through the VL adapter
+Fθ,fl= [fl
+1,fl
+2,···,fl
+k]is the category embeddings generated
+by encoding kcategory names Cwith a frozen text encoder F text
+such as CLIP [5] BERT [48] (see Fig. 2). To make predictions,
+the model computes the cosine similarity between the projected
+point embeddings fvand the category embeddings fland and then
+selects the category with the highest similarity as the prediction.
+During training, the embeddings flonly include those belonging
+to base classes CB. However, during open-world inference, the
+embeddings related to both base and novel categories CB∪ CN
+are utilized. By employing the category embeddings flas a
+classifier, the model gains the capability to perform open-world
+inference on any desired categories. We name this design as OV-
+SparseConvNet as a semantic baseline.
+4.1.2 Semantic-Guided Instance Module
+Basically, we adopt the instance head from SoftGroup [3] for
+instance segmentation, as shown in Fig. 2. The offset head Foff
+predicts class-agnostic offsets ofor each point towards the object
+center. During training, only proposals belonging to base classes
+receive supervisions and undergo grouping. However, we can
+perform grouping for any novel categories during open-world
+inference due to the open-vocabulary capabilities of the semantic
+scores sobtained through the text-embedded classifier. Addition-
+ally, we do not use class statistics ( i.e.the average number of
+points per instance mask for each class) to assist grouping here
+since they are not available for novel categories.
+For the proposal scoring head Fscore, to facilitate its adaptabil-
+ity to novel categories, we make modifications to its functionality.
+Specifically, it now outputs class-agnostic binary scores, serving as
+indicators of the objectness for each proposal, instead of producing
+per-class confidence scores. This modification eliminates inherent
+biases towards seen categories and enables better generalization
+to novel categories. Additionally, this also allows us to train the
+proposal scoring network without prior knowledge of the novel
+categories that lie beyond the existing vocabulary. Furthermore,
+we remove the proposal classification head designed in SoftGroupto avoid overfitting to base categories and choose to aggregate
+semantic scores sfrom our text-embedded Fsemfor each proposal.
+Since Fsemowns strong open-vocabulary capabilities, we can use
+it to predict arbitrary novel categories. We call this baseline model
+OV-SoftGroup , which can perform open-vocabulary instance and
+panoptic segmentation.
+4.2 Challenges
+With a text-embedded classifier and a class-agnostic instance
+grouping module, we obtain a deep model that can perform open-
+world instance-level scene understanding. However, our experi-
+ments show that this model suffers from poor generalization to
+novel categories after training only on base classes. Therefore, we
+investigate the difficulties in 3D open-world instance-level scene
+understanding and identify the key challenges related to semantic
+recognition and instance localization.
+4.2.1 Challenges on Semantic Understanding
+We first train OV-sparseConvNet on CBand evaluate its perfor-
+mance on CB∪CN. Table 1 shows that the model fails to recognize
+novel classes in the ScanNet dataset, with a large mIoU gap of
+about 79% compared to the fully-supervised model (the model
+is trained on CB∪ CN). We empirically identify two factors
+contributing to this substantial gap: the model’s bias towards
+the base categories and its inability to comprehend the semantic
+meaning of unseen categories.
+Firstly, we observe that the model performs poorly on
+novel categories, achieving zero mIoU. Moreover, it exhibits
+an approximate 34% performance gap when compared to OV-
+sparseConvNet†, which infers points from base and novel classes
+separately to avoid confusion between the two category splits. It
+demonstrates that the model often misclassifies novel categories
+as base ones, indicating a strong bias toward base categories .
+We then investigate the performance of OV-SparseConvNet†.
+Even without the influence of overfitting to base categories, it still
+performs poorly, with an about 45% mIoU gap on novel categories
+compared to a fully-supervised model. Such a performance gap5
+can be attributed to the model’s inability to distinguish different
+novel categories, indicating a lack of understanding of unseen
+categories and poor generalization to novel concepts.
+TABLE 1
+Investigation of the semantic performance gap between
+OV-SparseConvNet and fully-supervised model on ScanNet with 15
+base categories and four novel categories in terms of mIoU. †denotes
+forcing semantic predictions to fit the correct partition, i.e.CBorCN.
+MethodScanNet
+base mIoU novel mIoU
+OV-SparseConvNet 64.4 00.0
+OV-SparseConvNet†70.7 34.3
+Fully-Sup. 68.4 79.1
+4.2.2 Challenges on Instance Localization
+Similarly, we investigate the open-world instance localization
+ability with OV-SoftGroup. We train OV-SoftGroup on CBand
+evaluate its performance on CB∪ CN. We use the point offset
+error (MAE) to assess the offset head Foffand the average recall
+(AR) to measure the quality of grouped instance proposals. Table 2
+reveals that our OV-SoftGroup, despite its class-agnostic Fofffor
+instance grouping, experiences overfitting to object patterns of
+base categories , with the larger offset error compared to fully-
+supervised model. Additionally, the lower AR reflects the poorer
+quality of proposals, further confirming this issue. This is poten-
+tially due to the fact that unseen objects may have novel shapes,
+sizes, and contexts that differ from base categories, which makes
+the knowledge learned from base categories not generalizable to
+novel ones. This challenge is often ignored in existing open-world
+studies [21, 22], which we will tackle in this paper.
+TABLE 2
+Investigation of instance performance gap between OV-SoftGroup and
+fully-supervised model on ScanNet with 13 base categories and 4
+novel categories in terms of AR 50(average recall at IoU threshold 0.5)
+and offset mAE (mean absolute error).
+MethodScanNet
+base mAE ( ↓) novel mAE ( ↓)base AR ( ↑) novel AR ( ↑)
+OV-SoftGroup 0.37 0.68 47.2 21.7
+Fully-Sup. 0.36 0.46 47.3 57.0
+5 M ETHOD
+To address the challenges discussed in Section 4, we propose a
+holistic pipeline for open-world 3D instance-level scene under-
+standing called Lowis3D. Our framework consists of a point-
+language association module (see Sec. 5.1.1) that leverages the
+powerful VL foundation models for learning visual-semantic re-
+lationships. This helps expose the model to novel concepts be-
+yond the annotated dataset without requiring human annotations.
+Besides, we introduce a binary prediction head for distinguishing
+novel and base categories for calibrating biased predictions among
+base and novel categories (see Sec. 5.2). Finally, we design
+debiased instance localization to enhance objectness learning and
+facilitate object grouping on novel categories (see Sec. 5.3).5.1 Image-Bridged Point-Language Association
+As shown in Table 1, OV-SparseConvNet performs poorly on
+novel categories due to its limited semantic recognition capabili-
+ties. Recent open-vocabulary works [12, 10, 9] in the 2D domain
+have shown the effectiveness of using language supervision to
+train vision backbones on large-scale text-image paired data. The
+large-scale vision-language dataset provides rich language super-
+vision that enables the vision backbone to access a wide range
+of semantic concepts with a large vocabulary and helps to align
+vision and language features. This enhances the generalization of
+novel concepts. However, this success is hard to achieve in 3D due
+to the lack of Internet-scale paired 3D-text data.
+To tackle this challenge, we propose an image-bridged point-
+language association module that provides language supervision
+for 3D scene understanding without the need for human anno-
+tation, as illustrated in Fig. 2 and Fig. 3. Our core idea is to
+leverage multi-view images from a 3D scene as a bridge to access
+the knowledge encoded in vision-language foundation models for
+generating language descriptions. As shown in Fig. 3, an image
+of a 3D scene is input to a powerful image-captioning model,
+which generates a text description. Then, the text description is
+associated with a point set in the 3D scene utilizing the geometric
+correspondence between the image and the 3D scene. In the
+following, we provide more details about our captioning procedure
+and the designed hierarchical point-caption association.
+5.1.1 Multi-View Images Captioning
+With the development of multimodal vision and language learning,
+many foundation models [18, 17, 49] trained with extensive
+image-text pairs are readily available to solve the image captioning
+task [50]. Given the jthimage of the ithscene, a pre-trained
+image-captioning model Gcan generate the corresponding text
+description tv
+ij:
+tv
+ij=G(vij). (6)
+Remarkably, despite Gnot being explicitly trained on a 3D scene
+understanding dataset such as ScanNet [1], the generated captions
+are able to encapsulate the entire semantic label space of such
+datasets. Additionally, the captions tprovides fairly precise and
+comprehensive descriptions of various aspects, including room
+types, semantic categories with texture and color attributes, as well
+as spatial relationships. This is evident in the language supervision
+examples tvshown in Fig. 3, and additional examples can be
+found in the Appendix C.
+5.1.2 Point Cloud Association with Language
+After obtaining the image-text pairs, the subsequent step is to
+associate a point set ˆ pwith caption t, using images vas a bridge:
+Explore ⟨ˆ p,t⟩with⟨ˆ p,v⟩and⟨v,t⟩. (7)
+We propose three association fashions for point sets at varying
+spatial scales.
+Scene-Level Point-Language Association. The coarsest and sim-
+plest association manner is to link caption supervision to all points
+within a specified 3D point cloud scene ˆ ps=p. As depicted in
+Fig. 3, we consider all image captions tv
+ijassociated with a given
+scenepj. These captions are used to generate a scene-level caption
+ts
+jby employing a text summarizer [51] Gsumas follows:
+ts
+j=Gsum({tv
+1j,tv
+2j,···tv
+njj}), (8)6
+Intersection&Difference
+Image-captioningModel𝒢Text-summarizationModel𝒢!"#𝐭𝒔：Video	shows	a	person	sitting	on	a	couch	with	….	a	living	room	with	a	blue	couchand	a	backpackon	the	floora	bikeand	a	backpackon	a	tiled	floor𝐭𝒆:couch
+a	bathroom	with	wooden	cabinets	and	a	sink	and	a	toilet
+…
+𝐭𝒆:bike𝐭𝒆:backpack,floor
+…𝐭#:a	bathroom	with	wooden	cabinets	and	a	sink	and	a	toiletScene-levelView-levelEntity-levelPointcloud𝐩/𝐩$/𝐩%Image{𝐯}LanguageSupervision{𝐭B}
+/𝐩&
+Fig. 3. Image-bridged point-language association. We present hierarchical point-language association manners at scene-level, view-level and entity-
+level, which assign coarse-to-fine point sets with caption supervision through vision-language foundation models and multi-view RGB images.
+where njis the total number of images for the scene pj. By
+enabling each 3D scene ˆ psto learn from its corresponding scene
+descriptions ts, we introduce a rich vocabulary and strengthen the
+visual-semantic relationships, enhancing the semantic understand-
+ing capability of the 3D backbone. Despite the simple nature of
+scene-level language supervision, our empirical findings suggest
+that it can bolster the model’s open-world ability by a significant
+margin (see Sec. 7).
+View-Level Point-Language Association. Albeit proven to be
+effective, scene-level language supervision assigns a single caption
+to all points in a scene, which neglects the relationship between the
+language and local 3D point clouds. Thus, it may not be optimal
+for instance-level scene understanding tasks. To this end, we
+further propose a view-level point-language association manner
+that utilizes the geometrical relation between images and points
+to align each image caption tvwith a point set ˆ pvwithin the 3D
+view frustum of the corresponding image v(indicated by the blue
+box in Fig. 3). Specifically, we obtain the view-level point set ˆ pv
+in the following steps. The RGB image is first back-projected v
+onto the 3D space with the assistance of the depth information d
+to get its corresponding point set ¨ p:
+¨ p1=T−1vd, (9)
+where [·|·]denotes block matrix, T∈ R3×4is the projection
+matrix derived from the camera intrinsic matrix and rigid trans-
+formations, typically obtained through sensor configurations or
+established SLAM approaches such as [52]. Since the back-
+projected points ¨ pand points in 3D scene pmay only have partial
+overlap, we then compute the overlapped regions between them to
+obtain the view-level point set ˆ pvas follows,
+ˆ pv=V−1(R(V(¨ p), V(p))), (10)
+where VandV−1denote the voxelization and reverse-
+voxelization processes, and Rmeans the radius-based nearest-
+neighbor search [53]. This view-based association approach en-
+ables the model to learn from region-level language descriptions,
+significantly augmenting the model’s localization and recognition
+and capabilities for previously unseen categories.
+Entity-Level Point-Language Association. While the view-level
+captioning strategy allows each image-caption pair tvto be
+associated with a specific subset of the point cloud for a 3D
+scene, this association is still based on a large 3D area ( i.e.around
+25K points) containing multiple semantic objects/categories, as
+illustrated in Fig. 3. This broad coverage could be challenging for
+the 3D network to learn fine-grained point-wise semantic attributesand instance-aware position information from the language su-
+pervision. To this end, we further propose a fine-grained point-
+language association manner that owns the potential to construct
+entity-level point-caption pairs. In this way, each object instance is
+associated with a specific caption, allowing for more precise and
+detailed supervision.
+Specifically, as depicted in Fig. 3, we exploit the intersections
+and differences between adjacent view-level point sets ˆ pvand
+their corresponding view captions tvto determine the associated
+points ˆ peand caption teat entity level. To be specific, we first
+compute entity-level caption teas below:
+wi=E(tv
+i), (11)
+we
+i\j=wi\wj, we
+j\i=wj\wi, we
+i∩j=wi∩wj,(12)
+te=Concate (we), (13)
+where Emeans the process of extracting a set of entity words w
+from the caption tv,∩and\represent the set intersection and
+difference, respectively, and Concate means the concatenation of
+all words with spaces to form the entity-level caption te. Similarly,
+we can easily compute entity-level point sets and associate them
+with previously obtained entity-level captions to form point-
+caption pairs as follows:
+ˆ pe
+i\j= (ˆ pv
+i\ˆ pv
+j),ˆ pe
+j\i= (ˆ pv
+j\ˆ pv
+i),ˆ pe
+i∩j=ˆ pv
+i∩ˆ pv
+j,
+(14)
+<ˆ pe
+i\j,te
+i\j>, <ˆ pe
+j\i,te
+j\i>, <ˆ pe
+i∩j,te
+i∩j> . (15)
+After obtaining the entity-level ⟨ˆ pe,te⟩pairs, we further apply
+filtering to ensure that each entity-level points set ˆ pecorresponds
+to at least one entity and is concentrated within a sufficiently small
+3D space, as detailed below,
+γ <|ˆ pe|< δ·min(|ˆ pv
+i|,|ˆ pv
+j|)and|te|>0, (16)
+where γdenotes a scalar to determine the minimal number of
+points, δis a ratio that controls the maximal size of ˆ pe, and the
+caption temust not be empty. This constraint assists in focusing
+on a fine-grained 3D point sets, thereby ensuring that there are
+fewer entities associated with each caption supervision.
+Comparison among Different Point-Language Association
+Manners. The aforementioned three point-language association
+manners, arranged in a coarse-to-fine fashion, each possess dif-
+ferent merits and limitations. As demonstrated in Table 3, the
+scene-level association, while the simplest to implement, offers
+the coarsest correspondence between points and captions, with7
+TABLE 3
+Comparison among different point-language association manners.
+scene-level view-level entity-level
+# points for each caption 145,171 24,294 3,933
+# captions 1,201 24,902 6,163
+complexity simplest middle hardest
+each caption corresponding to an average of over 140K points. On
+the other hand, the view-level association provides a finer level
+of point-language mapping, with a larger semantic space (over
+20 times more captions) and a more localized point set (about
+6 times fewer points for each caption) compared to the scene-
+level association. The entity-level association establishes the most
+fine-grained correspondence relation, relating each caption with
+an average of only 4K points. This fine-grained association can
+contribute significantly to dense prediction and instance localiza-
+tion tasks. Our empirical results in Sec. 7 demonstrate that the
+fine-grained association and a semantic-rich vocabulary space are
+two critical factors for open-world perception.
+5.1.3 Contrastive Point-Language Training
+Having obtained point-caption pairs ⟨ˆ p,t⟩, we can now guide the
+3D backbone F 3Dto learn from semantic-rich language supervi-
+sion. To achieve this, we introduce a general point-caption feature
+contrastive learning that can be applied to all types of coarse-to-
+fine point-language pairs.
+First, we can obtain language embeddings ftthrough a pre-
+trained text encoder F text. Regarding the associated partial point
+setˆ p, we select its corresponding point-wise features of adapted
+features fvand employ the global average pooling to obtain its
+feature vector fˆpas follows,
+ft=Ftext(t),fˆp=Pool(ˆ p,fv). (17)
+Next, we apply the contrastive loss as [44] to bring the corre-
+sponding point-language embeddings closer together and push
+away unrelated point-language embeddings. This loss function is
+defined as follows:
+Lcap=−1
+ntntX
+i=1logexp(fˆp
+i·ft
+i/τ)
+Pnt
+j=1exp(fˆp
+i·ft
+j/τ), (18)
+where ntrepresents the number of point-language pairs in any
+given association fashion and τis a learnable temperature used
+to modulate the logits as CLIP [5]. Additionally, to avoid noisy
+optimization and ensure effective learning, we remove duplicate
+captions within a batch during contrastive learning. Our final
+caption loss is a weighted combination of these losses and can
+be expressed as follows,
+Lall
+cap=α1∗ Ls
+cap+α2∗ Lv
+cap+α3∗ Le
+cap, (19)
+where α1,α2andα3are trade-off factors.
+5.2 Semantic Calibration with Binary Head
+In Section 4.2.1, we discussed the issue of over-confident semantic
+predictions on base classes and the calibration problem that arises
+as a result [54]. To address this issue, we propose a binary
+calibration module that rectifies semantic scores by consideringthe probability of a point belonging to either base or novel
+categories.
+Specifically, as depicted in Fig. 2, we employ a binary head Fb
+to distinguish between annotated (base) and unannotated (novel)
+points. During training, F bis optimized with:
+sb=Fb(fp),Lbi=BCELoss (sb,yb), (20)
+where BCELoss( ·,·) denotes the binary cross-entropy loss, yb
+denotes the binary label and sbis the predicted binary score
+indicating the probability that a point belongs to novel categories.
+During the inference stage, the binary probability sbis leveraged
+to correct the over-confident semantic score sas follows:
+s=sB·(1−sb) +sN·sb, (21)
+where sBis the semantic score calculated solely on base cat-
+egories with novel class scores set to zero. Similarly, sNis
+computed only for novel classes, setting base class scores to
+zero. Notably, this calibration technique is also employed in
+instance and panoptic segmentation, specifically for calibrating
+the class predictions of grouped instance proposals. In Section 7,
+we provide empirical evidence to demonstrate that the probability
+calibration significantly improves the performance of both base
+and novel categories. This demonstrates the effectiveness of our
+design in rectifying over-confident semantic predictions.
+5.3 Debiased Instance Localization
+As we discussed in Sec. 4, the offset branch Foff, trained on base
+categories, tends to overfit to the instance patterns of base cate-
+gories and produces poor offset predictions on novel categories.
+This overfitting issue poses a challenge in generating high-quality
+proposals for novel objects due to unreliable offset predictions.
+To address this issue, we propose debiased instance localization
+(DIL). DIL rectifies the learning bias of Foffthrough providing
+high-quality pseudo-offset supervision signals for unlabeled data
+containing potential novel objects. It achieves this by candidate
+proposal grouping, proposal confidence filtering and offset esti-
+mation, which is detailed as below.
+First, during training, we can group offset-shifted points of
+base categories effectively by using semantic scores as Eq. (2).
+However, unlabeled data do not have prior semantic knowledge.
+Therefore, we simply treat all points from novel categories belong
+to one class, which enables to group these offset-shifted points and
+obtain candidate proposals as follows:
+rN=Fgroup(pN,oN), (22)
+where the subscript Nindicates unlabeled unseen categories.
+Fig. 4 shows examples of the grouped proposals. To deal with
+possible mis-groupings, we further apply confidence filtering
+based on the proposal score z, which estimates the likelihood of
+each point belonging to a given proposal, as shown in Eq. 23.
+This step helps us filter out points that may have been wrongly
+grouped and keep only those that belong to the instances with
+high confidence, as illustrated in Fig. 4.
+brN={p|p∈rNandzN(p)> η}, (23)
+wherebrNis the refined proposal, pis a point in the proposal,
+zN(p)is the score for point pin proposal rN, and ηis the score
+threshold. After obtaining brN, we estimate their centers and then
+point offsets toward centers as shown in Eq. (24) and Fig. 4. Those8
+Offsetestimation
+Proposalscorefiltering
+Pointsin𝐶𝒩Pointsin𝐶ℬProposalcenterPointoffsetClass-agnosticproposalgrouping𝐸𝑞.(22)𝐸𝑞.(23)𝐸𝑞.(24)
+Fig. 4. Debiased Instance Localization. Points belonging to novel categories are grouped together to form candidate proposals. Subsequently,
+confidence filtering is applied, utilizing proposal scores to exclude potential mis-grouped points. Finally, we estimate proposal centers and point
+offsets, which serve as pseudo offset supervision signals for novel categories.
+predicted point offsets can serve as pseudo-supervision signals
+and help the offset branch learn more generalizable features by
+incorporating more diversity and comprehensiveness.
+byN
+off={p−center (brN)|p∈brN}, , (24)
+wherebyN
+offdenotes the pseudo offset supervision for unlabeled
+objects, and the center denotes the center estimation of the
+proposal. Therefore, the offset loss in Eq. (3) involves two parts:
+Loff=LB
+off+LN
+off,LN
+off=Loss(oN,byN
+off) (25)
+whereLB
+offandLN
+offdenote offset prediction loss on base and novel
+categories, respectively. In this way, the offset branch can be better
+generalized to unseen categories to benefit open-world instance-
+level understanding tasks.
+Finally, as shown in Fig. 2, the overall training objective of
+Lowis3D can be written as:
+L=Lsem+Loff+Lscore+Lall
+cap+Lbi. (26)
+5.4 Comparison to Concurrent Work
+Recently, the 3D scene understanding community has made con-
+current efforts to leverage visual-language (VL) foundation mod-
+els. OpenScene [21] uses 2D open-vocabulary segmentors such
+as LSeg [12] and OpenSeg [55] to extract pixel-level embeddings
+aligned with 3D points, enabling 3D semantic-level understanding
+through techniques such as zero-shot fusion or feature distillation.
+Similarly, CLIP2Scene [22] employs MaskCLIP [13] to obtain
+pixel-aligned features for annotation-free and label-efficient scene
+understanding. ConceptFusion [46] and CLIP-FO3D [56] further
+explore acquiring pixel-aligned knowledge through dense region-
+level feature extraction using CLIP [5] and multi-view feature
+fusion. These methods rely on semantic-aware visual features
+to guide 3D scene understanding. In contrast, Lowis3D adopts
+a different approach by utilizing pure language supervision to
+inject rich semantics into the 3D network, building an efficient
+training and inference pipeline for open-world scene understand-
+ing. Moreover, these existing methods may face difficulties in
+performing instance localization due to the lack of objectness
+information, which is specifically addressed by Lowis3D. This
+unique instance localization aspect of our approach broadens its
+potential applications in fields such as robotics or autonomous
+driving, where the detection and tracking of unseen objects is
+desired.
+Besides, there have been attempts to perform instance seg-
+mentation such as CLIP2 [57] and RegionPLC [47]. They use
+region-level supervision signals that encode objectness informa-
+tion from image patches or object proposals to perform instance
+segmentation. While their main goal is to inject fine-grainedsemantics into the 3D network to facilitate object localization, our
+Lowis3D focuses on a different aspect by correcting the network
+bias to learn a more general localization branch. Importantly, we
+empirically show that these two work streams can work together
+effectively to improve instance segmentation, as shown in Table 14
+for more details.
+6 E XPERIMENTS
+6.1 Basic Setups
+Datasets. To thoroughly validate the effectiveness of Lowis3D,
+we conduct experiments on two indoor datasets, i.e.ScanNet [1]
+annotated in 20 classes, S3DIS [23] with 13 classes, for both se-
+mantic and instance segmentation tasks. Additionally, we evaluate
+Lowis3D on an outdoor dataset, i.e.nuScenes [24] consisting of
+16 classes on panoptic segmentation.
+Category Partitions. As there are no standard open-world parti-
+tions available for the ScanNet, S3DIS, and nuScenes datasets, we
+create our own open-world benchmark with multiple base/novel
+partitions. To avoid confusion in the models, we disregard the
+“otherfurniture” class in ScanNet, the “clutter” class in S3DIS and
+the “other flat” class in nuScenes since they lack precise semantic
+meanings and can encompass any semantic classes. Besides, for
+instance segmentation, we exclude two background classes and
+randomly divide the rest 17 classes into 3 base/novel partitions in
+ScanNet: B13/N4, B10/N7 and B8/N9. Here, B13/N4 indicates 13
+base categories and 4 novel categories. For semantic segmentation,
+we add the two background classes to base categories and thus
+obtain B15/N4, B12/N7 and B10/N9 partitions. Regarding the
+S3DIS dataset, we randomly shuffle the remaining 12 classes
+into 2 base/novel splits: B8/N4, B6/N6, for semantic and instance
+segmentation. For nuScenes [24] panoptic segmentation, we split
+the rest 15 categories into B12/N3 and B10/N5 partitions. Specific
+category splits can be found in the Appendix A.
+Metrics. We utilize the widely adopted metrics of mean intersec-
+tion over union (mIoU), mean average precision under 50% IoU
+threshold (mAP 50) as evaluation metrics for semantic segmenta-
+tion and instance segmentation, respectively. Besides, we apply
+panoptic quality (PQ), which can be decomposed to segmentation
+quality (SQ) and recognition quality (RQ) as metrics for panoptic
+segmentation. These evaluation metrics are computed on base and
+novel categories, with the superscripts of BandN(e.g.mIoUB),
+respectively. Furthermore, we use the harmonic metric such as
+harmonic IoU (hIoU) as major indicators for open-world tasks
+following popular zero-shot learning works [41, 11] to consider
+category partition between base and novel classes.
+Network Architectures. We employ the popular and high-
+performance sparse convolutional UNet [2, 31] as 3D encoder F 3D,
+the text encoder of CLIP as F text, fully-connected layers with batch9
+TABLE 4
+Open-world 3D instance segmentation results on ScanNet and S3DIS in terms of hAP 50, mAPB
+50and mAPN
+50.CNprior refers to whether novel
+category names CNare known during training. Best open-world results are highlighted in bold .
+Method CNpriorScanNet S3DIS
+B13/N4 B10/N7 B8/N9 B8/N4 B6/N6
+hAP 50mAPB
+50mAPN
+50hAP 50mAPB
+50mAPN
+50hAP 50mAPB
+50mAPN
+50hAP 50mAPB
+50mAPN
+50hAP 50mAPB
+50mAPN
+50
+OV-SoftGroup [12] × 05.1 57.9 02.6 02.0 50.7 01.0 02.4 59.4 01.2 00.5 58.3 00.3 01.1 41.4 00.5
+PLA [25] × 55.5 58.5 52.9 31.2 54.6 21.9 35.9 63.1 25.1 15.0 59.0 08.6 16.0 46.9 09.8
+Lowis3D × 59.1 58.6 59.6 40.0 55.5 31.2 47.6 63.5 38.1 22.3 58.7 13.8 24.2 51.8 15.8
+Fully-Sup. ✓ 64.5 59.4 70.5 62.5 57.6 62.0 62.0 65.1 62.0 57.6 60.8 54.6 57.4 50.0 67.5
+TABLE 5
+Open-world 3D panoptic segmentation results on nuScenes in terms of panoptic quality (hPQ, PQB, PQN), recognition quality (hRQ, RQB, RQN)
+and segmentation quality (hSQ, SQB, SQN).
+Method CNpriornuScenes
+B12/N3 B10/N5
+hPQ PQBPQNhRQ RQBRQNhSQ SQBSQNhPQ PQBPQNhRQ RQBRQNhSQ SQBSQN
+OV-SoftGroup [12] × 00.1 46.4 00.0 00.2 53.9 00.1 00.0 43.3 00.0 00.0 40.9 00.0 00.0 47.3 00.0 31.6 74.7 20.0
+PLA [25] × 30.8 48.4 22.6 34.9 56.5 25.3 77.3 77.2 77.5 12.3 45.1 07.1 14.7 51.6 08.6 64.8 76.0 56.5
+Lowis3D × 43.4 49.6 38.6 49.4 58.1 42.9 80.1 77.3 83.1 14.7 45.4 08.8 17.1 52.7 10.2 75.3 75.8 74.9
+Fully-Sup. ✓ 54.7 48.0 63.5 61.8 55.9 69.0 84.3 76.5 92.2 52.6 45.0 63.4 60.3 51.8 72.0 81.4 75.3 88.5
+TABLE 6
+Oopen-world 3D semantic segmentation results on ScanNet and S3DIS in terms of hIoU, mIoUBand mIoUN. PLA (w/o Cap.) refers to the model
+trained without using point-language pairs as supervision. Notice that Lowis3D uses the same semantic module as PLA, so their semantic
+performance are identical.
+Method CNpriorScanNet S3DIS
+B15/N4 B12/N7 B10/N9 B8/N4 B6/N6
+hIoU mIoUBmIoUNhIoU mIoUBmIoUNhIoU mIoUBmIoUNhIoU mIoUBmIoUNhIoU mIoUBmIoUN
+OV-SparseConvNet [12] × 00.0 64.4 00.0 00.9 55.7 00.1 01.8 68.4 00.9 00.1 49.0 00.1 00.0 30.1 00.0
+3DTZSL [58] ✓ 10.5 36.7 06.1 03.8 36.6 02.0 07.8 55.5 04.2 08.4 43.1 04.7 03.5 28.2 01.9
+3DGenZ [43] ✓ 20.6 56.0 12.6 19.8 35.5 13.3 12.0 63.6 06.6 08.8 50.3 04.8 09.4 20.3 06.1
+PLA (w/o Cap.) × 39.7 68.3 28.0 24.5 70.0 14.8 25.7 75.6 15.5 13.0 58.0 07.4 12.2 54.5 06.8
+PLA / Lowis3D × 65.3 68.3 62.4 55.3 69.5 45.9 53.1 76.2 40.8 34.6 59.0 24.5 38.5 55.5 29.4
+Fully-Sup. ✓ 73.3 68.4 79.1 70.6 70.0 71.8 69.9 75.8 64.9 67.5 61.4 75.0 65.4 59.9 72.0
+normalization [59] and ReLU [60] as VL adapter F θ, an UNet
+decoder as binary head F b. Additionally, we adopt the state-of-
+the-art instance segmentation network SoftGroup [3] for proposal
+grouping F offand scoring F score. We set voxel size as 0.02 for
+indoor datasets and 0.1 for outdoor datasets.
+Baseline Methods. For instance and panoptic segmentation, we
+employ OV-Softgroup as a baseline. Given that instance-level
+open-world 3D scene understanding is still in its infancy, there
+are currently no other proper methods for direct comparison. For
+semantic segmentation, in addition to the OV-SparseConvNet
+mentioned in Sec.4.1.1, we also re-produce two 3D zero-shot
+learning approach, namely 3DGenZ [43] and 3DTZSL [58] with
+task-tailored modifications. Specifically, for 3DGenZ [43], instead
+of training the model on samples containing only base classes,
+we train it on the entire training dataset, where points belong-
+ing to novel classes are ignored during optimization. We omit
+the calibrated stacking component of 3DGenZ, as it has shown
+only minor performance gains in our implementations. Regarding
+3DTZSL [58], originally designed for object classification, we
+extend it for semantic segmentation by adapting it to learn with
+triplet loss at the point level instead of the sample level. The
+projection net of 3DTZSL is implemented using one or two fully-
+connected layers with the Tanh activation function, as described
+in the original paper. Furthermore, these methods are reproduced
+using the same 3D backbone and CLIP text embeddings to ensurefair comparisons.
+Implementation Details. In the indoor experiments, we train for
+19,216 iterations on ScanNet and 4,080 iterations on S3DIS for the
+semantic segmentation task. For instance segmentation, we train
+for 22,520 iterations on ScanNet and 9,160 iterations on S3DIS.
+The initial learning rate is set to 0.004 with cosine decay for
+the learning rate schedule. For the outdoor panoptic experiments
+on nuScenes, we train for 61,600 iterations. The learning rate
+is initialized as 0.006 with polynomial decay. We employ the
+AdamW [61] optimizer and run all experiments with a batch
+size of 32 on either 8 NVIDIA A100 or NVIDIA V100 GPUs.
+Regarding entity-level captions, we apply a filtering process on
+⟨ˆ pe,te⟩pairs to ensure that the point set ˆ pecontains only a few
+entities and remains small enough. Specifically, we set the minimal
+points γas 100 and control the maximum point ratio δto 0.3. As
+for the caption loss, in the indoor experiments on ScanNet, we
+set the weights α1,α2andα3as 0, 0.05 and 0.05, respectively,
+for the scene-level loss Ls
+cap, view-level loss Lv
+capand entity-level
+lossLe
+cap. For S3DIS, we set the weights α1,α2, and α3as 0,
+0.08, and 0.02 separately. In the outdoor experiments, since each
+outdoor scene contains only 6 images, the scene-level coverage
+may be limited, and acquiring entity-level captions is challenging
+due to the high similarity between images. Thus, we set α1,α2,
+andα3as 0, 0.1, and 0, respectively.10
+6.2 Main Results
+3D Instance Segmentation. Table 4 clearly demonstrates the
+remarkable superiority of our method over the OV-SoftGroup
+baseline. We achieve an improvement of 38.0% ∼54.0% in
+hAP50on ScanNet and 21.8% ∼23.1% on S3DIS, across different
+base/novel partitions. This significant performance boost high-
+lights the effectiveness of our contrastive point-language training
+in enabling the 3D backbone to learn both semantic attributes and
+instance localization information from rich captions. Additionally,
+Compared with PLA, our Lowis3D further achieves an additional
+performance gain of 3.6% ∼11.7% hAP 50across different
+partitions on two datasets. This further confirms the substantial
+enhancement in localization generalization on novel categories
+brought about by our debiased instance localization module. It
+is worth noting that the improvement for the S3DIS dataset is
+smaller compared to ScanNet. This can be attributed to the smaller
+number of training samples in S3DIS (only 271 scenes) and the
+fewer point-caption pairs available due to the limited overlapping
+regions between images and 3D scenes in this dataset.
+3D Panoptic Segmentation. While Lowis3D has demonstrated
+remarkable performance in open-world scene understanding for
+indoor scenes, we also conduct validation experiments on outdoor
+LiDAR-scanned scenes, specifically focusing on the panoptic
+segmentation task. As shown in Table 5, Lowis3D achieves a
+remarkable improvement in hPQ, with a gain of 14.7% ∼43.3%
+over the OV-SoftGroup baseline. Moreover, both hRQ and hSQ
+show notable improvements of 17.1% ∼49.7% and 43.7% ∼
+80.1%, respectively. These results demonstrate the coherent recog-
+nition and localization capabilities of Lowis3D. Besides, Lowis3D
+surpasses PLA by a considerable margin of 2.4% ∼12.6%,
+further validating that the debiased instance localization greatly
+enhances its general objectness comprehending ability in the open
+world. Overall, these findings demonstrate the effectiveness of
+Lowis3D in achieving impressive performance in outdoor panoptic
+segmentation tasks, reinforcing its strengths in open-world scene
+understanding across various scenarios.
+3D Semantic Segmentation. To more straightly show the open-
+world semantic recognition ability of our method, we compare
+Lowis3D with other baselines. The results presented in Table 6
+clearly demonstrate the superiority of our method compared to the
+OV-SparseConvNet [12] baseline, with significant improvements
+around 51.3% ∼65.3% and 34.5% ∼38.5% hIoU across different
+partitions on ScanNet and S3DIS, respectively, showcasing the
+model’s outstanding open-world capability. Our method also out-
+performs prior zero-shot methods 3DGenZ [43] and 3DTZSL [58],
+despite the advantage these methods have of knowing the novel
+category names during training. Our method achieves 35.5% ∼
+54.8% improvements in terms of hIoU among various partitions
+on ScanNet. In particular, PLA / Lowis3D largely surpasses its
+counterpart without language supervision ( i.e.PLA (w/o Cap.)) by
+25.6% ∼30.8% hIoU and 21.6% ∼26.3% hIoU on ScanNet and
+S3DIS, respectively. The consistent performance of our method
+across different base/novel partitions and datasets emphasizes its
+effectiveness and robustness, regardless of the specific configu-
+ration of the data. This makes it a highly adaptable and reliable
+model for a wide range of 3D scene understanding tasks.
+Self-Bootstrap with Novel Category Prior. In addition to our
+main method, we also present a simple variant that leverages novel
+category priors in a self-training fashion, similar to existing zero-shot methods such as 3DGenZ [43] and 3DTZSL [58]. This variant
+allows our model to access novel category names during training
+without any human annotation. As shown in Table 7, Lowis3D (w/
+self-train) obtains 3.1% ∼6.6% gains for instance segmentation
+on ScanNet across various partitions. This demonstrates that our
+model can further self-bootstrap its open-world capability and ex-
+tend its vocabulary size without relying on any manual annotation.
+TABLE 7
+Self-training results of instance segmentation on ScanNet wth novel
+category names as prior in terms of hAP 50/ mAPB
+50/ mAPN
+50.
+MethodCN
+priorhAP 50/ mAPB
+50/ mAPN
+50
+B13/N4 B10/N7 B8/N9
+Lowis3D ×59.1 / 58.6 / 59.6 40.0 / 55.5 / 31.2 47.6 / 63.5 / 38.1
+Lowis3D (w/ self-train) ✓62.2 /58.9 /65.846.6 /56.7 /39.651.6 /64.9 /42.7
+7 A BLATION STUDIES
+In this section, we examine the key components of our open-
+world instance-level scene understanding framework through in-
+depth ablation studies, which covers two major aspects – semantic
+recognition and instance localization. Experiments are conducted
+on ScanNet B13/N4 partition by default ( i.e.B13/N4 for instance
+segmentation and B15/N4 for semantic segmentation). The default
+setting is marked in gray and the best results are highlighted in
+bold.
+Component Analysis. We investigate the effectiveness of our
+proposed modules, i.e.the binary calibration module, three coarse-
+to-fine point-language supervision manners and the debiased in-
+stance localization. As shown in Table 8, the adoption of the
+binary calibration module for semantic calibration demonstrates
+significant improvements over the OV-SparseConvNet baseline,
+achieving a 39.8% increase in hIoU for semantic segmentation.
+Similarly, compared to the OV-SoftGroup baseline, the binary
+calibration module leads to a substantial 15.9% improvement in
+hAP50for instance segmentation. Such substantial performance
+boosts on both base and novel classes validates the effectiveness
+of the binary calibration module in rectifying semantic scores and
+improving the overall segmentation accuracy.
+As for the point-language association manners, they all con-
+siderably improve the results by a significant margin of 14.8% ∼
+23.8% hIoU and 31.8% ∼35.6% hAP 50on semantic and instance
+segmentation, respectively. Among the three association manners,
+entity-level language supervision demonstrates the best perfor-
+mance, highlighting the importance of fine-grained caption-point
+correspondence in constructing effective point-caption pairs. This
+finding suggests that capturing detailed and specific information
+at the object instance level is crucial for improving segmentation
+accuracy. It should be noted that when we combine three types
+of captions with the same loss weight, the model does not always
+yield boosts in all scenarios, potentially attributed to the challenges
+of simultaneously optimizing various caption losses of different
+granularities.
+Regarding debiased instance localization, it greatly lifts the
+instance segmentation results by 3.6% hAP 50and 6.7% APN
+50. It
+demonstrates that it significantly enhances the robustness and gen-
+eralization of proposal grouping, thereby improving the instance
+localization capabilities with respect to novel categories. This
+finding confirms that the objectness bias towards base patterns can11
+be accurately rectified by learning from more unseen and diverse
+samples.
+The combination of the proposed modules ultimately leads to
+an overall better performance in 3D scene understanding tasks,
+including semantic recognition and instance localization.
+TABLE 8
+Component analysis in terms of hIoU / mIoUB/mIoUNand hAP 50/
+mAPB
+50/ mAPN
+50. Binary denotes binary head calibration. Caps, Capv
+and Capedenotes scene-level, view-level and entity-level caption
+supervision, respectively. DIL denotes debiased instance localization.
+ComponentshIoU / mIoUB/mIoUNhAP 50/ mAPB
+50/ mAPN
+50 Binary CapsCapvCapeDIL
+00.0 / 64.4 / 00.0 05.1 / 57.9 / 02.6
+✓ 39.8 / 68.5 / 28.1 21.0 / 59.6 / 12.8
+✓✓ 54.6 / 67.9 / 45.7 52.8 / 57.8 / 36.6
+✓ ✓ 61.3 / 68.5 / 55.5 55.9 / 58.9 / 53.3
+✓ ✓ 63.6 / 67.8 / 60.0 56.6 / 59.0 / 54.4
+✓✓✓ 61.9 / 68.1 / 56.8 54.9 / 59.5 / 51.0
+✓ ✓✓ 65.3 / 68.3 / 62.4 55.5 / 58.5 / 52.9
+✓✓✓✓ 64.6 / 69.0 / 60.8 54.5 / 58.2 / 51.4
+✓✓✓ ✓ 65.3 / 68.3 / 62.4 59.1 / 58.6 / 59.6
+Caption Composition Analysis. We delve into a comprehensive
+exploration of the types of words that predominantly contribute
+to the open-world capability, given that captions can composite
+various elements such as entities ( e.g.sofa), their relationships
+(e.g. spatial relation), and attributes ( e.g. color and texture).
+Table 9 illustrates that when we retain only entity phrases within
+the caption, variant (a) even surpasses the full-caption variant.
+Furthermore, when we only keep the entities in the captions that
+precisely align with category names, we observe a considerable
+over 13% mIoU decline in the resultant variant (b) in terms
+of novel categories. This suggests the importance of a diverse
+vocabulary that expands the semantic scope in maintaining the
+efficacy of captions. Moreover, even though variant (c) integrates
+both accurate base and novel label names within the captions,
+its performance marginally lags behind our foundation-model-
+generated captions. This demonstrates that existing foundation
+models are powerful enough to provide promising supervisions.
+TABLE 9
+Ablation of caption compositions in terms of hIoU / mIoUB/ mIoUN.
+Caption Composition hIoU / mIoUB/ mIoUN
+(a) keep only entities 65.7 /69.0 /62.7
+(b) keep only label names 57.6 / 68.5 / 49.6
+(c) ground-truth label names 64.8 / 68.1 / 61.9
+(d) full caption 65.3 / 68.3 / 62.4
+Text Encoder Selection. Here, we examine different text encoders
+Ftextfor extracting caption and category embeddings. As illustrated
+in Table 10, the text encoder of CLIP [5], pre-trained on vision-
+language tasks, exhibits a performance superior by over 7% in
+mIoUNcompared to BERT [48] and GPT2 [62], both of which
+are exclusively pre-trained on language modality. This evidences
+that a text encoder which is aware of visual elements can provide
+superior semantic embedding for 3D-language tasks. This is po-
+tentially because 3D tasks also utilize information such as texture,
+shape, and RGB values for recognition, similar to image-based
+tasks.
+Foundation Model for Image Captioning. Indeed, the choice of
+the foundation model for image captioning can have a significantTABLE 10
+Ablation of text encoders for extracting text embeddings in terms of
+hIoU / mIoUB/ mIoUN.
+Text Encoder BERT [48] GPT2 [62] CLIP [5]
+hIoU / mIoUB/ mIoUN61.2 / 68.7 / 55.2 61.0 / 69.1 / 54.6 65.3 / 68.3 / 62.4
+impact on open-world performance. In our main experiments, we
+use GPT-ViT2, which is a popular open-source image-captioning
+model available on the HuggingFace platform. Nevertheless, as
+demonstrated in Table 11, the recent cutting-edge foundation
+model OFA [18] consistently outperforms GPT-ViT2 across all
+four partitions. This indicates that the performance of our method
+can be further enhanced when paired with more robust and
+advanced foundation models.
+TABLE 11
+Investigation of VL foundation model for image captioning in terms of
+hIoU / mIoUB/ mIoUN.
+modelhIoU / mIoUB/ mIoUN
+B15/N4 B12/N7 B10/N9
+ViT-GPT2 [17] 65.3 / 68.3 / 62.4 55.3 / 69.5 / 45.9 53.1 / 76.2 / 40.8
+OFA [18] 65.6 /68.3 /63.1 57.5 /69.8 /48.9 56.6 / 75.9 / 45.1
+Combination of Three Caption Supervisions. The combination
+of three types of captions can leads to a 0.6% increase in hIoU
+compared to our default setting, as shown in Table 12. However,
+striking the right balance between these captions demands so-
+phisticated loss trade-off techniques, which may not be generally
+applicable across different datasets and partitions. Thus, we do not
+use the scene-level language supervision in the main experiments
+for the sake of generalization. Future research on effectively
+combining caption supervisions presents an interesting avenue for
+future investigation.
+TABLE 12
+Ablation for caption loss weights in terms of hIoU / mIoUB/ mIoUN.
+α1(scene) α2(view) α3(entity) hIoU / mIoUB/ mIoUN
+0.000 0.050 0.050 65.3 / 68.3 / 62.4
+0.033 0.033 0.033 64.6 / 69.0 / 60.8
+0.010 0.045 0.045 65.9 / 68.2 / 63.8
+Debiased Instance Localization. We assess the effectiveness
+of our debiased instance localization module, which mitigates
+learning bias towards base categories. As highlighted in Table 13,
+the mean absolute error (mAE) on novel classes is significantly
+reduced by approximately 45.0%, while the average recall (AR)
+for proposals improves by 15.4%. The metrics for base classes
+remain unaffected. This verifies that our debiased instance lo-
+calization module significantly enhances the generalizability of
+offset learning and substantially boosts the ability to localize novel
+objects.
+Combination of Region-Level Supervision and Debiased In-
+stance Localization. To analyze the impact of our proposed
+debiased instance localization (DIL), we incorporate it into the
+cutting-edge region-level supervision method RegionPLC [47] and
+examine the resulting performance. As shown in Table 14, the
+combination with DIL brings about a significant gain of 3.4%
+hAP50on ScanNet B10/N7. This confirms the orthogonal rela-12
+wall,floor,showercurtain,toilet,sink,bathtub,…wall,floor,sofa,…wall,floor,couch,…
+sofacouchtablebookshelf
+toiletsinkbathtubshower curtainbathroomwall,floor,bathroom,…wall,floorcabinet,counter,	refrigerator,…wall,floor,kitchen,…
+wall,floor	,monitor,	…wall,floor,blackboard,…
+unannotatedmonitordesk
+unannotatedblackboardwallGround-TruthGround-Truth
+cabinetcounterrefrigeratorkitchenwall,floor,refrigerator,…wall,floor,freezer,…refrigeratorcabinetcounterfreezer
+door(a)Synonymicalnovelcategories(b)Abstractnovelcategories(c)Unannotatednovelcategories
+Fig. 5. Qualitative examples of identifying out-of-vocabulary categories. (a) shows the results of identifying synonymical categories. (b) presents the
+segmentation results on abstract concepts. (c) illustrates the results of segmenting unannotated classes.
+TABLE 13
+Ablation for debiased instance localization on ScanNet B13/N4 in terms
+of proposal hAR / ARB/ ARNand offset hAE / mAEB/ mAEN.
+DIL offset hAE / AEB/ AEN(↓)hAR / ARB/ ARN(↑)
+× 0.50 / 0.39 / 0.69 44.7 / 47.4 / 42.3
+✓ 0.43 /0.38 /0.48 47.9 / 47.1 / 48.8
+tionship between region-level supervision and debiased instance
+localization in enhancing the performance of instance localization.
+While region-level supervision aims to inject semantics at a finer
+granularity into localized 3D regions, thereby fostering a deeper
+understanding of 3D scenes, our debiased instance localization
+rectifies the objectness learning bias, ensuring more robust and
+generalizable proposal grouping.
+TABLE 14
+Analysis of the effectiveness of debiased instance localization (DIL)
+when incorporated to region-level supervision methods in terms of hAP
+/ mAPB/ mAPN.
+MethodScanNet B10/N7
+hAP / mAPB/ mAPN
+RegionPLC [47] 40.7 / 54.7 / 32.3
+RegionPLC + DIL 44.1 / 54.6 / 37.0
+Re-partition Experiments. The robustness of our approach is
+further validated through a random re-sampling of base and novel
+categories multiple times. Specifically, we randomly re-sample the
+base and novel categories three times for the instance segmentation
+task, and we also sample the categories based on their class
+frequency. As shown in Table 15, Lowis3D consistently surpasses
+the OV-SoftGroup baseline across four different splits, achieving a
+substantial improvement of between 12.9% and 55.7% in hAP 50.
+This demonstrates the robustness of our approach when managingdifferent novel classes.
+TABLE 15
+Results of experiments with re-sampled base and novel classes in
+terms of hAP 50/ mAPB
+50/ mAPN
+50.
+SplitshAP 50/ mAPB
+50/ mAPN
+50
+OV-SoftGroup Lowis3D
+random-sample 1 05.1 / 57.9 / 02.6 59.1 /58.6 /59.6
+random-sample 2 24.4 / 53.5 / 15.8 37.3 /52.8 /28.9
+random-sample 3 08.9 / 55.5 / 04.8 41.0 /57.9 /31.8
+frequency-sample 02.6 / 55.8 / 01.4 58.3 /58.1 /58.5
+8 Q UALITATIVE ANALYSIS
+To better showcase the open-world ability of our approach, we
+present a set of qualitative results on open-world instance seg-
+mentation and panoptic segmentation in Fig. 6. In comparison to
+the OV-SoftGroup baseline, which frequently misclassifies unseen
+categories as seen categories, our Lowis3D method successfully
+identifies novel categories with precise semantic masks. This
+validates that our point-language association can inject rich se-
+mantic knowledge into the 3D encoder. Furthermore, the instance
+prediction masks generated by Lowis3D exhibit high accuracy,
+whereas OV-SoftGroup and PLA tend to either overlooks novel
+objects or predicts incomplete object masks. This demonstrates
+that our debiased instance localization greatly enhance robustness
+and generalization in localization novel categories. Further, we
+present compelling qualitative results showcasing the model’s
+capability to recognize synonymical categories, abstract categories
+and even unannotated categories that are unpresent in the dataset
+vocabulary.
+Synonymical Novel Categories. Here, we substitute class names
+with related yet new words during inference. As illustrated in13
+InputOV-SoftGroupLowis3DGround-truthPLA
+SemanticInstanceSemanticInstance
+PanopticPanoptic
+Fig. 6. Qualitative results of open-world instance and panoptic segmentation. Novel categories are colorized while base categories are in gray for
+clear differentiation. Noteworthy comparisons are highlighted within red bounding boxes.
+Fig. 5 (a), our model continues to deliver high-quality segmenta-
+tion masks when we replace “sofa” with “couch” or “refrigerator”
+with “freezer”. This demonstrates the robustness of our model in
+recognizing synonymous concepts.
+Abstract Novel Categories. Beyond object entities, our model
+demonstrates its capability to comprehend more abstract concepts
+such as types of rooms. As shown in Fig. 5 (b), by eliminating
+“shower curtain”, “bathtub”, “sink” and “toilet” from input cat-
+egories and introducing “bathroom”, the generated “bathroom”
+prediction generally corresponds to the actual bathroom region.
+Another example on the right illustrates the model’s understanding
+of ’kitchen’ regions. This suggests that our model is proficient in
+recognizing such out-of-vocabulary abstract concepts, extending
+beyond concrete semantic instances.
+Unannotated Novel Categories. Given that current 3D datasets
+do not annotate all classes due to prohibitive annotation costs,
+our model shows the potential to identity those unannotated
+classes with high-quality predictions, hence promoting open-worldapplications. As illustrated in Fig. 5 (c), the model successfully
+recognize “monitor” and “blackboard” with precise masks that are
+not involved in the dataset annotations.
+9 L IMITATION AND OPENPROBLEMS
+While our Lowis3D framework effectively addresses open-world
+scene understanding by incorporating abundant semantic concepts
+and rectifying instance localization bias, it still faces limitations in
+certain areas. We highlight two main challenges here:
+A key challenge is related to the performance discrepancy
+between S3DIS and ScanNet in open-world tasks. S3DIS demon-
+strates slightly lower performance attributed to its limited sample
+size and diversity, coupled with fewer available point-language
+associations. We believe that pre-training on a large dataset with
+rich semantic information and subsequently fine-tuning on the
+smaller-scale dataset or exploring dataset ensemble could be a
+promising alternative. This approach is left for future study and
+exploration.14
+Additionally, the calibration problem arises as the model tends
+to generate over-confident semantic predictions for base cate-
+gories. Although we develop a binary head to calibrate semantic
+scores, it may face challenges in rectifying predictions for out-of-
+domain transfer tasks. Since the binary head is trained on dataset-
+specific base/novel partitions, its generalizability to other datasets
+with data distribution shifts is limited. This motivates us to explore
+and design more transferable score calibration modules in future
+research.
+10 C ONCLUSION
+We propose Lowis3D, a comprehensive and efficient framework
+for addressing open-world instance-level 3D scene understanding.
+Our approach involves utilizing images as a bridge to establish hi-
+erarchical point-caption pairs, harnessing the power of 2D visual-
+language (VL) foundation models and the geometry relationships
+between 3D scenes and 2D images. Contrastive learning is em-
+ployed to enhance the alignment of features in these associated
+pairs, thereby infusing the 3D network with a wealth of semantic
+concepts. Furthermore, we propose debiased instance localization
+to mitigate object grouping bias toward base patterns, resulting
+in improved generalizability in objectness learning. Extensive
+experiments demonstrate the effectiveness of our approach on
+open-world instance-level scene understanding task.

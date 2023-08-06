@@ -1,0 +1,474 @@
+Zero-Shot Dense Video Captioning by
+Jointly Optimizing Text and Moment
+Yongrae Jo
+KAIST AI
+yongrae@kaist.ac.krSeongyun Lee
+Korea University
+sy-lee@korea.ac.kr
+Aiden SJ Lee
+Twelve Labs
+aiden@twelvelabs.ioHyunji Lee
+KAIST AI
+alee6868@kaist.ac.krHanseok Oh
+KAIST AI
+hanseok@kaist.ac.kr
+Minjoon Seo
+KAIST AI
+minjoon@kaist.ac.kr
+Abstract
+Dense video captioning, a task of localizing meaningful moments and generating
+relevant captions for videos, often requires a large, expensive corpus of annotated
+video segments paired with text. In an effort to minimize the annotation cost, we
+propose ZeroTA, a novel method for dense video captioning in a zero-shot manner .
+Our method does not require any videos or annotations for training; instead, it
+localizes and describes events within each input video at test time by optimizing
+solely on the input. This is accomplished by introducing a soft moment mask that
+represents a temporal segment in the video and jointly optimizing it with the prefix
+parameters of a language model. This joint optimization aligns a frozen language
+generation model (i.e., GPT-2) with a frozen vision-language contrastive model
+(i.e., CLIP) by maximizing the matching score between the generated text and
+a moment within the video. We also introduce a pairwise temporal IoU loss to
+let a set of soft moment masks capture multiple distinct events within the video.
+Our method effectively discovers diverse significant events within the video, with
+the resulting captions appropriately describing these events. The empirical results
+demonstrate that ZeroTA surpasses zero-shot baselines and even outperforms
+the state-of-the-art few-shot method on the widely-used benchmark ActivityNet
+Captions. Moreover, our method shows greater robustness compared to supervised
+methods when evaluated in out-of-domain scenarios. This research provides insight
+into the potential of aligning widely-used models, such as language generation
+models and vision-language models, to unlock a new capability—understanding
+temporal aspects of videos.
+1 Introduction
+Dense video captioning is a task that temporally localizes multiple meaningful events (or moments)
+within a video and provides captions for each event [ 17,43]. As wild videos are often untrimmed
+and contain multiple events within a single video, this task is particularly useful in real-world
+scenarios. Dense video captioning requires a deep understanding and accurate representation of
+temporal information present in the video. As a result, it typically requires a substantial collection of
+Preprint. Under review.arXiv:2307.02682v1  [cs.CV]  5 Jul 2023# Trainable Text generation 
+Lyssion — CLIP | 
+i 
+bacon 
+i ~~ Frozen 
+salt LE — 
+| | 
+GPT-2 
+A 
+{ ) f \ 
+| fl (®® ©) | [ Videoshowing | [ Add oil and | 
+Soft prompt Video emb Hard prompt Generated tokens 
+\L 4 J Moment localization 
+Soft moment masks 
+my Figure 1: Architecture of ZeroTA and training connections. ZeroTA consists of two modules: text
+generation and moment localization. Text generation is conditioned on the concatenation of a soft
+prompt, projected video embedding, and hard prompt. Among these, the soft prompt and the video
+embedding projection layer ( W) are trainable. Temporal localization is accomplished by soft moment
+masks parameterized with trainable center ( ck) and width ( wk) parameters. There are three losses in
+our model: vision loss ( Lvision ), language loss ( Llanguage ), and pairwise temporal IoU loss ( LptIoU ).
+Lvision measures a matching score between the current generated token and the visual information
+using CLIP. Llanguage is computed between token probability distributions produced with (blue box
+input) and without (red box input) the trainable prefix. The LptIoU measures how much overlapped
+the moments are and make them apart from each other. All trainable parameters are optimized only
+on a single input video at test time.
+annotations for temporal segments within videos, each paired with corresponding captions, which is
+often prohibitively costly.
+For this reason, performing dense video captioning without access to language captions or annotated
+temporal segments is especially valuable, but the literature lacks previous work on a zero-shot setup.
+In this paper, we propose ZeroTA (Zero-shot Temporal Aligner), which tackles the problem of
+zero-shot dense video captioning by jointly optimizing text generation and moment localization for a
+single video at test time in an end-to-end manner. This joint optimization ensures that the generated
+text aligns with the discovered temporal moment and, simultaneously, that the discovered temporal
+moment accurately corresponds to the generated text.
+Our model comprises two modules: the text generation module and the moment localization module
+(Figure 1). The design of the text generation module is inspired by [ 36,35], where they address image
+and video captioning tasks without training data. Likewise, we leverage a frozen language generation
+model (i.e., GPT-2 [ 30]) and a frozen vision-language model (i.e., CLIP [ 31]), and align GPT2
+with CLIP using a small number of learnable prefix parameters as in prefix-tuning [ 19]. Although
+CLIP is pretrained on image-text pairs with contrastive learning and GPT-2 is pretrained on text-only
+data without video knowledge, ZeroTA can effectively localize and generate captions for different
+moments in a video. This work hints at how we can align models such as a language generation
+model and a vision-language contrastive model, to build a compositional model that is capable of
+temporal understanding.
+For the design of the moment localization module, we propose one new masking mechanism and
+one new loss term: soft moment masking and pairwise temporal IoU loss. The soft moment masking
+ensures the text generation focuses solely on the corresponding video moment by introducing a
+differentiable temporal mask onto video frames. Pairwise temporal Intersection over Union (IoU)
+loss ensures that our approach generates multiple captions from distinct time segments within a video,
+thus enhancing the richness of the dense captions. This loss is calculated on a group of moments that
+are jointly optimized for a given video.
+We validate the effectiveness of our approach in accurately identifying and describing significant
+moments in a given video. Our zero-shot method surpasses various zero-shot baselines and outper-
+2forms the state-of-the-art few-shot method pretrained on a billion-scale video-text data [ 46] on the
+widely-used ActivityNet Captions benchmark. Furthermore, we demonstrate the robustness of our
+method in out-of-domain scenarios when compared to supervised models. When assessed on a dataset
+distinct from the one used for model training, supervised models struggle to adapt to the new dataset.
+Conversely, our zero-shot approach exhibits better resilience in this situation. The out-of-domain
+setup is especially valuable when seeking to make use of real-world videos, which are characterized
+by distinctly different domains.
+To summarize, we provide the following key contributions:
+•We propose ZeroTA (Zero-shot Temporal Aligner), a pioneering zero-shot dense video
+captioning method by aligning pretrained models to unlock a new capability of temporal
+understanding.
+•We propose soft moment masking for end-to-end optimization of temporal localization and
+pairwise temporal IoU loss for the diversity of localized moments.
+•Our method surpasses various zero-shot baselines and even outperforms the state-of-the-art
+few-shot method on the ActivityNet Captions benchmark. Also, our method is more robust
+in out-of-domain scenarios than supervised models.
+2 Related Work
+Dense video captioning Dense video captioning (also called dense event captioning [ 17]) extends
+the task of video captioning [ 11,20,28,39,44] by incorporating fine-grained temporal localization
+and generate multiple captions per video. Due to the complexity of the task, most existing methods
+[17,13,14,41–43,6,50,52] require a strong supervision with a large amount of video-text-timestamp
+data.
+To mitigate annotation costs, existing attempts [ 7,5,32] have focused on addressing dense video
+captioning tasks with lower levels of supervision. Specifically, Duan et al. [7]introduced a weakly
+supervised methodology for dense video captioning, utilizing video data paired with captions without
+time intervals annotation during the training process. However, these approaches still rely on video
+paired with text corpus and make a somewhat unrealistic assumption of a one-to-one correspondence
+between video segments and their respective captions. In contrast, we present a zero-supervision
+paradigm that eliminates the need for a video or text corpus for training.
+Yang et al. [46] recently introduced a few-shot dense video captioning setup, which involves first
+pretraining a model on narrative videos and then fine-tuning it with a small portion of the downstream
+training data. Our approach extends this few-shot setting further by introducing zero-shot dense video
+captioning. Also, our method does not need pretraining on video data.
+Vision-language alignment Our approach is related to the models that bridge between visual and
+textual modalities. CLIP [ 31] is one such model that has gained noteworthy recognition. Recent
+works [ 24,21,37,8,1] show that pretrained image and text models can be tuned together to be
+applied to various vision-language tasks.
+In particular, Merullo et al. [24] showed visual representations from frozen vision models can be
+projected onto frozen language models with a single linear layer. Similarly, Liu et al. [21] connected
+image features into the word embedding space using a trainable projection matrix. Our method
+follows a similar approach and incorporates projected visual embeddings as a prefix into a frozen
+language model.
+Tewel et al. [36,35]combine a visual-semantic model with a language model, leveraging knowledge
+from both models to generate descriptive text given an image or a video, respectively. Inspired by
+these works, we take a step further to apply this approach to solve zero-shot dense video captioning
+tasks for the first time. Notably, The task of dense video captioning requires a temporal understanding
+of a video, which an image-text visual-semantic model has never been trained on.
+Moment localization Moment localization is the task of identifying specific moments from a video
+that are relevant to a given natural language query [ 4,10,22,48,49,26,34,33]. Since obtaining
+annotations for moment localization can be costly, several studies have explored ways to lessen the
+3need for supervision. As part of these efforts, the weakly supervised setup for moment localization
+has been proposed [ 12,25,23,45,47]. Although these methods reduce the costs related to temporal
+annotations, the remaining cost associated with the creation of natural language queries continues to
+be significant.
+A few works explored zero-shot setup for moment localization [ 27,40,15,16,29]. Nam et al. [27]
+extract nouns and verbs from moment proposals by object detection and simple language modeling,
+then use them as pseudo-queries to train a moment localization model. While this method produces
+simplified sentences resembling dense video captions during the procedure, the constructed queries
+are mere lists of nouns and verbs that lack natural language properties. As such, they are not designed
+to address the dense video captioning task. Similarly, Kim et al. [16] takes a simpler approach to
+zero-shot moment localization by utilizing CLIP, but it does not generate discrete captions in natural
+language.
+3 Method
+Dense video captioning aims to describe with natural language events within a given untrimmed
+video, while also temporally localizing them with start and end time stamps (Figure 2). Formally,
+the task of dense video captioning can be described as follows: Given a video VofLframes, the
+objective is to determine a function F:V→ {(sk, mk)}N
+k=1where skrepresents the caption, mk
+denotes the corresponding moment, and Nis the number of moments. Each caption skis a sequence
+of tokens, and each moment mkis a consecutive subset of video frames. A moment signifies a
+meaningful temporal segment of the video. In this work, we treat Nas a hyperparameter that is
+predetermined before the input is given.
+In zero-shot dense video captioning, the model does not have access to language captions or annotated
+time stamps for training. Therefore, the challenges are two-fold. First, the model needs to accurately
+identify significant moments within a long video without annotated captions. Second, it must generate
+natural language captions for each of these identified moments, without annotated moments.
+To tackle these two challenges at the same time, we design a training-free method, ZeroTA (Zero-shot
+Temporal Aligner). As in Figure 1, ZeroTA is composed of two modules. The first is the text
+generation module (left of Figure 1) that utilizes a frozen language model, which is conditioned on a
+learnable prefix context. The prefix context and vision loss ( Lvision) are designed to produce text that
+aligns with the visual content corresponding to a specific moment, as detailed in Section 3.1. The
+second module, referred to as the moment localization module (right part of Figure 1), is responsible
+for learning the parameters that specify a moment in a video while ensuring the diversity of moments,
+as presented in Section 3.2. Finally, we combine the losses for both modules and optimize the model
+in an end-to-end manner, as described in Section 3.3.
+3.1 Text generation
+The text generation module uses a pretrained language model (i.e., GPT-2) to infer the next word
+from a prefix context. The language model parameters are fixed, and only the prefix context
+parameters (Section 3.1.1) are optimized during the test time to align the generated text to the
+corresponding moment. The optimization takes place during auto-regression and is iterated for each
+generation step.
+Taking inspiration from using a vision-language alignment model and a language model for image and
+video captioning [ 36,35], we adopt two losses during the optimization process for the text generation
+module. The first loss, the vision loss (Section 3.1.2), aims to enhance the similarity between the
+generated text and the corresponding moment. The second loss, the language loss (Section 3.1.3),
+focuses on preserving the naturalness of the generated text.
+3.1.1 Prefix context
+The prefix context has three parts: soft prompt, projected video embedding, and hard prompt. These
+three parts are concatenated and used by the language model as a prefix for language generation.
+The first part of the prefix context is the tunable soft prompt. Similar to the prefix-tuning [ 19],
+the transformer blocks within the length of the soft prompt have their key and value embeddings
+4Input Frames 
+: A man is standing 
+, behind a bar with He fills a glass with ice before He then layers the drink, ready for serving. oT several bottles of pouring liquor in. 
+drinks. 
+A bartender in bar LAE) i Ours fe ellis drinks in front of his Bartender is using alcohol to mix drinks Bartender is serving drinks 
+bar 
+Input Frames 
+A couple wearing The stamped paper is made into a The couple returns 
+GT Santa hats are A person cuts a potato to make a star stamp. gift wrap, and a basket of gifts are and speaks to the 
+shown assembled. camera. 
+A couple is wearing A man is making a The couple is 
+Ours Santa hat and speaking Someone makes a stamp. rls fo his ht making a V sign 
+to the camera. with their hands 
+. Input Frames : 
+Someone is pouring A man is sitting on the mowing lis foo gfe am iar 6 The men start fighting for : 
+, GT fuel in a mowing cart and driving in a green grassy the la ower in the vard the cart and the three are | 
+; cart. field and pass by neighboors. yare. riding it. 
+A person is fueling the Lawnmower being driven by an unknown They are pranking around Mio a : sitting on the Ours machine. person with their lawnmower. : lawnmower : 
+. Input Frames 
+: A man is taking the shoe lace out of a He wipes the shoe SERIES ADEE He sprays the shoe with : , GT on the bottom of : , shoe. off with a blue rag. something from a can. : ; the shoe. : 
+; Ours A lots [si ep AE by Sie A man is cleaning the shoe A man is taping shoes. ELSI Sey BED losin , repairman. sprayed on shoes :Figure 2: Example of dense video captioning predictions of ZeroTA on ActivityNet Captions
+validation set, compared with ground-truth.
+learned during the optimization process. The frozen language model then attends to this soft prompt,
+providing guidance during the generation process.
+The second part of the prefix context is the projected video embedding. To obtain these embeddings,
+we first extract the image features from video frames using a pretrained image encoder (CLIP image
+encoder), aggregate the features with a soft moment mask (Section 3.2), and then apply a simple
+trainable projection layer ( W) to the aggregated video feature embedding. The trainable projection
+layer is a single linear layer used to project video feature embedding to language model token
+embedding space [ 24]. By the projection, the dimensionality of video feature embedding matches
+that of the language model token embedding.
+The third part of the prefix context is the hard prompt. These are prefix tokens such as ’Video
+showing,’ ’Video of,’ etc. We randomly sample a hard prompt from a list of prefix tokens. The list of
+the prefix tokens we used in experiments is in the Appendix Section A.1.
+3.1.2 Vision loss
+To steer the language model toward a specific visual direction at each generation step, we incorporate
+vision loss. This loss is obtained through a vision-language alignment model (CLIP). CLIP scores the
+5relevance between the generated tokens up to the current step and a video moment, which we call the
+alignment score (Eq. 1). For i-th candidate token ti
+k,lat generation step lof caption sk, we form the
+associated candidate sentence si
+k,lby concatenating the candidate token with previously generated
+tokens si
+k,l={tk,1, . . . , t k,l−1, ti
+k,l}and calculate alignment score for each candidate sentence1.
+The alignment score ( ai
+k,l) of the i-th candidate token at generation step lof caption skis computed
+as
+ai
+k,l∝exp(cos( EText(si
+k,l),EImage(mk))/τ) (1)
+where cosdenotes the cosine similarity, and ETextandEImage represent the textual and image encoder
+of the vision-language alignment model (CLIP). This measures the similarity between the textual
+embedding of candidate sentence si
+k,land the image embedding of the moment mk.τ > 0is a
+temperature hyperparameter.
+The vision loss is defined as the average cross-entropy loss ( CE) between the alignment score
+distribution ( ak,l) and the probability distribution of the candidate tokens ( qk,l) obtained by the
+language model:
+Lvision=1
+NX
+kCE(ak,l, qk,l)
+This loss stimulates token generation towards higher text-visual matching scores between the gener-
+ated text and visual information from the moment.
+3.1.3 Language loss
+In order to preserve the natural language quality of the generated text while aligning it with the
+visual content, we employ a regularization term, which we call language loss. This loss quantifies
+the average cross-entropy ( CE) between the probability distribution of words from the language
+model with the prefix context ( qk,l) and without the prefix context ( q′
+k,l). By minimizing this loss,
+we ensure that the probability distribution of words with the prefix context closely matches that of
+the original language model without the prefix context. This regularization step helps maintain the
+overall language model coherence while incorporating visual alignment [36, 35].
+Llanguage =1
+NX
+kCE(qk,l, q′
+k,l)
+3.2 Moment localization
+Similar to how the text generation module aligns generated text with a video moment, the moment
+localization module is responsible for aligning the video moment with the generated text. Previous
+works performed the selection of temporal moments through a separate module, relying solely on
+visual feature similarity [ 27,16]. However, such an approach is sub-optimal as the moments are
+selected without considering the corresponding captions. To remedy this, we introduce soft moment
+masking (Section 3.2.1).
+Dense video captioning requires identifying multiple temporal moments from a given video. To
+accomplish this, instead of generating a single moment-text pair, we optimize a group of moments
+simultaneously. In order to enhance the diversity among temporal moments and ensure that each
+moment captures distinct meaningful segments of a video, we introduce the pairwise temporal IoU
+loss (Section 3.2.2).
+1For efficiency, we compute the scores only for the top 512 candidate tokens.
+6Soft moment mask 
+0 02 04 06 08 0 
+Relative frame position (})Figure 3: Visualization of the soft moment mask under varying sharpness hyperparameters ( γ), while
+keeping the center and width fixed. The relative frame position ( pj) denotes the normalized position
+of a frame within the video length, with 0 indicating the video’s start and 1 indicating its end. As the
+sharpness increases, the contrast between the mask ratio inside and outside the moment also increases.
+We gradually increase the sharpness through optimization iterations.
+3.2.1 Soft moment masking
+A soft moment mask specifies a moment mkwith two parameters: center ckand width wk. These
+two parameters are randomly initialized and tuned during end-to-end optimization. To construct a
+soft mask that spans the length of the video using the two parameters, we employ the following steps:
+1.Apply the sigmoid function to ckandwkto convert it to normalized values 0≤˜ck≤1and
+0≤˜wk≤1that indicate their relative positions to the length of the video; 0 represents the
+start of the video, and 1 represents the end of the video.
+2.Letpj∈ {p1, . . . , p L}denote the normalized frame position value between 0 and 1,
+representing the relative position of a frame to the length of the video.
+3. Calculate the L1 distance between each frame position pjand˜ck.
+4.Subtract an offset of half the normalized width ( ˜w/2) from the distance, multiply it by the
+sharpness hyperparameter γ, and then apply the sigmoid function on it.
+We can summarize the above procedure with the following formula. The value of jth position in the
+mask for the moment m, mask j, is
+mask j=sigmoid (γ∗(|pj−˜ck| −˜wk/2))where ˜ck=sigmoid (ck)and˜wk=sigmoid (wk)
+The resulting values become close to 1 when the frame is near the center of the moment, approximately
+0.5 when it is at the start or end of the moment, and towards 0 as the frame is further away from the
+moment. The sharpness hyperparameter promotes a sharp contrast between the values inside and
+outside the moment. The value of the sharpness can be progressively increased with each iteration,
+enhancing the contrast over the course of the optimization (Figure 3).
+Since the soft moment mask is differentiable, it can be optimized in an end-to-end manner alongside
+the text generation module. By introducing merely two parameters per moment, the optimization
+process of the temporal moment mask is both highly stable and efficient. Moreover, our parameteriza-
+tion of a moment using center and width parameters provides straightforward interpretability and
+applicability.
+3.2.2 Pairwise temporal IoU loss
+To discover multiple temporal segments at the same time we optimize a group of moments for a video
+simultaneously, each with separate soft moment masking and prefix context. To encourage the model
+to capture different moments of distinct regions, we introduce pairwise temporal IoU loss between
+different moments. Pairwise temporal IoU loss between Nmoments is calculated by the following
+equation:
+7LptIoU=1 N
+2N−1X
+k=1NX
+l=k+1IoU(mk, ml)
+In this expression, N
+2
+represents the total number of possible pairwise combinations between N
+moments. IoU(mk, ml)calculates the temporal Intersection over Union between the two moments
+mkandml.
+3.3 Joint optimization
+The total loss of our method is the weighted sum of vision loss, language loss, and pairwise temporal
+IoU loss. The model is optimized in an end-to-end manner.
+Ltotal=λ1·Lvision+λ2·Llanguage +λ3·LptIoU
+λ1,λ2, and λ3are hyperparameters that represent the weights assigned to each loss term.
+4 Experiments
+This section demonstrates the effectiveness of our proposed ZeroTA model by comparing it to
+baselines and the state of the art. We begin by providing an overview of our experimental setup in
+Section 4.1. We then present quantitative analysis in Section 4.2. Note that we add qualitative results
+in the Appendix Section B.
+4.1 Experimental setup
+4.1.1 Datasets
+For zero-shot dense video captioning, we use two datasets for evaluation: ActivityNet Captions [ 17]
+and YouCook2 [ 51]. Adhering to a zero-shot setup, we refrained from using any caption or temporal
+annotations in training data.
+ActivityNet Captions includes 20K untrimmed videos showcasing various human activities. Each
+video in this dataset lasts around 120 seconds on average and is annotated with an average of 3.7
+temporally-localized captions.
+YouCook2 comprises 2K untrimmed cooking procedure videos, with an average duration of 320
+seconds per video. Each video in the dataset is annotated with an average of 7.7 temporally-localized
+sentences.
+4.1.2 Implementation Details
+We uniformly sample one frame per second from a given video. The visual feature extraction and
+text-image similarity calculation are done using the pre-trained CLIP ViT-L/14. We use the pretrained
+GPT-2 medium for the language model.
+In the case of ActivityNet Captions, the number of moments kfor a video is set to 4. For the
+YouCook2 dataset, the number of moments kfor a video is set to 8. The initialization of the center
+and width parameters is based on the respective dataset distributions.
+We set the vision loss weight to λ1= 1, the language loss weight to λ2= 0.8, and the pairwise
+temporal IoU loss weight to λ3= 10 . The sharpness hyperparameter γis linearly increased starting
+from 10 and incremented by 1 after each generation iteration. The temperature hyperparameter
+τis set to 1.0. Throughout the experiments, we employ 12 generation iterations. For the further
+implementation details, refer to A.1
+4.1.3 Evaluation metrics
+For dense video captioning, we adopt three widely used metrics: CIDEr [ 38] (C), METEOR [ 2] (M),
+and SODA_c [ 9] (S). Both CIDEr and METEOR initially determine the matched pairs between the
+8predicted moments and the ground truth annotations across IoU (Intersection over Union) thresholds
+of 0.3, 0.5, 0.7, and 0.9. The captioning metrics are then calculated based on these matched pairs.
+SODA_c, on the other hand, addresses the limitations of traditional captioning metrics in the context
+of dense video captioning and considers the overarching narrative of the video.
+4.1.4 Baselines
+Since this work is the first attempt at zero-shot dense video captioning, there is no prior work
+directly addressing this task. Therefore, we evaluate our method by comparing it against several
+straightforward baseline approaches: 1) Scene detection using PySceneDetect2followed by image
+captioning with BLIP [ 18] (PySceneDetect+BLIP ). PySceneDetect is a widely used scene detector
+for splitting a video into separate clips. We extract the center frame from each detected clip and
+use BLIP to generate corresponding captions. 2) Scene detection using PySceneDetect followed
+by a video captioner ( PySceneDetect+TimeSformer+GPT-2 ). This is the same as the one with
+BLIP but uses an open-source pretrained video captioning model based on TimeSformer [ 3] and
+GPT23. 3) Video captioning with TimeSformer+GPT2 model followed by frame matching with CLIP
+(TimeSformer+GPT-2+CLIP ). This baseline first generates multiple captions using beam search
+with a video captioner and matches the most similar frame with each caption using CLIP. Then, the
+frame that best matches each caption is regarded as the center of the moment, with a fixed width
+applied across all moments. We add more implementation details of the baselines in the Appendix
+Section A.2.
+4.2 Results
+In this section, we evaluate and analyze the performance of our model in comparison to baselines
+and the current state-of-the-art models. Table 1 presents a performance comparison between our
+model, zero-shot baselines and methods that have stronger supervision. Table 2 shows a performance
+comparison in out-of-domain settings. We add more detailed ablation studies in the Appendix Section
+C.
+ModelsTrainable
+ParametersPretrainingActivityNet Captions YouCook2
+S C M S C M
+Full-training
+UEDVC [50] 25M ✗ 5.5 - - - - -
+PDVC [43] 22M ✗ 6.0 29.3 7.6 4.9 28.9 5.7
+Vid2Seq (-) 313M ✗ 5.4 18.8 7.1 4.0 18.0 4.6
+Vid2Seq 313M ✓ 5.8 30.1 8.5 7.9 47.1 9.3
+Few-Shot (1%)
+Vid2Seq (-) 313M ✗ 0.0 0.0 0.1 0.0 0.0 0.0
+Vid2Seq 313M ✓ 2.2 6.2 3.2 2.4 10.1 3.3
+Zero-Shot
+PySceneDetect+BLIP - ✗ 1.1 2.7 1.0 0.5 1.6 0.6
+PySceneDetect+TimeSformer+GPT-2 - ✗ 1.3 2.5 1.7 0.2 1.3 0.7
+TimeSformer+GPT-2+CLIP - ✗ 1.6 3.1 2.1 0.7 1.9 0.8
+ZeroTA (ours) 20M ✗ 2.6 7.5 2.7 1.6 4.9 2.1
+Table 1: Performance comparison with other methods on the ActivityNet Captions and YouCook2
+dataset across various models and supervision levels. Pretraining column denotes whether the model
+is pretrained with video-text data. Vid2Seq (-) refers to the Vid2Seq model without pertaining. All
+results except for the zero-shot results are from corresponding papers. Best over zero-shot in bold.
+2https://scenedetect.com
+3https://huggingface.co/Neleac/timesformer-gpt2-video-captioning
+9ModelsANet Captions →YouCook2 YouCook2 →ANet Captions
+S C M S C M
+Full-training
+Vid2Seq 0.02 0.1 0.03 0.2 0.5 0.2
+Zero-Shot
+ZeroTA (ours) 2.6 7.5 2.7 1.6 4.9 2.1
+Table 2: Comparison between our method and state-of-the-art fully-supervised method in out-of-
+domain settings. The results of Vid2Seq are from the official codebase and checkpoints. Best in bold.
+Joint optimization is more effective than two-stage methods In dense video captioning, our
+model outperforms various zero-shot baselines on both ActivityNet Captions and YouCook2 datasets.
+These baselines utilize two-stage approaches with a segmenting component and captioning component
+to tackle dense caption generation. Despite the fact that the image captioning and the video captioning
+components of these baselines are trained directly using additional captioning data and captioning
+loss, there remains a noticeable gap in performance when compared to our approach. This observation
+highlights the critical role of joint training in text generation and moment localization, enabling
+effective dense caption generation even in the absence of data.
+ZeroTA outperforms a state-of-the-art few-shot model Compared to models that have stronger
+supervision than ours, we observe that ZeroTA surpasses the performance of few-shot Vid2Seq, a
+model with pretraining. It is worth noting that Vid2Seq is pretrained on the YT-Temporal-1B dataset,
+which consists of 18 million narrated videos spanning 1 billion frames paired with transcribed speech
+sentences. Remarkably, despite our model never having access to video data or temporal annotations,
+we achieved better performance than Vid2Seq fine-tuned with 1% of the training data.
+Text space of the target task and that of CLIP need to match YouCook2 shows a different
+trend compared to ActivityNet Captions. Here, our method underperforms the few-shot Vid2Seq.
+This divergence can be attributed to the distinct style of language annotation inherent to the dataset.
+ActivityNet Captions typically contain conventional captions briefly describing the visual content,
+such as "Cheerleaders are standing on the side of the road.". In contrast, YouCook2 is characterized
+by task-oriented, instructional textual annotations like "place a slice of cheese on the bread." Since
+our model relies on CLIP, which is pretrained with conventional image captions, the generated text
+resembles these captions. This style of resulting captions conflicts with YouCook2’s ground truth
+captions, thus degrading performance in metrics. See Section 5 for more discussion.
+ZeroTA is robust in out-of-domain setups Our method demonstrates greater robustness in out-
+of-domain setup, surpassing fully-trained state-of-the-art models. Unlike fine-tuned models, which
+are optimized for a target domain and thus struggle to adapt to new ones, our zero-shot approach
+maintains the performance across different domains. Its inherent domain-agnostic nature allows for
+flexibility, avoiding the overfitting pitfalls of specialized models.
+5 Limitation and Discussion
+Our zero-shot method, by design, doesn’t encounter any text or temporal annotation associated with
+the dataset. Consequently, it doesn’t have the opportunity to learn the particular style of the output
+text and moments of the dataset. While this limitation could potentially be addressed by extending
+the method in various ways, including few-shot learning, we reserve this for future work.
+6 Conclusion
+In this work, we present a novel zero-shot method for dense video captioning, ZeroTA, which utilizes
+soft moment masking and pairwise temporal IoU loss for end-to-end temporal localization. Our
+10method, despite not requiring any video or annotations for training, not only surpasses various
+zero-shot baselines but also outperforms the state-of-the-art few-shot method on the widely-used
+benchmark, ActivityNet Captions. Moreover, it demonstrates superior robustness in out-of-domain
+scenarios compared to fully-supervised models, thereby showcasing its adaptability to diverse and
+previously unseen video data. This research not only presents a pioneering approach to zero-shot
+dense video captioning but also sheds light on the potential of aligning language and vision models.
+By combining the power of pretrained models of different modality, we can unlock new capabilities
+such as understanding temporal aspects in videos. These contributions advance the field of dense
+video captioning and offer valuable insights for future research in zero-shot alignment of language
+and vision models.

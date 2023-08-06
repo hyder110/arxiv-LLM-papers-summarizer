@@ -1,0 +1,14 @@
+Summary:
+
+- Calibrating deep neural models is crucial for building reliable, robust AI systems in safety-critical applications.
+- Modern deep learning models, despite their high predictive capability, are often poorly calibrated and produce unreliable predictions.
+- Model calibration aims to match predicted probabilities with true correctness likelihood.
+- There are different categories of calibration methods, including post-hoc calibration, regularization methods, uncertainty estimation, and composition methods.
+- Post-hoc calibration methods, such as temperature scaling, can be used to calibrate models after training.
+- Regularization methods, such as explicit regularization and implicit regularization, can improve model calibration by adding penalty terms or modifying loss functions.
+- Data augmentation techniques, like label smoothing and mixup training, can also improve model calibration.
+- Uncertainty estimation methods, such as Bayesian neural networks, ensembles, and MC dropout, can help capture and measure model uncertainty.
+- Compositional calibration methods involve combining different calibration techniques to improve calibration performance.
+- Calibrating large pre-trained models, particularly large language models, is an important area of research.
+
+Keywords: calibration, deep learning, neural networks, model calibration, post-hoc calibration, regularization methods, uncertainty estimation, composition calibration, large pre-trained models.

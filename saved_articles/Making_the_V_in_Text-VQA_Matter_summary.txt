@@ -1,0 +1,27 @@
+Summary:
+
+In this paper, the authors address the problem of text-based Visual Question Answering (VQA) models relying too heavily on textual information and not enough on visual features. They propose a method to learn visual features along with OCR (Optical Character Recognition) features and question features using a combination of the TextVQA and VQA datasets. The authors demonstrate that their method improves the understanding and correlation between image features and text, resulting in better performance on Text-based VQA tasks. 
+
+Bullet Points:
+1. Text-based VQA models often rely too heavily on text and not enough on visual features.
+2. The proposed method combines the TextVQA and VQA datasets to learn visual features along with OCR and question features.
+3. The goal is to increase the understanding and correlation between image features and text in order to improve performance on Text-based VQA tasks.
+4. The authors evaluate their method on different datasets and compare the results.
+5. Experimental results show that the proposed method improves the performance of Text-based VQA models.
+6. Attention maps are used to visualize the model's understanding and reasoning process.
+7. The proposed method generalizes well to new datasets and performs better than existing models in certain scenarios.
+8. Ablation studies are conducted to analyze the performance of the proposed method on different tasks and datasets.
+9. The authors highlight the importance of having unbiased datasets for better model comprehension and reasoning.
+10. Further research could explore self-supervised training on captioning datasets to improve the understanding of images in Text-based VQA tasks.
+
+Keywords:
+- Text-based VQA
+- Visual features
+- OCR
+- Question features
+- TextVQA dataset
+- VQA dataset
+- Performance improvement
+- Attention maps
+- Generalization
+- Unbiased datasets

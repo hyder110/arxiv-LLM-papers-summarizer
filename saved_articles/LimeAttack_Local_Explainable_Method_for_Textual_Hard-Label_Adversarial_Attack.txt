@@ -1,0 +1,94 @@
+LimeAttack: Local Explainable Method for Textual
+Hard-Label Adversarial Attack
+Hai Zhu∗
+University of Science and Technology of China
+Hefei, China
+SA21218029@mail.ustc.edu.cnQingyang Zhao
+Xidian University
+Xi’an, China
+21151213588@stu.xidian.edu.cn
+Weiwei Shang
+University of Science and Technology of China
+Hefei, China
+wwshang@ustc.edu.cnYuren Wu
+Ping An Technology (Shenzhen) Co., Ltd.
+Shenzhen, China
+wuyuren134@pingan.com.cn
+Abstract
+Natural language processing models are vulnerable to adversarial examples. Pre-
+vious textual adversarial attacks adopt gradients or confidence scores to calculate
+word importance ranking and generate adversarial examples. However, this infor-
+mation is unavailable in the real world. Therefore, we focus on a more realistic
+and challenging setting, named hard-label attack, in which the attacker can only
+query the model and obtain a discrete prediction label. Existing hard-label attack
+algorithms tend to initialize adversarial examples by random substitution and then
+utilize complex heuristic algorithms to optimize the adversarial perturbation. These
+methods require a lot of model queries and the attack success rate is restricted
+by adversary initialization. In this paper, we propose a novel hard-label attack
+algorithm named LimeAttack, which leverages a local explainable method to ap-
+proximate word importance ranking, and then adopts beam search to find the
+optimal solution. Extensive experiments show that LimeAttack achieves the better
+attacking performance compared with existing hard-label attack under the same
+query budget. In addition, we evaluate the effectiveness of LimeAttack on large
+language models, and results indicate that adversarial examples remain a significant
+threat to large language models. The adversarial examples crafted by LimeAttack
+are highly transferable and effectively improve model robustness in adversarial
+training.
+1 Introduction
+Deep Neural Networks (DNNs) are widely applied in the natural language processing field and have
+achieved great success [ 1–4]. However, DNNs are vulnerable to adversarial examples, which are
+correctly classified samples altered by some slight perturbations [ 5–7]. These adversarial perturbations
+are imperceptible to humans but can mislead the model. Adversarial examples seriously threaten the
+robustness and reliability of DNNs, especially in some security-critical applications ( e.g., autonomous
+driving, toxic text detection and voice recognition [ 8,9]). Therefore, adversarial examples have
+attracted enormous attention on adversarial attacks and defenses in computer vision, natural language
+processing and speech [ 10–12]. It is more challenging to craft textual adversarial examples due to the
+discrete nature of language along with the presence of lexical, semantic, and fluency constraints.
+∗This work was done when the author was at Ping An Technology (Shenzhen) Co., Ltd.
+Preprint. Under review.arXiv:2308.00319v1  [cs.CL]  1 Aug 2023Textual adversarial attacks can be briefly divided into white-box attacks, score-based attacks and
+hard-label attacks. In a white-box setting, the attacker utilizes the model’s parameters and gradients
+to generate adversarial examples [ 13,14]. Score-based attacks only adopt class probabilities or
+confidence scores to craft adversarial examples [ 5,15–17]. However, these attack methods perform
+poorly in reality due to DNNs being deployed through application programming interfaces (APIs),
+and the attacker having no access to the model’s parameters, gradients or probability distributions
+of all labels [ 18]. In contrast, under a hard-label scenario, the model’s internal structures, gradients,
+training data and even confidence scores are unavailable. The attacker can only query the black-box
+victim model and get a discrete prediction label, which is more challenging and realistic. Additionally,
+most realistic models ( e.g., Huggingface API, OpenAI API) usually have a limit on the number of
+calls. In reality, the adversarial examples attack setting is hard-label with tiny model queries.
+Some hard-label attack algorithms have been proposed [ 12,18–20]. They follow two-stages strategies:
+i) generate low-quality adversarial examples by randomly replacing several original words with
+synonyms, and then ii) adopt complex heuristic algorithms ( e.g., genetic algorithm) to optimize the
+adversary perturbation. Therefore, these attack methods usually require a lot of queries and the
+attack success rate and quality of adversarial examples are limited by adversary initialization. On
+the contrary, score-based attacks calculate the word importance based on the change in confidence
+scores after deleting one word. Word importance ranking improves attack efficiency by preferring
+to attack words that have a significant impact on the model’s predictions [ 5]. However, score-based
+attacks cannot calculate the word importance in a hard-label setting because deleting one token hardly
+changes the discrete prediction label. Therefore, we want to investigate such a problem: how to
+calculate word importance ranking in a hard-label setting to improve attack efficiency?
+Actually, word importance ranking can reveal the decision boundary to determine the better attack
+path, but existing hard-label algorithms ignore this useful information because it is hard to obtain.
+Inspired by local explainable methods [ 21–23] for DNNs, which are often used to explain the outputs
+of black-box models, aim to estimate the token sensitivity on the benign sample. Previous study [ 24]
+has tried to simply replace deletion-based method with local explainable method to calculate word
+importance in score-based attack. However, in Appendix B, we have verified through experiments that
+local explainable method does not have a significant advantage over deletion-based method in a score-
+based scenario. Because the probability distribution of the model’s output is available, the influence
+of each word on the output can be well reflected by deletion-based method. Therefore, compared with
+score-based attacks, we think local explainable method can play a greater advantage in hard-label
+attacks where deletion-based method is useless. In fact, local explainable methods are model-agnostic
+and suitable for conducting word importance estimation for hard-label attacks. In particular, we adopt
+the most fundamental and straightforward local explainable method, namely LIME. The intuition of
+LIME is to generate some neighborhood samples around the decision boundary by randomly deleting
+several words from benign sample, and then training a linear model to fit the decision boundary near
+the benign sample, and the parameters of this linear model approximate word importance. Such
+learned word importance could, in turn, guide us to craft high-quality adversarial examples.
+In this work, we propose a novel hard-label attack algorithm named LimeAttack . The intuition of
+LimeAttack is to use word importance and beam search to help find a better attack path. LimeAttack
+contains two-stage strategies that are completely different from previous hard-label methods, i.e.,
+word importance ranking and perturbation execution. Firstly, we use LIME to calculate the word
+importance ranking. Then, LimeAttack substitutes origin word with its synonyms in the descending
+order of word importance ranking and adopts beam search to search the better adversarial example.
+To evaluate the attack performance and efficiency, we compare LimeAttack with other hard-label
+attacks and take several score-based attacks as 

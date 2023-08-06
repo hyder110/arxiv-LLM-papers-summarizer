@@ -1,0 +1,395 @@
+Building Cooperative Embodied Agents Modularly
+with Large Language Models
+Hongxin Zhang1∗, Weihua Du2∗, Jiaming Shan3, Qinhong Zhou1
+Yilun Du4, Joshua B. Tenenbaum4, Tianmin Shu4, Chuang Gan1,5
+1University of Massachusetts Amherst,2Tsinghua University,
+3Shanghai Jiao Tong University,4MIT,5MIT-IBM Watson AI Lab
+Abstract
+Large Language Models (LLMs) have demonstrated impressive planning abilities
+in single-agent embodied tasks across various domains. However, their capacity
+for planning and communication in multi-agent cooperation remains unclear, even
+though these are crucial skills for intelligent embodied agents. In this paper, we
+present a novel framework that utilizes LLMs for multi-agent cooperation and
+tests it in various embodied environments. Our framework enables embodied
+agents to plan, communicate, and cooperate with other embodied agents or humans
+to accomplish long-horizon tasks efficiently. We demonstrate that recent LLMs,
+such as GPT-4, can surpass strong planning-based methods and exhibit emergent
+effective communication using our framework without requiring fine-tuning or
+few-shot prompting. We also discover that LLM-based agents that communicate in
+natural language can earn more trust and cooperate more effectively with humans.
+Our research underscores the potential of LLMs for embodied AI and lays the
+foundation for future research in multi-agent cooperation. Videos can be found on
+the project website https://vis-www.cs.umass.edu/Co-LLM-Agents/ .
+1 Introduction
+Large Language Models (LLMs) have exhibited remarkable capabilities across various domains,
+implying their mastery of natural language understanding, rich world knowledge, and complex
+reasoning capability[ 6]. Recent research has also demonstrated that LLMs can function as planners
+in single-agent embodied tasks through zero-shot prompting for instruction following tasks [ 15] or
+few-shot prompting for more complex long-horizon tasks [ 44]. However, for embodied agents to
+work with other agents or with humans, they also need to have strong abilities for cooperation and
+communication. To date, it still remains unclear whether LLMs have such abilities necessary for
+embodied multi-agent cooperation.
+Therefore, this paper aims to investigate whether LLMs can help build cooperative embodied agents
+that can collaborate with other agents and humans to accomplish complex tasks through collaborative
+planning and communication. To this end, we focus on an embodied multi-agent setting as shown
+in Figure 1, where two embodied agents have to cooperate to finish a task as soon as possible. To
+succeed in this setting, agents must i) extract useful information from observations, ii) revise their
+beliefs about the world and other agents, iii) decide what and when to communicate, and iv) plan
+collaboratively to reach the common goal.
+To achieve these goals, we introduce a novel framework that utilizes LLMs to plan and communicate
+with other agents to cooperatively solve complex embodied tasks without any fine-tuning or few-shot
+* denotes equal contribution.
+Preprint. Under review.arXiv:2307.02485v1  [cs.AI]  5 Jul 2023“Hi, Bob. Ifound 3 target objects in the kitchen, I rememberyou were holding an empty container, can you come here to pick them up while I go to explore other rooms?”“OK, thanks for your information, I'll go to transport them.”Bob(Human/AI) 
+Alice(LLM) 
+OrangeAppleAppleTea trayFigure 1: We aim to utilize Large Language Models to build cooperative embodied agents.
+prompting. Our framework consists of five modules, each to address a critical aspect of successful
+multi-agent cooperation, including a belief module to monitor the agent’s understanding of both the
+physical environment and other agents, a communication module to decide what to communicate
+utilizing the strong free-form dialogue generation and understanding capability of LLMs, and a
+reasoning module to synthesize all the information provided by other modules to decide high-level
+plans including when to communicate.
+We evaluate our framework on two extended embodied multi-agent cooperation challenges: Com-
+municative Watch-And-Help (C-WAH) and ThreeDWorld Multi-Agent Transport (TDW-MAT). Our
+experimental results indicate that cooperative embodied agents built with Large Language Models
+can plan, communicate, and cooperate with other embodied agents and humans to accomplish long-
+horizon tasks efficiently. For example, as illustrated in Figure 1, the LLM-based agent can reason
+about the current state and the other agent’s state and divides the labor with its partner through com-
+munication effectively. In particular, by harnessing the rich world knowledge and strong reasoning
+capability of recent Large Language Models, such as GPT-4, our method can outperform strong
+planning-based baselines and exhibit emergent efficient communication. In a user study, we also
+discover that LLM-based agents that communicate with humans in natural language can earn more
+trust from humans. In sum, our contribution includes:
+•We conducted the first systematic study on LLMs’ capacity for planning and communication in
+embodied multi-agent cooperation.
+•We introduced a novel framework that utilizes LLMs to build cooperative embodied agents, surpass-
+ing strong planning-based methods.
+•We conducted a user study to evaluate the possibility of achieving effective and trustworthy human-
+AI cooperation using LLMs.
+2 Related Work
+Multi-Agent Cooperation and Communication Plenty works have explored various aspects of
+multi-agent cooperation and communication. Some works provide various platforms for multi-agent
+tasks [ 27,38,43,17,39,45,2,3]. Other works focused on methods that improves communication
+efficiency [ 21,8,46], cooperation in visually rich domains [ 18], or grounding communications in
+environments [ 33]. For embodied intelligence, [ 35] and [ 36] explored the social perception of the
+agents during their cooperation. These works usually disable communication [ 17,39,7,35,36],
+use continuous vectors [ 21,8] for communication, or use discrete symbols [ 27,20,18,33,38]
+for communication. In contrast, our work stands apart by employing large language models for
+communication, introducing a novel perspective that utilizes natural language to enhance multi-agent
+cooperation and communication.
+Planning with Large Language Models Recently, a branch of work has explored the planning
+capabilities of large language models. Although LLMs still face challenges when solving complex
+reasoning problems [ 6], a substantial body of work demonstrates their capacity to assist agents in
+planning [ 41,37,31,13,52,53], especially in embodied environments[ 23,4,30,24,42,29,54,5,
+50,40,51,18,19]. For example, [ 16] used LLMs to build an inner monologue with environment
+feedback. [ 47] achieves better error correction during long-haul planning with LLMs. [ 1] focused
+on providing contextual grounding using pretrained behaviors to guide the generation of feasible
+2and contextually appropriate natural language actions. LLMs are also capable of initializing policy
+networks for agents[ 25], directly producing plans [ 44,10], or generating policy code [ 26]. More
+recently, [ 32] used extended LLMs to simulate human behavior on generative agents. In contrast
+to most of these works, our method addresses the multi-agent cooperation scenario, which is more
+complex than planning for a single agent.
+3 Building Cooperative Embodied Agents with Large Language Models
+Reasoning Module
+Instruction Head
+Goal Description State Description
+Action History Dialogue History
+Answer ExtractionAction ListCommunication Module
+Action History
+Dialogue HistoryInstruction Head
+Goal Description
+State DescriptionEnvironment Our Agent
+Other Agent/HumanAct.State Description
+Observation
+Module
+Communication
+ModuleBelief
+Module
+Reasoning
+ModulePlanning
+ModuleHigh -level
+PlanMessageState Description
+Obs.
+Obs. Act.
+Figure 2: An overview of our framework, consisting of five modules: observation, belief, commu-
+nication, reasoning, and planning, where the Communication Module and the Reasoning Module
+leverage Large Language Models to generate messages and decide on high-level plans. Here we also
+show the overall prompt design for leveraging LLMs to serve as these two modules. More design
+details can be found in Appendix A.
+3.1 Problem Setup
+Our problem can be defined as a decentralized partially observable Markov decision process (Dec-
+POMDP) augmented with communication, which can be formalized by (S, G,{Ai},{Oi}), where
+nembodied intelligent agents take actions ai∈Aito navigate, interact, and communicate in a
+partially-observable environment given the current step’s observation oi∈Oiincluding the messages
+received for each agent ito cooperate to solve a long-horizon task with a goal g∈G, normally
+consisting of several sub-goals g1, g2,···, gm. Real-life household activities are representatives of
+this kind of task, that require intelligent embodied agents to cooperate with other agents and humans
+through long-horizon planning and effective communication.
+3.2 Our Proposed Framework
+The overall modular framework is shown in Figure 2, which consists of five modules: observation,
+belief, communication, reasoning, and planning. At each step, we first process the raw observation
+received with an Observation Module (3.2.1), then update the agent’s inner belief of the scene and
+the other agents through a Belief Module (3.2.2), this belief is then used with the previous actions and
+dialogues to construct the prompt for the Communication Module (3.2.3) and the Reasoning Module
+(3.2.4) which utilizes Large Language Models to generate messages and decide on high-level plans.
+Finally, a Planning Module (3.2.5) gives the primitive action to take in this step according to the
+high-level plan.
+3.2.1 Observation Module
+To enable embodied cooperation, it is important to perceive raw observations from the environment
+and extract information for downstream higher-order reasoning.
+3To achieve this we incorporate an Observation Module as the first module to deal with the observation
+received from the environment and extract useful high-level information such as visual scene graphs,
+objects, relationships between objects, maps of the environment, and other agents’ locations. Our
+observation module can deal with both symbolic observations and egocentric visual observations.
+3.2.2 Belief Module
+Since LLMs have no intrinsic memory of the previous observations or interactions, it’s crucial to
+find a way to effectively store and update the belief of the physical scenes and the states of the other
+agents. Here we propose a Belief Module to keep track of the four following information.
+Task Progress PTWe keep track of the task progress in the belief module as Task Progress PTand
+update it whenever possible using processed observation information.
+Ego-State PEKnowing own state is also of vital importance for embodied agents, so we gather all
+the information about the agent’s own states from the processed observation and stored it in the belief
+module as Ego-State PE.
+Others-State POKeeping track of the other agents’ states is important for cooperating with other
+agents, so we maintain Others-State POin the belief module and update it whenever a new observation
+of the others is possible.
+Scene Memory PSThe memory of what objects has been seen and where they were is vital for an
+embodied agent exploring a vast space. Without this, it would be impossible for the agents to make
+long-horizon plans and share them with each other. We keep a record of seen objects and their states
+as Scene Memory PS. To be noticed, this memory of scenes may not be accurate since other agents
+may interact with the objects and change their states without my awareness. Dealing with conflicts
+between my memory of the scene and the description of the scene from others is needed.
+3.2.3 Communication Module
+It’s important for cooperative embodied agents to be able to communicate effectively with others.
+Effective communication needs to solve two problems: what to send and when to send.
+We deal with the what to send problem in this module by directly using the LLMs as a Message
+Generator with designed prompts shown in Figure 2, constructed from the components of Instruction
+Head, Goal Description, State Description, Action History, and Dialogue History. To better constrain
+LLMs’ generated messages, we also add a note at the end of the prompt and append two seed messages
+at the beginning of the Dialogue History to elicit deserved effective communication behavior. The
+detailed prompt design is shown in Appendix A.
+3.2.4 Reasoning Module
+With all the information gathered and provided by previous modules, cooperative embodied agents
+need to synthesize and reason over the current state, the belief of the others and the scene, the goals,
+the actions I’ve taken, and messages I’ve received to come up with a plan of what to do next. A strong
+reasoning module is required to leverage all the information effectively.
+While designing such a module from scratch is nearly infeasible, we utilize powerful LLMs directly
+as the Reasoning Module with designed prompts similar to the Communication Module to reason over
+all the information and generate a high-level plan. Specifically, we modify the Instruction Head and
+compile an Action List of all available actions for the LLMs to make the choice, which formalization
+makes it easier for the LLMs to make an executable plan without any few-shot demonstrations.
+We also use the zero-shot chain-of-thought prompting technique introduced by [ 22] to encourage the
+LLM to carry out more reasoning before giving the final answer.
+3.2.5 Planning Module
+As shown in [ 9], solving challenging embodied tasks requires modular methods to tackle the complex-
+ity of tasks. As also discussed in [ 49], we found that while Large Language Models were effective
+at making high-level plans, they were poor at making low-level controls. Thus, to enable effective
+embodied communication, we designed a Planning Module that can generate robust low-level controls
+4according to a given high-level plan, allowing the reasoning module to focus more on solving the
+overall task with LLMs’ rich world knowledge and strong reasoning ability. Practically, this way can
+also reduce the needed number of API requests and is time-saving and economical.
+We implement the Planning Module with a heuristic-designed low-level planner to robustly carry out
+primitive actions according to the high-level plan generated from the Reasoning Module.
+4 Experiments
+We first introduce the two embodied environments we evaluate our framework on in section 4.1, then
+discuss the performance of our designed framework when cooperating with AI agents in section 4.2.1,
+showing they are better cooperators, and they can earn more trust and cooperate better with Humans
+in section 4.2.2. In section 4.3, we analyze the effectiveness of our different modules.
+4.1 Experimental Setup
+4.1.1 Communicative Watch-And-Help
+Communicative Watch-And-Help (C-WAH) is an embodied multi-agent cooperation benchmark,
+extended from the existing Watch-And-Help Challenge [ 35], where we focus more on cooperation
+ability. To achieve this, we support communication between agents and remove the Watch stage
+so both agents have common goals. The challenge is built on a realistic multi-agent simulation
+platform, VirtualHome-Social[ 34,35]. We conduct experiments under both symbolic observations
+and ego-centric visual observations. The task is defined as five types of common household activities:
+Prepare afternoon tea, Wash dishes, Prepare a meal, Put groceries , and Set up a dinner table , and
+represented as various predicates with counts to be satisfied. The number of total goal objects is
+within 3 to 5.
+Setup We sampled 2 tasks from each of the five types of activities to construct a test set of 10 episodes.
+An episode is terminated if all the predicates in the goal are satisfied or the maximum number of
+steps (250) is reached.
+Metrics We evaluate the performance by two metrics: Average Steps Ltaken to finish the task and
+Efficiency Improvement (EI) calculating the efficiency improvements of cooperating with other agents
+asPN
+i=1(Lsingle,i −Lmulti,i )/Lsingle,i , where Lsingle,i denotes the average steps for a single agent
+to finish episode i, andLmulti,i denotes the average steps for multi-agents to finish episode i.
+MCTS-based Hierarchical Planner We adopt the strongest baseline from the original Watch-And-
+Help Challenge, which is a Hierarchical Planner with a high-level planner based on MCTS and a
+low-level planner based on regression planning (RP).
+4.1.2 ThreeDWorld Multi-Agent Transport
+We extend the ThreeDWorld Transport Challenge [ 12] into a multi-agent setting with more types
+of objects and containers, more realistic objects placements, and support communication between
+agents, named ThreeDWorld Multi-Agent Transport (TDW-MAT), built on top of the TDW platform
+[11], which is a general-purpose virtual world simulation platform. The agents are tasked to transport
+as many target objects as possible to the goal position with the help of containers as tools, without
+which the agent can transport only two objects at a time. The agents have the same ego-centric visual
+observation and action space as before with a new communication action added.
+Setup We selected 6 scenes from the TDW-House dataset and sampled 2 types of tasks in each of the
+scenes, making a test set of 12 episodes. Every scene has 6 to 8 rooms, 10 objects, and 4 containers.
+An episode is terminated if all the target objects have been transported to the goal position or the
+maximum number of frames (3000) is reached.
+Metrics We use the Transport Rate (TR) as the evaluation metric, which is calculated as the fraction
+of the target objects successfully transported to the goal position, and calculate the Efficiency
+Improvements (EI) similar to the previous asPN
+i=1(TRmulti,i −TRsingle,i )/TRmulti,i , where the
+TRsingle,i denotes the single agent’s transport rate for episode i, and TRmulti,i denotes the multiple
+agent’s transport rate for episode i.
+5Rule-based Hierarchical Planner We adopt the strong performing baseline from the original
+challenge, which is a Rule-based Hierarchical Planner with Frontier Exploration strategy, consisting
+of a rule-based high-level planner which selects one of the high-level plans from Exploration, Pick
+up an object, Pick up a container, and Place according to some human-defined rules and an A-star
+based planner to navigate with occupancy map and semantic map obtain and updated from the visual
+observation. The Frontier exploration strategy randomly samples a way-point from an unexplored
+area as a sub-goal for exploration.
+Implementation Details. We instantiate our framework with the recent LLM GPT-4. We access
+GPT-4 from the OpenAI API1and use the parameter of temperature 0.7, top-p 1, and max tokens 256.
+We show an example prompt for the Reasoning Module for both environments in Appendix C.
+4.2 Results
+C-WAH TDW-MAT
+Symbolic Obs Visual Obs
+Average Steps EI Average Steps EI Transport Rate EI
+HP 111 / 141 / 0.53 /
+HP + HP 75 33% 103 26% 0.79 34%
+HP + LLM 59 45% 94 34% 0.86 38%
+LLM + LLM 57 49% 92 34% 0.86 39%
+Table 1: Main results . We report the mean results here over 5 runs except for LLM, which takes
+only one run due to cost constraints. The best results are in bold . The best performance is achieved
+when cooperating with LLM agents.
+4.2.1 Collaborating with AI Agents
+Quantitative results As shown in Table 1, on C-WAH, compared with the MCTS-based HP agent
+doing the task alone, cooperating with another MCTS-based HP agent provides an efficiency im-
+provement of 33% and 26% under symbolic and visual observation, while cooperating with the LLM
+agent boosts the speed-up to 45% and 34% respectively, even without any knowledge of the inner
+working mechanism of the others, which shows LLMs can reason about the other agent’s state well
+without hand-designed heuristics. What’s more, when two LLM agents cooperate together, they can
+achieve even better performance. From TDW-MAT, we can observe the same performance boost of
+cooperating with the LLM agent of 38% compared to 34% of cooperating with the rule-based HP
+agent. These results show our embodied agents built with LLMs are better cooperators .
+Qualitative results To better understand the essential factors for effective cooperation, we conduct
+a qualitative analysis of the agents’ behaviors exhibited in our experiments and identified several
+cooperative behaviors.
+LLM Agents share progress and information with others. As shown in Figure 3abde, LLM agents
+communicate with each other to share progress and intents, demonstrating the Communication
+Module can handle the challenge of what to send , harnessing the free dialogue generation ability
+from the LLMs.
+LLM Agents know when to request help and can respond to others’ requests. In Figure 3d, Bob
+finds a target object in the living room but his container is already full, so he shares this information
+and requests Alice to come here to help. Alice responds by going there and grabbing the objects.
+Similarly in Figure 3b, Alice responds to Bob’s requests and questions. These examples show LLMs
+know when to request help and can understand others’ requests and responses.
+LLM Agents can adapt plans considering others. In Figure 3a, Bob suggests a labor division of
+himself going to the kitchen while Alice checks the other rooms, but Alice suggests a better plan
+given her circumstances that she’s already in the kitchen which Bob is not aware of before, and finally,
+Bob adapts his plan to cooperate with her.
+LLM Agents know when not to communicate. In Figure 3c, though Bob receives Alice’s suggestion
+of sharing any progress and has just found a plate, it’s more efficient for him to grab the objects by
+himself and get the job done since this is the last goal object. He successfully reasons about this
+1Our main experiments are done between 2023.5.1 and 2023.5.16
+6and chooses not to communicate to achieve higher efficiency. We also observed this behavior from
+humans when conducting the same task.
+Figure 3: Example cooperative behaviors demonstrating our agents built with LLMs can communi-
+cate effectively and are good cooperators.
+4.2.2 Collaborating with Humans
+Humans are the most common if not the most important embodied agents for embodied agents to
+cooperate with. Therefore it’s important to study if our proposed LLM agents can cooperate with
+humans well. We conducted human experiments on the Communicative Watch-And-Help where the
+agent Alice is controlled by real humans.
+We recruited 8 human subjects to perform the experiments under four scenarios: cooperating with the
+HP Agent2, LLM Agent, LLM Agent w/o communication , and doing the task alone. Subjects have
+access to the same observation and action space as the agents, they can click on visible objects and
+select actions to interact with them, including navigation to each room and communication through a
+chat box (except for the w/o communication scenario). We gave each subject a tutorial and they have
+the chance to get familiar with the interface in a few pilot trials. We evaluate the same 10 tasks as in
+previous experiments and each task was performed by at least 2 subjects, making 80 trials in total.
+We made sure each subject do 10 trials with at least two trials under each scenario. After each trial
+including a baseline to cooperate with, we asked subjects to rate the agent they just cooperated with
+on a 7-point Likert Scale based on three criteria adapted from [ 35]: (i) How effective do you think of
+your communication with the other agent Bob? Did it understand your message and/or share useful
+information with you? (ii)How helpful do you find the other agent Bob? Did it help you achieve the
+goal faster? (iii)How much do you trust the other agent Bob? Would you feel safe doing the task
+with it, or you rather do the task alone?
+We report the average steps they took as the performance in Figure 5a. As we can see when cooperating
+with humans, the LLM agent still performs better than the HP agent, and when communication is
+unable, LLM w/o communication encounters a performance drop. As reported in Figure 5b, we also
+observe that humans would trust the agents more if they can communicate with humans (trust score of
+6.3 v.s. 4.7 for LLM v.s LLM w/o communication, p=0.0003 over the t-test), and therefore achieves
+better cooperation. Compared with the HP agent using template language to communicate, humans
+prefer to collaborate with the LLM agent who communicates in natural language and can understand
+and respond to Human dialogues. We show an effective communication example in Figure 4, where
+the human first shares his progress with the LLM Agent and suggests a labor division, the LLM Agent
+understands and responds with its future plan as well, resulting in a perfect division of the exploration
+2Here we implement a template language communication for the HP agent to study humans’ preference on
+communication, the details can be found in Appendix D
+7Figure 4: A qualitative example in Human + LLM experiments, showcasing LLM agents can
+communicate with Humans well and end up with a perfect division of the exploration trajectory.
+Figure 5: Human experiments results (a) The Average number of steps when collaborating with
+Humans and AI. (b) Subjective Rating Humans give when cooperating with different agents. Humans
+trust LLM agents who can communicate in natural language more and cooperate more efficiently
+with them. Ablation results (c) The Belief Module and a strong LLM for the Reasoning Module are
+important, while Communication Module matters more when cooperating with humans.
+trajectory. These results imply promising futures for leveraging LLMs to build cooperative embodied
+agents that can successfully work with humans.
+4.3 Analysis
+Do we need a strong LLM for the Reasoning Module and Communication Module? As shown in
+Figure5c, when we replace GPT-4 with ChatGPT to serve as the backbone of the Reasoning Module
+and Communication Module, the agents would need more steps to finish the task, rising to 80 average
+steps from 57 average steps with symbolic observation on C-WAH. ChatGPT makes more reasoning
+errors about the state of the environments and the others and therefore generates more implausible
+plans, which leads the model to spend more time finishing the task. ChatGPT also tends to generate
+messages more often than GPT-4, most of which are of no use. The performance gap can be attributed
+to more advanced reasoning and Theory of Mind abilities of GPT-4, which is also observed in [6].
+Is the communication effective? Though communication still fails in some cases, as shown
+in Figure 3, our agent exhibits effective communication behaviors, such as sharing information,
+requesting help, responding to requests, and knowing when not to communicate. More importantly,
+natural language communication provides us with a lens to understand the planning making of
+embodied AI agents and could lead to better cooperation between humans and AI (as shown in
+section 4.2.2). We did not observe significant improvement when enabling communication among AI
+agents (as shown in Figure 5c), due to carrying out efficient communication in our setting is extremely
+challenging as communication steps come with a cost, requiring agents to model others accurately
+and understand the ambiguity of the natural language itself, which current Large Language Models
+still can not master robustly.
+Is the Belief Module and Planning Module effective? As shown in Figure 5c, the steps needed to
+finish the task for the agent with no Belief Module nearly double, showing the importance of our
+Belief Module to store and update the belief of the scene and the other agents.
+8We also tried to remove the Planning Module and let the LLMs make low-level control directly at
+every step. However, this would require 20 times more API requests. Restricted by the higher cost,
+we could only implement this with the cheaper LLM, ChatGPT, instead. The resulting agent performs
+poorly and struggles to finish any task.
+Figure 6: Failure cases on TDW-MAT . (a) The Agent fails to reason the other one is already putting
+the burger into the container. (b) The LLM counts the number of the remaining target objects wrong
+as shown in its reasoning path.
+4.4 Failure Cases and Limitations of LLM
+Though utilizing the state-of-the-art LLMs to build cooperative embodied agents is effective and has
+achieved impressive results, we find that the LLM still falls short in several essential capabilities
+needed. We provide some in-depth analysis of its limitation and also share some insights on designing
+better cooperative embodied agents for future work.
+Limited usage of 3D spatial information. Our framework did not incorporate the spatial information
+of objects and rooms into consideration due to the challenge of effectively introducing the spatial
+information to pure text language models. This may cause the agents to come up with a semantic
+sound exploration plan which is actually time-consuming. Work on multi-modal large models capable
+of both processing visual modalities effectively and generating natural language fluently[ 14,10,28]
+would help overcome this limitation and build better grounded embodied agents.
+Lack of effective reasoning on low-level actions. To help LLMs better focus on solving the overall
+task, we abstract high-level plans for LLMs to directly reason on, reducing the potential decision
+space significantly, but also making it unaware of the execution of low-level actions, and impossible to
+reason over the low-level actions, which may lead to plausible but ineffective decisions. For example
+in Figure 6a, Alice saw Bob holding a container and a target object in both hands and figured he may
+not know how to utilize the containers, so send a message to instruct him to put the object into the
+container, though Bob was actually putting in the objects at the same time, which is impossible for
+Alice to reason over now. Developing agents that can directly make low-level controls is essential for
+building better cooperative agents.
+Unstable performance on complex reasoning. Although LLMs make correct reasoning most of
+the time, they still occasionally make mistakes, including misunderstanding the environment rules
+specified in the prompt, and incorrect reasoning over the number of unsatisfied goals (Figure 6b).
+These mistakes can cause failures in planning. This calls for developing LLMs with stronger
+instruction following and reasoning capability.
+5 Conclusion
+In this work, we propose a novel framework to leverage Large Language Models to build cooperative
+embodied agents that can plan, communicate and collaborate with other agents and humans to
+accomplish long-horizon tasks efficiently. Our experiments on two extended embodied multi-agent
+cooperation environments show the effectiveness of our proposed framework and exhibit several
+cooperative behaviors. We also discover that LLMs-based agents who communicate in natural
+language can cooperate better with humans and earn more trust from them. We believe that our work
+9indicates promising future avenues to design even stronger embodied agents with Large Language
+Models for multi-agent cooperation. We further perform an in-depth analysis of the limitation of the
+current LLMs and highlight several potential solutions for building Embodied LLMs for the future.

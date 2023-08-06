@@ -1,0 +1,26 @@
+Summary:
+This paper introduces GIRL (Generative job Recommendation based on Large language models), a new approach to job recommendations using Large Language Models (LLMs). The goal is to provide explainable guidance to job seekers and go beyond traditional matching-based methods. The approach involves supervised fine-tuning and reinforcement learning to generate suitable job descriptions based on the job seeker's CV.
+
+Bullet Points:
+1. The paper introduces GIRL, a new approach to job recommendations using Large Language Models (LLMs).
+2. Current job recommendation systems lack explainability and comprehensive career guidance.
+3. GIRL uses a supervised fine-tuning strategy to generate job descriptions based on the job seeker's CV.
+4. A model is trained to evaluate the matching degree between CVs and job descriptions.
+5. Proximal Policy Optimization (PPO)-based Reinforcement Learning (RL) is used to further fine-tine the generator.
+6. GIRL aligns the generator with recruiter feedback to tailor the output for better employer satisfaction.
+7. The approach goes beyond traditional matching-based methods in job recommendations.
+8. The goal is to streamline the job seeking process and provide more comprehensive career AI advice.
+9. The paper addresses the limitations of existing job recommendation models.
+10. The proposed approach shows potential for improving job recommendations by utilizing Large Language Models.
+
+Keywords:
+1. Generative job recommendations
+2. Large Language Models (LLMs)
+3. Job seeking process
+4. Explainable guidance
+5. Supervised fine-tuning
+6. Reinforcement Learning (RL)
+7. Proximal Policy Optimization (PPO)
+8. Matching degree
+9. Comprehensive career AI advisors
+10. Recruiter feedback

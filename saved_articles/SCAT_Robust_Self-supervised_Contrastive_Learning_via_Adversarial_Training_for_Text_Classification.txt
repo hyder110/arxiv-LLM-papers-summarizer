@@ -1,0 +1,787 @@
+SCAT: Robust Self-supervised Contrastive Learning via Adversarial
+Training for Text Classification
+Junjie Wu Dit-Yan Yeung
+The Hong Kong University of Science and Technology
+Abstract
+Despite their promising performance across var-
+ious natural language processing (NLP) tasks,
+current NLP systems are vulnerable to textual
+adversarial attacks. To defend against these
+attacks, most existing methods apply adversar-
+ial training by incorporating adversarial exam-
+ples. However, these methods have to rely on
+ground-truth labels to generate adversarial ex-
+amples, rendering it impractical for large-scale
+model pre-training which is commonly used
+nowadays for NLP and many other tasks. In
+this paper, we propose a novel learning frame-
+work called SCAT ( Self-supervised Contrastive
+Learning via Adversarial Training), which can
+learn robust representations without requiring
+labeled data. Specifically, SCAT modifies ran-
+dom augmentations of the data in a fully label-
+free manner to generate adversarial examples.
+Adversarial training is achieved by minimizing
+the contrastive loss between the augmentations
+and their adversarial counterparts. We evalu-
+ate SCAT on two text classification datasets
+using two state-of-the-art attack schemes pro-
+posed recently. Our results show that SCAT
+can not only train robust language models from
+scratch, but it can also significantly improve
+the robustness of existing pre-trained language
+models. Moreover, to demonstrate its flexibil-
+ity, we show that SCAT can also be combined
+with supervised adversarial training to further
+enhance model robustness.
+1 Introduction
+Deep learning models, especially Pre-trained Lan-
+guage Models (Devlin et al., 2019; Lan et al., 2020;
+Raffel et al., 2020), have achieved great success in
+the NLP field. However, a critical problem revealed
+by recent work is that these models are vulnerable
+to small adversarial perturbations (Kurakin et al.,
+2016; Alzantot et al., 2018; Ren et al., 2019; Jin
+et al., 2020; Li et al., 2020). Attackers can simply
+fool elaborately fine-tuned models by substituting a
+few tokens in the input text or adding perturbationsin the embedding space. Hence, there exist urgent
+needs for enhancing the robustness of current lan-
+guage models.
+Existing defense schemes in the text domain can
+be categorized into three main groups. The first
+one is adversarial training (Miyato et al., 2017;
+Zhu et al., 2020; Wang et al., 2021a), which has
+been widely used in computer vision (CV) tasks
+(Goodfellow et al., 2015; Madry et al., 2018). How-
+ever, these methods typically fail to guard textual
+attacks due to the discrete nature of text data. To
+solve this problem, the second group of methods
+apply discrete adversarial examples instead to per-
+form adversarial training (Jia and Liang, 2017;
+Wang and Bansal, 2018; Liu et al., 2020; Bao et al.,
+2021). Lastly, some carefully designed models are
+proven to be effective when defending against spe-
+cific attacks (Jia et al., 2019; Jones et al., 2020; Le
+et al., 2021). However, most of these methods need
+ground-truth labels when generating adversarial
+examples, making them unsuitable for large-scale
+model pre-training which is a popular scheme these
+days. Also, specially designed models like those
+proposed by Jones et al. (2020) could not general-
+ize well to state-of-the-art attacks (Jin et al., 2020;
+Li et al., 2020).
+Recently, contrastive learning has become a
+popular paradigm to obtain high-quality repre-
+sentations for different downstream tasks (Chen
+et al., 2020; Giorgi et al., 2021). Motivated by
+its great success, some CV researchers proposed
+“label-free” adversarial pre-training methods to en-
+hance model robustness (Kim et al., 2020; Jiang
+et al., 2020). However, these frameworks rely on
+gradient-based attacks on continuous pixels and
+thus cannot be transferred in a straightforward way
+to NLP tasks.
+To tackle the above problems, in this paper,
+we propose a novel learning framework named
+SCAT ( Self-supervised Contrastive Learning via
+Adversarial Training). More concretely, we firstarXiv:2307.01488v1  [cs.CL]  4 Jul 2023apply a naive yet useful data augmentation method
+(Lowell et al., 2020) to obtain different views of
+the original input. We then create adversarial ex-
+amples1by replacing tokens in the augmentations
+via a masked language model. Adversarial training
+is performed by minimizing the contrastive loss
+between the augmentations and their adversarial
+counterparts. It is noteworthy that no ground-truth
+labels are needed in the above process.
+We evaluate the effectiveness of SCAT on two
+different text classification datasets using two state-
+of-the-art textual attackers. Our results show that
+SCAT can not only pre-train robust models from
+scratch, but it can also significantly enhance the
+robustness of existing pre-trained language mod-
+els such as BERT (Devlin et al., 2019). Further
+performance gain in terms of robustness obtained
+when combining SCAT with supervised adversarial
+training also demonstrates the flexibility of SCAT.
+The contributions of this paper are as follows:
+•We propose an efficient token substitution-
+based strategy to create adversarial examples
+for textual inputs in a fully label-free manner.
+•To the best of our knowledge, our proposed
+SCAT framework is the first attempt to per-
+form textual adversarial training via con-
+trastive learning without using labeled data.
+•Extensive experimental results demonstrate
+that SCAT can endow different models a sig-
+nificant boost of robustness against strong at-
+tacks in flexible ways.
+2 Related Work
+Textual Adversarial Attacks. Compared to the
+success of adversarial attacks in CV , attacking tex-
+tual data is more challenging due to its discrete
+nature. Some early works (Papernot et al., 2016;
+Zhao et al., 2018) adapt gradient-based attacks to
+text data by introducing perturbations in the high-
+dimensional embedding spaces directly. However,
+these attacks lack semantic consistency since there
+do not exist obvious relationships between words
+and their embedding values. To make the gen-
+erated adversarial examples fluent and similar to
+their original counterparts, recent NLP attacks fo-
+cus on designing heuristic rules to edit characters
+(Belinkov and Bisk, 2018; Eger et al., 2019), words
+1We term adversarial examples used in SCAT pre-training
+as “label-free adversarial examples” in the rest of the paper,
+in order to distinguish them from those generated by the two
+attackers we use in experiments.(Alzantot et al., 2018; Ren et al., 2019; Jin et al.,
+2020; Li et al., 2020; Yoo et al., 2020; Li et al.,
+2021) or sentence segments (Jia and Liang, 2017;
+Han et al., 2020; Xu et al., 2021; Lin et al., 2021) in
+the input sequence and achieve great performance
+on different benchmarks.
+Defense Schemes in NLP. Various defense meth-
+ods have been designed for NLP systems. One
+of them is adversarial training, which has been
+a prevailing way to improve model robustness in
+CV (Goodfellow et al., 2015; Madry et al., 2018).
+To fill the gap between discrete text and continu-
+ous pixels when transferring this approach to NLP,
+researchers either attempt to add continuous per-
+turbations to high-dimensional spaces like word
+embedding (Miyato et al., 2017; Sato et al., 2018;
+Zhu et al., 2020; Li and Qiu, 2020; Wang et al.,
+2021a; Si et al., 2021; Guo et al., 2021), or gen-
+erate discrete adversarial examples first and then
+perform adversarial training (Jia and Liang, 2017;
+Wang and Bansal, 2018; Ivgi and Berant, 2021;
+Bao et al., 2021). Several elaborately designed
+models have also been proposed to defend specific
+attacks such as character-level typos (Pruthi et al.,
+2019; Zhou et al., 2019; Jones et al., 2020; Ma
+et al., 2020) and token-level substitutions (Zhou
+et al., 2019; Wang et al., 2021a; Si et al., 2021).
+More recently, certified-robustness (Jia et al., 2019;
+Wang et al., 2021b) has attracted much attention
+since it ensures the failure of adversarial attacks
+to some extent via the interval bound propagation
+method. Nevertheless, these methods still have
+much room for improvement. As pointed out by Li
+and Qiu (2020), gradient-based adversarial training
+is not suitable for textual data. Also, most of these
+defense methods need to touch ground-truth labels,
+but label scarcity is a common problem in many
+machine learning tasks due to the costly human
+annotation procedure. Hence, it is crucial to design
+label-free defenses for NLP systems.
+Contrastive Learning and Adversarial Robust-
+ness. Self-supervised learning, especially con-
+trastive learning, is becoming popular since it can
+generate high-quality representations over differ-
+ent modalities without using class labels (Devlin
+et al., 2019; Chen et al., 2020; Grill et al., 2020;
+Fang and Xie, 2020; Wu et al., 2020; Giorgi et al.,
+2021; Gao et al., 2021; Liu et al., 2021). Some
+recent studies demonstrated that unlabeled data
+could be used to generate robust representations
+for images (Carmon et al., 2019; Hendrycks et al.,2019). Later on, following the SimCLR framework
+(Chen et al., 2020), Kim et al. (2020) and Jiang
+et al. (2020) proposed label-free approaches to craft
+gradient-based adversarial examples for adversarial
+contrastive learning. However, to the best of our
+knowledge, no efforts in the NLP fields have been
+made in this direction, mainly due to the subtle
+differences between vision and language. Contrari-
+wise, our proposed SCAT framework solves the
+above issues in a general and flexible paradigm and
+can defend various textual attacks effectively.
+3 Methodology
+3.1 Preliminaries
+Self-supervised Contrastive Learning. Intro-
+duced by Chen et al. (2020), SimCLR can achieve
+similar performance compared to models trained
+for image classification tasks in a supervised man-
+ner. The workflow of SimCLR can be briefly ex-
+plained as follows: considering a randomly sam-
+pled minibatch {x1, x2, . . . , x N}. For each exam-
+plexi, a data augmentation module is applied to
+yield two correlated views denoted by x(1)
+iand
+x(2)
+i. Let Bdenote the set of 2 Naugmented ex-
+amples thus formed from the original minibatch.
+For each augmented example x(1)
+i∈B, it forms
+a positive pair with x(2)
+iand2(N−1)negative
+pairs with the other augmented examples in the
+setB\{x(1)
+i, x(2)
+i}. Let the encoder and projection
+head be f(·)andg(·), respectively. They map x(1)
+i
+andx(2)
+ito hidden representations z(1)
+iandz(2)
+ias
+z=g(f(x)). We can thus define the contrastive
+loss function for a positive pair (x(1)
+i, x(2)
+i)as:
+l(x(1)
+i,x(2)
+i)=−logexp(sim( z(1)
+i, z(2)
+i)/τ)
+P
+xj∈B\{x(1)
+i}exp(sim( z(1)
+i, zj)/τ)
+(1)
+LCL
+(x(1)
+i,x(2)
+i)=l(x(1)
+i,x(2)
+i)+l(x(2)
+i,x(1)
+i)(2)
+where zj=g(f(xj)).sim(x, y)denotes the co-
+sine similarity between two vectors, and τis a
+temperature parameter. We define {xipos}as the
+positive set including the augmentations of xiand
+{xineg}the negative set containing the augmenta-
+tions of other instances.
+Adversarial Training. Adversarial training is
+a prevalent method for enhancing model robust-
+ness. The key idea behind it is solving a min-max
+optimization problem. Details about adversarial
+training’s key idea can be found in Appendix A.
+InputSentenceAugmentation1Adv-GeneratorLabel-FreeAdversarialExample
+Augmentation2ContrastiveObjectiveEncoder+ProjectorPositiveSetFigure 1: Overview of our proposed SCAT framework.
+The top blue arrow represents the encoding then project-
+ing process for a given sequence.
+Overall, our model is built upon these preliminar-
+ies. More details will be described below.
+3.2 Problem Definition and Model Overview
+Formally, given a set of data {(xi, yi)}N
+i=1and a
+text classification model M:X→Y, adversarial
+attackers aim to make Mgive wrong predictions
+with slight modifications on xi. In this paper, we
+want to build a robust model MRthat can still
+generate correct labels against such perturbations
+in a fully label-free manner.
+Figure 1 illustrates the workflow of our proposed
+method. Given an input sentence, SCAT first ran-
+domly generates two augmented examples via a
+data augmentation module (§3.3). Then, the Adv-
+Generator will craft a label-free adversarial exam-
+ple by substituting a few tokens in one of the aug-
+mentations. This step utilizes the gradient informa-
+tion provided by the contrastive loss between the
+two augmentations. Next, we add this label-free
+adversarial example to the original positive set as
+a regularizer to help our model defend malevolent
+attacks. Finally, we perform adversarial training by
+minimizing the contrastive loss between the two
+augmentations and the adversarial counterpart.
+3.3 Data Augmentation
+As pointed out by Chen et al. (2020), the selection
+of a data augmentation strategy is crucial to the per-
+formance of contrastive learning. After considering
+several augmentation methods such as synonym re-Algorithm 1 Label-free Adversarial Example Generation
+Input: Two augmentations of input xi:T(xi)1,T(xi)2, encoder E, projector P, attack percentage ϵ, constant K, masked
+language model MLM .
+Output: Label-free Adversarial example xadv
+i, contrastive loss LCL(xadv
+i,T(xi)2).
+1: Copy T(xi)1=⇒T(xi)c
+1
+2:T(xi)c
+1= (w1, w2, ..., w n)
+3: Calculate LCLbetween two augmentations using Eq.1 and Eq.2
+4:forwjinT(xi)c
+1do
+5: Get its importance score Iwjusing gradient information
+6:end for
+7: Sort tokens in T(xi)c
+1in descending order with Iwj
+8: Pick top- ϵwords from the sorted sequence =⇒ATT ={w1, w2, ..., w k}
+9:ATT sub={s1, s2, ..., s N}{sub-word tokenized set of ATT }
+10: Use MLM to generate top-K substitutions for tokens in ATT sub
+11:forwpinATT do
+12: ifwpis an intact word in ATT subthen
+13: Get candidates Cfiltered by semantic constraints
+14: else
+15: Get Cfiltered by PPL and semantic constraints
+16: end if
+17: Randomly pick one item cqfromC
+18: Replace wpwithcqinT(xi)c
+1
+19:end for
+20:xadv
+i=T(xi)c
+1
+21: Calculate LCL(xadv
+i,T(xi)2)using Eq.1 and Eq.2
+22:return xadv
+i,LCL(xadv
+i,T(xi)2)
+placement, inspired by Lowell et al. (2020), we ap-
+ply a simple yet useful random token substitution-
+based method to augment the original examples
+(see Appendix B for details of our selection).
+More concretely, we first build a vocabulary2
+Vfor the given training corpus, then apply an op-
+eration Tto transform each token wiin the input
+sentence xi= (w1, w2, . . . , w k)toT(wi):
+T(wi) =(
+wiwith probability p
+w′
+iwith probability 1−p,(3)
+where w′
+iis a random token extracted from Vand
+p∈[0,1]controls the diversity of the augmen-
+tations. Although this method cannot ensure the
+fluency of the generated sequence T(xi), it enables
+our model to learn adequate instance-wise features
+from the raw text and hence is useful for generating
+high-quality representations.
+3.4 Label-Free Adversarial Example
+Generator (Adv-Generator)
+Since SCAT needs to generate adversarial examples
+without using ground-truth labels, conventional
+state-of-the-art attackers cannot be applied here
+directly. Instead, we design a method to gener-
+ate label-free adversarial examples for pre-training
+efficiently. The whole generation process is sum-
+2Details are described in Appendix C.1.marized in Algorithm 1, which can be divided into
+two main steps to be elaborated below.
+Determine Attack Positions (line 1-8). Given
+two augmentations of an input sentence xi, simi-
+lar to Kim et al. (2020), we build xi’s label-free
+adversarial counterpart xadv
+iupon the copy of one
+of the augmented examples T(xi)1, named T(xi)c
+1.
+However, without gold labels, we could neither de-
+cide the attack positions via calculating the token
+importance scores like Jin et al. (2020), nor end
+the attack until the model’s prediction has been
+changed. To determine the attack positions, we
+adopt the following steps: for each token wjin
+T(xi)c
+1, let∇wjLbe the gradient of the contrastive
+loss with respect to the embedding vector of wj,
+where Lis the contrastive loss between two aug-
+mentations T(xi)1andT(xi)2, calculated by Eq.1
+and Eq.2. We then define the importance score Iwj
+forwjas the 1-norm of the gradient vector ∇wjL,
+i.e.,Iwj=∥∇wjL∥1. A larger importance score
+Iwjforwjindicates a more significant contribution
+of the corresponding token to the change in the con-
+trastive loss. §4.3 demonstrates the effectiveness of
+this important score ranking method. The tokens
+with the largest importance scores will be identified
+as the attack positions.
+Next, we rank the words in T(xi)c
+1based on their
+importance scores in descending order and build
+an attack set ATT . Note that for each sequence,we steadily pick the ϵmost important words to
+formATT since we lack ground-truth labels to
+determine when to stop the attack.
+Generate Label-Free Adversarial Example (line
+9-20). Recent works highly praised pre-trained
+mask language models in textual attacks, due to
+their ability to generate fluent and semantically con-
+sistent substitutions for input sentences (Li et al.,
+2020, 2021). Following Li et al. (2020), we first
+use Bytes-Pair-Encoding (BPE) to tokenize T(xi)c
+1
+into sub-word tokens T(xi)sub
+1= (s1, s2, ..., s m)
+and thus obtain ATT sub, the sub-word tokenized
+counterpart of ATT . Since the tokens in ATT sub
+are selected from T(xi)sub
+1, we can yield Kmost
+possible substitutions for each token in ATT subby
+feeding T(xi)sub
+1into a pre-trained BERT model.
+Afterwards, we start to replace tokens. Given a
+target word wpinATT , if it is tokenized into sub-
+words in ATT sub, we first calculate the perplexity
+scores of possible sub-word combinations, then
+rank these perplexity scores to extract the top- K
+combinations, which form a substitution candidate
+setC. Otherwise, substitutions generated in line 9
+will consist of C. A synonym dictionary (Mrkši ´c
+et al., 2016) is then applied to exclude antonyms
+from Csince masked language models could not
+discriminate synonyms from antonyms. We do
+not filter out stop words to keep consistent with
+our data augmentation method (§3.3), where stop
+words also act as potential substitutions.
+Lastly, instead of iterating all the items, we ran-
+domly pick one item from the candidate set C
+to replace the target word wp. This strategy is
+a trade-off between attack efficiency and effective-
+ness, since searching for optimal adversarial ex-
+amples is time-consuming and thus impractical for
+pre-training. Nevertheless, as demonstrated by the
+experimental results in §4.2, our attack strategy can
+still generate representative label-free adversarial
+examples for SCAT to learn robust representations.
+We also tested the effectiveness of our label-free
+attack and results are mentioned in Appendix D.
+After going through all the words in ATT , we ob-
+tain the final label-free adversarial example xadv
+i.
+In addition, we take the contrastive loss between
+xadv
+iand the other clean augmentation as an extra
+regularizer in the final training objective (Eq.5).
+3.5 Learning Objective
+We can now formulate our learning objective.
+Specifically, we add xadv
+ito the original positive set{xipos}so the final training set Bwill include 3 N
+examples due to the expansion of {xipos}. Then we
+learn robust representations by minimizing the con-
+trastive loss between two augmentations and xadv
+i.
+Using the same settings in §3.1, we first define the
+contrastive objective with three samples in {xipos}
+following Eq.1 and Eq.2:
+LCL3(T(xi)1,T(xi)2,xadv
+i)=LˆCL(T(xi)1,T(xi)2)
++LˆCL(T(xi)1,xadv
+i)
++LˆCL(T(xi)2,xadv
+i)(4)
+Note that LˆCLis a modification of LCLwhile the
+size of the set Bis increased to 3Nin Eq.1. The
+final objective for the pre-training part can thus be
+calculated as:
+LCLadv=LCL3(T(xi)1,T(xi)2,xadv
+i) (5)
+LReg=LCL(xadv
+i,T(xi)2) (6)
+LFinal=LCLadv+λLReg, (7)
+where {T(xi)1, T(xi)2, xadv
+i}forms the new pos-
+itive set, augmentations of the other instances in
+the same mini-batch correspond to the negative set,
+andλis used to control the regularization strength.
+3.6 Linear Evaluation
+Since pre-trained representations cannot be used
+for text classification directly, we follow the exist-
+ing self-supervised learning method ((Chen et al.,
+2020)) to leverage an MLP layer at the top of the
+encoder E’s outputs to predict the labels for dif-
+ferent input examples. We train this MLP layer
+on the original training set in a supervised man-
+ner while fixing all the parameters of E. The
+cross-entropy loss is adopted as the optimization
+objective here. While this simple, efficient lin-
+ear evaluation method helps SCAT achieve promis-
+ing robustness (as shown in Table 1), we also an-
+alyzed another conventional evaluation strategy:
+fine-tuning the whole model. Details can be found
+in Appendix E.
+4 Experiments
+4.1 Setup
+Datasets. We evaluate our method on two rep-
+resentative text classification datasets: AG’s News
+(AG) and DBPedia (Zhang et al., 2015). Detailed
+description and statistics of these two datasets are
+included in Appendix F. For AG, we perform ex-
+periments on the 1k test examples collected by Jinet al. (2020) since their data splits have been widely
+used. For DBPedia, we randomly selected 1k sam-
+ples from its original test set for experiments. Since
+both AG and DBPedia do not provide a validation
+set, we randomly picked 2k instances from their
+original test sets for validation, while not overlap-
+ping with the 1k test examples.
+Configuration. During pre-training, we adopt
+two backbone encoders: 1) base sized BERT
+(BERT base, Devlin et al. (2019)); 2) randomly ini-
+tialized Transformer (Vaswani et al., 2017) with the
+same architecture as BERT (12 layers, 12 heads,
+and hidden layer size of 768). More implementa-
+tion details regarding the Adv-Generator, projec-
+tor, optimization, linear evaluation, and data pre-
+processing are described in Appendix C.
+Attackers. In our experiments, we use two state-
+of-the-art attackers to evaluate model robustness:
+TextFooler and BERT-Attack. See Appendix G for
+detailed descriptions of these two attackers. We im-
+plement the two attackers following their publicly
+released versions. For TextFooler, the thresholds of
+both synonym and sentence similarity scores are set
+to 0.5, according to its authors’ instructions. As for
+BERT-Attack, on AG, Li et al. (2020) report results
+without filtering out antonyms from the potential
+substitutions. We instead do extra evaluations on
+both datasets with the antonym filtering process for
+fair comparison, since masked language models
+could not distinguish synonyms from antonyms.
+Evaluation Metrics. To measure the robustness
+of SCAT from different perspectives, we introduce
+several evaluation metrics: (1) Clean Accuracy
+(Acc): model’s accuracy score on clean examples;
+(2)After-Attack Accuracy (Atk Acc): model’s
+accuracy score after being attacked; (3) Attack
+Failure Rate (AFR): percentage of adversarial ex-
+amples that fail to change the model’s prediction.
+For all the metrics especially the last two core mea-
+sures, higher values indicate better performance.
+Baseline Models. For each backbone encoder
+mentioned in §4.1, we perform experiments with
+two different baselines. Taking BERT as an exam-
+ple, these baselines are (1) BERT: a base model
+trained with clean examples in a supervised man-
+ner; (2) CL-BERT: a self-supervised contrastive
+learning-based model pre-trained without using
+extra adversarial examples. To reduce the effect
+of randomness brought by data augmentation and
+label-free adversarial example generation during
+pre-training, models including these steps were runwith three different random seeds and we report the
+average metric scores in all the experiments.
+4.2 Main Results
+SCAT Improves Robustness. Table 1 summa-
+rizes main results on the two datasets. As we can
+see, supervised models encounter serious perfor-
+mance drop against the two attackers. By contrast,
+SCAT improves the robustness of these standard
+models, demonstrated by the significantly higher
+results across the board. For both datasets, SCAT-
+BERT and SCAT-Transformer outperform BERT
+and Transformer by an average attack failure rate of
+24.9% against TextFooler and 24.1% against BERT-
+Attack.3Since the key idea behind the two attack-
+ers differs, these impressive results illustrate the
+possibility to train a robust model that can defend
+against different types of attacks. It is worth noting
+that SCAT does not sacrifice the clean accuracy
+much compared to the supervised models, and the
+average drop is only 2.9%. This result is surprising
+since SCAT’s pre-training stage is fully label-free
+and it further suggests that SCAT can still generate
+high-quality representations for downstream tasks
+while largely improving model robustness.
+Comparison between SCAT and CL. Interest-
+ingly, we observe that using contrastive learning
+alone usually enhances model robustness, which
+proves that our data augmentation method helps
+models adapt to potential perturbations to some cer-
+tain extent. Nevertheless, compared to CL, SCAT
+has more benefits. First, as shown in Table 1, SCAT
+has a significantly stronger robustness performance.
+For example, for the two robustness-related metrics,
+SCAT models outperform CL models by 10.9%,
+11.6% on AG and 5.0%, 15.8% on DBPedia respec-
+tively against TextFooler.
+Moreover, SCAT can defend against high-quality
+adversarial examples better, demonstrated by its
+higher metric scores against the attackers with strict
+semantic constraints like TextFooler and BERT-
+Attack with antonym filtering. As shown in Ta-
+ble 1, SCAT enhances Transformer and BERT’s
+performance with respect to the after-attack accu-
+racy by an average of 31.7% against BERT-Attack
+with antonym filtering.4Although CL-BERT out-
+performs SCAT-BERT when skipping the antonym
+filtering process under BERT-Attack on AG, adver-
+sarial examples obtained here may not be fluent
+3The calculation process is detailed in Appendix H.
+4The calculation process is detailed in Appendix H.AG DBPedia
+Attacker Model Acc Atk Acc AFR Acc Atk Acc AFR
+TextFoolerTransformer 92.3 0.3 0.3 98.7 8.7 8.1
+CL-Transformer 87.7 14.5 16.5 93.7 12.9 13.8
+SCAT-Transformer 90.4 25.4 28.1 92.9 17.9 19.3
+BERT 95.3 16.6 17.4 99.4 20.1 20.2
+CL-BERT 92.5 38.1 41.2 98.9 32.5 32.8
+SCAT-BERT 92.2 45.1 49.0 98.5 48.3 49.0
+BERT-AttackTransformer 92.3 0.5/3.4 0.5/3.7 98.7 0.6/4.6 0.6/4.7
+CL-Transformer 87.7 13.4/25.5 15.2/29.0 93.7 9.0/23.4 9.6/24.9
+SCAT-Transformer 90.4 17.9/44.0 19.8 /48.6 92.9 10.4/45.7 11.2 /49.1
+BERT 95.3 19.8/41.7 20.8/43.8 99.4 16.8/46.1 16.9/46.4
+CL-BERT 92.5 36.8/52.2 39.8/56.4 98.9 24.5/56.3 24.8/57.0
+SCAT-BERT 92.2 31.7/ 58.7 34.5/ 63.7 98.5 27.2/74.3 27.7 /75.5
+Table 1: Experimental results of different models against TextFooler and BERT-Attack on AG and DBPedia.
+For evaluation metrics except for the clean accuracy (Acc), the best performance of models under each attack is
+boldfaced. On both datasets, we test BERT-Attack without/with antonym filtering and the results are separated
+correspondingly. Except for supervised Transformer and BERT, metric values of models are averaged over three
+different runs. We also provide complete results in Appendix I for reference.
+TextFooler BERT-Attack
+Model Acc Atk Acc AFR Atk Acc AFR
+Transformer 92.3 0.3 0.3 0.5/3.4 0.5/3.7
++CL+Extra Aug 88.7 19.7 22.2 17.7/31.2 19.9/35.1
++SCAT 90.4 25.4 28.1 17.9/44.0 19.8/ 48.6
+BERT 95.3 16.6 17.4 19.8/41.7 20.8/43.8
++CL+Extra Aug 92.7 44.4 48.0 41.9/55.9 45.2/60.3
++SCAT 92.2 45.1 49.0 31.7/ 58.7 34.5/ 63.7
+Table 2: Effect of positive set size. We use “+" here to
+distinguish different models for brevity. Except for the
+supervised Transformer and BERT, the metric values of
+models are averaged over three runs. Complete results
+are shown in Appendix J.
+and could be easily identified by heuristic rules
+due to the potential misuse of antonyms during
+token substitution. In contrast, for high-quality ad-
+versarial examples that are hard to be detected in
+advance, SCAT-BERT can defend them better than
+CL-BERT due to the robust pre-training stage.
+Results on Pre-trained Encoder. Another ad-
+vantage of SCAT is that except for training ro-
+bust models from scratch, it can also perform ro-
+bust fine-tuning for pre-trained language models
+without modifying their structures. For example,
+SCAT-BERT enhances the after-attack accuracy
+of BERT by 28.5% and 28.2% on both datasets
+against TextFooler, while only decreasing 3.1% and
+0.9% of the clean accuracy. These results further
+indicate that SCAT fits well for the current trend of
+fine-tuning huge pre-trained language models.TextFooler BERT-Attack
+Model Acc Atk Acc AFR Atk Acc AFR
+Transformer 92.3 0.3 0.3 0.5/3.4 0.5/3.7
++SCAT(Random) 91.5 22.0 24.0 18.0/42.7 19.6/46.6
++SCAT 90.4 25.4 28.1 17.9/ 44.0 19.8 /48.6
+BERT 95.3 16.6 17.4 19.8/41.7 20.8/43.8
++SCAT(Random) 92.1 41.5 45.0 37.5/61.9 40.7 /67.2
++SCAT 92.2 45.1 49.0 31.7/58.7 34.5/63.7
+Table 3: Effect of gradient-based ranking, with similar
+settings as Table 2.
+4.3 Ablation Study
+To assess the effectiveness of different modules in
+SCAT, we conduct an ablation study on AG with
+two additional baseline models (for each encoder).
+The first model does not utilize the Adv-Generator.
+Instead, it creates an extra augmentation for a given
+example and adds this extra sequence to the posi-
+tive set as the label-free adversarial example. The
+other model removes the gradient-based ranking
+step in Algorithm 1 and determines the attack posi-
+tions randomly. Table 2, 3 show the results. Since
+the comparison between SCAT, CL and supervised
+models has been discussed in §4.2, we focus on
+comparing SCAT with the two new baselines here.
+Effect of Ppositive Sset Ssize. We first compare
+SCAT against the baseline (CL+Extra Aug) that
+contrasts three random augmentations. As can be
+seen in Table 2, SCAT nearly outperforms this base-
+line across the board, indicating that label-free ad-
+versarial examples generated by the Adv-Generator
+(§3.4) do highly contribute to the improvement
+of model robustness. The only exception appearsAttacker Model Acc Atk Acc AFR
+Text-
+FoolerBERT 95.3 16.6 17.4
++Adv 94.7 29.0 30.6
+SCAT-BERT(s1) 91.7 43.8 47.8
++Adv 92.1 50.0 54.3
+BERT-
+AttackBERT 95.3 19.8/41.7 20.8/43.8
++Adv 94.3/94.3 29.8/51.8 31.6/54.9
+SCAT-BERT(s1) 91.7 31.5/57.9 34.4/63.1
++Adv 91.5/92.1 40.0/62.2 43.7 /67.5
+Table 4: Supervised adversarial training results on AG.
+For SCAT-BERT, we take one of its three runs (s1) for
+evaluation. For each “+Adv” model under BERT-Attack,
+we trained two versions without/with antonym filtering
+and tested them in corresponding situations.
+when defending BERT-Attack without antonym fil-
+tering, which is not surprising since this baseline is
+an augmented version of CL. As mentioned in §4.2,
+CL-based models are more robust to lower-quality
+adversarial examples that can be easily identified,
+since their representations are merely learned from
+random augmentations and should be more familiar
+with unnatural token substitutions.
+Effect of Ggradient-Bbased Rranking. We
+now switch to the ranking method in the Adv-
+Generator. As shown in Table 3, replac-
+ing the ranking process with random selection
+(SCAT(Random) leads to a drop in robustness
+against TextFooler. As for BERT-Attack, SCAT
+outperforms SCAT(Random) with Transformer,
+while SCAT(Random) has better robustness re-
+sults for the BERT model, probably because at-
+tack positions determined by the gradient of con-
+trastive loss are more consistent with those used
+in TextFooler. While assigning attack positions,
+TextFooler separately considers the situation if
+deleting one token from the original input changes
+the target model’s prediction compared to BERT-
+Attack. Overall, these results justify our choice of
+applying the gradient-based ranking strategy in the
+Adv-Generator.
+4.4 Combining SCAT with Supervised
+Adversarial Training
+Existing works (Jin et al., 2020; Li et al., 2020)
+show that adversarial examples generated by at-
+tackers can be used to enhance model robustness
+via supervised adversarial training. In this part, we
+further evaluate the flexibility of SCAT by training
+it with labeled adversarial examples. Specifically,
+we follow Jin et al. (2020) to expand AG’s training
+set using labeled adversarial examples crafted by
+TextFooler and BERT-Attack. Since it will be time-consuming to attack a specific victim model on the
+whole training set, we only pick BERT and one run
+of SCAT-BERT for comparison. The moderate stan-
+dard deviation scores for different runs of SCAT-
+BERT in Table 9 justify this setting. When test-
+ing BERT, we fine-tune a new BERT from scratch
+on the expanded dataset. For SCAT-BERT, we
+perform linear evaluation on the expanded dataset
+while fixing the pre-trained encoder.
+Table 4 lists the results on AG’s test set used
+earlier. As can be seen, performing adversarial
+training directly using the generated adversarial
+examples does help BERT defend against attacks
+better. However, the performance gap between
+BERT+Adv and SCAT-BERT is still significant,
+confirming the effectiveness of our method. No-
+tably, adding labeled adversarial examples to the
+linear evaluation part further boosts both the robust-
+ness scores and the clean accuracy of SCAT-BERT,
+with an average improvement of 6.3% on the after-
+attack accuracy and 6.7% on the attack failure rate
+among all attack types. Since simply training a
+linear classifier might not make full use of the ex-
+tra information, other potential methods such as
+pre-training on the expanded dataset using SCAT
+should further improve the results. This again illus-
+trates the flexibility of SCAT and largely widens its
+application scope.
+5 Conclusion
+In this work, we propose a novel adversarial train-
+ing framework named SCAT, which can learn
+robust textual representations in a fully label-
+free manner. We first come up with a token
+substitution-based method to craft adversarial ex-
+amples from augmentations of the data without
+requiring ground-truth labels. Next, we implement
+adversarial training via minimizing the contrastive
+loss between the augmentations and their adver-
+sarial counterparts. In the experiments, we adopt
+two state-of-the-art attack algorithms on two text
+classification datasets to evaluate the robustness of
+different models. Our experimental results demon-
+strate that SCAT can both train robust language
+models from scratch and improve the robustness of
+pre-trained language models significantly. More-
+over, we show the effectiveness of different mod-
+ules of SCAT through an ablation study. Finally,
+we illustrate the flexibility of SCAT by combining
+it with supervised adversarial training, motivating
+further research in this area.6 Ethical Considerations
+Our proposed SCAT framework can be used to im-
+prove the robustness of existing text classification
+systems. Since SCAT is very effective and flexible,
+it can be widely used in the NLP community. Nev-
+ertheless, like other defense methods, SCAT can
+lead to a slight decrease in the clean accuracy for
+classification tasks. This trade-off between accu-
+racy and robustness has to be taken into considera-
+tion in the context of the specific application when
+trying to decide whether to incorporate a defense
+scheme such as SCAT.

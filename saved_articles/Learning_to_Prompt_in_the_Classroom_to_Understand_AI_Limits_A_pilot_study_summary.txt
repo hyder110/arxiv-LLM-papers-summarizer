@@ -1,0 +1,20 @@
+Summary:
+This pilot study aimed to develop an AI literacy workshop using ChatGPT to help students understand the limitations of AI and mitigate negative attitudes towards it.
+The workshop involved students interacting with ChatGPT and learning about prompting strategies.
+Overall, the intervention had a positive impact, reducing fears related to AI and improving students' perception of ChatGPT.
+Students appreciated ChatGPT's capabilities but also recognized its limitations in emulating human-like interactions.
+
+Bullet points:
+1. The pilot study developed an AI literacy workshop using ChatGPT to educate students about the limitations of AI.
+2. The workshop involved students interacting with ChatGPT and learning about prompting strategies.
+3. The intervention successfully reduced students' fears related to AI and improved their perception of ChatGPT.
+4. Students appreciated ChatGPT's capabilities but also recognized its limitations in emulating human-like interactions.
+5. The workshop had a positive impact on students' attitudes towards AI and their understanding of its limitations.
+6. Students reported high appreciation for the activity and improved quality of interaction with ChatGPT.
+7. The workshop helped decrease negative sentiments towards AI and increase understanding of its limitations.
+8. Students recognized the need for improvements in ChatGPT's responses, such as avoiding repetitive or incorrect answers.
+9. The study highlights the importance of AI literacy interventions and the use of prompting strategies to enhance the use of AI systems.
+10. Further research is needed with a larger sample size to validate these findings and explore correlations.
+
+Keywords:
+AI literacy, ChatGPT, AI limitations, AI attitudes, pilot study, prompting strategies, student perception, workshop, educational intervention, interaction quality

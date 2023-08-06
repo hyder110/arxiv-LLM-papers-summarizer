@@ -1,0 +1,22 @@
+Summary:
+This paper introduces AMR-GEC, a grammatical error correction model that leverages Abstract Meaning Representation (AMR) as additional knowledge. The model incorporates denoised AMR to improve the reliability of the semantic information. Experimental results on two shared tasks show that AMR-GEC performs comparably to strong baselines with synthetic data, reducing training time by 32% while maintaining a comparable inference time. This work is the first to incorporate AMR for grammatical error correction.
+
+Bullet points:
+- Grammatical Error Correction (GEC) involves correcting errorful sentences into grammatically correct and coherent sentences.
+- AMR-GEC is a novel seq-to-seq model that leverages denoised AMR, a semantic representation framework, as additional knowledge for GEC.
+- Denoising methods are used to improve the reliability of AMR for errorful sentences.
+- Experiments on two shared tasks show that AMR-GEC performs comparably to strong baselines with synthetic data.
+- AMR-GEC reduces training time by 32% while maintaining a comparable inference time compared to a T5 model with synthetic data.
+- AMR-GEC provides a strong baseline for incorporating AMR in GEC tasks.
+
+Keywords:
+- Grammatical Error Correction
+- Abstract Meaning Representation (AMR)
+- Seq-to-seq model
+- Denoising
+- Semantic representation framework
+- Shared tasks
+- Synthetic data
+- Training time reduction
+- Inference time
+- Strong baseline

@@ -1,0 +1,22 @@
+Summary:
+
+This paper explores the use of large-scale language models (LLMs) to understand the emotional dynamics and sentiments conveyed in sentences. The authors train predictors of the quantiles of the distributions of valence, determination, admiration, anxiety, and annoyance from the hidden representations of an LLM. They show that these predictors are well-calibrated and can be used to analyze sentences, even capturing the effects of conjunctions like "but" on emotional trajectories. The authors also demonstrate how to use the distributional predictions to generate sentences with specific sentiments. The findings have implications for understanding the inner workings of thoughts and could be useful in fields like psychiatry.
+
+Bullet points:
+
+- Large-scale language models (LLMs) can capture a wide range of sentiments and emotions in text
+- Predictors of the quantiles of emotional distributions can be trained from LLMs
+- Examples show the effects of conjunctions on emotional trajectories
+- The distributional predictions can be used to generate sentences with specific sentiments
+- The results have implications for understanding the workings of thoughts and psychiatric dysfunction
+
+Keywords:
+
+- Large-scale language models
+- Sentiment analysis
+- Emotional dynamics
+- Conjunctions
+- Distributional predictions
+- Sentiment generation
+- Thoughts
+- Psychiatry

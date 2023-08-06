@@ -1,0 +1,26 @@
+Summary:
+
+This study compared the search performance and user experience of ChatGPT, a large language model-powered chatbot, with Google Search. A randomized online experiment was conducted with participants divided into two groups: one using ChatGPT and the other using Google Search. 
+
+The findings showed that the ChatGPT group spent less time on all tasks, but there was no significant difference in overall task performance compared to the Google Search group. ChatGPT performed well in answering straightforward questions and providing general solutions but struggled with fact-checking tasks.
+
+Participants perceived ChatGPT's responses to have higher information quality compared to Google Search, despite having a similar level of trust in both tools. They also reported significantly better user experiences in terms of usefulness, enjoyment, and satisfaction when using ChatGPT.
+
+However, it was noted that ChatGPT may lead to overreliance and generate or replicate misinformation, resulting in inconsistent results.
+
+The study provides insights for search engine management and highlights opportunities for integrating chatbot technologies into search engine designs.
+
+Keywords: ChatGPT, generative AI, Google, search engines, chatbot, online experiment.
+
+Bullet points:
+
+1. ChatGPT is a large language model-powered chatbot that has gained popularity.
+2. This study compared the search performance and user experience of ChatGPT and Google Search.
+3. Users in the ChatGPT group spent less time on tasks, but overall task performance was similar between the two groups.
+4. ChatGPT performed well in answering straightforward questions but struggled with fact-checking tasks.
+5. Participants perceived ChatGPT's responses to have higher information quality compared to Google Search.
+6. ChatGPT provided better user experiences in terms of usefulness, enjoyment, and satisfaction.
+7. However, ChatGPT may lead to overreliance and generate or replicate misinformation.
+8. The study provides insights for search engine management.
+9. Integrating chatbot technologies into search engine designs offers opportunities for improvement.
+10. Keywords: ChatGPT, generative AI, Google, search engines, chatbot, online experiment.

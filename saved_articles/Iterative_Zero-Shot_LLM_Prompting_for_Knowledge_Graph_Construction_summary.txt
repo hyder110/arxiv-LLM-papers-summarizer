@@ -1,0 +1,30 @@
+Summary:
+This paper proposes a knowledge graph generation approach that leverages large language models (LLMs) to address challenges in knowledge graph building.
+The approach includes novel iterative zero-shot and external knowledge-agnostic strategies.
+The proposed model is scalable and does not require external resources or human expertise.
+Experiments conducted on a specific domain demonstrate the effectiveness of the proposed model.
+The approach can be applied in various contexts for scalable and versatile knowledge graph construction.
+
+Keywords:
+1. Knowledge graph generation
+2. Large language models (LLMs)
+3. Scalability
+4. Zero-shot strategy
+5. External knowledge-agnostic strategies
+6. Iterative prompting
+7. Entity extraction
+8. Relationship extraction
+9. Knowledge representation
+10. Versatile application
+
+Bullet Points:
+1. Knowledge graphs are valuable for organizing and retrieving information, but their generation is challenging and requires significant human effort.
+2. This paper proposes an innovative approach using large language models (LLMs) for knowledge graph generation.
+3. The approach includes iterative zero-shot and external knowledge-agnostic strategies.
+4. The proposed model is scalable and does not require external resources or human expertise.
+5. Experiments on a specific domain demonstrate the effectiveness of the proposed model.
+6. LLMs can be prompted iteratively to extract relevant components of the knowledge graph.
+7. The zero-shot strategy means that no examples are needed to guide the prompt result.
+8. The approach can be applied in various contexts for scalable and versatile knowledge graph construction.
+9. Knowledge graphs can infer and integrate information from different sources, capture explicit and implicit knowledge, and enable easy query and navigation.
+10. The proposed approach leverages LLMs to enhance knowledge graph generation, including entity extraction, relationship extraction, and textual inference.

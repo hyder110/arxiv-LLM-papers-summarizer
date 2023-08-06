@@ -1,0 +1,23 @@
+Summary:
+
+The paper discusses the challenges in evaluating the performance of large language models (LLMs) and investigates the behavior of human and LLM-based judges in comparing outputs from different models.
+
+A dataset comprising intentionally flawed machine-generated answers is curated.
+
+Findings indicate a bias in the evaluation process, with answers that contain factual errors being rated more favorably compared to answers that are too short or contain grammatical errors.
+
+The paper proposes the Multi-Elo Rating System as a solution, which independently evaluates machine-generated text across multiple dimensions instead of merging all evaluation aspects into a single score.
+
+Empirical results show that the proposed approach significantly enhances the quality of LLM-based evaluations, particularly in terms of factual accuracy.
+
+However, there is no notable improvement observed in crowd-sourced-based evaluations, suggesting the need for further investigation and refinement.
+
+The paper highlights the challenge of evaluating LLMs' performance, especially for more general instructions that NLP benchmarks cannot cover.
+
+Supervised instruction fine-tuning and reinforcement learning from human feedback are shown to greatly enhance LLMs' ability to follow instructions effectively.
+
+The paper emphasizes the need to determine whether human and LLM judges are qualified evaluators considering various factors when determining the best model output.
+
+Errors are intentionally introduced into various aspects of the answers, including length, language proficiency, and factual accuracy.
+
+Keywords: large language models, evaluation biases, human judges, LLM-based judges, machine-generated answers, factual errors, bias in evaluation, Multi-Elo Rating System, factual accuracy, crowd-sourced evaluations.

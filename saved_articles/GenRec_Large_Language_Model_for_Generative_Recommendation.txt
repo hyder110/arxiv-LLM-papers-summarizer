@@ -1,0 +1,37 @@
+GenRec: Large Language Model for Generative Recommendation
+Jianchao Ji
+Rutgers University
+New Brunswick, NJ, US
+jianchao.ji@rutgers.eduZelong Li
+Rutgers University
+New Brunswick, NJ, US
+zelong.li@rutgers.eduShuyuan Xu
+Rutgers University
+New Brunswick, NJ, US
+shuyuan.xu@rutgers.eduWenyue Hua
+Rutgers University
+New Brunswick, NJ, US
+wenyue.hua@rutgers.edu
+Yingqiang Ge
+Rutgers University
+New Brunswick, NJ, US
+yingqiang.ge@rutgers.eduJuntao Tan
+Rutgers University
+New Brunswick, NJ, US
+juntao.tan@rutgers.eduYongfeng Zhang
+Rutgers University
+New Brunswick, NJ, US
+yongfeng.zhang@rutgers.edu
+ABSTRACT
+In recent years, large language models (LLM) have emerged as pow-
+erful tools for diverse natural language processing tasks. However,
+their potential for recommender systems under the generative rec-
+ommendation paradigm remains relatively unexplored. This paper
+presents an innovative approach to recommendation systems using
+large language models (LLMs) based on text data. In this paper, we
+present a novel LLM for generative recommendation (GenRec) that
+utilized the expressive power of LLM to directly generate the target
+item to recommend, rather than calculating ranking score for each
+candidate item one by one as in traditional discriminative recom-
+mendation. GenRec uses LLM’s understanding ability to interpret
+context, learn user p

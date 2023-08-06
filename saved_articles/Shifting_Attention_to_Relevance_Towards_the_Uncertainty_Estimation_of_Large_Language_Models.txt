@@ -1,0 +1,182 @@
+Shifting Attention to Relevance: Towards the Uncertainty Estimation of
+Large Language Models
+Jinhao Duan1Hao Cheng3Shiqi Wang2Chenan Wang1
+Alex Zavalny1Renjing Xu3Bhavya Kailkhura4Kaidi Xu1∗
+1Drexel University2AWS AI Lab
+3Hong Kong University of Science and Technology (Guangzhou), China
+4Lawrence Livermore National Laboratory
+Abstract
+Although Large Language Models (LLMs)
+have shown great potential in Natural Language
+Generation, it is still challenging to character-
+ize the uncertainty of model generations, i.e.,
+when users could trust model outputs. Our
+research is derived from the heuristic facts
+that tokens are created unequally in reflecting
+the meaning of generations by auto-regressive
+LLMs, i.e., some tokens are more relevant
+(or representative) than others, yet all the to-
+kens are equally valued when estimating un-
+certainty. It is because of the linguistic re-
+dundancy where mostly a few keywords are
+sufficient to convey the meaning of a long sen-
+tence. We name these inequalities as genera-
+tive inequalities and investigate how they af-
+fect uncertainty estimation. Our results reveal
+that considerable tokens and sentences contain-
+ing limited semantics are weighted equally or
+even heavily when estimating uncertainty. To
+tackle these biases posed by generative inequal-
+ities, we propose to jointly Shifting Attention
+to more Relevant ( SAR) components from both
+the token level and the sentence level while es-
+timating uncertainty. We conduct experiments
+over popular “off-the-shelf” LLMs (e.g., OPT,
+LLaMA) with model sizes up to 30B and pow-
+erful commercial LLMs (e.g., Davinci from
+OpenAI), across various free-form question-
+answering tasks. Experimental results and de-
+tailed demographic analysis indicate the su-
+perior performance of SAR. Code is avail-
+able at https://github.com/jinhaoduan/
+shifting-attention-to-relevance .
+1 Introduction
+Large Language Models (LLMs) have shown
+remarkable capabilities in intent understand-
+ing (He and Garner, 2023), multi-round conver-
+sation (Long, 2023; Chen et al., 2023), logical rea-
+soning (Creswell et al., 2022; Pan et al., 2023), and
+∗Corresponding author <kx46@drexel.edu>.
+Question: What is the ratio of the mass of an object to its volume?
+Ground T ruth: density
+LLMs Generation : density of an object
+Previous Predictive Entropy-based Uncertainty Estimation
+density of an object
+0.238 6.528 0.966 0.008Token
+Entropy
+Uncertainty+ + +
+= 1.949 High uncertainty , refuse to answer
+Shifting Attention to Relevance ( SAR ) Uncertainty Estimation
+density of an object
+0.238 6.528 0.966 0.008
+Uncertainty+ + +
+= 0.650 Low uncertainty , return generation. . .
+Token-Level
+Shifting0.757 0.057 0.097 0.088( )/  4
+Correctness
+Figure 1: Irrelevant tokens (or sentences) might commit
+majority uncertainty in free-form generations, such as
+the token “ of” committing extremely large uncertainty,
+which misleads the uncertainty estimation of LLMs.
+We term these observations as “generative inequalities”
+and tackle them by shifting attention to more relevant
+components.
+also disclose great potential in scientific discov-
+ery (Birhane et al., 2023). For instance, the recent
+ChatGPT, BARD, GPT-4, delicately pre-trained on
+large-scale corpora and aligned to human prefer-
+ences (Christiano et al., 2017; Ouyang et al., 2022),
+profoundly shape the range of what AIs could do
+and the way humans communicate with AIs.
+Despite the surprising progress, LLMs are
+proven to be vulnerable to widely known reliabil-
+ity issues, such as hallucination (Manakul et al.,
+2023a) and factual errors (Bian et al., 2023; Karpin-
+ska and Iyyer, 2023; Gekhman et al., 2023). Un-
+certainty estimation is one of the most popular ap-
+proaches aiming to measure when humans could
+trust the generations of LLMs. It is critical for
+Human-AI interaction applications (e.g., therapy
+and mental health (Lin et al., 2023; Sharma et al.,arXiv:2307.01379v1  [cs.CL]  3 Jul 20232023)) where humans will densely communicate
+with LLMs and their behaviors will be largely af-
+fected by the outputs from LLMs.
+Uncertainty estimation is complex due to vari-
+ous uncertainty sources (e.g., aleatoric uncertainty
+and epistemic uncertainty (Kendall and Gal, 2017)).
+Especially for free-form language models where
+the model complexity is high and the solution do-
+main is effectively infinity, i.e., any generation that
+has the same semantic as the ground-truth answer
+should be deemed as correct, it is essentially differ-
+ent from the well-studied classification models or
+any other models that have specific labels.
+Prior works estimate uncertainty by prompting
+models to answer confidence (Lin et al., 2022a; Ka-
+davath et al., 2022a) or designing logits- or entropy-
+based measurements (Malinin and Gales, 2021,
+2020; Kuhn et al., 2023). The most recent work
+proposes Semantic Entropy (SE) (Kuhn et al., 2023)
+where generations sharing the same meaning (or
+semantic equivalence sentences) are gathered in a
+semantic cluster. Then the cluster-wise entropy is
+calculated as the uncertainty measurement.
+Our motivation is derived from an intuitive fact:
+tokens are created unequally in presenting seman-
+tics. Namely, some tokens (e.g., nouns, verbs) are
+more meaningful than other tokens (e.g. definite
+articles). For example, for a given question “ What
+is the ratio of the mass of an object to its volume? ”
+and a model generation “ density of an object ”. It
+is clear that “‘density” is the most relevant token
+in presenting semantics and answering the ques-
+tion than the rest tokens. We term the former as
+relevant tokens and the rest tokens as irrelevant
+tokens . Prior works treat each token equally when
+estimating uncertainty, which is counter-intuitive
+( Figure 1). Therefore, we may ask:
+Are relevant tokens more critical than irrelevant
+tokens when estimating uncertainty?
+To answer this, we first investigate how token-
+level generative inequality affects uncertainty esti-
+mation in LLMs. Specifically, we first measure the
+relevance of each token by comparing the semantic
+change before and after removing this token from
+the generation. A larger semantic change means
+more relevance for this token and vice versa. Then
+we quantify the uncertainty proportions, i.e., the
+uncertainty committed by this token. At last, we
+analyze the correlation between relevance and un-
+certainty proportion. Our results reveal that there
+are large amounts of tokens containing very limitedsemantics yet are weighted equally or even heavily
+when evaluating uncertainty. We further generalize
+to the sentence-level inequality by assessing “rele-
+vant sentences” and “irrelevant sentences” where
+similar observations are observed.
+Based on these observations, we propose a sim-
+ple attention-shifting method, by jointly examining
+the relevance and reassigning attention from both
+the token level and the sentence level, termed as
+Shifting Attention to Relevance ( SAR).SAR is eval-
+uated on multiple popular open-source LLMs (e.g.,
+OPT (Zhang et al., 2022), LLaMA (Touvron et al.,
+2023)) with model sizes up to 30b, and commercial
+LLMs (e.g. Davinci from OpenAI), across mul-
+tiple free-form question-answering datasets (e.g.,
+CoQA (Reddy et al., 2019). TriviaQA (Joshi et al.,
+2017), SciQ (Welbl et al., 2017)). Experimental re-
+sults demonstrate SAR’s superior performance. Our
+contributions can be summarized as the following:
+•We disclose that uncertainty estimation will be
+largely affected by token- and sentence-level
+generative inequality, i.e., irrelevant tokens or
+sentences will be over-valued when estimating
+uncertainty.
+•We mitigate the two inequality biases by
+Shifting Attention to Relevance ( SAR), which
+jointly examines the relevance of each token
+and sentence, and reassigns attention when
+estimating uncertainty.
+•We conduct experiments over “off-the-shelf”
+LLMs and powerful commercials LLMs,
+such as text-davinci-002 andtext-davinci-003 ,
+across various free-form question-answering
+tasks. Experimental results demonstrate that
+SAR outperforms previous works with large
+margins.
+2 Related Works
+Uncertainty Estimation in Conventional NLP
+Tasks. Uncertainty Estimation of machine trans-
+lation (MT) has been studied for years to eval-
+uate the performance of MT better. (Ott et al.,
+2018) access uncertainty by comparing multiple
+model outputs to multiple 

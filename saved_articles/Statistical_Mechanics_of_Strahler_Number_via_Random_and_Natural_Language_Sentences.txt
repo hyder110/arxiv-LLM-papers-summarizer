@@ -1,0 +1,449 @@
+Statistical Mechanics of Strahler Number via Random and
+Natural Language Sentences
+Kumiko Tanaka-Ishii and Akira Tanaka
+Abstract
+The Strahler number was originally proposed to characterize the complexity of river bifurcation
+and has found various applications. This article proposes computation of the Strahler number’s upper
+and lower limits for natural language sentence tree structures, which are available in a large dataset
+allowing for statistical mechanics analysis.
+Through empirical measurements across grammatically annotated data, the Strahler number of
+natural language sentences is shown to be almost always 3 or 4, similar to the case of river bifurcation
+as reported by Strahler (1957) and Horton (1945).
+From the theory behind the number, we show that it is the lower limit of the amount of memory
+required to process sentences under a particular model. A mathematical analysis of random trees
+provides a further conjecture on the nature of the Strahler number, revealing that it is not a constant
+but grows logarithmically. This finding uncovers the statistical basics behind the Strahler number as
+a characteristic of a general tree structure target.
+Keywords— Strahler number; Tree structure; Memory
+1 Introduction
+The Strahler number (Strahler, 1957) was originally introduced in the field of geography, as a measure
+of the complexity of river bifurcation. Curiously, Strahler found that almost any river in England has a
+constant value of 4 for this number. The Strahler number has been theorized to describe the statistical
+mechanics underlying a system that is characterized by bifurcation (Beer and Borgas, 1993). Apart
+from geography, the Strahler number has been applied to analyze the complexity of computation trees
+in computer program source code (Ershov, 1958). In particular, it was theorized to equal the minimum
+number of memory areas that are necessary for evaluation of a computation tree (Ershov, 1958).
+We believe that application of the Strahler number to another target here, namely, natural language
+sentences, can contribute to understanding both the mechanics that the number describes and the com-
+plexity of natural language.
+On the statistical mechanics side, curiously, previous studies on the Strahler number reported that it
+is almost 4 (Strahler, 1957; Ershov, 1958). However, to the best of our knowledge, what this constant
+value signifies from a statistical mechanics perspective is not fully understood. In this work, we show
+that this number actually grows logarithmically with respect to a tree’s size. Furthermore, the Strahler
+number for natural language sentences is not very different from that for random trees. In other words, it
+is actually the distribution of a system’s scale range that produces a Strahler number of 4.
+As for the natural language side, natural language is another important complex system and has been
+subject to analyses by statistical mechanics methods. In particular, there have been many reports with re-
+spect to Zipf’s law (Zipf, 1949); more recently, language text has been subject to various analyses of long
+memory via methods such as long-range correlation (Altmann et al. , 2009, 2012; Tanaka-Ishii and Bunde,
+2016) and fluctuation analysis (Ebeling and Pöschel, 1993; Ebeling and Neiman, 1995; Kobayashi and
+1arXiv:2307.02697v1  [cs.CL]  6 Jul 2023Tanaka-Ishii, 2018; Tanaka-Ishii and Kobayashi, 2018). It has been theorized that grammatical structure
+lies behind such long memory (Lin and Tegmark, 2017).
+Previous works on the structural characteristics of natural language sentences have focused on the
+cognitive load (Yngve, 1960; Kimball, 1975; Gibson, 2000; Liu et al. , 2017). Cowan (2001) suggested
+a value of 3 to 5 for a “magical number” involved in cognitive short-term memory. In particular, by ap-
+plying a particular sentence analysis method (Abney and Johnson, 1991), Schuler et al. (2010) indicated
+that human sentences require a maximum of four memory areas. However, these previous works did not
+describe the characteristics underlying the statistical mechanics of the data, which is complimentary to
+the understanding in cognitive science.
+As will be shown via the underlying theory, the Strahler number of human sentences shows a kind
+of lower limit on the amount of necessary memory to understand sentence structure. In this article, we
+provide a mathematical definition of this lower limit, and we show that the Strahler number of natural
+language sentences is almost 3 or 4. Although the Strahler number has such a limit, we show that it is not
+actually a constant; rather, it increases logarithmically with the sentence size. It has long been known,
+however, that sentence lengths can only take a certain range (Sichel, 1974; Yule, 1968), and this range
+is the main reason why the Strahler number is seemingly a constant. Furthermore, our work shows that
+this number is almost the same for all possible tree shapes of the same size, thus providing a signification
+that the potential “magical number” might not be so “magical,” by explaining its origin.
+2 Related Work
+This work is related to three fields as follows. The first involves the general history of the Strahler
+number (Strahler, 1957). It was known in the literature before Strahler (Horton, 1945); however, we
+call it the “Strahler number” following convention. The Strahler number was fundamentally analyzed
+from a statistical mechanics viewpoint, in relation to the bifurcation ratio and area of a water field (Beer
+and Borgas, 1993). Meanwhile, it has found various applications besides river morphology, of which
+the most important is computer trees, as mentioned above. That theory is the basis of this article, as
+explained in the following section.
+The second genre of related work is measurement to characterize the complexity of natural language
+sentences. It has long been known that there is a bias in the branching direction, such as a right-branching
+preference in Indo-European (IE) languages (Forster, 1968). This bias has been quantified in various
+ways, as excellently summarized in Fischer et al. (2021). Another perspective is consideration of the
+modifier-modified distances within a sentence Gibson (2000). Through an analysis of 20 languages, Liu
+(2008) reported that the dependency distance is usually less than 4. More recent works have considered
+sentence structure as a whole. Xu and Reitter (2016) showed how syntactic complexity in conversation
+converges between interlocutors within spans of topic episodes. Yadav et al. (2020) showed how word
+order can be argued to relate to linguistic complexity. The Strahler number provides another measure of
+the complexity of natural language sentences.
+The third type of related work involves the amount of short-term memory as studied in the field of
+cognitive science. Among early works, Miller (1956) showed that the number of chunks in short-term
+memory is 7±2. Yngve (1960) defined the complexity of dependency trees by their depth and argued
+that this depth is related to Miller’s numbers. Beyond language, Cowan (2001) argued that short-term
+memory is bounded by a “magical number” of 3 to 5. The exact nature of this short-term memory has
+been controversial, and there has not been an argument based on the statistical mechanics of random
+trees. Our work thus provides a novel approach by using the Strahler number and its mathematical
+theory for random trees.
+2111121
+1 12 12 12 21 23 23Figure 1: Strahler number of a tree.
+3 Strahler Number
+3.1 Definition
+Lett= (V, E)denote a rooted directed tree, where Vis the set of nodes and E∈V×Vis the set
+of edges. Each edge is directed from a parent to a child. Let Tdenote the set of finite rooted directed
+trees, and let ndenote the number of nodes in a tree. Later, we will consider different sets as T: (1)
+dependency structures U(Section 5), with U(n)denoting the subset with nnodes; (2) random binary
+structures R2(n)(Section 3.3); and (3) random n-node trees R(n)(Section 4.2), as defined later.
+Let a binary tree be one for which every inner node has two children. For a binary tree t, the Strahler
+number is defined in a bottom-up manner (Strahler, 1957; Horton, 1945). Every node vacquires a
+Strahler number S(v), and the Strahler number of the root is the Strahler number of the whole tree, S(t).
+The definition is given as follows:
+• For a leaf node v,S(v) = 1 .
+• For an inner node v, let the two child nodes be ch1(v), ch2(v).
+–IfS(ch1(v)) == S(ch2(v)), then S(v) =S(ch1(v)) + 1 .
+–Otherwise, S(v) =max(ch1(v), ch2(v)).
+From this definition, the Strahler number is obviously unique for a given tree.
+Figure 1 shows an example tree with the values of S(v)indicated for every node v. For instance,
+the node with the green “3” has two children. As the child nodes’ numbers are both 2, the parent node’s
+number is 2 + 1 = 3 . On the other hand, the root node with the purple number also has two children,
+one with a number of 3 (green) and the other with 2 (blue). Because the child nodes’ numbers are
+different, the Strahler number of the root is max(3 ,2) = 3 . Through such bottom-up calculation, this
+tree’s Strahler number is calculated as 3.
+3.2 Relation to Number of Memory Areas Required to Process Trees
+After the Strahler number’s original definition to analyze river bifurcation in England, it was applied
+to analyze the complexity of computation trees (Ershov, 1958). A computation tree is produced from
+program code, which is parsed into a computation tree and then evaluated.
+For example, Figure 2 shows a tree for a computation (i.e., program code) “ 1 + 2∗34”. Parsing this
+program string generates the tree, which is then computed to yield 163. The question here is how much
+memory is necessary to get this result.
+The Strahler number is known to give the minimum number of memory areas for tree evaluation by
+the use of shift-reduce operations (Sethi and Ullman, 1970), which constitute the simplest, most basic
+3
+
+ 
+
+?Figure 2: Computation tree
+for1 + 2∗34.
+
+3FEVDF 
+
+3FEVDF3FEVDF?4IJGU4IJGU4IJGU4IJGUFigure 3: Transition of the stack dur-
+ing evaluation from the be-
+ginning of the tree.
+3FEVDF 
+
+3FEVDF3FEVDF?
+4IJGU
+4IJGU4IJGU4IJGU
+Figure 4: Transition of the stack during
+evaluation from the end.
+theory of computation tree evaluation. Here, we give a brief summary of these operations, with a more
+formal introduction given in Appendix C. A computation tree can be evaluated with the two operations
+of shift and reduce by using a memory system comprising a stack, which is a last-in, first-out (LIFO)
+data structure. A shift operation puts the data element of a tree leaf on the stack, and a reduce operation
+applies a functional operation (such as addition or multiplication) to the two elements at the top of the
+stack.
+For example, consider evaluation of the computation tree shown in Figure 2. For evaluation from the
+beginning of the tree , the required number of stack spaces is four, as shown in Figure 3. On the other
+hand, for evaluation from the end of the tree, the total number is reduced to two, as shown in Figure 4.
+As seen here, which leaf of the tree is evaluated first determines the necessary depth of the stack.
+Every shift-reduce gives a way to traverse a given computation tree, and each way requires a particular
+number of stack space uses. Thus, there is a particular way to traverse a tree by the shift-reduce method
+that requires a minimum number of stack spaces.
+This minimum number of stack spaces required to evaluate a computation tree equals the tree’s
+Strahler number (Ershov, 1958), which is obvious from the definition of the shift-reduce method as
+given in Appendix C. If no self-referential expression is involved, then this number is also the minimum
+number required for analyzing program code in a sequence represented as a computation tree. This is
+because analysis of a program as a computation tree is yet another way to traverse the tree.
+To adapt this theory to natural language sentences, we can consider transformation of a sentence
+structure into a binary tree. The evaluation of this binary tree (into some kind of meaningful representa-
+tion) uses a certain memory amount. In describing this amount with use of the shift-reduce method, the
+necessary number of stack spaces for evaluation is bounded by the Strahler number. Because analyzing
+a sentence is equivalent to traversing a binary tree, the tree’s Strahler number gives the lower bound on
+the necessary number of stack spaces. This shift-reduce scheme is the simplest general method to deal
+with a sentence structure (Zhang, 2020). It has become a standard way to parse a sentence, and its use
+is an ongoing research topic (Fernández-González and Gómez-Rodríguez, 2019; Yang and Deng, 2020;
+Grenander et al. , 2022; Fernández-González and Gómez-Rodríguez, 2023). Hence, knowledge of a sen-
+tence structure’s Strahler number can give a lower-limit criterion for the amount of memory required to
+process the sentence structure.
+43.3 Strahler Number of Random Binary Trees with nLeaves: R2(n)
+Before calculating the Strahler number of a sentence structure, we introduce the Strahler number of a
+random binary tree, which provides a good theoretical baseline.
+LetR2(n)be the set of all binary trees with nleaves. The set’s size |R2(n)|is known to be given by
+a Catalan number, i.e., |R2(n)|=1
+n2n−2Cn−1(Stanley, 2015).
+It was analytically shown by Flajolet et al. (1979) that the mean Strahler number can be deductively
+described via approximately logarithmic growth with a base of four1, and the mean value obviously
+increases with the tree size n. Later, this theoretical fact will provide an important reference in under-
+standing the complexity of natural language sentences.
+In addition to the Strahler number’s mean behavior, its upper and lower limits can be considered.
+For a given set of trees, T, the upper/lower limits are respectively defined as the maximum/minimum
+Strahler numbers. Hence, we analytically consider the upper/lower limits for R2(n). By the definition
+of the Strahler number, the upper limit is obviously acquired from a tree that is closest to a complete
+tree (Ehrenfeucht et al. , 1981), where the Strahler number equals the tree’s maximum depth. Therefore,
+the upper limit for R2(n)is⌊log2n⌋+ 1. On the other hand, the lower limit derives from the opposite
+case of a tree that is closest to a linear tree. Specifically, the lower limit is 1 for n= 1, or 2 otherwise,
+because for n >1, there are two leaf nodes and all inner nodes thus have a Strahler number of 2.
+4 Measurement of Strahler Number of Sentence Structure
+There have been two main paradigms in representing tree structures: phrase structure (Chomsky, 1956)
+and dependency structure (Tesnière, 1959). Here, we use these terms under the most conventional defi-
+nitions, but briefly, the former describes natural language sentences in a similar manner to a computation
+tree, as described above, where words are located at leaves and inner nodes describe the relations be-
+tween words. On the other hand, the latter describes a tree structure as the modifier-modified relations
+among words. In other words, the inner nodes of the tree in the phrase structure paradigm are not words,
+whereas those in the dependency structure paradigm are words.
+In this article, we calculate the Strahler number with a dependency structure rather than a phrase
+structure, because a large amount of annotated data is available in a large number of languages, as with
+the data that will be described in Section 5. Hence, the question here is how to calculate the Strahler
+number for every dependency tree.
+In Section 3.1, the Strahler number was defined for a binary tree, whose inner nodes and leaf nodes
+are different, with only leaf nodes representing words. On the other hand, both the inner and leaf nodes
+of a dependency structure are words, with inner nodes having multiple child nodes for modifiers. Filling
+of the gap between the differences in these two settings would suggest only two directions: to transform
+dependency structures into binary phrase structure trees; or to extend the Strahler number by adapting it
+to the dependency structure.
+Regarding the latter direction, there have been previous attempts to extend the Strahler number to
+general trees with nodes having more than two children (Auber et al. , 2004). The method in that work
+extended the rule to count up the Strahler number at each bifurcation as described in Section 3.1. How-
+ever, we do not adopt this generalization, mainly because the theory around it is not established. The
+1Precisely, Flajolet et al. (1979) showed that the mean Strahler number is
+E[R2(n)] = log4n+ 1−Z∞
+0(e−t2H4(t))(tF(logt+1
+2logn) +t
+2logt)dt+o(1), (1)
+where Fis a continuous, periodic function having period 1, and H4is the fourth Hermite polynomial.
+5easy
+It was quite find
+to something.(a)Dependency structure example
+punct
+expl-H
+PRON
+Itcop-H
+AUX
+wascsubj-H
+advmod-H
+ADV
+quiteADJ-H
+easymark
+PART
+toobj-H
+VERB-H
+findPRON
+somethingPUNCT
+. (b)Binary1 of (a), using grammar
+expl
+PRON
+Itcop
+AUX
+wasadvmod
+ADV
+quitepunct
+csubj
+ADJ
+easymark
+PART
+toobj
+VERB
+findPRON
+somethingPUNCT
+. (c)Binary2 of (a), using heuristics
+Figure 5: Dependency structure (a) and binary phrase structures (b, c) of "It was quite easy to find something." (a)
+is an example from the Universal Dependency Dataset (Nivre et al. , 2020a).
+theory on computation trees would not apply easily; in addition, the analytical theory for random binary
+trees would not be easy to extend to general trees.
+Hence, in the following, we consider methods to transform dependency trees into binary trees to
+calculate the Strahler number. First, we explain two particular binarization methods. Later, in the ex-
+perimental section (Section 6), we show that these two methods yield very similar results with respect
+to the Strahler number. Second, we provide a method to acquire the upper and lower limits across any
+binarization method. The results for any particular binarization method fall within the range between the
+upper and lower limits, and the limits can be compared with those of random trees.
+4.1 Two Binarization Methods for Dependency Structure
+The transformation of a dependency structure to a phrase structure is noteasy (Kong et al. , 2015;
+Fernández-González and Martins, 2015), partly because the grammatical attribute of every inner node
+must be estimated, whereas the reverse transformation is relatively feasible (Buchholz, 2002). Here,
+we want to effectuate this difficult transformation but without requiring any precise prediction of the
+attributes of inner nodes, as we want to calculate the Strahler number regardless of its specific value.
+We transform a given dependency structure via the following two methods:
+Binary1 Transformation by use of a manually crafted grammar (Tran and Miyao, 2022).
+Binary2 Transformation without a grammar, by use of heuristics.
+Binary1 derives from a grammar proposed by Reddy et al. (2017). The grammar describes the degree
+of grammatical relation between the modifier and modified, and the dependency tree is binarized on the
+order of this degree. For an explanation of this grammar, see Reddy et al. (2017).
+On the other hand, Binary2 binarizes a dependency structure via two simple heuristics based on a
+modifier’s distance from the head. The two heuristics are as follows: (1) the farthest modifiers form
+deeper nodes in the tree; and (2) words before the head are allocated to the head’s left, whereas those
+after are allocated to the right. Although these are heuristics, this method has a relation to the linguistic
+theory of center embedding of sentences.
+A binarization example is shown in Figure 5, in which (a) shows the tree of an original dependency
+structure, and (b) and (c) show its binary-transformed phrase structure trees obtained with Binary1 and
+2, respectively.
+As seen through these examples, the binarization methods each have pros and cons. Binary1 has
+an advantage in that the resulting tree structure reflects the correct sentence structure, but as mentioned
+above, its applicability is limited. On the other hand, Binary2 does not strictly reflect the sentence
+structure, but it is always applicable. After application of Binary1 and 2, each tree’s Strahler number can
+be obtained by following the definition.
+64.2 Upper/Lower Limits of Strahler Number for Dependency Structures and Random
+Trees with nNodes: R(n)
+Binary1 and 2 are examples of possible methods for transforming a dependency tree to a binary tree. Be-
+cause the resulting Strahler number depends on the resulting set of trees acquired via the transformation
+method, we want to obtain the number’s upper and lower limits for all possible binary transformation
+methods.
+In other words, a dependency tree uxcan be transformed into various binary trees by using some
+method under conditions that reflect the original dependency structure. Let Uxbe the set of all binarized
+trees for a given ux, where each element is a binary tree obtained with a particular binarization method.
+The upper and lower limits are the maximum and minimum sizes, respectively, in Ux.
+The details of obtaining the upper/lower limits are described in Appendix A, but a summary is pro-
+vided here. A binarization method constitutes a method to binarize each inner node vof a tree t. Binary1
+and 2 are examples of different strategies, using a grammar or heuristics. At each inner node, there is
+a binarization method that maximizes or minimizes the Strahler number S(v). The maximizing method
+binarizes the subtree under vso that it becomes closer to a complete tree, whereas minimization makes
+the subtree closer to a linear tree. We showed a very similar argument in Section 3.3 for random trees.
+The maximum and minimum can be calculated inductively to acquire the Strahler number’s respective
+upper and lower limits. Note that these limits are obtained while ignoring the word order and the con-
+straint of non-intersection, because the maximum and minimum at each node vare difficult to compute
+under these constraints.
+Thus far, we have explained how to acquire the upper/lower limits for a particular tree ux. We can
+also get the upper/lower limits across the uxin a set of U. Specifically, for each subset U(n)of trees
+withnnodes, the mean upper/lower limits of U(n)can be computed.
+These upper and lower limits are comparable with those for the set of random binary trees, R2(n),
+as mentioned in Section 3.3. Furthermore, apart from R2(n), we can consider another set of random
+trees: all possible trees with nnodes, denoted as R(n). The mean upper/lower limits of R(n)for each
+nare also empirically computable by the same method described in this section. Because |R(n)|is
+also a Catalan number (Stanley, 2015), computation of the upper/lower limits of R(n)requires dynamic
+programming to cover the entire set. We summarize that approach in Appendix B and give the details in
+Appendix D.
+5 Data
+For the set U, as mentioned above, we use Universal Dependencies (Nivre et al. , 2020b; de Marneffe
+et al. , 2021; Nivre et al. , 2020c), version 2.8, to measure the Strahler number for natural language.
+Universal Dependencies is a well-known, large-scale project to construct large-scale annotated data for
+natural language sentences. The annotation is defined under the Universal Dependency scheme, which
+is a representation based on dependency structure. The version used in this article contains 202 corpora
+across 114 languages. The corpora are listed in Table 1 of Appendix E.1. Binary1 and 2 can be applied
+and upper and lower limits can be calculated for all these data.
+6 Results
+To summarize the approach thus far, we have a dependency dataset U, in which the subset of trees of size
+nis denoted as U(n). For random trees, we have a set of binary random trees with nleaf nodes, denoted
+asR2(n), and a set of random trees with nnodes, R(n).
+7Table 1: Average ±standard deviation of the Strahler numbers for all dependency trees.
+All dependency trees
+Upper limits 3.56±0.83
+Lower limits 2.71±0.60
+Binary1 (with Grammar) 3.21±0.74
+Binary2 (with heuristics) 3.11±0.70
+As described above, for R2(n), the theoretical mean and upper and lower bounds of the Strahler
+number are analytically known. For the other sets, these values must be acquired empirically. For a tree
+tbelonging to one of those sets, we calculate the upper/lower limits of Strahler numbers. In terms of n,
+the averages of each of these four values can be acquired for U(n)andR(n). Binary1, 2 can also be
+calculated for U(n).
+In this section, we consistently use color as follows. For R2(n), we use black for the upper/lower
+limits and the mean, green for Binary1, and blue for Binary2. For U(n), we use pink for the upper limit
+and red for the lower limit. For R(n), we use purple for the upper limit and orange for the lower limit.
+6.1 Strahler Number of Sentence Structure
+Table 1 lists the means and standard deviations for the entire dependency dataset. We see that the Strahler
+number of a dependency structure is usually less than 4. The Binary1 and Binary2 values are between
+2 4 6
+Strahler Number0200000400000600000 Counts
+(a)Upper limits
+2 4 6
+Strahler Number0200000400000600000800000 Counts (b)Lower limits
+2 4 6
+Strahler Number0200000400000600000800000 Counts
+(c)Binary1
+2 4 6
+Strahler Number0200000400000600000800000 Counts (d)Binary2
+Figure 6: Histogram of the Strahler numbers of dependency trees.
+80 20 40 60 80 100
+Length of Sentence1234567Average of Strahler NumberUpper limit of R_2(n)
+Lower limit of R_2(n)
+Average of R_2(n)
+Average of R(n)'s Upper limits
+Average of R(n)'s Lower limits
+Binary1
+Binary2
+Average of U(n)'s Upper limits
+Average of U(n)'s Lower limitsFigure 7: Average Strahler number with respect to the tree size n.
+the upper and lower limits. For each corpus, the specific means and standard deviations for Binary1 and
+2 and the upper/lower limits for U(n)are listed in Appendices E.2-E.5, Tables 3-10.
+Figure 6 shows a histogram of the Strahler numbers. It can be seen that the distribution shifts from
+large to small in the order of the upper limit, Binary1, Binary2, and the lower limit. Note that Binary1
+and 2 show pretty similar results, regardless of the binarization method. The median Strahler number is
+4 for the upper limit, and 3 for all other cases. Strahler numbers larger than 4 are clearly very scarce.
+The dependency dataset includes data of various language groups, genres, and modes (speech/writing).
+According to our analysis, the differences among datasets are not distinct across this variety of data. The
+largest Strahler number is 7, and the smallest is 1. Examples of both extremes are given in Appendix F.
+The examples with a number of 1 are mainly one-word salutations, interjections, and names (even with-
+out periods; Appendix F, Table 11). On the other hand, sentence examples with a Strahler number of 7
+are very rare and contain a large number of words. As seen here, sentences with a larger Strahler number
+above 4 are atypical and include examples for which it might be questionable to call them sentences. The
+dependency dataset includes such questionable entries, and the Strahler number could provide evidence
+to quantify such irregularities in the corpora.
+6.2 Growth of Strahler Number w.r.t. Sentence Length
+Originally, when the Strahler number was used for analysis of rivers in England, it was found to be 4.
+We can also conclude from the previous section that the Strahler number for sentence structure is almost
+4. This leads us to wonder how this number is significant.
+This number actually depends on the logarithm of the tree size n. Thus far, we have discussed the
+Strahler number as a constant value with a given distribution. In the following, we show that it is not a
+constant but merely looks like a constant, because it grows very slowly with respect to n, and the range
+of sentence lengths is limited.
+Figure 7 shows the mean results for the tree sets U(n),R2(n), and R(n), as summarized at the
+beginning of this section. The black analytical lines for R2(n)indicate the exact values following the
+theory explained in Section 3.3. For the other sets, the plots show empirical results measured across trees
+9"MMQBUFSOPGOPEFUSFF	NJONBY
+2, 2 2, 3 2, 3 2, 3
+3, 3 2, 3 2, 3 2, 3 2, 3
+2, 3 2, 3 2, 22, 2 2, 2
+"WFSBHFPGNJO"WFSBHFPGNBY"WFSBHFPGNBY "WFSBHFPGNJO2, 22, 3 2, 3 2, 3
+2, 3 2, 3'SFRVFOUQBUFSOPG
+OPEFUSFFJO6%	NJONBY
+Figure 8: Sample trees for n= 5: (left) all possible trees, and (right) structures appearing frequently among
+Universal Dependency (UD) trees.
+of size n. All plots approximately increase logarithmically, but none of them are smooth, as they have
+a step at n= 2, and they globally fluctuate by changing their logarithmic base. Overall, the necessary
+number of stack spaces is bounded by the logarithm of the tree size.
+For each n, the possible range of Strahler numbers for R2(n), which extends between the upper and
+lower black lines, is obviously far wider than the range for U(n). On the other hand, the range for U(n)
+is between the pink and red points. The range for R(n)is between the purple and orange lines, which
+is slightly narrower than the range for U(n), despite R(n)being the average of all random trees with n
+nodes.
+These results can be understood from a small example. Figure 8 shows a set of trees of size n= 5,
+with all such possible trees on the left, and typical structures appearing frequently in the dependency
+dataset on the right. The distribution of tree shapes in the dataset varies, with the set of trees on the right
+accounting for 80% of the total.
+The upper and lower limits of the Strahler number are listed below each tree. The averages are listed
+at the bottom of each box in the corresponding colors from the scheme used throughout this section.
+ForR(n), the respective upper/lower limits are 2.71 and 2.07; in contrast, if the six trees on the right
+appeared equally, the upper/lower limits would be 2.83 and 2. Thus, the range of R(n)is narrower than
+that of U(n), even in this small sample with n= 5.
+The actual plots in Figure 7 were obtained by computing the average across the distribution of shapes,
+but the range of R(n)is still contained within that of U(n). This small example with n= 5 explains
+why the range of R(n)can be almost the same or even smaller than that of U(n): the Strahler number is
+mostly the same for any kind of tree of the same size and does not especially characterize the tree shape.
+7 Discussion
+Previous reports on the maximum amount of short-term memory that can be cognitively used have con-
+sistently suggested a value of 3 to 5. In an excellent survey of previous works, Cowan (2001) summa-
+rized cognitive works that tested the maximum number of events or instances that could be remembered
+through human psychological experiments, e.g., via instant memory (Sperling, 1960) or graphics (Luck
+10and V ogel, 1997). He summarizes that number of such memory areas as 3 to 5 and refers to the value as
+a “magical number.”
+The possible relation of such a maximum number of local memory areas to the number of memory ar-
+eas required for sentence understanding is nontrivial. Memory is necessary to understand sentences, and
+one model for theorizing this is based on the shift-reduce approach. Under this setting, the experimental
+results in this article also show that this number is within the range of Cowan’s magical number .
+Our contribution in this work is that we provided reasoning about this magical number in a rigorous
+setting via the lower limits of shift-reduce evaluation of a tree. Although our findings are limited to this
+setting, we have shown that the Strahler number grows with the logarithm of the sentence length. Fur-
+thermore, through comparison with R(n), we showed that this trend is not specific to human sentences
+but derives in general from a wider set of all possible random tree shapes. This understanding might
+suggest the nature of the magical number to lie at a point in logarithmic growth including random trees,
+and the human cognitive limitation of short-term memory might explain why sentence lengths do not
+become extremely long.
+8 Conclusion
+In this article, we examined the use of the Strahler number to understand the nature of Strahler number.
+The Strahler number was originally defined to analyze the complexity of river bifurcation. Here, we
+applied it to sentences, which is the first use of this approach to the best of our knowledge. Because the
+tree structure dataset used here is much larger than the datasets used in previous applications, we could
+consider the nature of the Strahler number in comparison with random trees.
+The Strahler number entails the memory necessary to process a sentence structure via the shift-reduce
+method. We proposed ways to compute a sentence’s Strahler number, via two binarization methods and
+the upper and lower limits across all possible binarization methods. The experimental results showed
+that the Strahler number of a dependency structure is almost 3 or 4. This number was found to grow with
+the sentence length, and the upper/lower limits were found to be close to those of random trees of the
+same length, which is the Strahler number’s key statistical mechanics characteristic with respect to trees,
+including random trees. Furthermore, these findings provide evidence and understanding of the memory
+limit discussed to date in relation to the magical number conjectured for short-term memory.

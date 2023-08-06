@@ -1,0 +1,726 @@
+DiactTOD: Learning Generalizable Latent Dialogue Acts for Controllable
+Task-Oriented Dialogue Systems
+Qingyang Wu1∗James Gung2†Raphael Shu2Yi Zhang2
+Columbia University1AWS AI Labs2
+qw2345@columbia.edu
+{gungj,zhongzhu,yizhngn}@amazon.com
+Abstract
+Dialogue act annotations are important to
+improve response generation quality in task-
+oriented dialogue systems. However, it can
+be challenging to use dialogue acts to control
+response generation in a generalizable way be-
+cause different datasets and tasks may have
+incompatible annotations. While alternative
+methods that utilize latent action spaces or re-
+inforcement learning do not require explicit
+annotations, they may lack interpretability or
+face difficulties defining task-specific rewards.
+In this work, we present a novel end-to-end
+latent dialogue act model (DiactTOD) that rep-
+resents dialogue acts in a latent space. Diact-
+TOD, when pre-trained on a large corpus, is
+able to predict and control dialogue acts to
+generate controllable responses using these la-
+tent representations in a zero-shot fashion. Our
+approach demonstrates state-of-the-art perfor-
+mance across a wide range of experimental set-
+tings on the MultiWOZ dataset, including zero-
+shot, few-shot, and full data fine-tuning with
+both end-to-end and policy optimization con-
+figurations.
+1 Introduction
+Task-oriented dialogue systems have become in-
+creasingly prevalent in recent years, leading to a
+growth in research on related topics such as dia-
+logue response generation. Previous work (Yang
+et al., 2021; He et al., 2022) found that incorpo-
+rating dialogue act annotations, representing the
+illocutionary level of utterances, can enhance the
+quality of generated responses. Despite the impor-
+tance of dialogue act annotations, collecting them
+can be a time-consuming process that requires hu-
+man effort. Furthermore, existing annotations for
+dialogue acts are scattered across different datasets
+and may use different labeling schemes, making
+it difficult to generalize across tasks. As a result,
+∗Work performed during an internship at AWS AI Labs.
+†Corresponding author.
+Usr: I am thinking about
+getting some food.
+Sys: Do you have any
+preference for the price?DA: request price
+Sys: Which area
+are you looking?DA: request area
+Sys: I have found some
+expensive restaurants.DA: Inform priceFigure 1: Given different human-readable dialogue acts,
+the proposed system can produce different responses
+based on the context.
+learning to identify and classify general dialogue
+acts becomes a crucial challenge in the field of
+task-oriented dialogue systems.
+Dialogue acts refer to the underlying intention
+or purpose of a response in a conversation. For
+example, in Figure 1, a response might be intended
+to ask about price or area preference or provide in-
+formation given the same context. In task-oriented
+dialogue systems, it can be useful to classify the di-
+alogue acts of responses in order to generate more
+appropriate and relevant responses. One way (Chen
+et al., 2013) to improve the quality of generated
+responses is to use a dialogue policy model to se-
+lect the most appropriate dialogue act for a given
+context. However, this approach can be limited in
+complex or varied situations and may not work well
+across different datasets. Instead, more advanced
+techniques may be needed to generate high-quality
+responses in a wide range of contexts.
+An alternative way is to discard predefined se-
+mantic dialogue acts and instead use latent action
+spaces to optimize response generation. By us-
+ing latent action spaces, it is possible to generate
+responses that are more flexible and adaptable to
+a wider range of situations, without requiring hu-arXiv:2308.00878v1  [cs.CL]  1 Aug 2023Seen Dialog Act UnSeen Dialog Act
+request food
+hello
+inform area
+confirm location
+offer restaurantgreetingsask cuisine
+inform placebook ticket
+cancelFigure 2: Different datasets have different dialogue act
+annotation labelsets. How to generalize to unseen dia-
+logue acts becomes a challenge.
+man experts to define the action spaces in advance.
+LaRL (Zhao et al., 2019) first explores the idea of
+training an agent to discover underlying patterns
+and structures in a conversation dataset and to gen-
+erate responses based on these patterns. Later work,
+such as LA V A (Lubis et al., 2020) and DialogVED
+(Chen et al., 2022), extended this idea by using
+a variational autoencoder (V AE) to improve the
+performance of the latent action model. Other ap-
+proaches, such as PLATO (Bao et al., 2020), have
+explored using latent action spaces to optimize dia-
+logue agents with large-scale pre-training.
+While previous work (Zhao et al., 2019; Lubis
+et al., 2020; Chen et al., 2022; Bao et al., 2020)
+explored the use of latent action spaces and re-
+inforcement learning for dialogue systems, it has
+not addressed the possibility of learning general
+dialogue acts that can be applied across multiple
+datasets. This is an important consideration for
+task-oriented dialogue systems, which often need
+to handle a wide range of different tasks and con-
+texts. In Figure 2, we show examples of the fact
+that different datasets often have incompatible or in-
+consistent definitions for dialogue act annotations.
+Another limitation of previous approaches is that
+they fully avoid semantic dialogue act annotations,
+which can lack controllability and interpretability
+for the learned actions. This can make it difficult
+to understand why the system is generating cer-
+tain responses or to modify its behavior in specific
+situations. As a result, there is a need for new ap-
+proaches that can learn general dialogue acts across
+datasets and that provide more control and inter-
+pretability for the learned actions.
+In this work, we propose a novel method for
+learning generalized latent dialogue acts that can be
+applied to new domains for task-oriented dialogues.
+Our method uses sentence-BERT (Reimers and
+Gurevych, 2019) to encode seen dialogue acts into
+latent representations and a separate policy modelto handle context and database information. To
+integrate these two components into a single end-
+to-end model, we modify a pre-trained encoder-
+decoder model (Raffel et al., 2019; Lewis et al.,
+2020) to include the policy model, and further train
+it to select the best latent dialogue act for a given
+context.
+Our model is designed to perform zero-shot and
+controllable dialogue response generation, mean-
+ing that it can generate appropriate responses with-
+out requiring any additional training data. To
+achieve this, we pre-train our model on a large
+corpus of dialogues and act annotations. Before
+pre-training, we fine-tune another model, TANL
+(Paolini et al., 2021a), with SGD’s slot definitions
+(Rastogi et al., 2020) from a separate dataset to
+delexicalize the pre-training data to improve its
+zero-shot capability. These steps allow our model
+to learn generalizable latent dialogue act represen-
+tations and generate appropriate responses that can
+be applied to new tasks and datasets without addi-
+tional fine-tuning.
+We evaluate the effectiveness of our model on
+the MultiWOZ (Budzianowski et al., 2018) dataset,
+a widely-used benchmark for task-oriented dia-
+logue generation. During inference, we control the
+dialogue acts using the provided schema and tar-
+geted objective to generate better system responses.
+We test our model in a range of experimental set-
+tings, including zero-shot, few-shot, and full fine-
+tuning response generation for both end-to-end and
+policy optimization configurations. In all of these
+settings, our model outperforms previous baselines
+and achieves state-of-the-art performance.
+Our main contributions in this work can be sum-
+marized as follows:
+•We present a novel end-to-end latent dialogue
+act model that represents arbitrary dialogue
+acts in latent space and can predict and control
+these acts to generate better responses.
+•We pre-train our model with a semi-
+supervised method for learning latent dia-
+logue acts that can generalize across different
+datasets with different act labels.
+•Our model DiactTOD achieves state-of-the-
+art performance on the MultiWOZ dataset in a
+range of experimental settings, including zero-
+shot, few-shot, and full fine-tuning in both
+end-to-end and policy optimization configura-
+tions.2 Related Work
+Response generation is an important task in task-
+oriented dialogue systems. There have been many
+previous approaches (Hosseini-Asl et al., 2020; Wu
+et al., 2021; Gu et al., 2021; Su et al., 2022; He
+et al., 2022; Yu et al., 2022; Sun et al., 2022b; Wu
+et al., 2023) proposed to improve the task-oriented
+dialogue systems. One direction is the use of di-
+alogue act annotations to improve the quality of
+responses in task-oriented dialogue systems. For
+example, SimpleTOD (Hosseini-Asl et al., 2020)
+and UBAR (Yang et al., 2021) generate dialogue
+acts as part of the response generation process. PP-
+TOD (Su et al., 2022) uses the context as a prompt
+and dialogue act generation for multi-task learn-
+ing. Recently, GALAXY (He et al., 2022) pro-
+posed a method that uses pre-training on a large
+corpus of dialogues with dialogue act annotations
+as an auxiliary objective to improve the quality of
+the generated responses. However, these methods
+are limited by the fact that different datasets may
+have incompatible or inconsistent dialogue act an-
+notations for learning generalizable representations.
+To address this problem, previous work (He et al.,
+2022; Paul et al., 2019) has attempted to define a
+new universal schema for dialogue acts. However,
+these approaches are either overly simplified or re-
+quire additional human annotations, limiting their
+effectiveness and practicality.
+In addition to using explicit annotations of dia-
+logue acts, researchers have also explored alterna-
+tive methods to improve response generation, such
+as using latent action spaces and implementing rein-
+forcement learning techniques. These approaches
+aim to improve the overall task success rate of gen-
+erated responses. LaRL (Zhao et al., 2019) uses la-
+tent dialogue acts trained with reinforcement learn-
+ing instead of surface-form dialogue acts to control
+response generation which results in the best task
+score. LA V A (Lubis et al., 2020) further improves
+over LaRL by utilizing a variational autoencoder
+(V AE) to learn an informed and semantic prior
+when optimizing the latent action spaces, achiev-
+ing state-of-the-art Success and Inform scores on
+MultiWOZ. KRLS (Yu et al., 2022) is another re-
+cent approach that applies reinforcement learning
+to pre-trained language models. This approach uti-
+lizes a specifically designed objective function that
+focuses on learning the keywords in the input, with
+the goal of improving the overall performance of
+the language model. In our work, we adopt a sim-ilar approach but use dialogue act annotations to
+assign semantic meanings to the latent representa-
+tions, allowing the model to learn generalizable and
+controllable latent dialogue acts, which improves
+the quality of generated response.
+Pre-training with a large corpus of dialogues has
+been a widely adopted technique to enhance the
+response generation quality in dialogue systems
+(Zhang et al., 2020; Roller et al., 2021). In the
+context of task-oriented dialogue systems, several
+recently proposed approaches have demonstrated
+the effectiveness of pre-training. GALAXY (He
+et al., 2022) pre-trains the model with a collection
+of dialogue datasets with dialogue act annotations.
+GODEL (Peng et al., 2022) uses a larger dataset
+and model size, and it also incorporates the ground-
+ing of database results in the context. This allows
+it to achieve good performance under few-shot set-
+tings on the MultiWOZ dataset. In contrast, our
+work uses a smaller set of pre-training datasets but
+with more robust data processing techniques. We
+use the complete dialogue acts in each dataset with-
+out any simplification. We also train another model
+TANL (Paolini et al., 2021a) to delexicalize the
+pre-training data to improve the model’s zero-shot
+and few-shot capabilities.
+3 DiactTOD Approach
+In this section, we first provide a brief overview
+of the traditional end-to-end task-oriented dialogue
+systems. Then, we delve into the specifics of how
+our proposed latent dialogue act model operates, by
+providing details on both its training and inference
+processes, which offers a new approach to mod-
+eling dialogue acts. Finally, we discuss how this
+model can be used to control response generation
+for a more efficient and accurate dialogue system.
+3.1 End-to-End Task-Oriented Dialogue
+An end-to-end task-oriented dialogue system gen-
+erates a system response Rtat turn tbased on the
+dialogue history context Ctand the database result
+DB t. The history context Ctcontains the previous
+user utterances U1:tand the system responses R1:t.
+To get the database search result DBt, a dialogue
+state tracking (DST) model would need to output
+the belief state Bt. To leverage the dialogue act
+annotations, the model also generates act Atfor
+dialogue policy learning. This allows the model
+to effectively guide the conversation and produceEncoder
+Policy Model[request] car type
+S-BERT
+DecoderDatabase
+... [user] hello, I want a taxi...
+Dialogue history[sys] What type of car you want?
+Latent ActSystem ResponseGold dialogue act:
+Policy T raining
+teacher forcing
+Latent Dialogue Act
+Encoding
+Response GenerationFigure 3: Overview of the training pipeline, which includes three stages: latent dialogue act encoding, policy
+training, and response generation. During training, dialogue acts are first encoded into latent vectors and then passed
+to a policy model to control the final response generation.
+accurate and appropriate responses.
+Lact=−logp(At|Ct,DBt) (1)
+The final system response is generated condi-
+tional to the history context Ct, the database result
+DBt, and the dialogue act At.
+Lresponse =−logp(Rt|Ct,DBt, At) (2)
+In practice, the dialogue acts Atand the system
+response Rtare concatenated during the training
+and generation process to improve the decoder’s
+performance. However, the surface form of dia-
+logue acts has limitations in terms of generalization,
+as different datasets and tasks may have different
+formats for representing dialogue acts. This can
+make it difficult to apply the model to different
+settings.
+3.2 Generalizable Latent Dialogue Act
+Figure 3 shows the overview of our approach. We
+divide the pipeline into three parts: latent dialogue
+act encoding, policy training, and response genera-
+tion.
+Latent dialogue act encoding: To overcome the
+generalization issues associated with the surface
+form of dialogue acts, we use sentence-BERT (S-
+BERT) to encode the dialogue acts into embeddings
+and we have:
+z=S-BERT (At) (3)This allows different annotations with the same
+meaning to have similar representations while lever-
+aging the semantic knowledge contained in the en-
+coder to improve generalization.
+Policy Training: On top of the encoder-decoder
+architecture, we have introduced a policy model
+that serves as a way to learn the dialogue policy.
+This model operates similarly to the decoder in
+an autoregressive manner. It takes in the database
+search result DBtand the encoder’s hidden states
+hencoder as input, and produces a predicted latent
+dialogue act vector ˆzthat is optimized to closely
+match the true latent dialogue act vector z. We
+use the mean squared error (MSE) loss function to
+minimize their distance:
+ˆz=Policy (DBt, hencoder ) (4)
+Lpolicy =||ˆz−sg(z)||2
+2 (5)
+where sgmeans stop gradient. This increases the
+stability of the training. During training, the policy
+model is trained using a technique called teacher
+forcing, where the true latent dialogue act vector z
+is provided as input to the model. To ensure that
+the model does not leak any ground truth dialogue
+act information, a unidirectional attention mask is
+used.
+Then, the true latent dialogue act vector zis
+fed into the policy model with teacher forcing toS-BERTDialogue Acts T able
+[request] price
+Latent Embeddings
+Policy Model
+Databasevector
+quantization
+Inference Dialogue Act
+pre-defined from the schema
+[inform] area phone
+[request] car type
+[bye]
+...
+...Figure 4: During inference, we select the closest dia-
+logue act based the predicted dialogue act. Note that the
+set of valid dialogue acts can be filtered based on the
+task or context.
+produce the policy model’s hidden state:
+hpolicy =Policy (DBt, hencoder , z) (6)
+Response generation: The final system re-
+sponse is generated by the decoder, which takes
+both the hidden states of the encoder hencoder and
+the hidden states of the policy model hpolicy as the
+input.
+hencoder =Encoder (Ct) (7)
+Lresponse =−logp(Rt|hencoder , hpolicy)(8)
+This allows the decoder to generate appropriate
+responses while enabling controllability with the
+policy model, as the decoder can take into account
+the dialogue context and the predicted latent dia-
+logue act.
+The final training loss is defined as the sum of
+the policy loss and the response loss:
+Ltraining =αLpolicy + (1−α)Lresponse (9)
+where αis a hyperparameter to balance the magni-
+tude of losses.Inference: During the inference phase (depicted
+in Figure 4), we pre-define a table Szthat includes
+all possible combinations of dialogue acts. This
+allows us to create a set of embeddings for the
+dialogue acts, where each act can be treated as a
+unique "word" in a specialized vocabulary. This
+table contains all possible combinations of dia-
+logue acts that can be derived from the training
+dataset. Alternatively, if the schema of dialogue
+acts is known, we can manually construct such a
+table consisting of valid combinations. This can
+be particularly useful in a zero-shot setting. In this
+scenario, where we do not have a training set for
+a specific domain, having a set of predefined di-
+alogue acts can allow the model to still generate
+semantically valid responses without any training.
+Once the predicted latent dialogue act vector ˆzis
+generated, it is used to retrieve the most appropriate
+latent dialogue act from the embedding table Sz.
+This is done by using a technique called vector
+quantization, which allows us to select the latent
+dialogue act that is closest to the predicted vector.
+This helps reduce the representation mismatch of
+the predicted latent dialogue between training and
+inference.
+z′= arg min
+z∈Sz||z−ˆz|| (10)
+After the closest latent dialogue act is retrieved
+from the embedding table using vector quantiza-
+tion, it is fed back into the policy model. The
+decoder then generates the final system response
+by conditioning on both the encoder’s hidden states
+and the policy model’s hidden states.
+3.3 Controllable Response Generation
+The policy model uses a pre-processed embedding
+table to predict dialogue acts. By filtering the em-
+bedding table to include only relevant dialogue acts,
+we can control the predicted dialogue acts during
+inference. This allows the model to focus on gener-
+ating more appropriate and relevant responses that
+are tailored to the specific context or task, which
+improves the overall efficiency and accuracy of the
+dialogue system.
+For example, if the dialogue act table contains
+some combinations that lack requesting or inform-
+ing for certain slots, we can filter these dialogue
+acts out of the embedding table during inference.
+This helps guide the generation of responses to
+make more requests or provide more informationfor those specific slots. This can be particularly
+useful in scenarios where the user’s goal is to ob-
+tain specific information or complete a certain task
+and the model can make more requests or provide
+more information for the relevant slots. In this way,
+the model can quickly adapt to specific scenarios
+or domains and respond in a more appropriate and
+relevant way to the user’s needs and goals.
+4 Pre-training Latent Acts
+Dataset Name Act Label? # Utterances
+SGD ✓ 463,284
+STAR ✓ 107,846
+MSRe2e ✓ 74,686
+Frames ✓ 19,986
+MetaLWOZ ✗ 356,268
+Table 1: Pre-training datasets statistics. For datasets
+without dialogue act labels, we use system responses as
+a proxy for the dialogue act.
+To learn generalizable latent dialogue acts and
+achieve competitive performance on downstream
+tasks without any additional fine-tuning, our model
+undergoes pre-training on a selection of task-
+oriented dialogue datasets shown in Table 1. Specif-
+ically, we have chosen four datasets that are anno-
+tated with dialogue acts and one dataset that does
+not contain any dialogue act annotations. Detailed
+descriptions of these datasets can be found in the
+appendix.
+To ensure consistency across all datasets for pre-
+training, we pre-process the datasets with the same
+tokenization and truncation of dialogues when they
+exceed a certain length. Additionally, we incorpo-
+rate database search results as an input token to
+indicate the number of matches. A large portion of
+utterances in these datasets do not have dialogue
+act annotations. To effectively pre-train on those
+datasets, we utilize the system response as a proxy
+for the dialogue act. This allows the policy model
+to generalize to new and unseen dialogue acts. Our
+experiments have shown this approach to be effec-
+tive.
+In task-oriented response generation, system re-
+sponses are typically in a delexicalized form, which
+means that specific values of certain variables are
+replaced by placeholders. To enable this automatic
+delexicalization during response generation, we
+use the model TANL (Translation between Aug-
+mented Natural Languages) (Paolini et al., 2021b).This model can extract slot spans from the input
+sentence. We fine-tune the TANL model with the
+SGD’s predefined slot definitions. For downstream
+tasks and evaluation, we ensure compatibility by
+defining a one-to-one mapping of the SGD’s slot
+definitions with the slots in the MultiWOZ dataset.
+5 Experiment Setup
+We initialize our model with T5-base and pre-
+train our model on the previously mentioned
+datasets. We evaluate our model on the multi-
+domain task-oriented dialogue dataset Multi-
+WOZ (Budzianowski et al., 2018). It contains
+8,438/1,000/1,000 dialogues for training, valida-
+tion, and testing, respectively. There are seven
+different domains, including hotel, hospital, police,
+restaurant, train, and taxi. We use MultiWOZ 2.2
+(Zang et al., 2020) to be compatible with the stan-
+dardized evaluation script (Nekvinda and Dusek,
+2021). We evaluate our approach under different
+scenarios, such as zero-shot, few-shot, and fine-
+tuning with the full dataset, with both end-to-end
+and policy optimization configurations to evaluate
+the robustness and flexibility of our model.
+We use standardized evaluation metrics1with
+Inform, Success rates, and BLEU scores. Inform
+measures the extent to which the system provides
+sufficient and relevant information to fulfill the
+user’s information needs. Success evaluates the
+performance in completing the user’s goal. Also,
+we evaluate the model’s zero-shot dialogue act pre-
+diction capabilities on an unseen dataset.
+To provide a comprehensive evaluation, we sep-
+arately compare our model’s performance against
+several strong baselines in both low-resource set-
+tings and full fine-tuning settings. In low-resource
+settings, we compare our model with DialoGPT
+(Zhang et al., 2020), T5 (Raffel et al., 2019), and
+GODEL (Peng et al., 2022). GODEL and Di-
+aloGPT are trained with a much larger dialogue cor-
+pus. Those models require a minimum of 50 train-
+ing examples to adapt to MultiWOZ training data,
+while our work can perform zero-shot response
+generation without any fine-tuning.
+For the full dataset fine-tuning settings, we com-
+pare with models on the existing leaderboard of
+MultiWOZ. We evaluate both end-to-end and pol-
+icy optimization settings. This includes UBAR
+(Nekvinda and Dusek, 2021), PPTOD (Su et al.,
+1https://github.com/Tomiinek/MultiWOZ_
+EvaluationModel # ExamplesPolicy optimization
+Inform Success BLEU Combined
+DialoGPT base 50 38.70 3.00 0.20 21.05
+DialoGPT large 50 62.40 34.70 10.52 59.06
+T5base 50 60.60 22.50 4.31 45.86
+T5large 50 71.50 56.20 12.69 76.54
+GODEL base 50 67.60 46.10 12.81 69.72
+GODEL large 50 81.60 62.10 14.07 85.90
+GODEL GPT-J 50 60.50 21.00 6.27 47.01
+GODEL GPT-3 50 68.80 19.90 6.72 51.06
+DiactTOD 0 93.60 71.40 4.20 86.70
+DiactTOD 50 94.60 78.90 10.75 97.05
+Table 2: Low-resource experimental results. All experiments are done in the policy optimization setting. For
+few-shot, we fine-tuned the model with 50 examples.
+ModelEnd-to-end Policy optimization
+Inform Success BLEU Combined Inform Success BLEU Combined
+UBAR 83.4 70.3 17.6 94.4 - - - -
+PPTOD 83.1 72.7 18.2 96.1 - - - -
+RSTOD 83.5 75.0 18.0 97.3 - - - -
+BORT 85.5 77.4 17.9 99.4 - - - -
+MTTOD 85.9 76.5 19.0 100.2 - - - -
+HDNO - - - - 93.3 83.4 17.8 106.1
+GALAXY 85.4 75.7 19.6 100.2 92.7 83.5 19.9 108.1
+MarCo - - - - 94.5 87.2 17.3 108.1
+Mars 88.9 78.0 19.9 103.4 - - - -
+KRLS 89.2 80.3 19.0 103.8 93.1 83.7 19.1 107.5
+DiactTOD 89.5 84.2 17.5 104.4 94.8 90.2 17.8 110.3
+Table 3: MultiWOZ Response generation evaluation. “-” means that this setting’s performance is not reported.
+(Combined Score=(Inform + Success)*0.5 + BLEU)
+2022), RSTOD (Cholakov and Kolev, 2022),
+BORT (Sun et al., 2022a), MTTOD (Lee, 2021),
+HDNO (Wang et al., 2020a), GALAXY (He et al.,
+2022), MarCO (Wang et al., 2020b), Mars (Sun
+et al., 2022b), and KRLS (Yu et al., 2022). To
+obtain database search results in the end-to-end
+setting, we use MTTOD’s dialogue state tracker,
+which is trained jointly during fine-tuning. We fol-
+low previous methods and append the dialogue act
+in front of the system responses to improve perfor-
+mance.
+6 Experiments
+In this section, we first show the experimental re-
+sults under the low-resource and full fine-tuning
+settings. Next, we analyze the model’s zero-shot
+capability to predict dialogue acts. Finally, we per-
+form ablation studies for the proposed model todemonstrate the impact of dialogue act control and
+pre-training data.
+6.1 Low-resource Settings
+Table 2 shows the performance of our model in low-
+resource settings. We evaluate the performance of
+our model under zero-shot settings and also fine-
+tune it using 50 randomly selected dialogues, sim-
+ilar to the approach used by the GODEL model.
+The experiments here are done in the policy opti-
+mization setting.
+Our model outperforms the best GODEL model
+by achieving a higher combined score of 86.70
+without any fine-tuning, and an even higher score
+of97.05after fine-tuning. In particular, our model
+achieves better scores in Inform and Success met-
+rics, indicating that our model is better able to sat-
+isfy the users’ information needs. GODEL modelSettings Inform Success BLEU Comb.
+full end-to-end 89.5 84.2 17.5 104.4
+- pretrain 87.7 78.9 19.7 103.0
+- control 84.9 76.2 19.8 100.4
++ gold act 93.0 89.6 29.6 120.8
+zero-shot policy 94.6 71.4 4.2 86.7
+- control 93.8 55.4 6.6 81.2
+Table 4: Ablation studies for end-to-end full training
+settings and zero-shot policy optimization settings.
+has a higher BLEU score, which is likely due to the
+larger pre-training corpus used to train the model.
+6.2 Full Fine-tuning Settings
+To evaluate the effectiveness of our model in full
+dataset fine-tuning settings, we conduct experi-
+ments with both end-to-end and policy optimiza-
+tion configurations. The results, as shown in Ta-
+ble 3, demonstrate that our model achieves state-
+of-the-art performance, with a combined score of
+104.4. In particular, our model outperforms the
+other models in the Inform and Success metrics,
+indicating that our model is able to provide more
+relevant and complete information to satisfy the
+users’ information needs. Our model receives a
+slightly worse BLEU score. We suspect this is
+because the resulting responses contain more infor-
+mation relevant to the user request than the ground
+truth responses.
+6.3 Zero-shot Dialogue Act Prediction
+We evaluated the model’s capability to predict dia-
+logue acts without any downstream fine-tuning. We
+pre-defined a set of possible dialogue acts by using
+the dialogue act schema from the training set. We
+first tested the effects of different pre-training con-
+figurations. Note that the data is divided into two
+categories: one with dialogue act labels and one
+without. Thus, we evaluated the model pre-trained
+with unlabeled, labeled, or mix-labeled act anno-
+tation data separately. Additionally, we tested the
+effect of freezing the sentence-BERT model during
+training to see its impact on the performance of
+the overall model. The results are shown in Fig-
+ure 5. We observed that pre-training with mixed-
+label data has the best performance, and freezing
+the sentence-BERT model had minimal effects on
+the dialogue act prediction F1.
+Base Large0.00.10.20.30.40.50.60.7F1Unlabeled
+Labeled
+Mix-Labeled
+Base Large0.00.10.20.30.40.50.60.7F1Unfreeze S-BERT
+Freeze S-BERTFigure 5: Zero-shot dialogue act prediction F1 score.
+Base Large556065707580859095Combined ScoreUnlabeled
+Labeled
+Mix-Labeled
+Base Large6668707274767880Combined ScoreUnfreeze S-BERT
+Freeze S-BERT
+Figure 6: Response generation combined score.
+6.4 Ablations and Analysis
+We conduct similar experiments to the previous
+section to evaluate the effects of different pre-
+training configurations. The experiments here are
+conducted in the zero-shot setting, without any dia-
+logue act control. The results are shown in Figure 6.
+Using the labeled data during pre-training signif-
+icantly improves the performance of the model.
+Mixing unlabeled data and labeled data leads to
+even better performance. We also observe that for
+the small model, freezing sentence-BERT during
+training can significantly improve the performance,
+but it has less of an effect for the large model.
+Then, we evaluated the effects of pre-training
+and controllable response generation. The resultsare shown in Table 4. In the full end-to-end fine-
+tuning setting, we first tested removing pre-training.
+From the table, we observed a decrease in the per-
+formance of the model for Inform (-2.0%) and Suc-
+cess (-6.3%), but an increase in the BLEU score
+(+10.1%). Then, we further tested the model with-
+out pre-training and removing the dialogue act
+response control, allowing the model to predict
+the dialogue act without any constraints. It has a
+combined score of 100.4, which is close to the re-
+ported MTTOD performance, indicating the trade-
+off when using controlled response generation. We
+also tested using gold dialogue acts for our final
+pre-trained model as a reference for comparison.
+In the zero-shot setting, we observed similar pat-
+terns when removing dialogue act control, but the
+performance decrease is more significant. Specifi-
+cally, the Success rate dropped from 71.4to55.4,
+suggesting that our controlled response generation
+with dialogue acts is more effective in the low-
+resource setting than in the full fine-tuning setting.
+7 Conclusion
+In this work, we present a novel end-to-end la-
+tent dialogue act model (DiactTOD) that repre-
+sents dialogue acts in a latent space to improve the
+quality of response generation in task-oriented dia-
+logue systems. DiactTOD addresses the challenge
+of utilizing generalized dialogue acts to control
+response generation across different datasets and
+tasks. The experimental results on the MultiWOZ
+dataset show that our approach outperforms previ-
+ous state-of-the-art methods across a wide range
+of experimental settings, including zero-shot, few-
+shot, and full data fine-tuning with both end-to-end
+and policy optimization configurations. Overall,
+this work demonstrates the effectiveness of Diact-
+TOD, making it possible to build more generaliz-
+able end-to-end dialogue systems.
+Limitations
+Despite the effectiveness of our proposed model Di-
+actTOD, we provide some clear limitations. First,
+the model is only tested on the MultiWOZ dataset,
+which is currently the largest dataset for task-
+oriented response generation. While MultiWOZ
+is a popular dataset in the research community, it
+is not clear how well the model would perform on
+other types of datasets or in other domains, par-
+ticularly those that do not rely on dialogue state
+annotations. It could be an area for future research,by testing the model on other datasets or in other
+domains to evaluate its robustness and generaliz-
+ability.
+Second, our approach requires a pre-defined dia-
+logue act schema to generate all the possible combi-
+nations of dialogue acts. This means that it may not
+be able to generalize well to real-world scenarios
+where the dialogue acts are not as clearly defined or
+labeled. In those situations, the model may struggle
+to generate appropriate responses or understand the
+context. In future work, we will develop methods
+that can adapt to different dialogue act schemas or
+operate without them.
+Another limitation of this work is that the con-
+trolled response generation method used is hand-
+crafted, as opposed to using reinforcement learning.
+We defined rules to control dialogue acts based on
+the evaluation metrics "Inform" and "Success" of
+the MultiWOZ dataset. This approach may not be
+suitable for more complex scenarios where the di-
+alogue acts are more varied and thus may require
+a larger model to build the necessary rules. Also,
+Inform and Success metrics may not reflect the real
+performance and have limitations. In those situa-
+tions, alternative methods such as reinforcement
+learning may be more appropriate.

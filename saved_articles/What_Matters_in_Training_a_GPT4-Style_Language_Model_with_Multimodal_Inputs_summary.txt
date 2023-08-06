@@ -1,0 +1,6 @@
+This paper presents Lynx, a GPT4-style language model with multimodal inputs. The authors conduct a systematic study on training such models to address the lack of discussion on design choices and quantifying progress in the field.
+The study compares different network structures, training data, instructions, and benchmarks to identify key factors in achieving high-performance multimodal language models.
+The authors find that prefix-tuning with trainable adapters is more suitable for adapting large language models to multimodal inputs compared to cross-attention models.
+They also find that data quality is more important than quantity, diversified prompts are crucial for improving instruction-following ability, and balancing multimodal understanding and text generation abilities is crucial.
+The authors present the Lynx model, which achieves the most accurate multimodal understanding and the best multimodal generation ability compared to existing open-sourced models.
+Keywords: GPT4-style language model, multimodal inputs, network structures, training data, instruction-following ability, benchmarking, Lynx model.

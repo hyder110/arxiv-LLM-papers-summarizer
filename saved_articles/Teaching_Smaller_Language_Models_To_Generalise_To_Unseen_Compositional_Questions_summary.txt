@@ -1,0 +1,26 @@
+Summary:
+The paper explores the question of whether smaller language models can be taught to generalize and answer unseen compositional questions. The authors propose a combination of supervised pretraining on multiple tasks and a dense retrieval system. They establish strong baselines on diverse evaluation datasets and show that performance can be improved by adding retrieval-augmented training datasets. The paper discusses the limitations of the retrieval component and the reasoning abilities of smaller language models. 
+
+Bullet Points:
+1. The paper addresses the question of whether smaller language models can generalize to unseen compositional questions.
+2. The authors propose a combination of multi-task supervised pretraining and a dense retrieval system.
+3. They establish strong baselines on diverse evaluation datasets, including StrategyQA, CommonsenseQA, IIRC, DROP, Musique, and ARC-DA.
+4. Performance can be significantly improved by adding retrieval-augmented training datasets.
+5. The paper discusses the limitations of the retrieval component, including missing information in the corpus.
+6. Smaller language models have limitations in performing reasoning functions compared to larger models.
+7. The authors aim to quantify performance limitations and evaluate mitigations for some of them.
+8. Previous progress in question-answering has been achieved through prompting methods and fine-tuning smaller models.
+9. Considerations such as latency, cost, energy efficiency, compute size, and internet connectivity are relevant in determining the appropriate approach for reasoning systems.
+10. The paper explores the less explored question of zero-shot generalization in smaller models with retrieval against a corpus.
+
+Keywords:
+1. Language models
+2. Generalization
+3. Compositional questions
+4. Supervised pretraining
+5. Multi-task learning
+6. Dense retrieval system
+7. Baselines
+8. Retrieval-augmented training
+9. Performance limitations
+10. Reasoning abilities.

@@ -1,0 +1,741 @@
+KORC: Knowledge oriented Reading Comprehension
+Benchmark for Deep Text Understanding
+Zijun Yao1,2∗Yantao Liu3,4∗Xin Lv1,2
+Shulin Cao1,2Jifan Yu1,2Lei Hou1,2Juanzi Li1,2†
+Department of Computer Science and Technology,
+1BNRist;2KIRC, Institute for Artificial Intelligence
+Tsinghua University, Beijing 100084, China
+3University of Chinese Academy of Sciences4Zhipu.AI
+yaozj20@mails.tsinghua.edu.cn ,{houlei,lijuanzi}@tsinghua.edu.cn
+Abstract
+Deep text understanding, which requires the
+connections between a given document and
+prior knowledge beyond its text, has been high-
+lighted by many benchmarks in recent years.
+However, these benchmarks have encountered
+two major limitations. On the one hand, most
+of them require human annotation of knowl-
+edge, which leads to limited knowledge cov-
+erage. On the other hand, they usually use
+choices or spans in the texts as the answers,
+which results in narrow answer space. To over-
+come these limitations, we build a new chal-
+lenging benchmark named KORCin this paper.
+Compared with previous benchmarks, KORC
+has two advantages, i.e.,broad knowledge cov-
+erage and flexible answer format. Specifically,
+we utilize massive knowledge bases to guide
+annotators or large language models (LLMs) to
+construct knowledgable questions. Moreover,
+we use labels in knowledge bases rather than
+spans or choices as the final answers. We test
+state-of-the-art models on KoRC and the exper-
+imental results show that the strongest baseline
+only achieves 68.3%and30.0%F1 measure in
+the in-distribution and out-of-distribution test
+set, respectively. These results indicate that
+deep text understanding is still an unsolved
+challenge. The benchmark dataset, leader-
+board, and baseline methods are released in
+https://github.com/THU-KEG/KoRC .
+1 Introduction
+Deep text understanding requires the integration
+of text information with its relevant background
+(prior) knowledge (Gough and Tunmer, 1986; Cas-
+tles et al., 2018; Smith et al., 2021). It has been a
+long-pursued goal in natural language understand-
+ing (McCarthy, 1976; Norvig, 1987; Huang et al.,
+∗Yao and Liu contributes equally to KoRC. Work is done
+when Liu is an intern at Zhipu.AI.
+†Corresponding author.
+Document:SutkaCity TV is a television station broadcasting from Parisofa country,in the Romani language. AndrijanoDzeladinestablished the station in September 2012, to end prejudice and to provide a link for the Romani people ······
+Question 1: What is the official language of this country?Answer 1:FrenchReasoning Chain1:Question 2:Who have the highestexecutive power of the country?Answer 2:Bernard Cazeneuve, Jean-Marc Ayrault,······Reasoning Chain2:In The Documenta country
+Paris
+France
+Frenchhas partcapitalofficiallanguageIn Background Knowledge
+In Background KnowledgeIn The Documenta country
+Paris
+France
+Bernardhas partcapitalpresident
+Jean-Marc······Figure 1: Examples of KORC. Both question 1 and
+question 2 require to read the document and make con-
+nections to the background knowledge beyond the text.
+2019) for decades, and plays a key role in many
+real-world applications.
+Many benchmarks have been proposed to guide
+the development of deep text understanding skills.
+Early attempts formalize text understanding into
+machine reading comprehension (MRC) frame-
+work, such as SQuAD (Rajpurkar et al., 2016) and
+RACE (Lai et al., 2017). Readers are required to an-
+swer questions about the given document in MRC
+tasks. Recently proposed benchmarks further high-
+light the requirement of deep text understanding.
+To answer their questions, benchmarks such as Cos-
+mosQA (Huang et al., 2019), DREAM (Sun et al.,arXiv:2307.03115v1  [cs.CL]  6 Jul 20232019), and C3(Sun et al., 2020) have tapped into
+knowledge beyond the text. Moreover, it is nec-
+essary for deep text understanding to reason over
+a combination of different knowledge sources, as
+required by QAMP ARI (Amouyal et al., 2022) and
+WikiHop (Welbl et al., 2018), etc.However, these
+benchmarks have encountered two limitations.
+Limited Knowledge Coverage. Many of ex-
+isting benchmarks are constructed based on
+knowledge provided by expert annotators (e.g.,
+QUARTZ(Tafjord et al., 2019)) and knowledge-
+able questions written by question annotators from
+scratch ( e.g., CosmosQA (Huang et al., 2019)).
+The discrepancy between the limited background
+knowledge they cover and massive open-domain
+knowledge makes it difficult to measure deep text
+understanding skills at large. Fortunately, this
+can be mitigated by generating questions based on
+large-scale knowledge resources scattered across
+real-world knowledge bases.
+Narrow Answer Space. As a compromise for
+easy construction and evaluation, a large portion
+of benchmarks ask multiple-choice questions (Lai
+et al., 2017; Sun et al., 2019) or have answers be-
+ing spans in the provided reading material (Hewlett
+et al., 2016; Welbl et al., 2018; Amouyal et al.,
+2022). However, multiple-choice questions are pro-
+cessed simply as classification tasks. Questions
+based on span-extraction also increasingly become
+insufficient to challenge the state-of-the-art (SOTA)
+language models that already show great perfor-
+mance at information extraction (Xie et al., 2022).
+Inspired by the common grounds on deep text
+understanding, we build a new challenging bench-
+mark, KORC, for Knowledge oriented Reading
+Comprehension, as shown in Figure 1. Its most im-
+portant feature is that both the reading material and
+external background knowledge are indispensable
+for every question within KORC. Readers must
+connect the document with their equipped prior
+knowledge and reason across both the text and the
+background knowledge to reach the final answers.
+Different from previous benchmarks, KORC
+has two advantages. Broad knowledge coverage .
+KORCdoes not require manual knowledge annota-
+tion from scratch. Instead, it uses off-the-shelf
+knowledge bases as its background knowledge
+sources to guide the construction of knowledgable
+questions. More exhilaratingly, KORCproves it
+feasible for LLMs to automatically generate high-
+quality questions following knowledge instructions.Flexible answer space . The answers in KORC
+are labels in knowledge bases, rather than choices
+or spans from the text. In addition, questions in
+KORChave an in-determinant number of answers
+(e.g., Question 2 in Figure 1). We propose two new
+metrics to facilitate easy evaluation of the variable
+number of answers.
+KORCis constructed based on reasoning chains
+that weave together documents and background
+knowledge base. We provide three versions of
+KORCbased on data annotation methods. They
+areKORC-T from Template-based generation,
+KORC-H from Human annotation, and KORC-
+Lfrom LLM annotation. The final version of
+KORC contains 9,074 documents and 31,804
+questions. We establish the initial baselines for
+KORC. We find that even the strongest baseline
+model only achieves 68.3%/30.0%P-F1 (ID /
+OOD) on K ORC-H, indicating that K ORC brings
+new challenge to natural language understand-
+ing. We also find that LLM-annotated ques-
+tions in KORC-L provide moderate supervision
+to answer human-generated questions in KORC-H ,
+which suggests that models can be appropriately
+instructed to train themselves. The KORCdataset
+and codes for our baseline models will be released
+upon acceptance.
+2 Task Definition
+KORCshares a similar task format with traditional
+machine reading comprehension (MRC). The input
+includes a document dand a natural language ques-
+tionq. Models are required to output the answer a
+to the question after reading the document.
+Different from traditional MRC tasks, KORC
+presents two key highlights. Firstly, KORCis aug-
+mented with an extra background knowledge base
+(KB), denoted as K. Each semantic triple in the
+background KB (eh, r, e t)∈ K describes the rela-
+tionrbetween the head entity ehand tail entity et.
+The questions cannot be answered solely within the
+document or the background KB, but a combina-
+tion of the two. Readers need to reconstruct the rea-
+soning chains, which weaves the document and the
+background KB together, to find the answers. Sec-
+ondly, answers are an in-determinant number of en-
+tities in the background KB, i.e.,a={ei|ei∈ K} ,
+|a| ≥1. Models are encouraged to output neither
+excessive nor insufficient predictions.DocumentPreparationEntity Linking
+Sutka City TV: Q15622354,Paris:  Q90France: Q142,Romani language: Q13201Background KBDocumentSutka City TVisatelevisionstationbroadcastingfromParis,France,intheRomani language······
+Document Level Relation Extraction
+Paris
+Francehas part
+Romani
+Sutka City TVlanguage
+ReasoningChainPrep.Relation Compositional Rules MiningBackground KBMined Rules:head	of	government=		has	part		+		capital-1+	prime	ministerReasoningChainExtraction
+has	partcapital-1prime	ministerhead	of	government
+Data AnnotationQuestion Triple:(France,	head	of	government,	?)EntityNameAnonymizationDocumentSutkaCityTVisatelevisionstationbroadcastingfromParis,Franceofacountry,intheRomanilanguage······Question Generation
+The head of government of [a country] is who?
+Who have the executive power of the country?
+Who holds the highest office in the executive power of a country?Figure 2: The overall data collection process. In the data annotation step, we also show three real annotation cases
+from template-based generation, human annotation, and LLM annotation.
+3 Dataset Construction
+KORCrequires joint reasoning over text and back-
+ground KB. It is constructed in three steps: (1)
+We prepare documents and align them to the back-
+ground KB via entity linking and document level
+relation extraction; (2) We prepare reasoning chains
+that weave documents and background KB together.
+We first mine massive relation compositional rules
+from the background KB and then extract reason-
+ing chains accordingly. (3) We annotate data by
+anonymizing the question entity eqin the docu-
+ment to prevent reasoning shortcut and generate
+questions based on the reasoning chains. We de-
+sign three different methods to annotate the data—
+template-based generation, human annotation, and
+large language model annotation. Figure 2 demon-
+strates the overall data construction process.
+3.1 Step 1: Document Preparation
+To provide broad knowledge coverage and facili-
+tate knowledge reasoning, we sample documents
+from Wikipedia as the reading material and use
+Wikidata5M (Wang et al., 2021), a subset of Wiki-
+data (Vrandecic and Krötzsch, 2014) consisting
+of all the entities in Wikipedia, as the background
+KB. To align documents from Wikipedia to Wiki-
+data, we need to identify entity mentions in the
+documents and link them to their entity ID in Wiki-
+data5M ( i.e.,entity linking). We also need to ex-
+tract semantic triples from the documents, which
+are weaved into the reasoning chains in Step 2.
+Fortunately, DocRED (Yao et al., 2019) providesa large batch of documents from Wikipedia with
+extracted semantic triples. Specifically, each doc-
+ument in DocRED is released with extracted en-
+tity mentions and relations among the mentions,
+which comprise semantic triples. These semantic
+triples are manually annotated, which have a higher
+quality than algorithms-extracted ones. For entity
+linking, we first link mentions to Wikipedia entities
+via the existing hyperlink, or use the entity link-
+ing toolkit pre-trained on Wikipedia—BLINK (Wu
+et al., 2020). Then we use XLORE (Jin et al., 2019)
+to link Wikipedia entities to Wikidata entities. In
+total, 3,291documents with valid entity linking
+results in the training set and validation set of Do-
+cRED are used under the grant of MIT License.
+3.2 Step 2: Reasoning Chain Preparation
+A reasoning chain is a list of entities connected by
+their relations, denoted as (eq, r1, e1,···, rn, en).
+In particular, the reasoning chain starts from the
+document and ends at the background KB, which
+means eq∈d, en∈ K . The reasoning chain
+deduces into a question triple (eq, r,?)accord-
+ing to the compositionality of the relations, i.e.,
+r=r1+···+rn. The question triple can be
+paraphrased into natural language questions like
+“Which entities have relation rwith the question en-
+tityeq?”, such that enserves as the answer. To
+this end, we (1) mine relation compositional rules
+from massive semantic triples, and then (2) extract
+reasoning chains from the documents and the back-
+ground KB according to the compositional rules.Relation Compositional Rule Mining. Compo-
+sitional rules of relations are induced from large-
+scale semantic triples in the background KB. We
+use BIMR (Lv et al., 2021), which provides high-
+quality compositional rules from human annota-
+tion. We supplement more rules mined by Any-
+BURL (Meilicke et al., 2019) from the background
+KB to further increase knowledge coverage.
+Reasoning Chain Extraction. For semantic
+triple (eq, r1, e1)extracted from document, if a
+compositional rule r=r1+···+rnexists, we con-
+struct the reasoning chain (eq, r1, e1,···, rn, en)
+and its corresponding question triple (eq, r,?). The
+resulting reasoning chain satisfies that eqande1
+are mentioned in the document, i.e.,eq, e1∈d,
+andeiare entities in the background KB, i.e.,
+ei∈ K, i≥1.e1serves as the bridge entity be-
+tween the document and the background KB.
+It is worth noting that we filter out reasoning
+chains which end at the document, i.e.,en∈d, to
+prevent the reasoning process bypassing the back-
+ground KB. The end entity enis identified from the
+document via entity linking.
+3.3 Step 3: Data Annotation
+Data annotation aims to (1) anonymize the question
+entity eqmentioned in the document to prevent
+reasoning shortcut and (2) generate questions about
+the anonymized question entity.
+In question entity name anonymization, reason-
+ing shortcut means that the document is bypassed
+and questions can be answered without reading the
+document. For example, the answer of questions
+likeWhat is the official language of France? does
+not require the document as in Figure 1. Thus,
+we substitute the mentions of eqin the document
+with their anonymized name and polish the doc-
+ument to fluency. Question name anonymization
+requires anonymity anduniqueness . Anonymity
+prunes reasoning shortcut and avoids answer leak-
+age. Uniqueness guarantees that the anonymized
+name does not refer to other entities mentioned in
+the text.
+The question generation process requires con-
+sistency anddiversity . Semantic information of
+the natural language question should be consistent
+with its corresponding question triple. Besides, di-
+verse syntactic structures for the same relation in
+different question triples are desired. For example,
+question triples (eq, r,?), where r=“birth place”
+can be converted into “Where was eqborn?” and“In which place did eqsee the first sunrise of his
+life?” . These two questions expect similar answers
+though differ in syntactic.
+We design 3different methods to accomplish the
+data annotation following the above principles.
+Template-based Generation. For question en-
+tity anonymization, we substitute entity mentions
+with their most fine-grained class name in Wiki-
+data. We also add a unique suffix to the class name
+to guarantee uniqueness so that it will not refer to
+entities in the document of the same class. For
+question generation, we manually annotate 1−4
+question templates for each relation, which has a
+placeholder for the question entity. Given a ques-
+tion triple (eq, r,?), the questions are generated via
+substituting the placeholder in the template of rela-
+tionrwith the anonymized entity name for eq. We
+provide example templates in Appendix A.1.
+Human Annotation. We recruit annotators, who
+has at least passed Test for English Majors-Band
+4 (TEM-4) to annotate the data. We train them to
+make sure they are aware of the aforementioned
+data annotation principles. We implement a visual-
+ized annotation platform to assist the data annota-
+tion process, as shown in Appendix A.2.2.
+Large Language Model Annotation is inspired
+by the success of LLMs in generating datasets (Liu
+et al., 2022a). We prompt LLM with demon-
+strations (Liu et al., 2022b; Brown et al., 2020)
+and instructions (Sanh et al., 2022; Wei et al.,
+2022) to anonymize the question entity, generate
+questions, and conduct quality inspection. The
+provided demonstrations include 2manually an-
+notated examples for anonymization and ques-
+tions. In particular, we implement the LLM with
+text-davinci-003 , a variant of GPT-3 (Brown
+et al., 2020). Prompts are shown in Appendix A.3.
+After dataset construction, we obtain a total of
+9,086documents after anonymization and 31,804
+questions. Notice that each document could have
+more than one question entities. They are thus
+paraphrased into multiple different documents af-
+ter anonymization. According to the data an-
+notation method, we present three versions of
+KORC, namely KORC-T (Template-based genera-
+tion), KORC-H (Human annotation), and KORC-L
+(LLM generation). We consider KORC-H as the
+standard subset of K ORC.4 Dataset Analysis
+We perform a detailed analysis of KORC. We first
+design two evaluation metrics where the number of
+answers are in-determinant. Then, we investigate
+sophisticated data splitting strategy. Finally, we
+conduct comprehensive analysis with regard to the
+data distribution in K ORC.
+4.1 Evaluation Metric
+We extend exact match accuracy and f1 measure
+to evaluate machine reading comprehension per-
+formance from Rajpurkar et al. (2016) by intro-
+ducing penalized exact match accuracy (P-ACC)
+and penalized f1 measure (P-F1). Since the an-
+swer is a set of entities, the metrics need to match
+the predictions to the ground truth answers with
+Hungarian algorithm using editing distance. We
+define a penalty term in case that the model outputs
+excessive or insufficient predictions:
+penalty =min{#prediction ,#label}
+max{#prediction ,#label}
+P-ACC and P-F1 are defined by multiplying the
+penalty term with the mean accuracy and F1 mea-
+sure of each matched predictions, respectively.
+4.2 Data Split
+We are mainly concerned with three issues in split-
+ting the data. (1) The training set should be suf-
+ficient to train a modern MRC model until con-
+vergence; (2) The test set should avoid any possi-
+ble data leakage; (3) How to split the test set into
+in-distribution (ID) subset and out-of-distribution
+(OOD) subset for more detailed evaluation?
+Training Data Sufficiency. We conduct pilot
+experiment on KORC-H with BART-base. We
+vary the ratio of questions from 10% to70% for
+training and use 30% of held-out questions for both
+validating and testing. The performance curve is
+shown in Figure 4, which flattens after 50%. Thus,
+we use 50% for training.
+Leakage Avoidance. In the test set, for docu-
+ments that have multiple question entities, we ran-
+domly select one question entity and keep it along
+with its questions. The remaining question entities
+are discarded with their associated questions. This
+strategy avoids possible leakage of the name of the
+anonymized entities.
+Test Set Splitting. Questions in the test set
+are labeled as ID (OOD) when its question triple
+(eq, r,?)does (not) appear in the training set. OOD
+questions are more challenging than ID questions.4.3 Statistic Analysis
+The general statistics of KORCis shown in Ta-
+ble 1. Answers require reasoning chains of an
+average of 2.80hops to reach the answer beyond
+the document, including the chains within the doc-
+ument. Figure 3 compares the prefix trigram pat-
+tern among different ways of data annotation in
+Step 3. It shows that human annotated questions
+provides the best diversity compared to template
+based questions and LLM generated questions. Al-
+though LLM annotated questions show lower di-
+versity than template generated questions, we find
+that LLM can occasional spark novel questions, as
+the examples shown in Figure 2.
+5 Experiments
+We establish the initial baselines for KoRC and
+use KoRC to analyze the deep text understanding
+ability of these baseline models. More experiments,
+analysis, and benchmark results are included in the
+project repository.
+5.1 Baseline Models
+We design and implement the initial baselines in
+the following 4categories.
+Fine-tuned Language Models. It has been
+shown that pre-trained language models are rich in
+knowledge (Petroni et al., 2019; AlKhamissi et al.,
+2022). Fine-tuning on dataset that requires knowl-
+edge reasoning (Talmor et al., 2020; West et al.,
+2022) elicit the knowledge within LMs. We view
+KORCas a sequence-to-sequence task, which can
+be directly processed by an encoder-decoder lan-
+guage model, such as BART-base (Lewis et al.,
+2020a) and Flan-T5-base (Chung et al., 2022).
+We also train and evaluate Flan-T5-XXL (Chung
+et al., 2022), which scales up to 11B parameters
+and is trained with task descriptions. Particularly,
+the input of the encoder is a concatenation of the
+anonymized document and the question. The an-
+swers are output as coma separated entity labels.
+In-Context Learning (ICL) Prompting.
+Prompting is another thread of attempts that
+stimulate the pre-trained language models to
+perform complex reasoning task without tuning.
+To construct prompts, we use examples in the
+training set as demonstrations. The demonstration
+examples are dynamically selected according to
+sentence similarity of the question and its associ-
+ated document, which is computed with sentence
+embedding model MPNet (Song et al., 2020). WeSplit Train Valid Test-ID Test-OOD All
+#Document (Unique) 7,260 (2 ,332) 4 ,637 (2 ,074) 546 (546) 516 (516) 9 ,086 (3 ,291)
+#Relation (Unique) 208 (117) 185 (113) 121 (90) 162 (111) 212 (119)
+#Question 18,945 7 ,574 3 ,432 1 ,853 31 ,804
+Average Hops per Answer 2.80 2 .80 2 .84 2 .81 2 .80
+Table 1: Statistics of the final version of KoRC. Unique documents is the number of documents before anonymization.
+Unique relation considers the inverse relation the same as the forward relation. They are shown in the parenthesis.
+(a) KoRC-T(b) KoRC-H(c) KoRC-L
+Figure 3: Distribution of trigram prefixes of questions in K ORC-T, K ORC-H, and K ORC-L.
+10% 20% 30% 40% 50% 60% 70%
+Ratio of Questions for Training (%)3035404550Metrics (%)
+P-ACC
+P-F1
+Figure 4: Training curve.
+implement in-context learning prompting with
+GPT-3 (Brown et al., 2020) ( text-davinci-002 )
+andGLM-130B (Zeng et al., 2022).
+Retrieval Augmented Models. There are opin-
+ions on language models alone being insufficient
+to answer knowledge intensive questions. To facili-
+tate reasoning requiring knowledge beyond the in-
+put text, they propose to augment language models
+with an external retrieval module, which searchs for
+the background knowledge from the open-domain
+Internet, such as RAG (Lewis et al., 2020b). We
+test on RAG-seq , which generates intermediate
+answers with multiple searching results and syn-
+thesis them into the final answer, and RAG-token ,
+which synthesis the searching results and generate
+the answer. In KORC, we use the document and
+the question to search for knowledge and mingle
+the original document with the searching results to
+generate the answer.
+Joint Reasoning over Text and KB. Thesemethods align document and questions to the back-
+ground KB ( i.e., Wikidata5M) and perform the
+knowledge reasoning on the background KB. Em-
+bedKGQA (Saxena et al., 2020) converts docu-
+ments and questions into vectors in the embed-
+ding space of the background KB and performs
+the knowledge reasoning with operations on the
+embedding vector, where we use ComplEx (Trouil-
+lon et al., 2016). We also implement Embed-
+KGQA with trainable knowledge representations
+(EmbedKGQA∗). However, limited by computa-
+tional memory, we only use a subset of the back-
+ground KB with entities recalled by entity linking.
+TransferNet (Shi et al., 2021) uses documents and
+questions as attention queries in GAT (Veli ˇckovi ´c
+et al., 2018) to perform explicit knowledge reason-
+ing on the background KB.
+5.2 Main Results
+Table 2 shows all the baseline results on KORC-H —
+the standard subset of KORC. The strongest base-
+line achieves 52.8%average P-ACC and 55.8%
+average P-F1 by Flan-T5-XXL, which suggests
+that fine-tuned large language models have strong
+capability to use background knowledge. RAG-seq
+and EmbedKGQA also achieve competitive per-
+formance, which have the ability to retrieve back-
+ground knowledge from the open-domain Internet
+or access the background KB. Although languageKORC-HP-ACC P-F1
+ID OOD Mean ID OOD Mean
+BART-base 50.3 24 .9 41 .4 52 .9 30 .2 44 .9
+Flan-T5-base 33.5 24 .0 30 .2 35 .8 27 .5 32 .9
+Flan-T5-XXL 63.8 32 .3 52 .865.837.2 55 .8
+GPT-3 18.2 24 .6 20 .5 22 .2 30 .2 25 .0
+GLM-130B 9.9 14 .9 11 .6 12 .7 18 .8 14 .8
+RAG-seq 61.7 25 .9 49 .2 63 .7 30 .0 51 .9
+RAG-token 57.4 23 .5 45 .5 59 .1 27 .2 47 .9
+EmbedKGQA 61.2 21 .9 47 .468.328.9 54 .5
+EmbedKGQA∗34.0 13 .6 26 .9 41 .6 21 .8 34 .6
+TransferNet 32.7 12 .9 25 .8 37 .7 16 .6 30 .3
+Table 2: Baseline results on KORC-H . Baseline results
+on K ORC-L and K ORC-L are shown in Appendix C.
+model pre-training brings large-scale knowledge
+into the model, ICL prompted LLMs do not provide
+a satisfactory performance on KORC, which indi-
+cates that precise recalling of background knowl-
+edge plays a key role in answering our questions.
+These results show that KORCserves its designing
+purpose to test deep text understanding skills.
+Evaluation results show a performance drop
+around 20%−40% from ID set to OOD set on
+KORC-H . This discrepancy suggests that these
+models mainly learn to remember the answers,
+rather than generalize to different query triples.
+Meanwhile, knowledge representation based Em-
+bedKGQA is superior or comparable to knowledge
+retrieving based RAG-seq on ID sets while it is
+outmatched on OOD sets. This occurs because
+knowledge representations are constructed based
+on relation compositional rules, thus easy to overfit
+the ID questions. Splitting the test set in KORC
+provides a new way to evaluate the true deep text
+understanding skills.
+ICL prompted LLMs are observed to perform
+better on the OOD set than the ID set. This counter-
+intuitive result is caused by the notorious repetition
+problem (Xu et al., 2022). ID shares a similar distri-
+bution to the training set so LLMs directly copy the
+results from the demonstrations, while the OOD set
+urges the model to think independently. Another
+abnormal model is EmbedKGQA∗. Although its
+knowledge representation can be updated, it falls
+short of EmbedKGQA by a large margin due to
+its limited background knowledge that can be held
+into the random access memory of GPUs, which
+further reflects the broad knowledge coverage of
+KORC.BART-base KORC-T K ORC-H K ORC-L
+KORC-T 48.7 39.4 (9.3↓) 37.5 (11.2↓)
+KORC-H 41.7 (3.2↓) 44.9 40.8 (4.1↓)
+KORC-L 40.7 (6.4↓) 42.3 (4.8↓) 47.1
+GPT-3 KORC-T K ORC-H K ORC-L
+KORC-T 24.5 23.6 (0.9↓) 23 .2 (1.3↓)
+KORC-H 23.7 (1.3↓) 25.0 24.9 (0.1↓)
+KORC-L 23.0 (0.9↓) 23.8 (0.1↓) 23.9
+RAG-seq KORC-T K ORC-H K ORC-L
+KORC-T 51.3 40.8 (10.5↓) 38.6 (12.7↓)
+KORC-H 46.5 (5.4↓) 51.9 47.9 (4.0↓)
+KORC-L 46.7 (8.2↓) 48.1 (6.8↓) 54.9
+EmbedKQGA KORC-T K ORC-H K ORC-L
+KORC-T 58.5 44.1 (14.4↓) 38.5 (20.0↓)
+KORC-H 53.6 (0.9↓) 54.5 47.8 (6.7↓)
+KORC-L 49.5 (6.0↓) 51.5 (4.0↓) 55.5
+Table 3: Cross evaluation results among KORC-T ,
+KORC-H , and KORC-L in terms of P-F1 (%) aver-
+aged over IID set and OOD set. The left most column
+shows where the training data are from.
+5.3 Cross Evaluation
+We conduct cross evaluation among KORC-T ,
+KORC-H , and KORC-T to verify whether auto-
+matically generated questions can be used as distant
+supervision to learn deep text understanding skills.
+In particular, we train models on one of the three
+versions of datasets, and evaluate on the test set of
+all the three versions. Cross evaluation results are
+shown in Table 3.
+As expected, all the cross evaluation results drop
+compared to the those where training data and test
+data are produced by the same data annotation
+method. Nevertheless, among all the three ver-
+sions, KORC-H brings more sophisticated deep
+text understanding skills to the model, with even
+as marginal as a 0.9%performance drop for Em-
+bedKGQA on KORC-T in terms of average P-F1.
+This is attributed to the diversity of the questions
+generated by our annotators. Meanwhile, train-
+ing on KORC-L only results in a moderate perfor-
+mance drop on KORC-T andKORC-H . By con-
+trast, models trained on KORC-T struggle with test
+questions in KORC-H and even KORC-L . This
+suggests a feasibility to instruct LLMs with mas-
+sive real-world knowledge to generate high-quality
+questions. These questions can then be used as
+distant supervision to train models to achieve deep
+language understanding.located in time zoneofficial languageInv: has partshares border withInv: headquarterlocationcountrylanguage spokengame modelsportnative languagelocated in time zoneofficial languageInv: has partshares border withInv: headquarterlocationcountrylanguage spokengame modelsportnative languageFigure 5: Error analysis. Each point corresponds to
+a relation with its number of questions in KORCand
+average P-F1 recorded on BART-base and RAG-seq.
+The dashed lines indicate linear regression results. We
+highlight and label several representative relations.
+KORC-H Original -Document -Anon.
+BART-base 44.9 24 .5 (20.4↓) 55 .1 (10.2↑)
+Table 4: Ablation results on KORC-H with BART-base
+in terms of P-F1 (%) averaged over IID and OOD sets.
+5.4 Analysis
+We further conduct empirical analysis on KORC,
+including error analysis and ablation study.
+Error Analysis. Each question in KORC-H
+corresponds to a question triple (eq, r,?), which
+contains a relation r. We examine the error dis-
+tribution with regard to relations. Figure 5 plots
+the scatter charts for each relation in KORC. Each
+point represents a relation with its question number
+and average P-F1 on BART-base and RAG-seq.
+To better demonstrate the correlation between
+question number and P-F1, we run least square er-
+ror regression and show in dashed line. The regres-
+sion results indicate the trend that relations with
+fewer questions (long tail relations) are more diffi-
+cult than relations with abundant questions. How-
+ever, there are outlier relations scattered in the top
+left (bottom right) corner, which means they have
+many (few) questions in KORCthat are difficult
+(easy) to answer. We label a few of these outlier
+relations in Figure 5. We find that top-left-relations
+are mostly equipped with multiple answers. For
+example, questions involving the inverse relation of
+headquarter location usually ask Which organiza-
+tions are headquartered in this place? are difficult
+to recall all the correct answers. For the bottom-
+right relations, they usually construct single-answer
+questions, such as native language andsport .
+Ablation. We remove documents from KORC-
+H, which makes KORC-H degenerate into a ques-tion answering benchmark. We also experiment
+whether the entity name will result in reasoning
+shortcut without anonymization. The original name
+of the question entity is appended to the document.
+Table 4 shows the ablation study results.
+We find that removing document significantly
+undermines the results of BART-base with a perfor-
+mance drop at 20.4%in P-F1. This shows that text
+information is indispensable in KORC. Readers
+are not encouraged to directly answer the questions
+without reading the given document. When we pro-
+vide the entity name as part of the reading material,
+the P-F1 of BART-base increases from 44.9%to
+55.1%. This shows that entity name contains di-
+rect clues to answering the question and annotating
+anonymized entity name cannot be omitted.
+6 Related Work
+Machine Reading Comprehension. Devising
+intelligent systems to answer questions on knowl-
+edge in text form has long been a challenge in
+Natural Language Understanding (NLU) (Welbl
+et al., 2018), and the MRC task plays an important
+part in evaluating NLU (Ho et al., 2022). Abundant
+datasets have been proposed to advance research in
+MRC. One of the earliest work is MCTest (Richard-
+son et al., 2013), a multiple-choice reading com-
+prehension dataset. Following works have surged
+to advance more challenging text understanding
+with more complicated answer formats. Based on
+the answer format, MRC datasets can by grouped
+into four types: span extraction (Hewlett et al.,
+2016; Welbl et al., 2018; Amouyal et al., 2022),
+multiple-choice (Sun et al., 2019; Tafjord et al.,
+2019; Huang et al., 2019; Amouyal et al., 2022),
+cloze style (Mostafazadeh et al., 2016), and free-
+form (Khashabi et al., 2018) answer.
+Deep Text Understanding. Background knowl-
+edge integration is regarded as the key ingredient
+of deep text understanding. Different kinds of
+background knowledge have been employed, such
+as commonsense knowledge (e.g., ATOMIC (Sap
+et al., 2019)), and world knowledge (e.g., Wiki-
+data (Vrandecic and Krötzsch, 2014)). Represen-
+tative works include WikiReading (Hewlett et al.,
+2016) which aims to predict textual values from
+Wikidata by reading the corresponding Wikipedia
+text, DREAM (Sun et al., 2019) whose ques-
+tions requires unspoken commonsense knowledge,
+QUARTZ(Tafjord et al., 2019) that requires un-
+derstanding and applying qualitative knowledge,and CosmosQA (Huang et al., 2019) that requires
+contextual commonsense reasoning.
+Compared with the existing datasets, KORCis
+constructed with the instruction from real-world
+large-scale knowledge base. The answers of our
+KORCare labels in the knowledge bases, and the
+number of answers is in-determinant, challenging
+MRC more. Most importantly, both the reading
+materials and external background knowledge are
+indispensable for every question in KORC, which
+prevents reasoning shortcut effectively.
+7 Conclusion
+In this paper, we propose a new benchmark—
+KORCfor deep text understanding with broad
+knowledge coverage and flexible answer format.
+Our contributions are not only the dataset itself,
+but also we demonstrate the feasibility to guide
+LLMs to generate deep text understanding ques-
+tions with the help of large-scale background KB.
+Our baseline experiments demonstrates to which
+extent existing powerful models can leverage back-
+ground knowledge to understand passages by trying
+to solve KORC. In the future, we plan to extend
+KORCto more complicated knowledge, such as
+literal knowledge and qualifier knowledge in com-
+mon knowledge bases. It is intriguing to design
+more skillful reader models via connecting the doc-
+ument with background knowledge.
+Limitations
+We propose and construct KORCas a new bench-
+mark dataset for deep text understanding. The lim-
+itations are two folds. First, in the benchmark de-
+sign, KORCdo not take more complicated knowl-
+edge into consideration, including literal knowl-
+edge and qualifier knowledge. We leave extending
+KORCto these knowledge in future work. Second,
+in the dataset construction, we examine automatic
+name anonymization and question generation strat-
+egy, and present KORC-L .KORC-L relies on large
+language models. Rather than medium-scaled lan-
+guage models that can be maintained by a single
+machine, GPT-3 is used via its online APIs. Al-
+though the service of GPT-3 is currently available,
+we still need to find a substitution for better repro-
+ducibility. Besides, although LLM saves human
+effort, the execution of LLMs potentially consumes
+more energy power. It would be better if we can
+preserve the high question generation quality and
+propose a small model to proceed data annotation.Ethics Statement
+Our proposed dataset, KORC, is constructed with
+the knowledge guidance from Wikidata. As a
+crowd-sourced knowledge base, it is possible that
+Wikidata contains bias knowledge and even poi-
+sonous information. For example, Wikidata con-
+tains more information in the English. It is possible
+that KORCalso inherit the bias from Wikidata.
+Another ethical concern raises from the payment
+of our annotators. All the annotators are payed
+equally according to the number of documents and
+questions they annotated. We hope that KORCcan
+be properly used to guide the development of deep
+text understanding models after we release it.

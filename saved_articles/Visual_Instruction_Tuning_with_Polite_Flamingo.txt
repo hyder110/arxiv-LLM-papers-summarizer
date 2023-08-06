@@ -1,0 +1,1538 @@
+Visual Instruction Tuning with Polite Flamingo
+Delong Chen1Jianfeng Liu1Wenliang Dai2Baoyuan Wang1
+1Xiaobing.AI2Hong Kong University of Science and Technology
+Abstract
+Recent research has demonstrated that the multi-task
+fine-tuning of multi-modal Large Language Models (LLMs)
+using an assortment of annotated downstream vision-
+language datasets significantly enhances their perfor-
+mance. Yet, during this process, a side effect, which we
+termed as the “multi-modal alignment tax”, surfaces. This
+side effect negatively impacts the model’s ability to format
+responses appropriately - for instance, its “politeness” -
+due to the overly succinct and unformatted nature of raw
+annotations, resulting in reduced human preference. In
+this paper, we introduce Polite Flamingo, a multi-modal re-
+sponse rewriter that transforms raw annotations into a more
+appealing, “polite” format. Polite Flamingo is trained to
+reconstruct high-quality responses from their automatically
+distorted counterparts and is subsequently applied to a vast
+array of vision-language datasets for response rewriting.
+After rigorous filtering, we generate the PF-1M dataset and
+further validate its value by fine-tuning a multi-modal LLM
+with it. Combined with novel methodologies including U-
+shaped multi-stage tuning and multi-turn augmentation, the
+resulting model, Clever Flamingo, demonstrates its advan-
+tages in both multi-modal understanding and response po-
+liteness according to automated and human evaluations.1
+1. Introduction
+General-purpose AI systems have attracted a significant
+amount of interest due to their broad range of applications
+(e.g., smart assistants). They are expected to be capable
+of accurately perceiving the visual world, comprehending
+diverse human requests, and providing helpful yet natural
+responses. Prior works towards this goal ( e.g, OFA [1],
+Unified-IO [2], Uni-Perceiver [3]) have focused on train-
+ing multi-modal transformers via multi-task learning, but
+they lack the generalization ability to unseen tasks or in-
+structions, and they are not capable of offering user-friendly
+natural responses. Recently, instruction tuning [4] empow-
+ers Large Language Models (LLMs) [5] strong instruction-
+1https://github.com/ChenDelong1999/polite_flamingo
+Distortion
+Polite
+Flamingo
+Vision -language 
+DatasetsPF-1M
+Instruction Dataset
+Polite
+FlamingoDistorted
+InstructionsHigh-quality
+Instructions
+Clever
+Flamingo
+Filtering1. Train a multi -modal response rewriter
+2. Rewrite raw annotations into a “polite” style3. Visual 
+instruction 
+tuning
+Instruction :What doyouthink ofthislogo design?
+Original Response :The logo design
+issimple andminimalistic, with apink
+linedrawing ofaflamingo standing on
+oneleginthewater ..Distorted Response : simple. clean. 
+minimalistic. 
+Instruction ::Who wrote thisbook?
+Rewritten Response :The Wonderful
+Wizard ofOzwaswritten byL.Frank
+BaumRaw Annotation : L. frank baum
+(From OCR -VQA Dataset)
+Figure 1. Overview of our approach . We first train a multi-modal
+response rewriter on high-quality instruction datasets, resulting
+in a “Polite Flamingo” capable of translating raw annotations in
+vision-language datasets into a “polite” style. After careful filter-
+ing, we use the rewritten data PF-1M for visual instruction tuning,
+and obtained a strong multi-modal LLM called Clever Flamingo.
+following and response formatting abilities, making it more
+convenient and efficient to access its encoded knowledge
+and complex reasoning ability. Many researchers attempted
+to connect visual representations with LLMs to transfer
+such powerful capability to vision-language tasks. Mas-
+sive image-text data collected from the Internet can be used
+to train the visual representation ( e.g., CLIP [6]) and the
+connector ( e.g., Flamingo [7], Kosmos-1 [8], LLaV A [9],
+MiniGPT-4 [10]), but such supervision is usually noisy and
+could not cover much fine-grained information that encour-
+ages deeper visual understanding beyond shallow seman-
+tics. A promising direction is introducing annotated cap-
+tioning / VQA / visual reasoning datasets, which exhibit a
+stronger alignment of real-world human needs than these
+captions sourced from the Internet. Concurrent works such
+as InstructBLIP [11], Otter [12], PaLI-X [13], and Ying-
+LM [14], have shown encouraging results of using a collec-
+tion of vision-language datasets for visual instruction tun-
+ing.
+1arXiv:2307.01003v1  [cs.CV]  3 Jul 2023However, there exists a significant challenge yet to be
+resolved in the process of visual instruction tuning. Exist-
+ing captioning, VQA, and visual reasoning datasets typi-
+cally provide concise ground truths or answers. However,
+as human users, we generally prefer AI assistants that can
+provide ChatGPT-style structured responses, along with op-
+tional detailed explanations and elaborations. When us-
+ing raw annotations for visual instruction tuning, their style
+would also be learned by the model, even the LLM part is
+kept frozen and only the connector is tuned. As a result,
+the InstructBLIP model, the current SoTA model on a wide
+range of vision-language benchmarks, ranked second to
+last [15] in Multi-Modality Arena [16], a user rating-based
+evaluation platform of multi-modal LLMs. The model with
+the lowest Elo rating score is Multimodal-GPT [17], which
+is also tuned with raw annotations. This phenomenon is
+caused by the additional multi-modal alignment step upon
+LLM, which thus can be termed as “ multi-modal alignment
+tax”:
+Definition 1.1. Multi-modal alignment tax is the extra
+cost of enabling or improving multi-modal perception for
+LLMs. The cost is typically reflected as a degradation in
+performance from certain perspectives.
+The root cause is that: visual representations are fed as
+soft prompts or prefixes to the LLM, while it is proved
+that prompt tuning or prefix tuning is able to drastically
+change the behavior of language models [18], similar to
+other parameter-efficient fine-tuning (PEFT) methods such
+as LoRA [19]. In this paper, our goal is to prevent LLMs
+from learning undesired response styles of raw vision-
+language dataset annotations during visual instruction tun-
+ing, thus being a “ polite ” multi-modal LLM:
+Definition 1.2. Polite multi-modal LLMs provide natu-
+ral and appropriate responses to user queries. Reduction
+in politeness is a specific instance of multi-modal align-
+ment tax that impacts the model’s ability to maintain op-
+timal response styles.
+To achieve this goal, we introduce a novel method that
+involves converting these raw responses into natural ones,
+and we then train the multi-modal LLM using this style-
+transferred high-quality instruction data, thus mitigating
+the multi-modal alignment tax on response politeness. As
+shown in Figure 1, to obtain a rewriter that is capable of
+transferring the response style, we first distort the “polite”
+version of the response ( e.g., GPT-4 generated contents)
+into an “impolite” one, approximating the distribution of ex-
+isting vision-language dataset annotations. We fine-tune a
+multi-modal LLM, OpenFlamingo-9B [20], to learn the re-
+versed mapping ( i.e.,impolite→polite). Subsequently, we
+apply the learned model, referred to as “Polite Flamingo”,to rewrite massive annotations in existing vision-language
+datasets. After carefully filtering out low-quality results and
+hallucinations, we obtain a high-quality yet large-scale vi-
+sual instruction tuning dataset PF-1M, and use it to tune a
+multi-modal LLM.
+We perform a comprehensive evaluation comparing the
+resulting visual instruction-tuned model, which we called
+“Clever Flamingo”, with other multi-modal LLMs, includ-
+ing MiniGPT-4 [10], LLaV A [21], InstructBLIP [11], and
+Otter [12]. In summary, Clever Flamingo outperforms
+all of these models on detailed image captioning tasks,
+and only underperforms the InstructBLIP series [11] on
+VQA tasks (InstructBLIP uses a 3 ×heavier visual back-
+bone, 8.6 ×larger pretraining dataset, and +0.6M more
+instruction samples). For multi-image reasoning tasks,
+Clever Flamingo outperforms the Otter baseline by a sig-
+nificant margin. In terms of human preference ( i.e.,polite-
+ness), Clever Flamingo only underperforms the LLaV A se-
+ries [21], which uses purely GPT-4-generated instructions.
+The contributions of this paper are summarized as follows:
+• We proposed a novel method to curate raw vision-
+language datasets into visual instruction tuning data,
+which enables learning from a wide range of annotated
+datasets with reduced multi-modal alignment tax.
+• We constructed a large-scale visual instruction tuning
+dataset based on response rewriting, and provide em-
+pirical solutions to ensure data quality and mitigate
+hallucinations.
+• We further introduced a U-shaped multi-stage visual
+instruction tuning pipeline and multi-turn augmen-
+tations to produce a strong instruction-tuned multi-
+modal LLM efficiently.
+• We performed comprehensive evaluations in terms of
+both multi-modal understanding and response polite-
+ness using automated evaluators, whose reliability is
+verified by human evaluations.
+2. Related Works
+Visual instruction tuning for multi-modal LLM . Re-
+search on enabling visual perception for powerful but blind
+LLMs attracted widespread attention recently [23]. The
+most straightforward methodology is to integrate image
+captioning experts via prompt engineering ( e.g., Socratic
+Models [24], HuggingGPT [25], MM-REACT [26]). How-
+ever, this is inefficient due to the low bandwidth of natural
+language communication: given the diversity of real-world
+visual tasks, describing all of the potential task-relevant in-
+formation within a single image requires a huge amount of
+language tokens. Therefore, many efforts opt to connect
+2Raw
+AnnotationInstructBLIP
+Captions +
+BBoxLLaVA
+InstructionsLLaVA
+Raw
+AnnotationM3IT / 
+MIMIC -ITYing-LM / Otter
+Raw
+AnnotationPF-1MClever Flamingo
+GPT-4 
+Self-Instruct
+ChatGPT
+Rewriter
+Polite Flamingo
+Multi -modal RewriterFigure 2. Comparison of different visual instruction tuning
+methods .LLaV A [21] performs multi-modal self-instruct [22]
+using GPT-4, which has high API cost and limited visual ground-
+edness; InstructBLIP [11] directly uses learn raw annotations,
+and thus suffer from multi-modal alignment tax; M3IT[14] and
+MIMIC-IT [15] employed ChatGPT-based rewriters, while we
+train a Polite Flamingo to rewrite responses, which enjoys ad-
+vantages of 1) multi-modality, 2) scalability, and 3) diversity.
+compact latent visual representations through a dense con-
+nector by visual instruction tuning, such as MiniGPT-4 [10],
+LLaV A [21], Multimodal-GPT [17], LLaMA-Adapter [27],
+Otter [12], mPLUG-Owl [28], InstructBLIP [11]. These
+models use linear projectors or perceivers as the connec-
+tor between visual models and LLM, thus having a much
+larger information bandwidth compared to those prompt-
+based natural language communications.
+Data for visual instruction tuning . However, what data
+is optimal for training these connectors to ensure that they
+propagate visual information faithfully is unclear. Exist-
+ing attempts include generating self-instruct [22] data ( i.e.,
+LLaV A [21]), using image-text captioning datasets ( e.g.,
+COCO [29], SBU [30], CC-3M [31]), and unifying down-
+stream vision-language datasets ( e.g., VQA and visual rea-
+soning datasets). Although GPT-4 generated LLaV A dataset
+enjoy very high quality, its scale remains insufficient, and
+it could not encourage fine-grained vision-language align-
+ment, as it does not “make V in VQA matter” [32]. On the
+other hand, using captioning datasets only would result in
+degenerated QA capabilities, as a soft prompt that encour-
+ages image captioning is implicitly learned by the connec-
+tor, then the model would prefer to give an image caption
+even if the instruction asks it to answer a certain question.
+Multi-modal alignment tax . Therefore, many efforts
+have been focused on utilizing downstream vision-language
+datasets, including Multimodal-GPT [17], Otter [12], In-
+structBLIP [11], M3IT [14], LAMM [33]. Unfortunately,
+the multi-modal alignment tax (Definition 1.1) becomes a
+serious side effect that destroys the response formatting
+ability of the resulting multi-modal LLMs. To avoid such
+cost, the earliest work Multimodal-GPT [17] simply re-
+moved vision-language datasets that contain short answers.
+InstructBLIP [11] adds additional prompts such as “provide
+your answer as short as possible” to the instruction, but still
+could not mitigate the short answer bias due to the imbal-
+ance of response style – most responses in the training dataare very short so the model just ignores these additional
+prompts.
+ChatGPT-based text-only rewriter . Another attempt
+to mitigate the multi-modal alignment tax is to use Chat-
+GPT to rewrite the short answer, as adopted in concurrent
+works M3IT [14] and MIMIC-IT [15]. We compare our
+method with them in Figure 2. Since our Polite Flamingo is
+amulti-modal rewriter, it can fuse visual perception with
+text semantics to rewrite, as opposed to these ChatGPT-
+based blind models that can only rely on the answer infor-
+mation. Polite Flamingo is also much lighter, cheaper, and
+does not require any API cost, leading to better scalability2.
+Moreover, Polite Flamingo is specially trained on 255k di-
+verse rewriting examples, while ChatGPT can only perform
+zero-shot or few-shot rewriting. As an example of its limi-
+tation, M3IT [14] used a single in-context rewriting demon-
+stration to prompt ChatGPT, which resulted in limited di-
+versity – 96% rewritten samples within its A-OKVQA sub-
+set have the sentence pattern of “ {rational }, so the
+answer is {answer }”. Finally, our work also shares
+some similarities with FuseCap [34] and LaCLIP [35] and
+RemoteCILP [36] that generate/rewrite image captions to
+train vision language models.
+3. Polite Flamingo: a Multi-modal Instruction
+Response Rewriter
+To learn a rewriter for raw annotations of vision-
+language datasets, the most straightforward way could be
+to train a model to directly predict a “polite” version from
+the corresponding raw annotations. Unfortunately, careful
+annotation of such translations is highly expensive and hard
+to scale. To overcome this limitation, we design a surrogate
+task that trains the rewriter to learn the style from exist-
+ing high-quality instruction data, such as the LLaV A self-
+instruct dataset [9]. Specifically, we first transfer the style
+of these high-quality responses into low-quality ones, ap-
+proximating the distribution of the raw annotations in the
+vision-language dataset that needs to be rewritten. Then,
+we train the model to reconstruct the original high-quality
+response from given distortions, as shown in Figure 3.
+Our methodology is inspired by denoising AutoEncoder-
+style image enhancement models. These systems automat-
+ically introduce distortions, such as random noise or down-
+sampling, to the original images, and then the model is
+trained to reconstruct the original images. The resulting
+model can then be applied to image denoising or super-
+resolution. The key assumption of these image enhance-
+ment models, as well as our Polite Flamingo is that the dis-
+tortion module should produce samples i.i.d. to the input
+samples during inference ( i.e.,noise/low-resolution images,
+2Polite Flamingo is based on LLaMA-7B and can be run on consumer
+GPUs. BF-16 inference of Polite Flamingo roughly takes 18 GB GPU
+memory.
+3Step 1
+Response Distortion
+<s> A chat between a curious human and an 
+artificial intelligence assistant...
+### Human: 
+{Instruction} <image>
+### Assistant: 
+(Drafted Response) { Distorted Response }
+(Revised Response) { Original Response } </s>Step 2
+Rewriter TrainingLLaVA
+UltraChatSharGPTHigh-Quality 
+Responses
+…LLaVA
+UltraChatSharGPTLow-Quality 
+Responses
+…
+Polite Flamingo
+LLM-Instructed Rewrite
+Sent. 
+Shuffle
+Sent. 
+Delete
+Char. 
+Insertion
+Char. 
+Substitute
+Char. 
+Swap
+Char. 
+Delete
+Word 
+Crop
+Word 
+Swap
+Word 
+Delete
+Retrieve Caption & Bounding Box
+OpenFlamingo -9B Guanaco -7B (QLoRA )+
+DistortionsFigure 3. Training pipeline of training Polite Flamingo. We
+distort original high-quality responses into the corresponding low-
+quality version, then train a multi-modal LLM to predict the orig-
+inal response. This model is then used to rewrite raw annotations
+of a wide range of vision-language datasets and derive a PF-1M
+dataset for visual instruction tuning.
+or raw annotations) so that the train-test domain divergence
+is small and these denoising AutoEncoders can generalize
+well.
+3.1. Response Distortion
+To approximate the distribution of raw vision-language
+dataset annotations that would be used for Polite Flamingo
+inference, we develop the following three strategies for re-
+sponse distortion. Resulting examples are shown in Fig-
+ure 4.
+•LLM-instructed Distortion . Representative patterns
+of raw annotations include short answers ( e.g., VQA-
+v2 [32]), lacking punctuation or capitalization ( e.g.,
+MS-COCO Captions [29]), not being coherent ( e.g.,
+A-OKVQA [37]), etc., and we prompt an LLM (Gua-
+naco [38]3) to produce responses similar to these pat-
+terns. For each sample, we append another round of
+conversation, asking the model to transfer the origi-
+nal response into a “impolite” one. Furthermore, we
+randomly sample a distortion command from a pool
+containing a total of 24 alternatives and add it to the
+prompt with a probability of 50%. The distortion
+choices, which aim to further mimic the style of raw
+3We used the QLoRA-based Guanaco language model [38], known for
+its superior performance (33B version, which has an average win rate of
+97.8% against ChatGPT evaluated by GPT-4).annotations, include capitalization modifications, in-
+serting repetitions, using incorrect tenses, removing
+formatting, adding irrelevant information, etc. See Ta-
+ble 5 in the appendix for the detailed prompt structure.
+•Random Text Augmentations . This distortion is
+much cheaper compared to LLM-based distortion, and
+we introduce it to further increase the diversity of the
+Polite Flamingo training set. Specifically, We use
+theNLPAUG4library to perform character-level, word-
+level, and sentence-level text augmentation. Every
+level of augmentation is applied with a probability of
+50%.
+•Retrieve Captions & Bounding Boxes . In the LLaV A
+dataset [9], GPT-4 is used to produce high-quality de-
+tailed captions for visual instruction tuning, given five
+captions and all bounding box annotations of each im-
+age. However, possibly due to the high API cost,
+there are only 23k samples of such detailed descrip-
+tions. Here we would like to distill such capability
+into the Polite Flamingo, and extrapolate it into the re-
+maining MS-COCO samples, as well as other datasets
+with multiple captions ( e.g., Flicker-30k) or bound-
+ing box annotations (detection datasets). We retrieve
+the original captions and object bounding boxes in the
+LLaVA-detailed-23k dataset and use them as the
+distorted version with respect to the original detailed
+descriptions. We also insert the description of “The
+followings are specific object locations...” which was
+used for prompting GPT-4, to help Polite Flamingo un-
+derstand bounding box annotations.
+3.2. Source Datasets
+When selecting the source datasets for training Polite
+Flamingo, we take into consideration the following three
+criteria. 1) Politeness : The source datasets chosen should
+contain responses with a desired level of politeness. These
+responses will be directly learned by Polite Flamingo and
+subsequently transferred to the final model. 2) Multi-
+modality : It is important for Polite Flamingo to leverage
+complementary visual information during the process of re-
+sponse rewriting. We expect it can provide necessary ex-
+planations for those short answers to ensure comprehensive
+and informative responses. 3) Diversity : The training set
+must be sufficiently large to prevent the LLM-based Polite
+Flamingo from overfitting to specific patterns. According to
+the above criteria, we select three datasets to construct the
+training data for Polite Flamingo:
+1.LLaV A instructions [9] : a multi-modal self-instruct
+dataset based on GPT-4, which is currently the only
+4https://github.com/makcedward/nlpaug
+4Distorted Response :Agroup ofpeople standing outside ofablack vehicle with
+various luggage .
+Luggage surrounds avehicle inanunderground parking area
+People trytofitalloftheir luggage inanSUV .
+Thesport utility vehicle isparked inthepublic garage …
+The followings arespecific object locations within theimage, along with detailed
+coordinates .These coordinates areintheform ofbounding boxes, represented as(x1,
+y1,x2,y2)with floating numbers ranging from 0to1.These values correspond tothe
+topleftx,toplefty,bottom right x,andbottom right y.
+person :[0.681,0.242,0.774,0.694],
+person :[0.63,0.222,0.686,0.516]…
+Instruction :What unique features canbefound inthisempty room?
+Instruction :Dothepeople intheimage engaged inaconversation?
+Original Response :The image isanunderground parking area with ablack sport
+utility vehicle (SUV) parked .There arethree people inthescene, with oneperson
+standing closer totheleftside ofthevehicle, another person inthemiddle, andthe
+third person ontheright side.They areallworking together topack their luggage into
+theSUV foratrip.
+Intheparking area, various luggage items arescattered around thevehicle …
+Instruction :Analyze theimage inacomprehensive anddetailed manner .
+Original Response :Yes, thewoman standing between thetwo men seems tobe
+holding aconversation with them asthey allshare alaugh together .
+Distorted Response :yes
+Original Response :The empty room features various pieces ofcolorful furniture,
+including atancouch andalarge wood andglass armoire ortrophy case…
+Distorted Response :Theempty room features various mp@iNeTcVeLs ofcolorful
+furniture, including atancouch andalarge wood andglass armoire ortrophy modern
+style, highlighted bya5gPr%eeean accent …↓ Distortion ↓                                        ↑ Polite Flamingo ↑ ↓ Distortion ↓                                        ↑ Polite Flamingo ↑ 
+↓ Distortion ↓                                       ↑ Polite Flamingo ↑ LLM -instructed Rewrite
+•113k from LLaVA
+•76k from UltraChat and SharGPT
+Random Text Augmentations
+•77k from LLaVARetrieve Caption & Bounding Box
+•14k from LLaVA -Detail
+Figure 4. Examples of our three response distortion strategies. We transfer the style of LLM-generated high-quality instruction re-
+sponses into an “impolite” version, approximating the distribution of raw vision-language dataset annotations. The converted data is used
+to train Polite Flamingo.
+available LLM-generated multi-modal visual instruc-
+tion tuning dataset. In this study, we assume that
+ChatGPT/GPT-4 produces responses that are consid-
+ered satisfactory in terms of style5. Therefore, this
+dataset satisfies the criteria of both politeness and
+multi-modality.
+2.UltraChat [39] : a large-scale text-only instruction
+dataset consisting of dialogues between two ChatGPT
+turbo APIs. Since the LLaV A instructions dataset con-
+tains only 117k data points, we select this dataset to
+compensate for the limited data diversity. UltraChat
+is generated by ChatGPT and has undergone post-
+processing and careful filtering [39], so we assume it
+provides satisfactory politeness.
+3.ShareGPT : a dataset of conversations with ChatGPT
+that is shared by users and was used to train the Vi-
+cuna model. This dataset contains model responses
+to real-world user queries, resulting in good diversity.
+ShareGPT is also considered to be of high quality,
+as the resulting models (Vicuna) have shown superior
+performance [40].
+3.3. Training a Rewritter
+We gathered a total of 255k samples to train the Polite
+Flamingo. We initialize the model from OpenFlamingo-
+5Since our methodology is data-driven, it is not limited to this particular
+style. Polite Flamingo can easily incorporate and adapt to other styles if
+we have access to sufficient high-quality data from other sources.9B [20], and insert a LoRA [19] adapter (initialized from
+the QLoRA of Guanaco-7B [38]) into its LLaMA-7B [41]
+language model. We tune the LoRA weights only, and keep
+other parameters ( i.e.,language model, ViT, perceiver, X-
+ATTN layers [7]) frozen to prevent overfitting. As shown in
+Figure 3, we provide the instruction, image, and distorted
+response to the Polite Flamingo, and ask it to predict the
+original response. Language modeling loss is only applied
+to the tokens corresponding to the original response.
+4. Scale Up Visual Instruction Tuning with Po-
+lite Flamingo
+4.1. Source Datasets
+To scale up the vision-language instruction tuning data
+thus improving the visual understanding capability of the
+multi-modal LLM, we leverage the trained Polite Flamingo
+to rewrite the raw annotations of numerous vision-language
+datasets into polite responses. Similar to several concur-
+rent works [11, 14, 15], we standardize them into a uni-
+fied instruction-response format. The adopted datasets
+can be roughly divided into two main groups: captioning
+datasets, which task the model with providing detailed de-
+scriptions of image content, and VQA datasets, which re-
+quire the model to accurately answer specific queries. We
+adopted a total of 37 datasets, including MS-COCO [29],
+Flickr-30k [42], TextCaps [43], Image2Paragraph [44], CC-
+3M [31], ELEV ATER-IC [45], Spot-the-Diff [46], Image-
+5editing-requests [47], RefCOCOg [48], A-OKVQA [37],
+VQA-E [49], ScienceQA [50], VQA-v2 [32], GQA [51],
+OCR-VQA [52], PointQA [53], etc. We summarized de-
+tailed information in Section C and Table 6 in the appendix.
+4.2. Filtering Strategies
+Our rewriter, Polite Flamingo, is based on LLaMA-
+7B [41], which is a relatively small language model.
+Through empirical observation, we have identified that Po-
+lite Flamingo is not a flawless response rewriter. It occa-
+sionally leaves the answer unchanged, produces repetitive
+patterns, or even changes the original answer and intro-
+duces hallucinated content. We design an automatic fil-
+tering pipeline to mitigate these problems and guarantee
+the quality of visual instruction tuning data. We use sev-
+eral rule-based filters, and several newly introduced model-
+based filters to measure the semantics of rewritten response,
+including a Semantic Textual Similarity (STS) model-based
+filter, a Natural Language Inference (NLI) model-based fil-
+ter, and a CLIPScore-based hallucination filter. See Ap-
+pendix D for implementation details.
+4.3. U-shaped Multi-stage Visual Instruction Tun-
+ing
+We first leverage the Polite Flamingo to rewrite the re-
+sponse of source datasets (Section 4.1), obtaining 1.17M
+samples. After filtering, 0.97M samples remained, which
+we refer to as the PF-1M dataset. In addition to PF-
+1M, we also adopt several high-quality text-only instruction
+datasets, since our base model OpenFlamingo-9B is based
+on the vanilla LLaMA-7B which is not instruction-tuned.
+Recent studies have shown that data quality is of vital im-
+portance during instruction tuning. Motivated by this, we
+consider the following datasets: UltraChat [39], ShareGPT,
+OASST-1 [54], Alpaca-GPT-4 [55], GPTeacher, and In-
+structionWild [56]. Together with PF-1M and LLaV A-
+instruction-177k, we have a total of 1.5M instruction data.
+However, the samples in this dataset collection provide
+benefits to the model from very different perspectives. Text-
+only instructions enable the model to comprehend human
+requests and generate helpful responses in a proper style,
+while PF-1M data primarily facilitate the model in improv-
+ing precise visual perception. To enhance training effi-
+ciency, we propose a U-shaped visual instruction tuning ap-
+proach that encompasses three stages:
+Stage 1 focuses on improving the instruction-following
+ability of the model by tuning only the language model
+(with LoRA). We utilize a total of 0.77M samples, which
+include all text-only instructions, LLaV A instructions, and
+10% samples (97k) from PF-1M, and trained the model for
+a single epoch. The model is trained with a large context
+window of 1024 tokens. Stage 2 shifts to improving the vi-
+sual understanding capability of the model. We freeze theLoRA adapter and exclusively tune the connector using the
+entire PF-1M dataset. To enhance training efficiency, we
+use a smaller context window of 196 tokens. Stage 3 uses
+the same setting as Stage 1, but we adjust the learning rate
+to 10×lower. The objective of Stage 3 is to fine-tune the
+model to recover the optimal politeness of the responses.
+This adjustment is necessary as the PF-1M dataset used in
+Stage 2 is generated by a 7B language model, which has
+lower quality than larger LLM-generated text-only instruc-
+tions.
+4.4. Multi-turn Augmentation
+Given the diversity of instruction data, the length of
+each sample varies a lot. When using a large context
+window, short instruction samples would append many
+<PAD> tokens and waste a lot of computation. To address
+this, we introduce multi-turn augmentation, which involves
+randomly selecting instruction samples and concatenating
+them to form a multi-turn conversation. In this augmenta-
+tion scheme, only the tokens corresponding to the response
+in each turn are considered when calculating the language
+modeling loss. This multi-turn also encourages the model
+to attend to the correct image for multi-turn multi-image
+conversations.
+5. Evaluations
+5.1. How Does Polite Flamingo Rewrite the Re-
+sponse?
+5.1.1 Qualitative Evaluation
+First, we present a qualitative analysis of Polite Flamingo’s
+rewriting. In Figure 5, we show representative examples of
+both good (upper) and bad (bottom) cases, and note how
+Polite Flamingo rewrites examples as expected and how
+it makes mistakes. Overall, Polite Flamingo successfully
+converts raw annotations into polite, rich, and coherent re-
+sponses. From various examples, it is observed that it is
+capable of 1) integrating information from multiple cap-
+tions and/or bounding boxes, 2) improving response co-
+herency, and 3) generating complete sentences/paragraphs
+from short annotations, etc.
+Good Cases. One interesting example is shown in the
+center of the upper half – the “Eurofighter Typhoon” from
+ELEV ATER’s FGVC-Aircraft dataset. The source dataset
+provides external knowledge retrieved from Wikipedia,
+WordNet, and GPT-3, as knowledge augmentations. How-
+ever, in this example, the original external knowledge is
+mismatched with the image due to word ambiguity (a type
+of aircraft vs. a climate concept). As Polite Flamingo is
+a multi-modal LLM that can observe both image and text,
+it recognized this mismatch and modified it to the correct
+version. Another example is shown on the right side of the
+Typhoon example (from OCR-VQA [52] dataset), in which
+6Instruction :What kind oftrick isthisskateboarder performing? tailslide, rail
+slide, truck grind, ornose grind?
+Rewritten Response :The skateboarder isperforming aslide with thetailof
+theskateboard .Heissliding down theside ofaramp orrail, which isa
+common trick inskateboarding .This trick isknown asatailslide .
+Raw Annotation :Tail slide.The skateboarder isperforming aslide with the
+tailoftheskateboard .Heissliding down .Heisperforming astunt .Source Dataset: A -OKVQA
+Polite Flamingo improves the coherency of answer rational.
+↑ Polite Flamingo ↑ 
+Instruction :What material isthesmall yellow ball?
+Rewritten Response :Thesmall yellow ballismade ofrubber .
+Raw Annotation :rubberSource Dataset: CLEVR
+Polite Flamingo extend the one -word answer to a complete 
+sentence.
+↑ Polite Flamingo ↑ 
+Instruction :Provide adetailed description ofthegiven image
+Rewritten Response :The image features aperson skiing down asnow -
+covered slope .The skier iswearing aredjacket andcarving their way down
+thesnowy hill.The skis areclearly visible beneath theskier, asthey glide
+through thesnow .
+Thescene captures theexcitement andthrill ofsnow skiing, with theskier …Source Dataset: MS -COCO 2014
+Polite Flamingo integrate five short captions and bounding 
+box information to form a detailed description.
+Raw Annotation :Askier carves hisway down thesnowy hill.
+ayoung man races down asnow asnow covered skislope .
+Aperson skiing down asnow covered slope .
+Someone inaredjacket snow skiing down ahill.
+there isaperson skiing down asnowy area
+The followings arespecific object locations within theimage, along with
+detailed coordinates .These coordinates areintheform ofbounding boxes,
+represented as(x1,y1,x2,y2)with floating numbers ranging from 0to1.
+These values correspond tothetopleftx,toplefty,bottom right x,andbottom
+right y.
+person :[0.349,0.258,0.739,0.692]…↑ Polite Flamingo ↑ 
+Instruction :Give anelaborate explanation oftheimage yousee
+Rewritten Response :The image depicts alarge airport tarmac filled with
+numerous airplanes parked invarious positions .There areatleast twelve
+airplanes visible inthescene, occupying different areas ofthetarmac .Some
+airplanes areparked close toeach other, while others arespaced further apart .
+Theairplanes come indifferent sizes andshapes, indicating adiverse range of
+aircraft types attheairport .They areparked indifferent orientations, with
+some airplanes positioned horizontally andothers vertically .Overall …Source Dataset: DIOR
+Polite Flamingo shows zero -shot understanding of object count 
+information (i.e., 12 airplanes)
+Raw Annotation :Object Count :{'airplane' :12}
+The followings arespecific object locations within theimage, along with
+detailed coordinates .These coordinates areintheform ofbounding boxes,
+represented as(x1,y1,x2,y2)with floating numbers ranging from 0to1.
+These values correspond tothetopleftx,toplefty,bottom right x,andbottom
+right y.
+airplane :[0.198,0.479,0.281,0.556]…↑ Polite Flamingo ↑ 
+Instruction :What isthis?
+Rewritten Response :This isaphoto ofaEurofighter Typhoon, atype of
+aircraft .The Eurofighter Typhoon isatwin-engine, multi -role fighter jet
+developed byaconsortium ofseveral European nations, including theUnited
+Kingdom, Germany, Italy, andSpain .The Eurofighter Typhoon isknown for
+itsadvanced avionics, maneuverability, andcombat capabilities .Source Dataset: ELEVATER FGVC -Aircraft
+Polite Flamingo identifies that the complementary information 
+(“external knowledge” in ELEVATOR) is mismatched, and 
+modify it to a correct version.  
+Raw Annotation :This isaphoto ofaEurofighter Typhoon, atype ofaircraft .
+Aweather phenomenon inthenorthwestern Pacific thatisprecisely equivalent
+toahurricane, which results inwind speeds of64knots (118km/h) orabove .
+Equivalent toacyclone intheIndian Ocean andIndonesia/Australia .Atype of
+serial linethattransmits data atarateof1544 (or1536 )kilobits persecond .↑ Polite Flamingo ↑ 
+Instruction :Describe thefollowing image indetail
+Rewritten Response :The image features awoman riding abicycle onadirt
+trail through afield.She issurrounded byvarious plants and wildflowers,
+creating ascenic andnatural setting .Thetrail islined with long grass, adding
+totheserene atmosphere .The woman appears tobeenjoying herride and
+taking inthebeauty ofhersurroundings .Source Dataset: Flicker -30k
+Polite Flamingo fuse the information from five short captions 
+and form a complete paragraph.
+Raw Annotation :Awoman rides abike over adirtpath through thelong
+grass .
+awoman biking along atrailsurrounded byvarious plants .
+awoman rides abike onatrailthrough afield…↑ Polite Flamingo ↑ 
+Instruction :What isthecolor ofthecloudless sky?
+Rewritten Response :Thecolor ofthecloudless skyisblue.
+Raw Annotation :blueSource Dataset: GQA
+Polite Flamingo extend the one -word answer to a complete 
+sentence.
+↑ Polite Flamingo ↑ 
+Instruction :What specific image editing request were made, taking into
+account thechanges observed between theunedited andedited pictures?
+Rewritten Response :The specific image editing request made was toadjust
+thecontrast oftheimage .Intheunedited picture, theRoman coin appears tobe
+darker andlessvibrant .Byadjusting thecontrast, theimage becomes brighter
+andmore visually appealing, making iteasier toseethedetails ofthecoin,
+such asthelettering anddesign .This enhances theoverall appearance ofthe
+image, making itmore aesthetically pleasing andeasier toappreciate …Source Dataset: Image Editing Request
+Polite Flamingo extends the short answer to a 
+complete paragraph.
+Raw Annotation :Adjust thecontrast .↑ Polite Flamingo ↑ 
+Instruction :You aregiven tworemote sensing images ofthesame location,
+andyouareasked todochange detection andcaptioning .Please point outall
+the(potential) differences between thetwosatellite photos .
+Rewritten Response :Some houses arebuilt along theroad onthebottom side
+ofthescene .Arowofdetached houses areconstructed beside theroad onthe
+bare land.Arow ofhouses isbuilt around theroad atthebottom .Many
+buildings appear next totheroad, andsome houses areconstructed onboth
+sides oftheroad.
+Inthelater image, there isanoticeable difference inthenumber ofhouses and
+buildings along theroad.Specifically, there aremore houses andbuildings …Source Dataset: LevirCC -Captions
+Polite Flamingo successfully rewrite change captions.
+Raw Annotation :Some houses arebuilt along theroad onthebottom side of
+thescene
+arowofdetached houses areconstructed beside theroad onthebareland
+arowofhouses isbuilt around theroad atthebottom
+many buildings appear next totheroad
+some houses areconstructed onboth sides oftheroad.↑ Polite Flamingo ↑ 
+Instruction :Summarize thevisual content oftheimage .
+Rewritten Response :Theimage features ayoung boysitting atatable with a
+whiteboard infront ofhim.Heisintently drawing onthewhiteboard with a
+marker .Theboyappears tobefocused andengaged inhiscreative activity .Source Dataset: Conceptual Captions 3M
+Polite Flamingo rewrite the short web -collected alt -text into 
+longer and coherent sentences.
+Raw Annotation :Theboydraws onthewhiteboard .↑ Polite Flamingo ↑ 
+Instruction :Who wrote thisbook?
+Rewritten Response :The Wonderful Wizard ofOzwas written byL.Frank
+Baum .Source Dataset: OCR -VQA
+Polite Flamingo add the book title information, not sure whether it 
+comes from its OCR capability or encoded knowledge within itself.
+Raw Annotation :L.frank baum .↑ Polite Flamingo ↑ 
+Instruction :How many gray matte things areontheright side ofthesmall
+rubber cube behind thelarge brown thing leftofthecyan thing?
+Rewritten Response :There are
+three
+ gray matte things ontheright sideofthe
+small rubber cube behind thelarge brown thing leftofthecyan thing .Source Dataset: CLEVR
+Polite Flamingo changes the original ground truth answer.
+Raw Annotation :0↑ Polite Flamingo ↑ 
+Instruction :Analyze theimage inacomprehensive anddetailed manner
+Rewritten Response :Two dogs arelaying down next toeach other onthe
+ground, resting together .They arecaptured inaphoto with thelighting ofthe
+image altered, giving itanoverexposed appearance .Both dogs have their paws
+out,possibly looking atsomething orenjoying each other's company .
+The
+ following
+ are
+specific
+ object
+ locations
+ within
+ the
+image,
+ along
+ with
+detailed
+ coordinates
+ .
+These
+ coordinates
+ are
+in
+the
+form
+ of
+bounding
+ boxes,
+represented
+ as
+(x
+1
+,
+y
+1
+,
+x
+2
+,
+y
+2
+)
+with
+ floating
+ numbers
+ ranging
+ from
+ 0
+to
+1
+.
+These
+ values
+ correspond
+ to
+the
+top
+left
+x,
+top
+left
+y,
+bottom
+ right
+ x,
+and
+bottom
+ right
+ y
+.
+dog
+:
+[
+0
+.
+282
+,
+0
+.
+421
+,
+0
+.
+93
+,
+0
+.
+99
+]
+dog
+:
+[
+0
+.
+0
+,
+0
+.
+046
+,
+0
+.
+39
+,
+0
+.
+989
+]Source Dataset: MS -COCO 2014
+Polite Flamingo forgets to remove bounding box information.
+Raw Annotation :Two dogs arelaying down next toeach other .
+Two dogs were captured inaphoto with thelighting oftheimage altered .
+Two dogs sitting onetheground looking atsomething .
+Two dogs areresting together onthefloor .
+Two doge have their paws outinanoverexposed picture .
+The followings arespecific object locations within theimage, along with
+detailed coordinates .These coordinates areintheform ofbounding boxes,
+represented as(x1,y1,x2,y2)with floating numbers ranging from 0to1.
+These values correspond tothetopleftx,toplefty,bottom right x,andbottom
+right y.
+dog:[0.282,0.421,0.93,0.99]
+dog:[0.0,0.046,0.39,0.989]↑ Polite Flamingo ↑ 
+Instruction :Illustrate theimage through adescriptive explanation
+Rewritten Response :Intheimage, acrowd ofpeople iswatching amartial
+artsdemonstration .Two people aredemonstrating martial artsandjumping
+over three youngsters who arecrouched onthemat.Aboyjumps over three
+other students inataekwon docompetition .
+A
+boy
+jumps
+ kicking
+ over
+ three
+kids
+ kicking
+ wood
+ during
+ a
+tae
+kwon
+ do
+competition
+ .
+A
+boy
+jumps
+ kicking
+over
+ three
+ kids
+ kicking
+ wood
+ during
+ a
+tae
+kwon
+ do
+competition
+ .
+A
+boy
+jumps
+kicking
+ over
+ three
+ kids
+ kicking
+ wood
+ during
+ a
+tae
+kwon
+ do
+competition
+ .
+A
+boy
+ jumps
+ kicking
+ over
+ three
+ kids
+ kicking
+ wood
+ during
+ a
+tae
+kwon
+ do
+competition
+ .
+A
+boy
+jumps
+ kicking
+ over
+ three
+ kids
+ kicking
+ wood
+ during
+ a
+tae
+kwon
+ do
+competition
+ .
+A
+boy
+ jumps
+ kicking
+ over
+ three
+ kids
+ kicking
+ wood
+during
+ a
+tae
+kwon
+ do
+competition
+ .
+A
+boy
+ jumps
+ kicking
+ over
+ three
+ kids
+kicking
+ wood
+ during
+ a
+tae
+kwon
+ do
+competition
+ .
+A
+boy
+…Source Dataset: Flicker -30k
+Polite Flamingo generates repeated sentences.
+Raw Annotation :Two people aredemonstrating martial artstoacrowd and
+jumping over three youngsters who arecrouched onthemat.
+Aboy jump kicking over three kids kicking wood during ataekwon do
+competition .
+Aboyjumps over three other students inamartial artsdemonstration .
+Acrowd iswatching agroup offivemartial artists perform .
+Acrowd ofpeople watch amartial artsdemonstration .↑ Polite Flamingo ↑ 
+Instruction :How many gray matte things areontheright side ofthesmall
+rubber cube behind thelarge brown thing leftofthecyan thing?
+Rewritten Response :
+Yes
+,there areboth bikes andcarsinthisscene .Source Dataset: GQA
+Polite Flamingo changes the original ground truth answer.
+Raw Annotation :no↑ Polite Flamingo ↑ 
+Instruction :How many gray matte things areontheright side ofthesmall
+rubber cube behind thelarge brown thing leftofthecyan thing?
+Rewritten Response :
+The
+ image
+ features
+ a
+golf
+ course
+ with
+ a
+man
+ standing
+on
+the
+green,
+ holding
+ a
+golf
+ club
+ and
+ preparing
+ to
+take
+ a
+swing
+ .Heis
+surrounded byavariety ofcolorful flowers, including pink andredflowers,
+which arelikely tobeazaleas .The flowers arescattered around thegreen,
+adding avibrant touch tothescene .Source Dataset: Conceptual Captions 3M
+Polite Flamingo generate a hallucinated sentence.
+Raw Annotation :Organization issynonymous with azaleas .↑ Polite Flamingo ↑ 
+Instruction :Illustrate theimage through adescriptive explanation
+Rewritten Response :Intheimage, aman inablue shirt andalittle boyina
+blue shirt with thenumber seven ontheback areinthefield.The boy is
+holding aredandblack batinhishand, getting ready tostrike aball.Theman
+intheblue shirt isgetting ready tothrow theball.
+There
+ are
+several
+ other
+ people
+ in
+the
+scene,
+ some
+ of
+whom
+ are
+standing
+closer
+ to
+the
+field,
+ while
+ others
+ are
+positioned
+ further
+ away
+ .
+A
+bench
+ can
+be
+seen
+ in
+the
+background,
+ possibly
+ for
+spectators
+ to
+sit
+and
+watch
+ the
+game
+ .Source Dataset: Image Paragraph Captioning
+Polite Flamingo generates a hallucinated second paragraph.
+Raw Annotation :Aman inablue shirt andalittle boyinablue shirt with the
+number seven ontheback isinthefield.Theboyisholding aredandblack bat
+inhishand holding itupgetting ready tostrike aball.Theman intheblue shirt
+isgetting ready tothrow theball.↑ Polite Flamingo ↑ 
+Instruction :Isthisafinancial book?
+Rewritten Response :
+No
+.Source Dataset: OCR -VQA
+Polite Flamingo failed to rewrite the answer.
+Raw Annotation :no↑ Polite Flamingo ↑ 
+↑ Good rewrite examples from Polite Flamingo that are taken into PF -1M
+Bad cases from Polite Flamingo that are rejected by the filtering pipeline ↓Figure 5. Representative examples of Polite Flamingo-based response rewriting. We show both good examples that are taken into
+PF-1M (upper), and bad cases that are rejected by our filtering pipeline (bottom).
+7PF-1M-raw
+(1.17M)M3IT
+(2.4M)PF-1M
+(0.97M)ShareGPT
+(52k)OASST1
+(9k)UltraChat
+(1.5M)LLaVA
+(170k)Alpaca
+(52k)Alpaca-GPT4
+(52k)6
+4
+2
+02468Reward Score
+-2.42-1.31-0.500.470.780.971.272.392.75Figure 6. Distribution of absolute reward model score of vari-
+ous instruction tuning datasets . The median and quartile are also
+marked by dotted lines. Polite Flamingo boost the “politeness” of
+raw dataset annotations (leftmost) significantly.
+the Polite Flamingo added the book title information to its
+rewritten answer. These examples illustrate the advantage
+of Polite Flamingo-based response rewriting in comparison
+with those ChatGPT-based ones ( e.g., in MIMIC-IT [15],
+M3IT [14], FuseCap [34], etc.). The multi-modality under-
+standing ability of Polite Flamingo enables it to have a more
+comprehensive understanding of the instruction-response
+sample than the text-only rewriters.
+Bad Cases. However, compared to ChatGPT-based
+rewriters, a major drawback of Polite Flamingo is its reli-
+ability – Polite Flamingo still makes some silly mistakes.
+In the bottom half of Figure 5, we show some represen-
+tative examples of low-quality rewriting. Despite simple
+mistakes such as forgetting to generate <EOS> token thus
+producing endless repetitions, notable issues include chang-
+ing the ground truth answer or adding hallucinated con-
+tents. It seems that sometimes Polite Flamingo prefers to
+believe its own visual perception rather than the provided
+ground truth, and its visual perception is not always accu-
+rate – possibly because the base model of Polite Flamingo,
+the OpenFlamingo-9B, is only trained on 15M image-text
+data thus produce less comprehensive visual representation
+alignment. These examples also demonstrate the necessity
+of post-processing and filtering.
+5.1.2 Quantitative Evaluation
+In addition to the above examples, we analyze the improve-
+ment of “politeness” through a quantitative evaluation. We
+assume that a reward model which is trained on human-
+labeled user preference data is able to provide an estimation
+of politeness6. In Figure 6, we plot the distribution of the
+scores of the reward model on a wide range of popular in-
+6Reward model: https : / / huggingface . co /
+OpenAssistant/reward-model-deberta-v3-large-v2struction tuning datasets7. It shows that Polite Flamingo
+significantly boosts the politeness of raw dataset annota-
+tions (from -2.42 to -0.50), and the resulting PF-1M outper-
+forms the recently proposed large-scale instruction tuning
+dataset M3IT [14] by a notable margin. Unfortunately, PF-
+1M cannot match those datasets produced by much larger
+LLM, especially those generated by GPT-4 ( i.e.,LLaV A [9]
+and Alpaca-GPT-4 [55]). But on the other hand, PF-1M is
+approximately 6 ×larger than the LLaV A dataset, and many
+LLaV A instructions are QA conversations under the theme
+of the image. In comparison, the PF-1M dataset is derived
+from annotated vision-language dataset and involves chal-
+lenging samples that encourage fine-grained visual under-
+standing.
+5.2. Comparing Clever Flamingo with Existing
+Multi-modal LLMs
+Now we turn to verify the performance of the Clever
+Flamingo trained with PF-1M, and compare it with other
+multi-modal LLMs. We focus on answering the following
+questions: 1) how well does it perform on vision-language
+tasks, 2) how does it generalize to unseen datasets, and 3)
+whether it produces human-preferred responses ( i.e.,being
+polite). We first compare it with other models on image cap-
+tioning and VQA tasks (Section 5.2.1), then we present the
+evaluation of multi-image reasoning tasks (Section 5.2.2),
+and finally, we analyze the politeness of these multi-modal
+LLMs (Section 5.2.3).
+5.2.1 Image Captioning and VQA
+Table 1 summarized the evaluation results comparing
+Clever Flamingo with other multi-modal LLMs on de-
+tailed image captioning (MS-COCO [29], TextCaps [43],
+and Image2Paragraph [44]) and visual question answer-
+ing (OK-VQA [57], Visual-Spatial Reasoning [21], Grid-
+3D [58]). We use Rouge-L as the metric for captioning
+datasets and use an NLI model-based automated evaluator
+for VQA datasets (see Section F for more details). As our
+work is concurrent with InstructBLIP [11] and Otter [12],
+the dataset splitting ( i.e., assignments of held-in training
+datasets and held-out unseen testing datasets) is not fully
+aligned. We marked the held-in datasets with black and
+marked the held-out datasets with blue.
+In summary, Clever Flamingo outperforms other coun-
+terparts on all three detailed image description datasets
+and the Grid-3D dataset, and only underperforms the In-
+structBLIP series on OK-VQA and VSR. Importantly, the
+settings ( e.g., the base model and training data amount)
+of these comparisons are not aligned. For InstructBLIP,
+710k samples are randomly drawn from each dataset. At the time
+of writing, another concurrent visual instruction tuning dataset MIMIC-
+IT [15] (which is used to train Otter) is not fully available.
+8Table 1. Performance comparison of different multi-modal LLMs . We use Rouge-L as the metric for detailed image description
+tasks (MS-COCO, TextCaps, and Image-to-paragraph), and we use an NLI-based evaluator for VQA datasets (OK-VQA, Visual-Spatial
+Reasoning, and Grid-3D). Blue numbers are results on unseen datasets ( i.e.,zero-shot), and black numbers are results on unseen samples
+(i.e.,validation split of datasets seen during training). The bottom row ( ±∆) compares Clever Flamingo with Otter, which uses the same
+OpenFlamingo-9B as the base model.
+Detailed Image Description Visual Question AnsweringMethod #InstructionsVisual
+(#Params)Connector
+(#Samples)LLM
+(#Params) COCO TextCaps Img2P OK-VQA VSR Grid-3D
+7B 14.4 15.5 14.7 10.4 14.0 19.0MiniGPT-4 3.5k ViT-g (1.0B) Linear (5M)13B 23.1 19.2 23.7 23.8 24.6 20.0
+7B 23.8 21.1 23.6 32.1 36.1 20.8LLaV A 177k ViT-L (0.3B) Linear (595k)13B 23.1 20.7 23.2 30.9 34.1 22.5
+7B 23.7 22.2 22.2 51.5 48.5 28.9 InstructBLIP
+(Vicuna)1.6M ViT-g (1.0B) BLIP-2 (129M)13B 23.5 19.7 22.1 52.2 48.9 27.5
+Otter 2.8M 7B 22.6 19.7 22.4 28.7 28.7 13.5
+Clever Flamingo 1.0MViT-L (0.3B) OpenFlamingo-9B (15M)7B 24.3 24.1 24.7 43.3 43.6 29.0
+±∆ -1.8M - - - +1.7 +4.4 +2.3 +14.6 +14.9 +15.5
+Ground Truth :Ablue train with ayellow stripe onitisonthe
+tracks .There aremountains behind thetrain .There arerocks next
+tothetrain tracks .
+Clever Flamingo (9B)
+The image features ablue and white train traveling down a
+mountain track .Thetrain ispulling intoa
+station
+ ,anditappears to
+beapassenger train .The skyisblue, andthetrain issurrounded
+bymountains, adding tothepicturesque scene .
+There areseveral
+ people
+ visible intheimage ,likely waiting atthe
+station orobserving thetrain asitarrives .Some ofthem are
+standing closer tothetrain, while others arefurther away .Overall,
+thescene captures the essence ofatrain journey through a
+beautiful mountain landscape .OpenFlamingo -9B
+The Peruvian Express isatrain thattravels from Cuzco toMachu
+Picchu inPeru .Otter-9B
+The image features alarge train with thename
+ Peruvian
+ Blue
+traveling onthetracks .The train ispositioned inthemiddle ofthe
+scene andappears tobeasignificant mode oftransportation .There
+areseveral
+ people
+ intheimage, some ofthem standing near the
+train, while others arefurther away .Thepeople may bepassengers
+orindividuals waiting forthetrain toboard ordisembark .The
+scene also includes a
+car
+anda
+truck
+ ,which arelocated near the
+railroad tracks, possibly indicating abusy area where different
+modes oftransport coexist .InstructBLIP Vicuna -13B
+intheimage, ablue and yellow train istraveling down asetof
+tracks next toamountainous landscape .The train appears tobe
+moving atamoderate
+ speed
+ asitmakes itsway through thescenic
+area.There areseveral
+ other
+ trains visible inthebackground ,but
+themain focus isontheblue andyellow train asittravels along
+thetracks .LLaVA-13B
+The image features ablue and white passenger train traveling
+down thetracks through amountainous area.The train islong and
+visually striking, with theblue color predominantly seen onthe
+train.The tracks arelaid outinaway that they runparallel toa
+road
+ ,which canbeseen next tothetrain.
+Inthesurrounding landscape, there areseveral
+ cars
+ and a
+truck
+driving ontheroad,indicating that this isabusy transportation
+route .The presence ofthetrain andtheroad together showcases
+anefficient anddiverse transportation system inthearea, catering
+toboth train andautomobile travelers .MiniGPT-4 13B
+The image shows atrain traveling onatrack through a
+mountainous landscape with snow covered peaks inthe
+background .There isablue andyellow train onthetrack andit
+appears tobemoving from
+ left
+to
+right .Thetrack ismade ofmetal
+andthere arenoother objects intheimage besides thetrain and
+themountains .The sky isaclear blue color and there areno
+clouds visible .The mountains inthebackground arerugged and
+rocky with snow onthepeaks .There isa
+river
+ running through the
+valley below themountains and there aresome
+ trees
+ along the
+riverbank
+ .The train track appears tobegoing through a
+tunnel
+ in
+themountain .
+Figure 7. All existing multi-modal LLMs exhibit severe hallucination problems. We show a random testing example from the Im-
+age2Paragraph [44]. The hallucinated contents are marked with red.
+a BERT-based Q-Former is firstly trained with BILP-
+generated and filtered 129M samples for two stages (about
+3-4 epochs), then the model is instruction-tuned on a
+1.6M collection of downstream data. In comparison, our
+Clever Flamingo, as well as the Otter model, is tuned from
+OpenFlamingo-9B, which uses a 3 ×smaller visual encoder,
+a lighter perceiver as the connector, and much less pre-
+training image-text data (15M) and training steps (single
+epoch)8[20]. When come to a fair comparison between
+Clever Flamingo and Otter (despite instruction data, Clever
+Flamingo uses 1.8M fewer data), our model outperforms
+Otter on every dataset, both held-in and held-out, by a sig-
+nificant margin.
+Hallucination Problem . Although Clever Flamingo
+yields notable improvement in image captioning tasks, it
+still exhibits severe object hallucination problems [59–61],
+the same as other existing multi-modal LLMs. In Figure 7,
+8https://laion.ai/blog/open-flamingo/we prompt existing multi-modal LLMs with the instruction
+“Give an elaborate explanation of the image you see”, using
+a random testing sample9from the Image2Paragraph [44]
+dataset. As marked with red, all of the compared models
+hallucinated non-exist objects, such as road, cars, trucks,
+people, river, trees, tunnel, station, etc. This is a significant
+limitation faced by existing multi-modal LLMs, preventing
+them to be actually deployed in the real world. We also find
+that it is difficult to quantitatively verify the correctness of
+generation beyond object appearance ( e.g., “this is a scenic
+area”, “the train is visually striking”, “beautiful mountain
+landscape”, “this is a busy transportation route”, etc.), as
+we lack a dataset with rich fine-grained annotations of all
+information that can be inferred from the image.
+9Not cherry/lemon-picked – it is the first image in our sampled valida-
+tion set.
+9Table 2. Multi-image reasoning tasks . “STS” means semantic
+textual similarity. The lower bound performance comes from a
+single-image model (InstructBLIP). Blue numbers indicates un-
+seen datasets and black numbers correspond to results on unseen
+samples ( i.e.,validation split).
+Spot-the-Diff Image-editing NLVR2ModelSTS Rouge-L STS Rouge-L STS Rouge-L
+Lower Bound 31.6 0.119 13.9 0.023 7.0 0.012
+Otter 39.5 0.129 33.2 0.136 11.5 0.069
+Clever Flamingo 46.1 0.185 37.0 0.156 28.2 0.155
+±∆ +6.6 +.057 +3.9 +.020 +16.7 +.085
+5.2.2 Multi-image Reasoning
+Now we analyze the performance on multi-image reason-
+ing tasks. We compare Clever Flamingo with Otter [12],
+which is also tuned from OpenFlamingo-9B – the only cur-
+rently publicly available base multi-modal LLM that can
+process interleaved image-text data. The following three
+datasets are used for evaluation: 1) Spot-the-diff [46], a
+change captioning dataset for surveillance camera imagery,
+2) Image-editing-requests [47], which requires the model to
+infer image editing requests ( e.g,Photoshop editing) given
+image pairs, and 3) Natural Language Visual Reasoning-2
+(NVLR2) [62], where the model needs to reason whether a
+statement holds true given two images.
+We use Rouge-L between model prediction and ground
+truth as the metric. We further introduced a model-based
+evaluator “STS” (semantic textual similarity), which is
+measured by the cosine distance of sentence features10,
+to compare high-level semantics of answer and ground
+truth [63]. We also provide the evaluation result of a single-
+image model (InstructBLIP) as the lower bound. The result
+is shown in Table 2. Again, Clever Flamingo outperforms
+Otter on all three datasets by a large margin.
+5.2.3 Politeness
+We used a reward model to evaluate the politeness of model
+responses on a total of 52k samples sourced from the valida-
+tion/test split of a collection of vision-language downstream
+datasets11. For each sample, we first obtain the prediction of
+multi-modal LLMs, then feed the instruction and the gener-
+ated responses to a reward model to get reward scores, and
+make a pairwise comparison of the scores. In Figure 8, we
+visualize the average win rate – the statics of the pairwise
+comparison of all 52k samples. We also calculate the re-
+ward score of raw annotations for comparison.
+As it can be seen, our Clever Flamingo is more likely to
+be preferred by the reward model (having >50% win rate)
+compared to all of the other compared multi-modal LLMs,
+10STS model: https : / / huggingface . co / sentence -
+transformers/all-mpnet-base-v2
+11See Section E in the appendix for details.
+Raw Annotation
+MiniGPT-4-7b
+MiniGPT-4-13b
+InstructBLIP
+(Vicuna-7b)
+InstructBLIP
+(Vicuna-13b)
+Otter-9B
+Clever Flamingo
+LLaVA-7B
+LLaVA-13B
+Model BRaw Annotation
+MiniGPT-4-7b
+MiniGPT-4-13b
+InstructBLIP
+(Vicuna-7b)
+InstructBLIP
+(Vicuna-13b)
+Otter-9B
+Clever Flamingo
+LLaVA-7B
+LLaVA-13BModel A50.0 64.6 49.2 53.5 53.0 32.6 20.4 16.2 13.8
+35.4 50.0 36.6 37.5 37.3 21.6 16.0 10.5 8.9
+50.8 63.4 50.0 50.2 49.9 33.8 25.8 19.1 16.8
+46.5 62.5 49.8 50.0 49.0 35.7 26.7 21.4 19.7
+47.0 62.7 50.1 51.0 50.0 36.2 26.6 21.7 20.0
+67.4 78.4 66.2 64.3 63.8 50.0 37.9 29.6 26.4
+79.6 84.0 74.2 73.3 73.4 62.1 50.0 42.9 39.4
+83.8 89.5 80.9 78.6 78.3 70.4 57.1 50.0 45.3
+86.2 91.1 83.2 80.3 80.0 73.6 60.6 54.7 50.0Figure 8. Win rate matrix of model A beat model B in terms
+of reward model score . For example, Clever Flamingo has a
+62.1% win rate against Otter. Our model has a >50% win rate
+against other multi-modal LLMs despite the LLaV A series, which
+is trained on purely GPT-4 generated data.
+except the LLaV A series. This is a direct result of the dif-
+ferences in instruction data, as in previous Figure 6, GPT-4
+generated LLaV A dataset outperforms the PF-1M dataset in
+terms of reward score.
+5.3. Ablation Study
+We now present the ablation experiments to verify the
+effectiveness of various design choices of Clever Flamingo.
+We report the averaged NLI-based validation accuracy of
+in-domain (held-in) VQA datasets and out-of-distribution
+(held-out) VQA datasets, and further calculate the averaged
+reward score as a measurement of politeness.
+The results are shown in Figure 9. On the left side, we
+first visualize the change of metrics during the U-shaped
+multi-stage visual instruction tuning. It shows that stage
+2 boosts the in-domain QA accuracy, but also results in a
+degenerated politeness. Stage 3 maintains the in-domain
+QA accuracy, but recovers the politeness significantly. It is
+interesting to observe that OOD QA accuracy also exhibits a
+U-shaped curve. It seems that stage 2 led to sight overfitting
+to the PF-1M data distribution, well stage 3 alleviates this
+problem.
+The right side of Figure 9 shows ablations on the Clever
+Flamingo stage 2. The observations on different alternatives
+are listed as follows. 1) 224 Resolution : changing image
+resolution from default 336 ×336 to 224 ×224 hurt the per-
+100.287 0.285 0.288 0.301 
+0.291 0.287 0.293 0.372 0.367 0.366 0.368 
+0.347 
+0.333 0.373 
+-2.2-1.4-0.6
+Stage 2 Default 224 Resolution Unfreeze ViT Unfreeze LoRA More Epochs No Stage 1 Raw AnnotationReward
+Score
+0.2554 0.2870 0.2896 0.3835 
+0.3715 0.3861 
+0.250.300.350.40
+Stage 1 Stage 2 Stage 3Accuracy
+(NLI)QA InD
+QA OOD
+Politeness
+Ablations of
+Stage 2 Design ChoicesU-shaped Multi -stage
+Visual Instruction TuningFigure 9. Results of ablation experiments on U-shaped multi-stage visual instruction tuning (left) and design choices in stage 2
+(right) . We calculate averaged NLI-based accuracy for held-in QA datasets (QA InD) andheld-out datasets (QA OOD) . Note that all
+testing examples are unseen during training, and the difference between QA InD and QA OOD is the data domain distribution. We also
+report the average reward score to reflect the politeness of each alternative.
+Table 3. Comparison of response rewriting of two generations
+of Polite Flamingo . The second generation is a politer and more
+active rewriter on A-OKVQA [37], but it fails to improve the
+CLIPScore on Conceptual Captions-3M [31].
+RewriterA-OKVQA CC-3M
+Avg. Reward Unchanged CLIPScore
+Polite Flamingo Generation 1 -1.19 11.53% 23.88
+Polite Flamingo Generation 2 -0.68 0.00% 23.25
+formance, confirmed the hypothesize in [64]. 2) Unfreeze
+ViT: further tuning ViT in addition to perceiver and XATTN
+failed to improve the performance significantly, and resulted
+in slight overfitting. It shows that the scale of PF-1M is still
+insufficient to support continual representation learning of
+the visual backbone. 3) Unfreeze LoRA : this ablation sig-
+nificantly improved the PF-1M in-domain accuracy, but also
+hurt the generalization ability. 4) More Epochs : we dou-
+bled the stage 2 epochs from 3 to 6, and found that it signif-
+icantly hurt the generalization ability to the unseen domain.
+5) No Stage 1 : when skipping stage 1 and directly going
+into stage 2 from vanilla OpenFlamingo-9B, the OOD gen-
+eralization ability further dropped. It demonstrates that in-
+struction samples used in stage 1 and stage 3 can effectively
+boost/maintain the OOD generalization ability. 6) Raw An-
+notation : when skipping the Polite Flamingo-based rewrit-
+ing and using the raw annotations in PF-1M for visual in-
+struction tuning, both held-in and held-out accuracy got
+slightly improved, however, the multi-modal alignment tax
+is significant – the “politeness” dropped significantly.
+5.4. The Second Generation of Polite Flamingo
+As shown in Table 1 and Figure 9, we confirmed that
+Clever Flamingo has an improved visual perception and un-
+derstanding ability through visual instruction tuning on PF-
+1M. We hypothesize these advantages might be transferred
+to benefit response rewriting, by tuning Clever Flamingoto learn response rewrite. If the second generation of Po-
+lite Flamingo becomes a better rewriter, we may expect the
+subsequent second generation of Clever Flamingo could be
+further improved, and then a weakly supervised training
+loop become possible to be realized. To verify the possi-
+bility, we made an initial attempt by training and evaluat-
+ing a second generation of Polite Flamingo. We use ex-
+actly the same training recipe as the first generation, ex-
+cept that we initialize the model from Clever Flamingo in-
+stead of OpenFlamingo-9B. After training, we use this sec-
+ond generation of Polite Flamingo to rewrite responses in
+A-OKVQA [37] and 20k samples from the CC-3M [31].
+The results are shown in Table 3. We found that the sec-
+ond generation has a notable improvement (+0.51) in terms
+of average reward score. Additionally, the first generation
+of Polite Flamingo left 11.53% of samples as original and
+failed to make any revisions, while no sample remains un-
+changed by the second generation. The above observations
+demonstrate that the second generation of Polite Flamingo
+becomes a politer and more active rewriter.
+However, the second generation failed to improve the
+CLIPScore of generated captions on CC-3M as expected.
+This is surprising as it seems to contradict our experimental
+results, where Clever Flamingo demonstrated a clear im-
+provement over baselines. The most possible explanation
+for this phenomenon could be the rewriting style is lim-
+ited by the training data distribution of Polite Flamingo
+(Section 3.2). Although it covers samples from multiple
+datasets, examples of describing images only appear in the
+LLaV A dataset, and there are only 23k samples for this type.
+It appears that our model overfits these 23k samples, as they
+are the only source to learn image captioning style through-
+out the whole process12. This confirms our emphasis on the
+12The captioning samples in PF-1M could not provide additional diver-
+sity that helps prevent overfitting, as they are also generated by the Polite
+Flamingo that learns to caption from the 23k samples only
+11importance of diversity when selecting training data for Po-
+lite Flamingo (Section 3.2), and reveals the urgent need for
+visual instruction tuning data of the detailed captioning type
+that is both high-quality and large-scale.
+6. Conclusion
+This paper presents our solution to the multi-modal
+alignment tax problem, specifically, we want to use a di-
+verse collection of downstream vision-language datasets to
+improve the visual understanding capability of multi-modal
+LLMs while avoiding the unformatted raw annotations to
+decrease the “politeness” of model responses. Our method-
+ology brings inspiration from denoising AutoEncoders, and
+the “noise” here is implemented by various text distortions
+that attempt to approximate the style of raw annotations to
+ensure generalization. Empirically, we implemented and
+trained the rewriter, and used it to build a large-scale visual
+instruction tuning dataset. Incorporating newly proposed U-
+shaped multi-stage visual instruction tuning and multi-turn
+augmentation, we derived a strong multi-modal LLM based
+on the dataset. We evaluate the resulting model on vari-
+ous tasks, and demonstrated its advantages in terms of both
+multi-modal understanding and response politeness.

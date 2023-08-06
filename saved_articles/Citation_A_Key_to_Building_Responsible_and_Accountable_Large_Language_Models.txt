@@ -1,0 +1,339 @@
+Citation: A Key to Building Responsible and Accountable
+Large Language Models
+Jie Huang Kevin Chen-Chuan Chang
+Department of Computer Science, University of Illinois at Urbana-Champaign
+{jeffhj, kcchang}@illinois.edu
+Abstract
+Large Language Models (LLMs) bring trans-
+formative benefits alongside unique challenges,
+including intellectual property (IP) and ethi-
+cal concerns. This position paper explores a
+novel angle to mitigate these risks, drawing
+parallels between LLMs and established web
+systems. We identify “citation” as a crucial
+yet missing component in LLMs, which could
+enhance content transparency and verifiability
+while addressing IP and ethical dilemmas. We
+further propose that a comprehensive citation
+mechanism for LLMs should account for both
+non-parametric and parametric content. De-
+spite the complexity of implementing such a
+citation mechanism, along with the inherent
+potential pitfalls, we advocate for its develop-
+ment. Building on this foundation, we outline
+several research problems in this area, aiming
+to guide future explorations towards building
+more responsible and accountable LLMs.
+1 Introduction
+The landscape of artificial intelligence is under-
+going rapid transformation, spurred by the emer-
+gence of large language models (LLMs) such
+as ChatGPT/GPT-4 (OpenAI, 2022, 2023) and
+PaLM (Chowdhery et al., 2022; Anil et al., 2023).
+These models, recognized for their striking ability
+to generate human-like text, have shown enormous
+potential in various applications, from information
+provision to personalized assistance. Nonetheless,
+their capabilities bring along substantial risks, in-
+cluding intellectual property (IP) and ethical con-
+cerns (Carlini et al., 2021, 2023; Huang et al., 2022;
+Shao et al., 2023; Li et al., 2023; Lee et al., 2023;
+Frye, 2022; Chesterman, 2023; Brown et al., 2022;
+El-Mhamdi et al., 2022).
+Research by Carlini et al. (2021); Huang et al.
+(2022), for instance, reveals that LLMs are prone
+to memorizing extensive segments of their train-
+ing data, including sensitive information. This can
+result in violations of IP and ethical guidelines.Furthermore, studies by El-Mhamdi et al. (2022);
+Brown et al. (2022) suggest that current protec-
+tive measures fail to provide a comprehensive and
+meaningful notion of safety for LLMs, making it
+seemingly impossible to develop safety-preserving,
+high-accuracy large language models even when
+trained on public corpora.
+While the notion of building an entirely safe
+LLM might appear daunting, it is crucial to ac-
+knowledge that many well-established systems,
+such as the Web, grapple with similar challenges
+and have not yet reached absolute safety. Recent
+legislation like the Online News Act1, which re-
+quires online search engines to compensate Cana-
+dian online news outlets for their content, under-
+scores the ongoing issues around content use and
+compensation on the Web. Furthermore, the Web
+continues to be a breeding ground for both sensitive
+information and misinformation. Hence, expect-
+ing a completely risk-free LLM may be an over-
+ask. Instead, our focus should be on accurately
+quantifying these risks and developing effective
+mitigation strategies. It is not about achieving abso-
+lute security, but about responsibly managing and
+minimizing risks in an ethically sound manner.
+Guided by these insights, we propose to exam-
+ine the problem through a different lens: Can we
+draw parallels between the risks inherent to LLMs
+and those experienced by established systems such
+as search engines and the Web? Can we devise
+strategies to decrease these risks by aligning with
+the practices of these mature systems?
+In examining systems like the Web and search
+engines, we observe a common and robust prac-
+tice employed to manage IP and ethical concerns:
+the use of “citations”. Broadly defined, a “citation”
+refers to the act of mentioning or referencing a
+source or piece of evidence. For example, search
+engine results also serve as a form of citation, with
+1https://www.canada.ca/en/canadian-heritage/
+services/online-news.htmlarXiv:2307.02185v1  [cs.CL]  5 Jul 2023each entry typically consisting of a title, URL, and
+brief description. These components collectively
+cite the webpage’s content, offering the user an
+overview and inviting them to explore the source in
+greater depth. Citations thus act as anchors for ac-
+countability and credit in these systems, providing
+traceability, preventing plagiarism, and ensuring
+credit is correctly attributed. They also contribute
+to transparency, allowing users to verify the infor-
+mation’s source.
+Upon reflection, it becomes clear that LLMs lack
+this critical functionality. When LLMs generate
+content without citations, their output is perceived
+as independent and self-derived. This creates two
+significant issues: firstly, when the model produces
+valuable information, it fails to credit the source
+it relies on; secondly, when it generates harmful
+content, it becomes challenging to assign account-
+ability. Incorporating the ability to cite could not
+only address these ethical and legal conundrums
+but also bolster the transparency, credibility, and
+overall integrity of the content generated by LLMs.
+However, implementing a “citation” mechanism
+in LLMs is not as straightforward as it might seem.
+Unlike the Web, which explicitly links and ref-
+erences sources, LLMs internalize the informa-
+tion and transform it into an abstract representa-
+tion, making accurate citation a significant techni-
+cal challenge. Although some strides have been
+made in this direction, as seen in systems like New
+Bing2, Bard3, and Perplexity AI4, they fall short on
+several fronts. First, the citations provided in the
+response of existing systems are often inaccurate
+(Liu et al., 2023; Gao et al., 2023). Moreover, these
+systems typically only cite non-parametric content,
+i.e., content directly retrieved from external sources
+such as the Web. However, they neglect paramet-
+riccontent, the knowledge embedded in the model
+parameters, which also needs appropriate credit
+attribution and consideration for potential harm.
+This position paper embarks on an exploratory
+journey into the potential of integrating a citation
+mechanism within large language models, examin-
+ing its prospective benefits, the inherent technical
+obstacles, and foreseeable pitfalls. We delve into
+approaches to cite both non-parametric and para-
+metric content, considering the unique character-
+istics of each type. We also identify and discuss
+2https://www.bing.com/new
+3https://bard.google.com
+4https://www.perplexity.aipotential setbacks, such as reduced creativity, dis-
+semination of sensitive information, and citation
+bias. Building on this foundation, we lay bare
+the hurdles in our path, presenting them as entic-
+ing problems for future research. Through this
+endeavor, we aim to stimulate further discussion
+and research towards building responsible and ac-
+countable large language models.
+2 “Citation” in LLMs
+Menmay be better at STEM.According to [1], men may be better at STEM.LLMs memorize a lot of training data.LLMs memorize a lot of training data [1].
+Figure 1: Examples without (left) and with (right) ci-
+tations. In the first case, citations serve as a way to
+appropriately credit authors. In the second case, citing
+the original source of a biased statement ensures that
+the bias is not misconstrued as the model’s opinion.
+Figure 1 illustrates model generations with and
+without citations. In the absence of a citation, there
+is a potential risk of misunderstanding, leading one
+to believe that the claim is an opinion or statement
+formulated by the LLM itself. This not only fails to
+appropriately credit the original authors, but could
+also result in ethical dilemmas if the claim is inac-
+curate or misrepresented.
+On the other hand, the inclusion of citations can
+act as a multifaceted solution to these concerns.
+Primarily, it helps to mitigate intellectual property
+and ethical disputes by signaling that the informa-
+tion is not a product of the LLM’s “opinion”, but
+a reflection of the cited source. Additionally, cita-
+tions enhance the transparency and verifiability of
+the LLM’s output. By indicating the source from
+which the information is derived, they provide a
+clear pathway for users to independently verify the
+validity and context of the information.
+3 RoadMap
+In this section, we embark on exploring the poten-
+tial of incorporating a “citation” mechanism within
+LLMs. We start our exploration by defining when
+it would be ideal for an LLM to provide a cita-
+tion, drawing insights from established practices
+in academia and existing systems like search en-
+gines and the Web. We then delve into discussing
+the possible strategies for effectively implementingcitations in LLMs, confronting the methodological
+and technical intricacies this endeavor involves.
+3.1 When to Cite?
+In academic or professional writing, a citation is
+typically required when using someone else’s ideas,
+concepts, data, or specific language. For LLMs,
+determining when to provide a citation is a consid-
+erably more challenging task. Given the vast and
+varied range of queries posed to LLMs, it is crucial
+to establish when a citation would be appropriate
+or necessary.
+A fundamental rule could be that any fact, idea,
+or concept that is not general knowledge should
+be cited. This mirrors the existing conventions
+on the Web, where sources for specific informa-
+tion are typically provided. For instance, widely
+known facts like “The Earth revolves around the
+Sun” would not necessitate a citation, while a less
+well-known fact like “The fastest spinning stars
+can rotate more than 600 times per second” would
+warrant one.
+Moreover, the need for a citation could also de-
+pend on the nature of the task LLMs are performing.
+Certain tasks may not necessitate citations, particu-
+larly if the output is a reformulation or reinterpreta-
+tion of the input. For example, in summarization
+tasks, LLMs condense the input data without intro-
+ducing new information. The resultant summary is
+hence an interpretation of the input, and typically,
+a citation may not be needed for such tasks. Simi-
+larly, translation tasks involve converting content
+from one language to another, without the introduc-
+tion of novel information.
+In essence, while the need for citations in LLMs
+is task-dependent and context-specific, a guiding
+principle should be the commitment to knowledge
+integrity, respect for intellectual property, and ad-
+herence to ethical norms. These are similar prin-
+ciples that guide the management of intellectual
+property and ethical concerns on the Web and in
+search engines.
+3.2 How to Cite?
+Incorporating citations in LLMs ideally involves
+connecting outputs to the original source of infor-
+mation. However, this presents a notable technical
+challenge. During LLMs’ training, information is
+internalized and transformed into an abstract rep-
+resentation, unlike search engines which possess
+indices to track and retrieve information. In the
+case of LLMs, this index is absent, which makesreferencing the original source a daunting task. In
+this section, we delve into the consideration of ci-
+tations for both non-parametric andparametric
+content (Figure 2).
+3.2.1 Citation for non-parametric content
+As a potential solution to prevailing challenges,
+one could design a hybrid system that merges large
+language models with information retrieval (IR)
+systems. In this approach, the model is trained to
+discern when a citation might be required. Subse-
+quently, the IR system is utilized to retrieve rele-
+vant sources, namely, non-parametric content. The
+LLM can then incorporate these sources into its
+responses as citations. We identify two strategies
+for citing non-parametric content:
+•Pre-hoc citation : This approach involves first
+identifying the need for a citation in the upcom-
+ing dialogue or content generation. Once this
+requirement is recognized, the LLM triggers the
+IR system to retrieve the necessary information.
+The LLM then generates its response, seamlessly
+incorporating the retrieved non-parametric con-
+tent as citations. This technique can be asso-
+ciated with the broader body of research that
+augments language models with retrieval (Guu
+et al., 2020; Lewis et al., 2020; Izacard and Grave,
+2021; Borgeaud et al., 2022; Izacard et al., 2022;
+Shi et al., 2023; Wang et al., 2023; Menick et al.,
+2022).
+•Post-hoc citation : Conversely, in this strategy,
+the LLM initially produces a response. An evalu-
+ation process then scrutinizes the generated con-
+tent to ascertain whether a citation is necessary.
+If a citation is deemed necessary, the IR system
+is used to locate the appropriate non-parametric
+content, which is subsequently inserted into the
+existing text as a citation. Related research
+includes measuring or requiring attribution in
+LLMs (Rashkin et al., 2023; Gao et al., 2022;
+Honovich et al., 2022; Yue et al., 2023; Liu et al.,
+2023; Gao et al., 2023).
+In practical applications, a combination of both
+pre-hoc andpost-hoc citation methods could be
+adopted for an optimized method. This mixed ap-
+proach would employ the initial identification and
+retrieval of potential citations in line with the pre-
+hocmethod, followed by a post-hoc evaluation to
+refine the integration of citations based on the gen-
+erated content. This blend of proactive retrieval
+and reactive refinement could facilitate the creationLLMs memorize a lot oftraining data [1].LLMsLLMs memorize a lot oftraining data.
+non-parametric (pre-hoc)non-parametric (post-hoc)parametric[1] source 1Figure 2: Non-parametric andparametric citations.
+of robust, accurate, and well-supported content,
+while also mitigating intellectual property and ethi-
+cal concerns surrounding LLMs.
+3.2.2 Citation for parametric content
+In addition to the non-parametric content, i.e., con-
+tent directly retrieved from external sources such
+as the Web, parametric content, which refers to in-
+formation internalized from the training data, also
+needs appropriate credit attribution and considera-
+tion for potential harm. However, crafting a citation
+strategy for parametric content presents its own set
+of unique challenges.
+The fundamental challenge is the underlying na-
+ture of how LLMs process and internalize infor-
+mation. During training, LLMs assimilate vast
+amounts of data and transform them into an in-
+tricate, high-dimensional space that represents
+learned patterns and structures. The transformation
+process, rooted in complex mathematical opera-
+tions, does not inherently retain any clear mapping
+back to individual data points in the training set.
+Consequently, generated content cannot easily be
+traced back to specific training data.
+This situation is further complicated by the fact
+that an output generated by LLMs is typically in-
+fluenced by a multitude of training data points,
+rather than a single source. This is due to the multi-
+faceted and context-sensitive nature of language un-
+derstanding and generation, where a single output
+can be influenced by a diverse range of linguistic
+patterns and structures. Thus, the task of accurately
+attributing a generated output to specific training
+data pieces is a complex and multifaceted prob-
+lem that involves unpacking the high-dimensional
+representations in the model.
+Despite these challenges, potential solutions ex-
+ist. A conceivable approach involves training themodel with source identifiers , essentially tags that
+link specific pieces of information back to their
+original sources. During training, the model could
+then be encouraged to retain these identifiers. This
+would provide a more transparent lineage of in-
+formation, thereby enhancing accountability. A
+relevant attempt in this direction was made by Tay-
+lor et al. (2022), which used special reference to-
+kens to wrap citations and trained models to pre-
+dict these citations. However, it exhibited certain
+limitations, such as citation inaccuracy and con-
+finement to academic citations. The successful
+execution of this method would likely call for ad-
+vancements in model architecture and training tech-
+niques, thereby highlighting intriguing directions
+for future research.
+4 Pitfalls of Citation in LLMs
+While citations in LLMs can potentially mitigate
+risks such as IP and ethical issues, as well as im-
+prove transparency and verifiability, it is crucial to
+consider potential pitfalls.
+Over-Citation and Sensitive Information Dis-
+semination. The implementation of a citation
+system in LLMs poses the risk of over-citation,
+where the excessive use of 

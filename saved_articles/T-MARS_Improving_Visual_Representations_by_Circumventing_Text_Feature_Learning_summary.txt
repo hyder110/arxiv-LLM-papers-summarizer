@@ -1,0 +1,27 @@
+Summary:
+
+The paper proposes a data filtering approach called T-MARS to improve visual representations in vision-language models. The approach focuses on images with text that dominate the visual features and filters out those with low similarity scores. T-MARS outperforms other baselines on the DataComp benchmark and shows linear scaling trends with data and compute increases.
+
+Bullet Points:
+
+- T-MARS is a data filtering approach to improve visual representations in vision-language models.
+- It focuses on images with dominating text features and filters out images with low similarity scores.
+- T-MARS outperforms other baselines on the DataComp benchmark.
+- The approach shows linear scaling trends with increases in data and compute.
+- Filtering out 'bad data' can be more useful than adding more 'good' samples to the dataset.
+- The utility of different data types confirms the importance of retaining samples with both visual and text features.
+- T-MARS does not have OCR capabilities but focuses on visual representations.
+- Data subset selection can introduce biases but no harmful biases were observed in this specific approach.
+
+Keywords:
+
+- T-MARS
+- data filtering
+- visual representations
+- vision-language models
+- similarity scores
+- DataComp benchmark
+- linear scaling trends
+- 'bad data'
+- OCR capabilities
+- biases in data subset selection

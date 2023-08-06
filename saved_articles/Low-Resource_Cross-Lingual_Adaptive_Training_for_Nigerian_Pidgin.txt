@@ -1,0 +1,396 @@
+Low-Resource Cross-Lingual Adaptive Training for Nigerian Pidgin
+Pin-Jie Lin∗1,2, Muhammed Saeed∗1, Ernie Chang∗3, Merel Scholman2,4
+1Saarland Informatics Campus, Germany
+2Language Science and Technology, Saarland University, Germany
+3Reality Labs, Meta Inc.
+4ILS, Utrecht University, the Netherlands
+{pinjie, musaeed, m.c.j.scholman }@lst.uni-saarland.de, erniecyc@meta.com,
+m.c.j.scholman@coli.uni-saarland.de
+Abstract
+Developing effective spoken language pro-
+cessing systems for low-resource languages poses
+several challenges due to the lack of parallel
+data and limited resources for fine-tuning mod-
+els. In this work, we target on improving upon
+both text classification and translation of Nigerian
+Pidgin (Naija) by collecting a large-scale paral-
+lel English-Pidgin corpus and further propose a
+framework of cross-lingual adaptive training that
+includes both continual and task adaptive train-
+ing so as to adapt a base pre-trained model to
+low-resource languages. Our studies show that
+English pre-trained language models serve as a
+stronger prior than multilingual language models
+on English-Pidgin tasks with up to 2.38BLEU
+improvements; and demonstrate that augmenting
+orthographic data and using task adaptive train-
+ing with back-translation can have a significant
+impact on model performance.
+Index Terms : spoken language understanding, low-resource
+machine translation, low-resource language
+1. Introduction
+Over the past few years, there has been an increasing inter-
+est in developing spoken language processing systems for low-
+resource languages such as the Nigerian Pidgin (Naija) [1, 2].
+With a population of 75million people in Nigeria, Nigerian Pid-
+gin is a low-resource language that lacks sufficient data for spo-
+ken language processing tasks. Consequently, models tend to
+underperform when it comes to critical tasks, such as sentiment
+analysis [3] and machine translation [4]. Additionally, the or-
+thographic variation of low-resource languages presents a chal-
+lenge for language processing models, which can be addressed
+by collecting diverse datasets and performing data augmenta-
+tion using the target language lexicon [5, 6, 7]. The absence of
+parallel Pidgin data creates a considerable obstacle to training
+neural models with a high number of parameters. It also poses
+difficulties for fine-tuning pre-trained models on the tasks in-
+volving Pidgin language with limited resources, as seen in spo-
+ken machine translation and text classification [8, 9, 10].
+In this paper, we mitigate the issues of data scarcity by col-
+lecting and releasing a large-scale parallel English-Pidgin cor-
+pus (Section 2). English being the lexifier of Pidgin proves to
+be a useful high resource language for pivoting Nigerian Pidgin
+∗Equal contribution.to other languages [11]. Thus, we use this English-Pidgin par-
+allel dataset to train language models. Prior work proposed that
+using multilingual models can benefit low-resource language
+settings [12]. However, fine-tuning existing models [13] for
+specific tasks can be challenging due to their large number of
+parameters and sensitivity to parameter values. Thus, to more
+effectively leverage existing pre-trained models, we introduce a
+cross-lingual adaptive framework which involves two training
+procedures consisting of continual adaptive training and task
+adaptive training with back-translation. Our approach is de-
+signed to adapt a base model to a new language, making it more
+effective for low-resource languages.
+To this end, we introduce a cross-lingual adaptation frame-
+work for fine-tuning existing models to Nigerian Pidgin [13, 14]
+(Section 3). Specifically, we perform continual and task adap-
+tation by continually pre-training language models for Naija,
+and then fine-tuning the models [15, 16] for the downstream
+tasks. In our analysis, presented in Section 4, we found that the
+English-based model is superior to the multilingual one, indi-
+cating the importance of training on data specific to the target
+language. Additionally, we found that using task adaptive train-
+ing provides a significant impact on model performance in the
+low-data setting. Our results suggest that cross-lingual adaptive
+training is a promising approach for building effective spoken
+language systems for low-resource languages2.
+Our main contributions are as follows:
+• We release the first large-scale English-Pidgin dataset3to our
+knowledge, which consists of 29.73K sentence pairs.
+• Using the collected corpus, we trained a baseline machine
+translation model, and release a corpus with 5million syn-
+thetic sentence pairs generated using this system. We further
+improve upon this translation model with task adaptive train-
+ing [17], and demonstrate a significant BLEU improvement
+of2.28and 1.69for Pidgin-English and English-Pidgin re-
+spectively over the baseline model.
+• We show that the English-based pre-trained model (T5) [13]
+outperforms its multilingual variant ( MT5) [18] by 2.38
+BLEU in English-to-Pidgin translation, demonstrating the su-
+periority of English models over multilingual one on English-
+Pidigin and Pidgin-English translations.
+2. Corpus Collection
+While there have been several efforts to create datasets for Pid-
+gin [19, 20], the language still lacks a sufficiently sized dataset
+2https://github.com/muhammed-saeed/CLaT .
+3We release the English-Pidgin dataset and 5 million syn-
+thetic parallel corpus at https://drive.google.com/file/
+d/1GOi0h5yU9XPZFRDYCa-hjRzf_Nx_uRE1/viewarXiv:2307.00382v1  [cs.CL]  1 Jul 2023Task adaptive training (T AT) Back-translation
+:  in-domain data for a target language
+  : as in the word strong ehn so tey e fit break.x: for all di whole schools, de don start lectures.
+y': all the schools had started classes.Continual adaptive training (C AT)
+M
+: synthesized pairs via back-translationMDomain
+Data AugmentationFigure 1: Overview of the framework for low-resource sentiment classification and translation in Pidgin language: ( 1)Continual
+adaptive training : We consider a base model Mand a set of in-domain data xdomainin the target language. We then train Mwith
+MLM objective which enables a base model to adapt to a new language domain. ( 2)Task adaptive training : Starting from the observed
+sequence in the source language, the translation model synthesizes an inference in the target language creating the pseudo sentence
+pair. We construct a bi-directional back-translation by involving the forward and reverse translations. Next, the combined synthetic
+data serves as a supplementary task for the base model which enables the language model to adapt to more complex tasks via supervised
+task training.
+Table 1: Overview of Pidgin datasets. EN.indicate English
+language and PG.for Pidgin language. Data included in the
+corpus, along with their size in a number of sentences.
+Corpus Language |Train|Domain
+PARALLEL
+Bible E N., PG. 29,737 religious
+JW300 [19] E N., PG. 20,218 religious
+Naija Treebank [20] E N., PG. 9,240 misc.
+MONOLINGUAL
+NaijaSenti [3] P G. 8,524 social media
+Afri-BERTa [21] P G. 176,843 news, misc.
+BBC Pidgin P G. 4,147 news
+ASR [22] P G. 7,958 news
+PidginUNMT [23] P G. 5,397 news
+IWSLT’15 [24] E N. 143,609 wiki., misc.
+WMT14-En [24] E N.4,468,840 news
+for application in machine translation models. To address this
+issue, we combine and enrich various parallel and monolingual
+texts and datasets to generate a high-quality parallel dataset.
+The Nigerian Pidgin corpus collection includes six resources:
+(1) The Holy Bible, where each verse in English was mapped to
+its corresponding verse in Pidgin, resulting in 29,737parallel
+sentences4. A limited number of chapters required manual pro-
+cessing to ensure their quality. (2) JW300 corpus, which con-
+tains texts from two religious magazines covering various top-
+ics. (3) The Naija Treebank, which is a parallel corpus of tran-
+scribed spoken Pidgin text with English translations. (4) The
+NaijaSenti corpus, which consists of 21,017crawled tweets in
+Pidgin and three additional Nigerian languages. (5) The Pidgin
+subset of the Afri-BERTa dataset, which consists of 176K Pid-
+gin sentences, and Pidgin text from 17K Pidgin articles from
+BBC Pidgin, ASR, and PidginUNMT. (6) 5million synthetic
+sentence pairs in English-Pidgin, which were generated from
+the ISWLT’15 and WMT14 datasets and the Pidgin sentences
+in the monolingual corpus. Table 1 presents the overview of
+collected datasets included in the current study along with their
+respective size.
+4We utilize the edition provided by Wycliffe Bible Translators, Inc.Table 2: Types of orthographic variation in Nigerian Pidgin.
+Type Subtype Example
+Alternation c / k carry - karry
+a / o c all - coll
+Conversion ou / a our -awa
+ou / o y our - yor
+Transcription bl / bol trou ble - tro bol
+er / a wheth er- wed a
+Deletion initial he - e
+medial diff erent - difren
+Orthographic analysis. Due to the lack of a commonly ac-
+cepted standard orthography in Nigerian Pidgin, we observe
+various forms of orthographic variation in the data. The data
+is characterized by both intra-textual variation (i.e. variation
+within texts from the same source) and inter-textual variation
+(i.e. between different sources). We identify four main classes
+of systematic variations that occur in the data: ( I) alternation
+between similar sounds; ( II) conversion of digraphs into a sin-
+gle letter or alternate digraphs; ( III) phonetic transcription of
+(blended) letter pairings; and ( IV) deletion of silent letters. Ta-
+ble 2 presents examples of each of these classes.5
+These variations all have phonetic origins. For example, the
+alternation between “c” and “k” can be attributed to both con-
+sonants being ejective, and the conversion of “ee” to “i” can be
+attributed to both vowels having similar sounds in the Pidgin
+pronunciation of certain words. As such, we address the in-
+consistent input by collecting diverse datasets, highlighting the
+significance of our released data.
+3. Cross-Lingual Adaptive Training
+Considering the challenges posed by orthographic variations
+and the scarcity of labeled data for developing performant spo-
+ken language processing systems, we introduce two supplemen-
+tary training approaches—adapting the model to the new lan-
+5Note that the different datasets adhere to different orthographies –
+some aim to stay close to English spellings and others aim for phonetic
+spellings. Both the English spellings and the variations, therefore, occur
+in our data.guage and task before fine-tuning on downstream tasks—that
+can be utilized to benchmark and enhance the performance
+of low-resource Pidgin sentiment classification and translation
+tasks: (1) C AT:Continual Adaptive Taining and (2) T AT:Task
+Adaptive Taining.
+Continual adaptive training. Given the limited availability of
+labeled Pidgin data, fine-tuning the large number of weights in
+pre-trained language models (PLMs) is challenging. To this
+end, we transfer the knowledge about one language absorbed
+in the weights to the target language by continually adapting
+the model to a new language via the unlabeled Pidgin corpus.
+TheContinual Adaptive Training (CAT) provides supplemen-
+tary training for the base model to transfer to a specific lan-
+guage domain and thus improves the model’s performance on
+the downstream task. Figure 1 depicts the training phase where
+the base model Mconducts language adaptation via data as-
+suming from the same domain, thus building an adapted model
+specialized in a new language. More specifically, an English-
+based MEnglishis adapted to Pidgin language using large-scale
+unlabeled data, resulting in a language-specific MPidgin. Sub-
+sequently, we fine-tuned this model for the target tasks.
+Task adaptive training. To enhance the model’s ability to
+tackle more intricate tasks, we further introduce TaskAdaptive
+Training (TAT) which allows the model to adapt to the trans-
+lation task through supervised learning. Our task training in-
+volves combining the two sets of synthetic data that possess
+shared characteristics across both source and target languages
+forM. To create synthetic data, T AT employs back-translation,
+a technique that has proven effective in low-resource ma-
+chine translation scenarios. By leveraging bi-directional back-
+translation data in our approach, we augment the volume of
+task-specific training data accessible to the model which can
+potentially enhance the performance on more complex transla-
+tion tasks. Specifically, we obtain a synthetic dataset D′
+x→y′=
+{(x, y′)|x∈D}via back-translation where the pseudo transla-
+tiony′was generated according to the sequence xin the source
+language. We combine two translation directions as the bi-
+directional back-translation data DBT=D′
+x→y′∪D′
+y→x′.
+4. Main Results
+General setup. We closely followed the training procedure in
+transformers [25]. We trained the transformer translation mod-
+els using Fairseq [26]. For experiments with T5 [13] and MT5
+[27], we use Huggingface [28]. We consider B ASE for all the
+checkpoints of the models.
+4.1. Sentiment Classification
+Data. We derived the low-resource dataset from Nai-
+jaSenti [3], which performs sentiment analysis with 3classes
+(6.7K/0.6K/1.2K)6. We report F1 score.
+Setup. We leverage R OBERT A[15] and BERT [16] in base
+versions. We added I NITbaselines where the weights of mod-
+els are randomly initialized and refer fine-tuning as FT which
+directly transfers the pre-trained language model to Pidgin lan-
+guage. When performing C AT we continually train R OBERT A
+and BERT on monolingual Pidgin corpus with masked lan-
+guage modeling objective following the instruction in [29], fol-
+lowed by fine-tuning on multi-class classification (“positive”,
+“negative”, “neutral”) task.
+CAT improves Pidgin comprehension. As shown in Table 3,
+BERT and R OBERT Awith continual adaptive training have
+6We obtained the portion of the dataset from the authors.both improved FT after the additional pre-training epochs on
+Pidgin data, resulting in + 1and + 2.4point improvement in
+F1. Furthermore, C AT enables significant performance gains
+compared to I NITby + 8.9and + 14.1points of F1. The reason
+for this can be attributed to poor initialization from I NITwhere
+fine-tunes a high number of randomly initialized parameters is
+challenging, while pre-training and additional adaptive training
+enable the acquisition of a highly informative language prior to
+the downstream task.
+Table 3: Results of sentiment classification.
+Model Type Init FT C AT
+BERT 71.8 79 .7 80.7
+RoBERTa 68.4 80 .1 82.5
+Table 4: Results on JW300 translation benchmark with
+data augmentation ( DATA AUG.) and task adaptive training
+(TAT).
+English-Pidgin Pidgin-English
+Word-level
+JW300 [4] 17.73 24.67
+DATA AUG. 23.87 22.61
+BPE
+JW300 [4] 24.29 13
+DATA AUG. 30.74 28 .76
+DATA AUG.+TAT 32.43 31 .04
+4.2. English-Pidgin Translation
+Data. We use JW300 translation benchmark [4]. The baseline
+model uses the JW300 parallel English-Pidgin dataset only. For
+augmented data, we consider B IBLE which consists of 29K [4].
+All models are evaluated on the test set using BLEU score.
+Setup. To facilitate a direct comparison with the Pidgin trans-
+lation benchmark on JW300 [4], we use the identical model
+architectures for the baselines. The word-level model consists
+of4-4encoder-decoder layers and 10heads with an embed-
+ding size of 300, while BPE model has 6-6layers, 4heads,
+and an embedding size of 256. We performed shared embed-
+ding and the shared vocabulary of size 4000 . We refer to D ATA
+AUGMENTATION and D ATAAUG.+TAT as the model with data
+augmentation from B IBLE and the model conducting task train-
+ing on the bi-directional noisy data via back-translation. We
+exploited back-translation (BT) to produce 430K synthetic par-
+allel sentences from our collected monolingual Pidgin data for
+TAT. We also release the generated 5million parallel sentences
+from the ISWLT15 and WMT14 datasets.
+Data augmentation improves performance. Table 4 demon-
+strates that BPE model with data augmentation significantly im-
+proves the baselines by 6.45and 15.76BLEU points in both
+translation directions. For word-level models, augmentation
+leads to an increase in the BLEU score by 6.14, while the score
+for Pidgin-to-English translation decreases by 2.06points. We
+analyzed the dataset and the model in order to uncover the rea-
+son for this decrease, and we found that the Bible dataset intro-
+duces a lot of orthographic variation when text is segmented atthe word-level while BPE enables sharing more semantic units.
+Table 5: Results on JW300 translation benchmark using T5
+and MT5.
+Model Type English-Pidgin Pidgin-English
+JW300, B IBLE
+MT5 ( BASE ) 33.78 32 .4
+T5 ( BASE ) 36.16 33.22
+ALL
+MT5 ( BASE ) 33.92 32 .75
+T5 ( BASE ) 36.04 34.02
+ALL+TAT
+T5 ( BASE ) 36.35 34.04
+TAT with back-translation yields further improvement. As
+the investigation of T AT’s effectiveness, we generated corre-
+sponding parallel sentences by using monolingual Pidgin data
+with the T5 for 3epochs of training. Table 4 shows that T AT
+further improve upon the translation models with the + 2.28
+and + 1.69BLEU improvement for Pidgin-English and English-
+Pidgin respectively. This indicates that task adaptive training
+with back-translation training provides a better initialization for
+machine translation tasks.
+4.3. Further Analysis
+English-based model is superior to multilingual models. To
+validate the hypothesis of the transferability from the English
+monolingual model and multilingual counterpart for Pidgin lan-
+guage, we compare the T5 where the encoder-decoder is exten-
+sively trained on English corpus and the multilingual variant
+MT5 that was pre-trained on new Common Crawl datasets con-
+verting 101 languages. To ensure the fine-tuning of T5 vari-
+ation models converges smoothly, we train both the base ver-
+sion of T5 and MT5 in the D ATA AUG . setting using JW300
+and B IBLE . Additionally, we employed A LLthe parallel cor-
+pus, which consists of B IBLE , JW300, and T REEBANK. Table
+5 demonstrates that T5 based solely on the English language
+outperforms its multilingual counterparts in various scenarios
+which confirms our hypothesis. We observed a BLEU improve-
+ment of + 2.38and + 2.12for both data settings in English-
+Pidgin translation, while the improvement was + 0.82and + 1.27
+points in Pidgin-English translation. We concluded that the
+English-based model is superior to the multilingual one. More-
+over, despite using more training data during training, T AT still
+slightly improves upon T5 baselines. Next, we delve deeper
+into the potential of task adaptation in improving the adaptabil-
+ity of the base model when faced with limited labeled data.
+TAT significantly improves performance in low-data setting.
+We compare the model with task adaptation stage T5+T AT and
+the baseline T5 to investigate the impact of task adaptation in
+low-data scenarios. We used four subsets randomly sampled
+from the original training splits (20%, 40%, 60%, and 80%) in
+addition to the full training set. The experimental setting was
+consistent with that used for English-based T5. Figure 2 shows
+that T5+T AT substantially outperforms the baselines across 5
+sample sizes. We observed that employing TaT obtain particu-
+larly strong performance by + 3.48and + 2.64BLEU improve-
+ment for Pidgin-English and English-Pidgin respectively when
+only 20% of the data is available for training. Further, incor-
+porating supervised task training into the model shows a steady
+20 40 60 80 100
+Sample size (%)2830323436BLEU
+(a) English-Pidgin
+T5+TAT
+T5
+20 40 60 80 100
+Sample size (%)293031323334BLEU
+(b) Pidgin-English
+T5+TAT
+T5Figure 2: BLEU scores on 20%,40%,60%,80% of sample
+size and full sample size of (a) English-Pidgin and (b) Pidgin-
+English translation tasks using T5+TAT framework.
+increase across 5training splits while the performances of the
+baseline are sensible to the sample size. This indicates the
+T5+T AT acquired the orthographic information from the task
+adaptation stage. Thus, the T5+T AT is capable of achieving
+high performance with less labeled data. The findings suggest
+that a robust initialization of the language model is essential for
+performing well in scenarios where data availability is limited,
+which is often the case in low-resource machine translation ap-
+plications. Overall, these results highlight the potential value of
+incorporating T AT into models and suggest avenues for further
+research into optimizing models for limited data scenarios.
+5. Conclusion and Future Works
+In this research, we developed an effective spoken language
+processing framework for Pidgin language text, a low-resource
+language. We collected the largest parallel English-Pidgin cor-
+pus, performed large-scale data augmentation, and proposed a
+framework for cross-lingual adaptive training. Our studies show
+that the approach outperforms multilingual models and signif-
+icantly improves model performance. Our results suggest that
+cross-lingual adaptive training is a promising approach for spo-
+ken language processing systems in low-resource language. For
+future work, we aim to improve upon the adaptation techniques
+by better leveraging the English-based PLMs, and making the
+finetuning process more parameter-efficient for low-resource
+scenarios.
+6. Acknowledgements
+This work was supported by the Deutsche Forschungsgemein-
+schaft, Funder Id: http://dx.doi.org/10.13039/
+501100001659 , Grant Number: SFB1102: Information Den-
+sity and Linguistic Encoding.7. 

@@ -1,0 +1,429 @@
+ODD: A Benchmark Dataset for the NLP-based
+Opioid Related Aberrant Behavior Detection
+Sunjae Kwon1, Xun Wang2, Weisong Liu3, Emily Druhl4, Minhee L. Sung5,
+Joel I. Reisman4,Wenjun Li3, Robert D. Kerns5, William Becker5, Hong Yu1,3,4,6
+1UMass Amherst,2Microsoft,3UMass Lowell,4U.S. Department of Veteran Affairs,
+5Yale University,6UMass Chan Medical School
+sunjaekwon@umass.edu ,wangxun.pku@gmail.com ,
+{weisong_liu, wenjun_li, hong_yu}@uml.edu ,{emily.druhl, joel.reisman}@va.gov ,
+{minhee.sung, robert.kerns, william.becker}@yale.edu
+Abstract
+Opioid related aberrant behaviors (ORAB) present novel risk factors for opioid
+overdose. Previously, ORAB have been mainly assessed by survey results and by
+monitoring drug administrations. Such methods however, cannot scale up and do
+not cover the entire spectrum of aberrant behaviors. On the other hand, ORAB
+are widely documented in electronic health record notes. This paper introduces a
+novel biomedical natural language processing benchmark dataset named ODD, for
+ORAB Detection Dataset. ODD is an expert-annotated dataset comprising of more
+than 750 publicly available EHR notes. ODD has been designed to identify ORAB
+from patients’ EHR notes and classify them into nine categories; 1) Confirmed
+Aberrant Behavior, 2) Suggested Aberrant Behavior, 3) Opioids, 4) Indication,
+5) Diagnosed opioid dependency, 6) Benzodiapines, 7) Medication Changes, 8)
+Central Nervous System-related, and 9) Social Determinants of Health. We ex-
+plored two state-of-the-art natural language processing (NLP) models (finetuning
+pretrained language models and prompt-tuning approaches) to identify ORAB.
+Experimental results show that the prompt-tuning models outperformed the fine-
+tuning models in most cateogories and the gains were especially higher among
+uncommon categories (Suggested aberrant behavior, Diagnosed opioid dependency
+and Medication change). Although the best model achieved the highest 83.92% on
+area under precision recall curve, uncommon classes (Suggested Aberrant Behavior,
+Diagnosed Opioid Dependence, and Medication Change) still have a large room
+for performance improvement.
+1 Introduction
+The opioid overdose (OOD) crisis has had a striking impact on the United States, not only threatening
+citizens’ health [ 3] but also bringing about a substantial financial burden [ 12]. According to a report
+by the Centers for Disease Control and Prevention [ 7], OOD accounted for 110,236 deaths in a single
+year in 2022. In addition, fatal OOD and opioid use disorder (OUD) cost the United States $1.04
+trillion in 2017 and that figure rose sharply to $1.5 trillion in 2021 [ 5]. Identifying patients at risk of
+OOD could help prevent serious consequences [25].
+Opioid-related aberrant behaviors (ORABs) are patient behaviors that may indicate prescription
+medication abuse [ 11]. ORABs can be categorized into confirmed aberrant behavior and suggested
+aberrant behavior [ 30,20,27]. Herein, confirmed aberrant behaviors have a clear evidence of
+medication abuse and addiction while suggested aberrant behaviors do not have a clear evidence
+[27]. Table 1 presents examples of such categories. Since ORABs have shown to be associated with
+Preprint. Under review.arXiv:2307.02591v1  [cs.CL]  5 Jul 2023patients with drug abuse problems [ 42], assessment of ORABs has been recognized as beneficial in
+evaluating the risk associated with opioid abuse [26] and OOD [39].
+Table 1: ORAB Examples [27]
+ORAB Type Example
+Confirmed
+Aberrant
+BehaviorResistance to changing medications
+Falsification of prescription—forgery or alteration
+Injecting medications meant for oral use
+Suggested
+Aberrant
+BehaviorAsking for or even demanding, more medication
+Asking for specific medications
+Reluctance to decrease opioid dosing once stablePreviously, ORABs have been
+detected by monitoring opioid
+administration (e.g., frequency
+and dosage) [ 31] or self-reported
+questionnaires [ 1,42]. How-
+ever such measurements do not
+include the full spectrum of
+ORABs (e.g., medication shar-
+ing, denying medication chang-
+ing). In addition, patients can obtain opioids from multiple resources (e.g. illegal purchase and
+medication sharing), which are not captured in the structured data. It has been known that ORABs
+are widely described in EHR notes and natural language processing (NLP) techniques can be used
+to identify ORABs Lingeman et al. [23]. However, the previous study relied on a small amount of
+annotated notes, which were not publicly available. Moreover, the previous work only considered
+ORABs as a binary classification (present or not) and only explored traditional machine learning
+models (e.g., support vector machine (SVM)).
+This paper proposes ORAB detection that is a novel Biomedical NLP (BioNLP) task. We also
+introduce an ORAB Detection Dataset (ODD) which is large-size ,expert-annotated , and multi-label
+classification benchmark dataset corresponding to the task. For this, we first designed a robust
+and comprehensive annotation guideline that labels text into nine categories which encompass
+two types of ORABs (Confirmed Aberrant Behavior and Suggested Aberrant Behavior) and seven
+types of auxiliary opioid-related information (Opioids, Indication, Diagnosed Opioid Dependency,
+Benzodiapines, Medication Change, Central Nervous System Related, Social Determinant of Health).
+Using the guideline, domain experts annotated 750 EHR notes of 500 opioid-treated patients extracted
+from MIMIC-IV database [ 15]. Overall, we annotated 2,519 instances with 157 ORABs instances
+(113 for Confirmed Aberrant Behavior and 44 for Suggested Aberrant Behavior).
+Experiments conducted on two ORAB detection models based on state-of-the-art (SOTA) natural lan-
+guage processing (NLP) models; traditional finetuning [ 9] and prompt-based tuning [ 41] approaches.
+The experimental results on MIMIC showed that prompt-based tuning models surpass finetuning
+models in almost all categories (eight out of nine). When the numbers of instances were less than
+100 ( uncommon categories : Suggest Aberrant Behavior, Diagnosed Opioid Dependency, and
+Medication Change), the performance improvement was greater, in particular, the Medication Change
+and Suggest Aberrant Behavior classes achieve performance improvements of over 20%p and 7%p
+respectively. Experimental codes are available at https://github.com/soon91jae/ORAB_MIMIC .
+ODD will be published as soon as possible via PhysioNet1.
+The main contributions of this paper can be organized as follows:
+•This paper introduces a new Biomedical NLP (BioNLP) task ORAB detection for extracting
+information related to a patient’s risk of opioid addiction and abuse from EHR notes. We
+also curate a corresponding benchmark dataset, named ODD , an expert-annotated dataset
+for the ORAB detection task.
+•In this paper, we present the experimental results of two state-of-the-art NLP models as
+baseline performances for the benchmark dataset. Moreover, we report comprehensive data
+and error analyses to guide future studies in constructing improved models.
+2 Related Work
+NLP-based Opioid Abuse Analysis Recently, with the development of NLP technology, studies
+have been actively conducted to analyze information relevant to opioid abuse and OOD from text
+(e.g. EHR notes, social media) [ 32,6,14,48,34]. Studies have explored a broad range of NLP
+techniques to identify OUD [ 48]. Zhu et al. [48] developed a keyword-based OUD detection model for
+patients who have been treated with chronic opioid therapy. Their NLP models were able to uncover
+OUD cases that would be missed using the International Classification of Diseases (ICD) codes
+1https://physionet.org
+23961881241038519-2930-3940-4950-5960-69above 70Age248252FemaleMaleFigure 1: Socio-demographic statistics of the sampled patients.
+alone. Singleton et al. [34] proposed a multiple-phase OUD detection approach using a combination
+of dictionary and rule-based approaches. Blackley et al. [6]developed feature engineering-based
+machine learning models. Herein, the authors demonstrated that the machine learning models
+outperformed a rule-based one that utilizes keywords.
+Other works adopted NLP to study factors associated with opioid abuse. Goodman-Meza et al.
+[14] utilized text features such as term frequency–inverse document frequency (TF-IDF), concept
+unique identifier (CUI) embeddings, and word embeddings to analyze substances that contribute to
+opioid overdose deaths. Sarker et al. [32] conducted a geospatial and temporal analysis of opioid-
+related mentions in Twitter posts. They found a positive correlation between the rate of opioid
+abuse-indicating posts and opioid misuse rates and county-level overdose death rates.
+The ORAB detection task is similar to the studies above in that it analyzes drug abuse-related
+information using NLP approaches. However, different from the previous studies that mainly
+depend on keywords such as drug mentioning, the ORAB detection is a more challenging NLP task
+considering that it needs to identify various and complex linguistic patterns such as trying to deceive
+physicians [29] and emotional reaction on opioid prescription [23].
+ORAB Risk Assessment and Detection Webster and Webster [42] introduced a risk management
+tool that monitors ORABs by scoring a patient’s self-reports on risk factors (history of family and
+personal substance abuse, history of preadolescent sexual abuse, and psychological illness) related to
+substance abuse. Then, each patient is categorized into three risk levels (low risk, moderate risk, and
+high risk) according to the sum of the scores. Other studies [ 33,36,18,38,31] suggest detecting
+ORAB by relying on diagnostic criteria based on structured information such as the frequency of
+opioid dosage, the number of opioid prescribers, and the number of pharmacies. Although the above
+methodologies can detect patients at risk of ORABs with high precision, the recall was low [31].
+The most relevant work is Lingeman et al. [23]. However, as described earlier, Lingeman et al. [23]’s
+work relied on a small scaled EHR notes which is not publicly available. In contrast, ODD consists
+of a larger size of EHR notes (750 EHR notes, six times larger than Lingeman et al. [23]’s dataset
+of 121 EHR notes) which is publicly available. Furthermore, ODD’s annotation scheme provides
+rich sub-categorized aberrant behaviors (suggested and confirmed) and additional opioid-related
+information. In contrast, Lingeman et al. [23]’s study was designed as a binary classification task to
+detect ORABs. Finally, we leverage the SOTA deep learning models that the previous work Lingeman
+et al. [23] did not explore.
+3 ORAB Detection Dataset
+3.1 Data Collection
+The source of the first dataset is made up of publicly available fully de-identified EHR notes of
+the MIMIC-IV database [ 16]. ORABs are uncommon events. To increase the likelihood that
+our annotated data incorporate ORABs, we sorted out patients at risk of opioid misuse based on
+repetitive opioid use and diagnosis related to opioid misuse. Specifically, we first extracted EHR notes
+mentioning opioids with the generic and brand name of opioid medications. In addition, we selected
+patients diagnosed based on their ICD codes. Detailed information on opioid medications (and their
+generic names), and ICD codes utilized for filtering EHR notes are presented in Appendix A.
+Among 331,794 EHR notes of 299,712 patients in MIMIC-IV database, we found that approximately
+57% of patients were prescribed opioids during their hospitalization. Then, we selected patients
+who were repeatedly prescribed (more than twice) opioids. In addition, we chose patients who were
+3Table 2: The definitions and examples of the categories of ODD.
+Category Definition Example
+Confirmed Aberrant BehaviorEvidence confirming the loss of control of opi-
+oid use, specifically aberrant usage of opioid
+medications.[Patient] admits that he has been sharing his Per-
+cocet with his wife, and that is why he has run out
+early.
+Suggested Aberrant BehaviorEvidence suggesting loss of control of opioid
+use or compulsive/inappropriate use of opioids.[Patient] states that ‘that [drug] won’t work; only
+[X drug] will and I won’t take any other’
+OpioidsThe mention or listing of the name(s) of the
+opioid medication(s) that the patient is currently
+prescribed or has just been newly prescribed.Oxycodone has been known to make [the patient]
+sleepy at 5 mg.
+Indication Patients are using opioids under instructions. [The patient] is in a daze.
+Diagnosed Opioid DependencyPatients have the condition of being dependent
+on opioids, have chronic opioid use, or is under-
+going opioid titration[The patient] is in severe pain and has been taking
+[opioid drug] for [time].[HY1]
+Benzodiazepines Patients are co-prescribed benzodiazepines. Valium has been listed in patient medication list.
+Medicine ChangesChange in opioid medicine, dosage, and pre-
+scription since the last visit.[Patient] reports that his previous PCP just recently
+changed his pain regimen, adding oxycodone.
+Central Nervous System Re-
+latedCNS-related terms/terms suggesting altered sen-
+sorium.[Patient] reported to have nausea after taking
+[drug].
+Social Determinants of HealthThe nonmedical factors that influence health
+outcomes[Patient] divorced a years ago.
+diagnosed with drug poisoning and drug dependence based on the ICD codes. Overall, there are
+3,904 patients who are satisfied the aforementioned conditions. Among them, we randomly select 750
+notes from a randomly sampled 500 patients for annotation. Figure 1 presents the socio-demographic
+statistics of the sampled patients. Herein, we can notice that the number of male and female is
+balanced.
+3.2 Data Annotation
+We first designed an annotation guideline in Section 3.2.1 to label each sentence in an EHR note into
+nine categories as shown in Table 2. Herein, the categories contain two ORABs (confirmed aberrant
+behavior and suggested aberrant behavior) and seven additional information that relevant to opioid
+usage.
+EHR notes were annotated independently by two domain experts by following the annotation
+guidelines. Herein, the primary annotator annotated all EHR notes with eHOST [ 10] annotation tool.
+The other annotator coded 100 of the EHRs of the primary annotator with the same environment to
+compute inter-rater reliability with Cohen’s kappa [ 40]. As a result, the inter-rater reliability shows
+strong agreement ( κ= 0.87) between the annotators.
+3.2.1 Annotation Guideline
+Confirmed aberrant behavior: This class refers to behavior that is more likely to lead to a
+catastrophic adverse event. It is defined as evidence confirming the loss of control of opioid use,
+specifically aberrant usage of opioid medications, including: 1) Aberrant use of opioids, such as
+administration/consumption in a way other than described or self-escalating doses. 2) Evidence
+suggesting or proving that the patient has been selling or giving away opioids to others, including
+family members. 3) Use of opioids for a different indication other than the indication intended by the
+prescriber. 4) Phrases suggesting current use of illicit or illicitly obtained substances or misuse of
+legal substances (e.g. alcohol) other than prescription opioid medications.
+Suggested aberrant behavior: This class refers to behavior implying patient distress related to
+their opioid treatment. SAB includes three kinds of behavior that suggest potential misuse of opioids.
+1) Patient attempt to get extra opioid medicine like requesting for early refill, asking for increasing
+dosage, or reporting missing/stolen opioid medication. 2) Patient emotions toward opioids like a
+request for a certain opioid medication use/change/increase. 3) Physician concerns.
+Opioids: This class refers to the mention or listing of the name(s) of the opioid medication(s) that
+the patient is currently prescribed or has just been newly prescribed.
+Indication: This class indicates that patients are using opioids under instructions, such as using
+opioids for pain, for treatment of opioid use disorder, etc.
+4Diagnosed Opioid Dependence: It refers to patients who have the condition of being dependent
+on opioids, has chronic opioid use, or are undergoing opioid titration.
+Benzodiazepines: This class refers to co-prescribed benzodiazepines (a risk factor for accidental
+opioid overdose [ 37]). In this case, the patient is simply being co-prescribed benzodiazepines (with
+no noted evidence of abuse).
+Medication Change: This class indicates that the physician makes changes to the patient’s opioid
+regimen during this current encounter or that the patient’s opioid regimen has been changed since the
+patient’s last encounter with the provider writing the note.
+Central Nervous System Related: This is defined as central nervous system-related terms or terms
+suggesting altered sensorium, including cognitive impairment, sedation, lightheadedness, intoxication,
+and general term suggesting altered sensorium (e.g. “altered mental status”).
+Social Determinants of Health: This class refers to the factors in the surroundings which impact
+their well-being. Our dataset captured the following attributes:
+• Marital status (single, married ...)
+• Cohabitation status (live alone, lives with others ...)
+• Educational level (college degree, high school diploma, no high school diploma ...)
+• Socioeconomic status (retired, disabled, pension, working ...)
+• Homelessness (past, present ...)
+3.3 Annotation Statistics
+Table 3: The distribution of categories of the annotated data.
+Categories Instances
+Confirmed Aberrant Behavior 113 (4.24%)
+Suggested Aberrant Behavior 44 (1.65%)
+Opioids 1,232 (46.18%)
+Indication 212 (7.95%)
+Diagnosed Opioid Dependency 60 (2.25%)
+Benzodiazepines 248 (9.30%)
+Medication Change 64 (2.49%)
+Central Nervous System Related 546 (20.46%)
+Social Determinants of Health 149 (5.58%)
+Total 2,519 (100%)Table 3 shows the statistics of the
+annotated categories and instances.
+Herein, MIMIC dataset consist of
+2,519 instances annotated from the
+EHRs. Especially, we can notice
+that ‘confirmed aberrant behavior’
+and ‘suggested aberrant behavior’
+in EHRs are relatively rare events
+only accounting for 157 (5.89%);
+113 (4.24%) for confirmed aberrant
+behavior and 44 (1.65%) for sug-
+gested aberrant behavior. The ‘Opi-
+oid’ and ‘CNS-related’ are majority
+classes accounting for over 77% of overall instances while the other categories are less than 10%
+each.
+4 Task Definition and Evaluation Criterion
+Task Definition We can formulate ORAB detection as a multi-label classification task that
+identifies whether an input text contains ORABs (Confirmed, and Suggested aberrant behaviors)
+and information relevant to opioid usage. This is because all labels can co-occurred together in a
+sentence.
+Evaluation Criterion Previous study on NLP-based ORAB detection [ 23] utilizes accuracy as an
+evaluation criterion. However, since the labels in the dataset are highly imbalanced (in Table 3), the
+accuracy may mislead performance on rare labels since it can overestimate true negative cases [ 4].
+Thus, as a main evaluation criterion, we adopt the Area Under Precision-Recall Curve (AUPRC) that
+have widely utilized for the performance evaluation of the binary classifiers on highly biased labels
+[28].
+5[CLS] {text placeholder} [SEP] 𝒉𝟎𝑃(𝒚|𝒙)classifierFinetuning Model𝒙(a)
+[CLS] {text placeholder} [SEP] {𝑐!placeholder}? [MASK] … {𝑐"placeholder}? [MASK] [SEP]  𝒉𝒄𝟏LM output layerPrompt-based Finetuning Model[𝒙;𝒑]𝒉𝒄𝒏𝑃(𝑦"#=𝑦𝑒𝑠|𝒙,𝒑)𝑃(𝑦"#=𝑛𝑜|𝒙,𝒑)𝑃(𝑦"$=𝑦𝑒𝑠|𝒙,𝒑)𝑃(𝑦"$=𝑛𝑜|𝒙,𝒑)(b)…LM output layerFigure 2: The figures illustrate the conceptual architectures of our ORAB detection models. (a)
+demonstrates a finetuning model and (b) depicts a promtuning model. Herein, x,y, and pindicate
+input text, output labels, and prompt text respectively. hiis the hidden vector representation of the
+ithinput token. EHR text input to ‘{text placeholder}’. The name of each category ( c1...n) in Table 2
+is input at ‘{ c1...nplaceholder}’.
+5 ORAB Detection Models
+This section demonstrates pretrained Language Model (LM) based ORAB detections models; tra-
+ditional fine-tuning model [ 47] and prompt-tuning model. The prompt-based finetuning model has
+shown advantages in rare category classification (e.g. zero-shot or few-shot classification) [ 46].
+Figure 2 demonstrates illustrative concepts of the ORAB detection models.
+5.1 Finetuning Models
+The most common way to construct classification models using a pretrained language model (LM) is
+to employ finetuning, as illustrated in Figure 2(a). In this approach, the input text xis passed through
+the fine-tuning model. The hidden representation vector of the first token ‘[CLS]’ ( h0) is then used
+as input for the classifier. Here, Wcandbcrepresent the weight matrix and bias, respectively. The
+classifier calculates the probability distribution over output labels yusing the following formula:
+P(y|x) =sigmoid (Wc·h0+bc)
+5.2 Prompt-based Finetuning Models
+Although finetuning on pretrained LMs has been successfully applied to most of NLP tasks [ 9],
+it is still known that finetuning still requires considerable annotated examples to achieve a high
+performance [41, 46]. Thus, uncommon categories in ODD may be a performance bottleneck.
+The widely recognized technique of prompt-based finetuning, as demonstrated in studies by Gao
+et al. [13] and Yang et al. [45], utilizes a template to transform a downstream task into a language
+modeling problem by incorporating masked language modeling and a predefined set of label words,
+effectively enabling effective few-shot learning capabilities.
+In this study, we utilize the full name of each class to curate the prompt text p. Specifically, the
+prompts for each class are arranged in the same order as Table 1, following the template “[ ci
+placeholder]? [MASK]” where cirepresents the name of the ithclass. The prompt text is then
+concatenated with x, distinguished by a separator token “[SEP],” and fed into a prompt-based tuning
+model.
+Next, we calculate the probability that the language model (LM) output of the masked token corre-
+sponding to each class would be a positive word or a negative word. Following the approach of Gao
+et al. [13], we define the positive word as ‘yes’ and the negative word as ‘no’. Thus, the probability of
+‘yes’ for the ithclassci(P(yci=‘yes’|x,p)) can be interpreted as the probability that ciis included
+in the input text x, and vice versa.
+6Table 4: This table presents the experimental results of ODD on BioClinicalBERT and BioBERT.
+Note that, ‘Finetune’ and ‘Prompt’ indicate models are trained with the finetuning and prompt-
+based finetuning respectively. Each value stands for the average and the standard deviation of
+five-fold cross-validation results and average scores with higher values are bolded. Otherwise,
+∆means the performance difference between a prompt-based finetuning model and that of the
+corresponding finetuning model. Finally,∗stands for the statistical significance ( p < . 05) of
+performance improvement.
+CategoriesBioClinicalBERT BioBERT
+Finetune Prompt ∆ Finetune Prompt ∆
+Confirmed Aberrant Behavior 83.42±3.39 84.28±4.88 0.86 74.72±8.49 84.60±9.18 9.89
+Suggested Aberrant Behavior 44.74±16.58 51.78±12.55∗7.04 33.38±22.38 50.92±9.99 17.54
+Opioids 97.09±0.60 97.25±0.37 0.16 95.86±1.21 97.07±0.59 1.21
+Indication 93.79±2.56 95.97±1.48∗2.18 88.75±7.84 95.17±1.37 6.43
+Diagnosed Opioid Dependency 69.85±7.72 73.03±2.96 3.18 53.80±22.59 70.56±16.41 16.75
+Benzodiapines 92.61±5.84 93.09±2.33 0.48 86.37±8.82 93.42±2.37 7.05
+Medication Change 44.45±9.64 66.58±12.56∗22.13 37.70±24.70 57.87±10.92∗20.17
+Central Nervous System Related 98.21±0.54 98.18±0.29 -0.03 97.12±1.75 98.07±0.50 0.95
+Social Determinant of Health 95.15±3.17 95.16±3.14 0.01 89.49±11.67 93.93±4.58 4.44
+Macro Average 79.92±21.86 83.92±16.54 4.00 73.02±24.98 82.40±18.08∗9.38
+6 Experiment
+6.1 Experimental Environment
+Experimental Models To verify the generalizability of experimental results, we prepared two
+different LMs pretrained on Biomedical literacy; BioBERT [ 22] and BioClinicalBERT [ 2]2. Herein,
+‘Finetune’ and ‘Prompt’ indicate an LM trained on ODD via finetuning (in Section 5.1) and prompt-
+based finetuning (in Section 5.2) respectively.
+Experimental Setting For the experiments, we conducted 5-fold cross-validation and report the
+average performance and standard deviation. We adopted a loss function as a binary cross entropy for
+finetuning models and categorical cross entropy for prompt-based finetuning models [ 21]. Moreover,
+we selected the optimizer as AdamW [24].
+Hyper-parameter Setting We conducted the grid search with the following range of possible
+values for each hyper-parameter: {2e-5, 3e-5, 5e-5} for learning rate, {4, 8, 16} for batch size, {2,3,4}
+for the number of epoch. Herein, we choose the hyper-parameters that achieved the best performance
+on the first fold of the BioClinicalBERT finetune environment with the grid search. Finally, we chose
+3e-5 for learning rate, 8 for batch size, and 3 for the number of epochs.
+Others To evaluation the statistical significance in performance between models, we adopted
+student’s t-test [ 35]. In all of the experiments, we keep the random seed as 0. Finally, all experiments
+were performed on an NVIDIA P40 GPU with CentOS 7 version.
+6.2 Experimental Results
+Table 4 shows the experimental results of the five-fold cross-validation on the experimental models.
+To sum up, the performance range shows [73.02-83.92] based on the macro average AUPRC over
+the categories. Especially, prompt-based finetuning models outperformed the finetuning models in
+both BioClinicalBERT and BioBERT with large margins of 4.00%p and 9.38%p respectively. Herein,
+BioClinicalBERT-based models achieved a higher performance compared to BioBERT-based models.
+These results are not surprising because the pre-training BioClinicalBERT’s corpora contain EHR
+notes from MIMIC-III [ 17] that is the previous version of our target database MIMIC-IV and both
+databases were collected from the same hospital.
+On the other hand, the performance among the classes has a large gap. For example, in the BioClini-
+calBERT finetuned model, the class with the highest performance (Central Nervous System Related)
+2Note that, BioBERT is additionally trained BERT [ 9] on biomedical corpora and BioClinicalBERT is further
+trained BioBERT using MIMIC-III [17] which is the previous version of MIMIC-IV .
+7is 98.21, which is more than double the performance gap compared to 44.45 of the lowest class
+(Medication Change). Herein, the performance gap between these classes is related to the number of
+instances. For example, the dominant classes, Opioids, and Central Nervous System Related show
+very high performance with scores of 97.09 and 98.21, respectively. However, it can be seen that the
+detection performance of the uncommon categories is inferior showing 44.74 for Suggested Aberrant
+Behavior, 69.85 for Diagnosed Opioid Dependency, and 44.45 for Medication Change. Moreover, we
+can notice that the performance results show the same trend in BioBERT.
+Overall, prompt-based finetuning contributes to enhanced performance in nearly all environments (17
+out of 18 cases), with the sole exception being Central Nervous System Related on BioClinicalBERT,
+where the performance difference was negligible (-0.03%p). The introduction of prompt-based fine-
+tuning resulted in significant improvements, particularly in uncommon categories. The performance
+of prompt-based finetuning on BioClinicalBERT and BioBERT increased by 7.04%p and 17.54%p
+respectively in the Suggested Aberrant Behavior class. In the Diagnosed Opioid Dependence class,
+the performance of prompt-based finetuning on BioClinicalBERT and BioBERT improved by 3.18%p
+and 16.75%p, respectively. Lastly, in the Medication Change class, the performance saw a rise of
+more than 20%p. Despite these advancements, further performance improvements are still needed for
+uncommon categories.
+7 Discussion
+7.1 Error Analysis
+We conducted an error analysis on the first fold of the BioClinicalBERT prompt-based finetuning
+model. Especially, this paper focuses on error cases of the three uncommon categories: Suggested
+Aberrant Behavior, Diagnosed Opioid Dependency, and Medication Change.
+Firstly, regarding Suggested Aberrant Behavior, we identified a problem with insufficient data on
+specific abnormal behavior patterns. For instance, consider the sentence “He is requesting IV
+morphine for his chest pain.” This is a clear example of suggested aberrant behavior as the patient is
+asking for a specific medication (IV morphine). However, due to a lack of similar pattern sentences
+in the data, the model finds it challenging to learn these patterns.
+Likewise, in the case of Medication Change, the sentence “The only exception being that his home
+dilaudid 4mg was increased from every 6h to every 4h” represents a medication change due to
+alterations in the drug administration time interval. In this instance, the ML model might overlook
+the significance of the change in time intervals due to the scarcity of similar patterns.
+Furthermore, when dealing with Diagnosed Opioid Dependency, we noticed that a model heavily
+relies on specific keywords. For example, the sentence “Insulin Dependent DM c/b has peripheral
+neuropathy...” was classified as opioid dependence, which is a misclassification. This error occurred
+due to the reliance on the keyword ‘dependent’, despite the fact that insulin is not an opioid.
+Finally, we observed some text requires commonsense to correctly predict the label. For example, the
+text “3 pitcher sized cocktail daily,” indicates the patient is addicted to alcohol which is a confirmed
+aberrant behavior. However, the prediction probability for this sentence is 0.31%, so the training
+model totally fails to identify that this sentence stands for confirmed aberrant behavior. This is
+because, different from other examples where keywords such as alcohol addiction and alcohol abuse
+are presented, in order to understand the above example, it is understood that the 3 pitcher cocktail is
+an excessive dose and daily consumption is clear evidence of alcohol abuse.
+7.2 Merits & Demerits
+Our research can have the following positive impacts. Firstly, the information extracted by ORAB
+detection models can be utilized for various studies and systems aimed at addressing opioid abuse.
+For instance, since ORABs serve as important evidence of OUD, they can be used as key features in
+opioid risk monitoring systems. Improved OOD prediction can save people’s lives.
+Additionally, this information can be leveraged to detect a patient’s risk of OOD or opioid addiction at
+an earlier stage, thereby assisting in the prevention of fatal OOD cases. Consequently, by supporting
+efforts to mitigate future opioid overdoses, our research would contribute to maintaining people’s
+health.
+8However, it is important to acknowledge that our work may have certain negative social impacts. As
+previously mentioned, ORAB detection can be utilized to strengthen opioid monitoring systems, but
+this may unintentionally encroach upon the autonomy of doctors [ 8]. Consequently, patients who
+genuinely require opioids to manage their pain may encounter obstacles and challenges in obtaining
+the necessary medications.
+7.3 Limitation & Future Work
+The ORAB detection task relies on EHR notes. Thus, if health providers do not recognize the patient’s
+abnormal signs, they may not describe aberrant behaviors in a note. In this case, our approach cannot
+detect ORABs. In the future, we will develop an algorithm that detects a wider spectrum of ORABs
+by combining them with previous structured information-based methods.
+Moreover, ORAB detection models still have limited performance in the uncommon categories. It
+is necessary to improve performance through advanced NLP approaches data augmentation [ 43],
+medical knowledge injection [ 45], or leveraging knowledge extracted from large language models
+[19].
+8 Conclusion
+This paper introduces a novel BioNLP task called ORAB detection, which aims to identify two
+ORAB categories and seven categories relevant to opioid usage from EHR notes. We also present the
+associated benchmark dataset, ODD. The paper provides baseline models and their performances
+on ODD. To this end, we trained two SOTA pretrained LMs using a fine-tuning approach and
+prompt-based fine-tuning. Experimental results demonstrate that the performance in three uncommon
+categories was notably lower compared to the other categories. However, we also discovered that
+prompt-based fine-tuning can help mitigate this issue. Additionally, we provide various error analysis
+results to guide future studies.

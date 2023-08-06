@@ -1,0 +1,463 @@
+Preprint
+SCALING RELATIONSHIP ON LEARNING MATHEMATI -
+CAL REASONING WITH LARGE LANGUAGE MODELS
+Zheng Yuan∗, Hongyi Yuan∗†, Chengpeng Li†, Guanting Dong†, Chuanqi Tan, Chang Zhou
+Alibaba Group
+{yuanzheng.yuanzhen,yuanhongyi.yhy }@alibaba-inc.com
+{lichengpeng.lcp,dongguanting.dgt }@alibaba-inc.com
+{chuanqi.tcq,ericzhou.zc }@alibaba-inc.com
+ABSTRACT
+Mathematical reasoning is a challenging task for large language models (LLMs),
+while the scaling relationship of it with respect to LLM capacity is under-explored.
+In this paper, we investigate how the pre-training loss, supervised data amount,
+and augmented data amount influence the reasoning performances of a supervised
+LLM. We find that pre-training loss is a better indicator of the model’s perfor-
+mance than the model’s parameter count. We apply supervised fine-tuning (SFT)
+with different amounts of supervised data and empirically find a log-linear re-
+lation between data amount and model performance, and we find better models
+improve less with enlarged supervised datasets. To augment more data samples
+for improving model performances without any human effort, we propose to ap-
+ply Rejection sampling Fine-Tuning (RFT). RFT uses supervised models to gen-
+erate and collect correct reasoning paths as augmented fine-tuning datasets. We
+find with augmented samples containing more distinct reasoning paths, RFT im-
+proves mathematical reasoning performance more for LLMs. We also find RFT
+brings more improvement for less performant LLMs. Furthermore, we combine
+rejection samples from multiple models which push LLaMA-7B to an accuracy
+of 49.3% and outperforms the supervised fine-tuning (SFT) accuracy of 35.9%
+significantly. We will release our codes and rejection sampling augmented data in
+https://github.com/OFA-Sys/gsm8k-ScRel .1
+1 I NTRODUCTION
+Large language models (LLMs) (Anil et al., 2023; Touvron et al., 2023b; OpenAI, 2023) have shown
+considerable abilities in various math reasoning tasks (Saxton et al., 2019; Cobbe et al., 2021; Light-
+man et al., 2023). It is of interest to understand, predict, and improve an LLM’s math reasoning
+ability based on different pre-trained LLMs and supervised datasets. With this knowledge, we can
+better decide the effort we put into improving the LLM or augmenting the dataset. Many recent
+works are focusing on using different prompts (Wei et al., 2022b; Yao et al., 2023) or ensembling /
+reranking multiple times of inferences (Cobbe et al., 2021; Uesato et al., 2022; Wang et al., 2023;
+Lightman et al., 2023) to improve models’ reasoning performances. While in-context learning (ICL)
+and performing multiple inferences can improve performance, it is computationally expensive and
+not suitable for online deployment scenarios. Therefore, we focus on the performance of the super-
+vised LLMs with inference only once which is a setting closer to online deployment.
+To this end, we empirically investigate the scaling relationship of factors that influence the math
+reasoning abilities of a supervised LLM, including pre-training losses, the amount of supervised
+data, and the amount of augmented data. Firstly, we analyze the supervised fine-tuning (SFT) and
+ICL performance of LLMs. We observe that the pre-training loss is approximately negatively linear
+correlated to the SFT and ICL accuracy in a given interval which is a better performance indicator
+∗Contributed Equally.
+†Work done during internships at Alibaba DAMO Academy.
+1This manuscript is working in progress, we are en route of collecting more experiment results on LLaMA-
+65B and LLaMA2-70B.
+1arXiv:2308.01825v1  [cs.CL]  3 Aug 2023Preprint
+Figure 1: The key findings of scaling relationship on learning math reasoning ability with LLMs.
+than pre-trained model sizes or pre-trained token counts. Secondly, we analyze the relationship
+between SFT and different amounts of supervised data. We observe that the model performance
+has a log-linear relation versus the supervised data amount while the increase diminishes with the
+better pre-trained model. Thirdly, we want to leverage the model itself to generate more supervised
+data to reinforce its reasoning ability and analyze the scaling relationship of the augmented data
+amount. We apply rejection sampling on SFT models to sample and select correct reasoning paths
+as augmented dataset (Uesato et al., 2022; Zhu et al., 2023). We use these augmented datasets to
+fine-tune base LLMs which would achieve better performances compared to SFT and we denote it
+as rejection sampling fine-tuning (RFT). We find the key factor influencing RFT performance is the
+distinct reasoning path amount which can be increased by sampling more times or combing samples
+from multiple models. We apply RFT on several pre-trained LLMs and show larger improvement
+on less performant models. We discuss the reason RFT works is it provides multiple reasoning paths
+which makes LLMs have better reasoning generalization. We also discuss that RFT is much cheaper
+than pre-training in computational resources while training an LLM with lower pre-training loss is
+the fundamental solution.
+The key findings of this paper are shown in Figure 1 and are summarized here:
+• When the pre-training loss gets smaller (i.e. the pre-trained model gets better), the model
+reasoning performances of SFT and ICL increase linearly within a range. The SFT perfor-
+mance improves slower than ICL.
+• SFT improves in a log-linear manner with the increase of supervised data amount. The
+benefits of increasing data amount diminish as the pre-trained model gets better.
+• The model performance for RFT improves as the distinct reasoning path amount increases.
+The RFT performance improves slower than SFT.
+• The combination of rejection sampling samples from multiple models further enhances the
+RFT performance, resulting in an accuracy of 49.3 for LLaMA-7B (+13.4 compared to
+SFT), 50.3 for LLaMA2-7B (+8.7 compared to SFT), 52.1 for LLaMA-13B (+9.1 com-
+pared to SFT), and 55.4 for LLaMA2-13B (+5.4 compared to SFT).
+2 R ELATED WORKS
+Learning Math Reasoning with LLMs Recent research on LLMs has discovered the emergent
+ability to solve reasoning tasks beyond a certain model scale (Wei et al., 2022a). Such reasoning
+2Preprint
+abilities in LLMs can be elicited by fine-tuning, few-shot prompting, or zero-shot prompting (Cobbe
+et al., 2021; Wei et al., 2021; Nye et al., 2021; Wei et al., 2022b; Kojima et al., 2022). A large
+amount of research focuses on the reasoning tasks of math word problems (MWP), and methods are
+evaluated on the benchmarks spanning different levels of MWPs (Koncel-Kedziorski et al. (2016);
+Patel et al. (2021); Lan et al. (2021); Cobbe et al. (2021); Jie et al. (2022); Yuan et al. (2023a); Fu
+et al. (2023a), inter alia ). The core idea of improving the mathematical reasoning ability of LLMs
+is to aggregate various sampled reasoning paths during either fine-tuning or inference. Cobbe et al.
+(2021) trained and devised a reasoning path verifier to select the correct results during inference.
+Wang et al. (2023) proposed to sample various reasoning paths during inference and then derive the
+final result by majority voting on the answers or through verifiers (Li et al., 2023). Several works
+applied the idea of rejection sampling along with other techniques to filter the diverse sampled
+reasoning paths for fine-tuning data augmentation (Huang et al., 2022; Zelikman et al., 2022; Ni
+et al., 2023; Zhu et al., 2023). Rejection sampling is a simple-yet-effective fine-tuning augmentation
+technique and is also used for LLM alignment with human preference (Bai et al., 2022; Yuan et al.,
+2023b; Dong et al., 2023; Touvron et al., 2023b; Song et al., 2023). Uesato et al. (2022) explored
+to use of reinforcement learning methods for improving the mathematical reasoning abilities of
+LLMs and they further discussed the difference between outcome-based and process-based reward
+modeling. Followed by Lightman et al. (2023), they collected large-scale process-based supervision
+signals through human annotation and verified that LLMs can benefit more from process-based
+reward modeling with human-annotated supervision than outcome-based reward modeling. There is
+also prior research that distilled the emergent reasoning ability of LLMs to small language models
+(Fu et al., 2023b; Shridhar et al., 2023). Compared to previous works (Zelikman et al., 2022; Uesato
+et al., 2022; Zhu et al., 2023; Ni et al., 2023), we are using a simpler way of generating augmented
+samples without any trained process-level reward models and we are focusing on researching the
+scaling relationship between LLMs and math reasoning ability.
+Scaling Laws of Large Language Models It is important to understand and predict the perfor-
+mance gain as the language model scales up. Kaplan et al. (2020) first investigated and derived a
+predictable relationship on how the number of model parameters and data sizes contribute to the
+loss over many orders of magnitudes. Hoffmann et al. (2022) refined the scaling laws in (Kaplan
+et al., 2020) and found the scaling laws for computation-optimal training. Muennighoff et al. (2023)
+explored and extended the scaling laws under a data-constrained scenario. Besides investigating the
+scaling performance for pre-training, Gao et al. (2022) discussed the scaling laws for overparame-
+terized reward models for alignment with human preference, and Hernandez et al. (2021) developed
+scaling laws for transferring performance from pre-trained models to downstream tasks. In this pa-
+per, we are investigating the scaling relationships of large language models with pre-training losses,
+supervised data amount, and augmented data amount.
+3 T HE FACTORS OF MATH REASONING ABILITY IN SUPERVISED LLM
+The target of this paper is to try to understand the performances of supervised LLMs in math reason-
+ing. We expect a pre-trained LLM ρto learn reasoning ability from a supervised reasoning dataset
+D. The dataset is defined by D={qi, ri, ai}i, where qis a question, ris a chain-of-thought reason-
+ing path, and ais a numerical answer. We perform supervised fine-tuning on dataset Dto obtain an
+SFT model π. We use πto generate reasoning paths and answers in the test set by greedy decoding
+and report the accuracy (i.e. accor maj1@1) as our metric here.
+3.1 M ODEL ACCURACY VS .PRE-TRAINING LOSS
+Previous works state that the larger LLM shows better reasoning ability across the same series of
+models (Brown et al., 2020; Chowdhery et al., 2022; Touvron et al., 2023a;b), and we find LLaMA
+outperforms GPT-3 which shows the model parameter counts should not be the only indicator of
+reasoning ability. While LLMs have different architectures, model parameters, and pre-training
+token numbers, we find the pre-training loss is a stable performance indicator of the math reasoning
+ability and we use it to represent the model instead of using their model parameters and pre-training
+token numbers.
+3Preprint
+Figure 2: The performance of SFT (blue lines) and ICL (red lines) settings on GSM8K. GPT-4 states
+they use some part of the GSM8K data in pre-training, and suggest others consider its performance
+between SFT and ICL.
+We analyze the SFT and ICL (8-shot) performance of GPT-3 (Brown et al., 2020), LLaMA (Touvron
+et al., 2023a), LLaMA2 (Touvron et al., 2023b), and GPT-4 (OpenAI, 2023). The pre-training losses
+of these models are observed in their paper, we should notice that pre-training losses correspond to
+different pre-training datasets and different tokenizers which means they could not be compared
+strictly (and we cannot use it to do any sort of regression directly) while the tendency among these
+losses is still enlightening. We use the results of GPT-3 fine-tuning from (Cobbe et al., 2021) and
+we fine-tune LLaMA and LLaMA2 on the GSM8K training set (detailed in Appendix A.1). For
+in-context learning, we use the results from LLaMA (Touvron et al., 2023a) and LLaMA2 (Touvron
+et al., 2023b) paper.
+In Figure 2, we can find that:
+• The pre-training losses are approximately negatively linear correlated to the SFT and ICL
+accuracy during the given pre-training loss interval.
+• SFT outperforms ICL consistently, while the improvements diminish when the pre-training
+loss is lower.
+The linear relation of SFT and ICL accuracy may only work in the given interval. The reasons are
+(1) the slope of ICL is steeper than SFT, while the SFT performance should be greater than ICL
+performance; (2) the accuracy can not bigger than 1 or smaller than 0. It should be using −log(acc)
+instead of accas the dependent variable theoretically while we find an apparent linear relationship
+among pre-training loss and accand use accas the dependent variable. LLaMA-2 7B(13B) can be
+viewed as an approximation of continue-training of LLaMA 7B(13B). As it trains longer, its ICL
+and SFT performance both improve without changing the parameter count. From the observations,
+one effective way to improve reasoning ability is to train a better base model with lower pre-training
+loss (Pre-training is all you need!). The models with lower pre-training loss improve less from the
+fine-tuning which may be due to the models having already obtained more reasoning abilities during
+pre-training and the supervised data can provide less signal to supervise them.
+4Preprint
+Figure 3: The performance of SFT with different amounts of supervised data on GSM8K.
+3.2 M ODEL ACCURACY VS . SUPERVISED DATA COUNT
+Supervised fine-tuning does improve LLMs’ reasoning ability, we want to know how the super-
+vised data amount influences the model’s improvement. We fine-tune LLaMA and LLaMA2 with
+{1,1/2,1/4,1/8,1/16,1/32}amount of the training set from GSM8K (detailed in Appendix A.2).
+We want to use this experiment to extrapolate the model performances if we have more supervised
+data. In Figure 3, we plot the results of training with different amounts of supervised data. From
+this figure, we can observe that:
+• The model performance has a log-linear relation versus data amount. When the data amount
+doubles, the performance increases by a unit.
+• Better model needs more amount of data to outperform its ICL performance.
+• Better model benefits less when supervised data amount doubles.
+The log-linear relation is stable during {1,1/2,1/4,1/8}amount of the training data. From the ob-
+servation, it is straightforward to enlarge the training dataset to improve the performance, especially
+for worse models. For better models, it benefits less which echoes that better models have learned
+more reasoning ability during pre-training.
+3.3 M ODEL ACCURACY VS . AUGMENTED DATA COUNT
+Increasing the amount of math reasoning labeled data is difficult, especially proposing a new ques-
+tion. It is easy for a well-educated student to solve hundreds of math word problems per day, but
+it is very hard to come up with diverse and educational math problems. So our direction changes
+to augment new data using existing resources. We have tried augmenting new queries (detailed in
+Appendix D.1) and augmenting revisions (detailed in Appendix D.2). These approaches have none
+to marginal improvements compared to SFT. We find a simplified version of rejection sampling (Zhu
+et al., 2023) is a naive and effective way to augment new reasoning paths and can improve the model
+performance. And we find the key factor influences fine-tuning on rejection sampling (RFT) aug-
+mented data is distinct reasoning path amount. Combining rejection sampling samples from multiple
+5Preprint
+Setting 7B 7B-2 13B 13B-2 33B
+Pretrain loss 1.8 1.75 1.73 1.68 1.62
+ICL 11.0/18.1 14.6/- 17.8/29.3 28.7/- 35.6/53.1
+SFT 35.9/48.7 41.6/55.4 43.0/55.2 50.0/61.7 54.6/-
+RFTk= 100 41.7/52.7 47.5/58.7 49.1/59.9 54.8/65.4 54.5/-
+Correct paths per question 53.3 60.8 62.5 71.6 88.7
+Distinct paths per question 5.25 5.19 5.26 5.29 2.78
+Table 1: The performance of RFT with k= 100 on GSM8K compared with SFT and ICL. Distinct
+path amount means distinct equation list amount here.
+models, we can further fine-tune a LLaMA-7B model to an accuracy of 49.3 (compared with SFT
+35.9) and a LLaMA-13B model to an accuracy of 52.1 (compared with SFT 43.0).
+Rejection Sampling Fine-tuning The SFT model πobtains the ability to perform zero-shot chain-
+of-thought reasoning, and we use πto generate more correct reasoning paths rijto supply the
+training dataset. For each qi, we generate kcandidate reasoning paths and answers r, awith a
+temperature of 0.7 following (Cobbe et al., 2021). We first filter out reasoning paths with wrong
+answers a̸=aior wrong calculations based on Python evaluation. Each reasoning path contains
+a list of equations ej, and we select one reasoning path rijfor each distinct equation list as the
+augmented data and remove other reasoning paths with the same list of equations to deduplicate
+similar reasoning paths. Different order of elements (e.g. 3 + 4 = 7 and4 + 3 = 7 ) or different
+order of equations (e.g. 1 + 2 = 3 ,3 + 4 = 7 and1 + 4 = 5 ,2 + 5 = 7 ) are considered different.
+It is helpful for models to know these orders can be exchanged and is hard for models to learn this
+with only one reasoning path each problem. We define D′
+π=D ∪ { qi, rij, ai}i,jas the augmented
+dataset. We fine-tune D′on pre-trained LLM ρtoπRFTas RFT, and we detail how we apply RFT
+in Appendix A.3. We list the results of RFT with sampling k= 100 candidate reasoning paths
+on LLaMA and LLaMA-2 in Table 1. For ICL, SFT, and RFT, we list the maj1@1 (accuracy) and
+maj1@100 (sample 100 times and calculate accuracy based on majority voting) as metrics.
+In the case of 7B and 13B models, RFT yields an approximate increase of 5 to 6 points in maj1@1
+and about 4 points increase in maj1@100. For 33B models, RFT does not improve performance
+compared to SFT. The main reason comes from the augmented samples from rejection sampling.
+We can find that better models generate more correct reasoning paths per question. For LLaMA-
+33B-SFT, it can generate an average of 88.7 correct paths per question. However, it overfits the
+training set and has difficulty generating more diverse paths on the training set questions. Rejection
+sampling with 33B is very time-consuming and we do not conduct a temperate grid search, we have
+tried using a larger temperate 1.0 for decoding LLaMA-33B-SFT models, it generates 82.4 correct
+paths and 4.77 distinct paths per question which is more diverse than using temperate 0.7 but still
+less diverse than 7B and 13B models. We admit there should be a temperate (or generation config)
+that can produce more distinct paths and generate good results for RFT in 33B and even larger
+models while it does need more computation resources for inference compared to sampling using
+7B and 13B models. We will show we can use 7B and 13B models only for rejection sampling to
+improve the 33B model.
+Model Accuracy vs Rejection Sampling Data Count To understand the performance of RFT,
+we vary kamong 1,3,6,12,25,50,100and apply RFT. We also have another setting of k= 100
+while not removing any reasoning paths denoted as no dedup . We list the RFT results with different
+kon Figure 4. Comparing using RFT with k= 100 andno dedup , the performance is similar and
+shows that it is better to estimate RFT performance based on distinct reasoning path amount instead
+of RFT augmented sample counts. Furthermore, using deduplication has better performances for 3
+of 4 models and needs much less training time.
+When using k= 3, RFT outperforms SFT by 2 points stably. For most data points, using larger
+kleads to better performances. However, the merits of RFT are decreasing when doubling k. We
+calculate different paths per question for different kin Table 2. We can see that the amount of
+different reasoning paths is not growing quickly along kgrowing. In Figure 3, we know doubling
+training samples can have a linear performance improvement. Doubling reasoning paths should
+6Preprint
+Figure 4: The performance of RFT with different amounts of sampling count kon GSM8K.
+k 7B 7B-2 13B 13B-2 33B
+1 1.17 1.19 1.15 1.18 1.06
+3 1.44 1.47 1.41 1.45 1.16
+6 1.74 1.78 1.69 1.76 1.28
+12 2.20 2.23 2.11 2.21 1.46
+25 2.93 2.93 2.88 2.94 1.77
+50 3.94 3.91 3.90 3.94 2.19
+100 5.25 5.19 5.26 5.29 2.78
+400 (U13B) 12.84
+500 (U33B) 13.65
+Table 2: Different reasoning paths per question generated by different SFT models with different k.
+improve less than doubling training samples since obtaining different reasoning paths does not obtain
+any new questions. Therefore, doubling kleads to diminished performance improvements.
+Combining rejection sampling samples from multiple models The experiment results above
+demonstrate performance boosts in mathematical reasoning, benefitting from rejection sampling.
+Through case studies in 4.1, we show that rejection sampling can augment training data with rea-
+soning paths of diverse calculation processes. However, the reasoning paths sampled from one single
+SFT model can be logically non-diverse. Therefore, we expect to further improve the mathematical
+reasoning performance by leveraging rejection sampled reasoning paths aggregated from different
+models. We denote two final datasets as D′
+U13B andD′
+U33B, which are aggregated from rejection sam-
+pling different models D′
+U13B=D′
+7B⊕ D′
+7B2⊕ D′
+13B⊕ D′
+13B2andD′
+U33B=D′
+U13B⊕ D′
+33B, where U
+means models under a certain size, 7B/13B/33B means LLaMA-7B/13B/33B and 7B2/13B2 means
+LLaMA2-7B/13B. ⊕means an aggregation process in which all the reasoning paths from different
+sets are first combined and then Algorithm 1 is applied to deduplicate the reasoning paths with the
+same calculation process regarding the equation forms and orders.
+We can see, through the results visualized in Figure 5, that using the aggregated dataset D′
+U13B and
+D′
+U33B can lead to uniformly better performance than fine-tuning with datasets from a single model
+across different model sizes. RFT on these two augmented datasets D′
+U13B andD′
+U33B decreases the
+performance gaps among the same size models in SFT and RFT k= 100 which mean the combined
+augmented datasets provide enough reasoning supervision to fulfill the pre-training gap. We can
+assume with sufficient supervised data amounts, the performance indicator should be the model size
+but not the pre-training losses.
+7Preprint
+Figure 5: The performance of RFT with rejection sampling samples from multiple models.
+We have stated that it is expensive to apply RFT k= 100 on 33B models and it needs a temperate
+grid search to achieve an improvement compared to SFT. However fine-tuning on D′
+U13B has similar
+rejection sampling computational cost compared with sampling 100 times on 33B and achieve better
+performance.
+Another phenomenon is including D′
+33Bin aggregation barely influences the performance. To give
+a more comprehensive analysis of the results, we calculate the average reasoning path number per
+question in Table 2 and depict a Venn diagram to visualize the source of different reasoning paths
+shown in Figure 6. In Table 2, the average reasoning path numbers of D′
+U13B andD′
+U33B surpass
+those of a single model by large amounts, while D′
+U33B only have slightly more reasoning paths than
+D′
+U13B by 0.81. In the meanwhile, as shown in Figure 6, the models under and including the size of
+13B can contribute unique reasoning paths of similar proportion in D′
+U33B around 15%. However,
+only 6.5% of the reasoning paths can be exclusively acquired from LLaMA-33B-SFT model. This
+shows that the SFT model of 33B can provide limited reasoning diversity when sampling the training
+questions. This finding is consistent with the results above in Table 1, indicating the 33B model (and
+possibly 65B and 70B models) can well memorize the human-annotated reasoning paths.
+For 65B models, we find using D′
+U13B does not improve the performance compared to SFT. The
+reason can be better models benefit less from the supervised sample amounts while it has learnt
+more reasoning ability during pre-training.
+Overall, we can come to the conclusion that (1) RFT improves the mathematical reasoning per-
+formance of (worse) LLMs through diverse reasoning paths from rejection sampling of the SFT
+models, and aggregating more diverse reasoning paths can improve the performance further. (2)
+Different SFT models can contribute reasoning paths with different calculation processes from re-
+jection sampling, leading to more diverse training data for RFT, and LLMs of larger parameter sizes
+may degrade in generating diversified reasoning paths as a result of overfitting the training ques-
+tions. There may be a generation config or training config for large enough LMs not to overfit on
+the training dataset while it is not trivial to find them.
+Comparing to other baselines We compare our RFT results of training on D′
+U13B to several base-
+lines and the results are detailed in Table 3. Although LLaMA and LLaMA2 are top-tier open-
+sourced LLMs2, their mathematical reasoning performances still lag behind the current proprietary
+LLMs which are of larger parameter scales, such as GPT-4 and PaLM2. Compared to results on
+2https://huggingface.co/spaces/HuggingFaceH4/open_llm_leaderboard
+8Preprint
+Figure 6: The Venn diagram of the proportions of the reasoning calculation paths that each model
+provide to D′
+U33B. For example, 15.5% (in the yellow part) of the reasoning calculation paths in
+D′
+U33B can only be exclusively found in the rejection sampling results from LLaMA2-13B-SFT.
+open-resourced models, our results on LLaMA present better performance than two recent state-
+of-the-art reasoning augmentation methods. Our RFT method is simpler compared to CoRE, since
+RFT does not require training verifier models and decoding with Monte Carlo Tree Search (MCTS).
+Compared to other open-sourced aligned language models, we can find that 7B models struggle at
+a level of 35 scores which are very similar to SFT performances of LLaMA-7B. We guess they use
+GSM8K during their pre-training phase following (OpenAI, 2023) or human alignment fine-tuning
+phase following (Qingyi et al., 2023). Using our augmented dataset D′
+U13B to replace the original
+GSM8K can significantly boost their 7B models’ performances.
+4 D ISCUSSION
+4.1 D IFFERENT DISTRIBUTION OF REASONING PATHS
+In the aforementioned analysis of RFT training data, we observe that rejection sampling can augment
+the training question with diverse reasoning calculation paths. In this section, we investigate whether
+RFT models can learn to generate different reasoning paths to reach the correct answers. We fine-
+tune LLaMA and LLaMA2 of 7B and 13B on D′
+U13B. During inference, we sample 100 different
+reasoning paths from each trained model for each test set question with a temperature of 0.7. For
+each question, we compute the number of different calculation processes presented in 100 sampled
+reasoning paths that lead to the correct answer and draw histograms with respect to test set questions.
+SFT and RFT models on self-sampled datasets (RFT k=100) are included for comparison.
+As shown in Figure 7, the models trained by RFT on D′
+U13B exhibit more question counts than the
+models trained by RFT k=100 and SFT on the larger numbers of unique calculation processes. There
+are more question counts for SFT models where all the sampled reasoning paths only correspond to
+one single calculation process and SFT models can barely generate more than 8 different calculation
+9Preprint
+Base Model Training maj1@1 maj1@K*
+Proprietary LLMs
+GPT-4 (OpenAI, 2023) 5-shot ICL 92.0 -
+GPT-3-175B (Brown et al., 2020) SFT 34.0 -
+PaLM2 (Anil et al., 2023) 8-shot ICL 80.7 91.0@K=40
+PaLM-540B (Chowdhery et al., 2022) 8-shot ICL 56.5 74.4@K=40
+Chinchilla-70B (Uesato et al., 2022) 5-shot ICL 43.7 58.6@K=96
+Chinchilla-70B SFT 58.9 77.7@K=96
+Open-sourced LLMs
+GPT-Neo-2.7B (Black et al., 2021) FCS + PCS (Ni et al., 2023) 19.5 41.4
+GPT-J-6B (Wang & Komatsuzaki, 2021) CoRE (Zhu et al., 2023) 34.9 63.2@K=40
+ChatGLM2-6B (Zeng et al., 2022) 8-shot ICL 32.4 -
+ChatGLM2-6B Human Alignment 28.1 -
+ChatGLM2-12B 8-shot ICL 40.9 -
+ChatGLM2-12B Human Alignment 38.1 -
+InternLM-7B (Team, 2023) 4-shot ICL 31.2 -
+InternLM-7B Human Alignment 34.5
+LLaMA-7B Touvron et al. (2023a) SFT 35.9 48.7
+Our RFT on open-sourced LLMs
+LLaMA-7B RFT-U13B 49.3 61.8
+LLaMA2-7B RFT-U13B 50.3 65.6
+LLaMA-13B RFT-U13B 52.1 66.2
+LLaMA2-13B RFT-U13B 55.4 69.1
+Table 3: Compare GSM8K results with other baselines. RFT-U13B means models fine-tuned on
+D′
+U13B. FCS and PCS represent fully-correct solutions and partially-correct solutions respectively.
+*K=100 if not specified.
+Figure 7: The histograms of question numbers solved with different numbers of unique reasoning
+calculation paths. We show the difference in question counts between SFT and RFT U13B in two
+cases where the numbers of unique reasoning calculation paths are 1 or more than 10.
+processes for a question. This analysis demonstrates that diverse reasoning calculation paths in
+training data can equip the LLMs with finding diverse reasoning logic for solving math problems.
+10Preprint
+Model size 7B 7B-2 13B 13B-2 33B 65B 70B
+Pre-train FLOPs 4.2×10228.4×10227.8×10221.6×10232.7×10235.5×10238.4×1023
+SFT FLOPs 1.7×10173.3×10177.7×10171.3×10181.7×1018
+RFT Inference FLOPs 1.4×10182.6×10186.9×10181.4×10191.8×1019
+RFT-U33B FLOPs 3.0×10185.7×10181.3×10192.2×10193.0×1019
+Pre-train GPU hrs 82k 184k 135k 368k 530k 1022k 1720k
+SFT GPU hrs 0.6 4 40 74 80
+RFT Inference GPU hrs 10 100 0.1k 4.3k 4.5k
+RFT-U33B GPU hrs 9 62 0.6k 1k 1.2k
+ICL Accuracy 11.0 14.6 17.8 28.7 35.6 50.9 56.8
+SFT Accuracy 35.9 41.6 43.0 50.0 54.6 59.3 63.2
+RFT-U33B Accuracy 49.1 51.2 51.4 55.3 57.9 - -
+Table 4: The statistics of FLOPs and GPU hours required for pre-training, SFT, RFT inference, and
+RFT. We take the pre-training GPU hours from Touvron et al. (2023a;b). The GPU hours for RFT
+inference are calculated for 7,473 train set questions and 100 samples per question. To make the best
+of GPUs and properly fit models into the GPU memory, we tune the inference batch size. For 33B,
+65B, and 70B models, we use DeepSpeed ZeRO3 (Rasley et al., 2020) for distributed training. All
+the GPU hours are based on NVIDIA A100 80GB GPU. Note we use non-embedding parameters to
+compute FLOPs in our experiments.
+4.2 T OWARDS EXCELSIOR MATHEMATICAL REASONING
+From our findings, there are two main factors that can improve mathematical reasoning abilities
+given a preset amount of human-annotated samples, including: (1) Pre-training the LLMs to lower
+losses; (2) Augmenting fine-tuning with rejection sampling. Through extensive experiments, we em-
+pirically verify the scaling relationships between the mathematical reasoning performance of LLM
+with both factors respectively. Out of the consideration of sustainable NLP, in this section, we inves-
+tigate the possible computational resources required to extrapolate the mathematical performance of
+LLMs by both factors and discuss how to improve the performance more efficiently.
+We estimate the pre-training, SFT, RFT inference, and RFT FLOPs following Kaplan et al. (2020)
+and GPU times in Table 4 which is detailed in Appendix E. We can find that the cost times of SFT
+(∼1×10−5) and RFT ( ∼1×10−4) are negligible compared to pre-training. One can always use
+SFT and RFT to improve models’ performance. However, it could be hard to use RFT to further
+boost performance. Since we need much more sampling counts (at an exponential level) to increase
+distinct reasoning paths and there exists an upper bound of distinct reasoning path amount for a
+given math reasoning question.
+We assume that performance follows RFT >SFT>ICL, from the findings in this paper we know
+the improvement speed follows RFT <SFT<ICL. And if we have an omnipotent language model
+which has a pre-training loss that is the same as the corpus randomness, it could have RFT = SFT
+= ICL = 100. Thus when you pre-train a better language model (i.e. smaller pre-training loss),
+your model’s performance still follows RFT >SFT>ICL but their performance gaps are diminishing.
+Since you can obtain an RFT model without too much effort (compared to pre-training), then the
+most important thing we should do is to decrease the model’s pre-training loss. From LLaMA-7B to
+LLaMA2-7B, it needs to add 4.2×1022FLOPs to obtain a 2.1 improvement in the RFT-U33B setting
+with a 0.05 pre-training loss decrease. From LLaMA-7B to LLaMA-13B, it adds 3.6×1022FLOPs
+to obtain a 2.3 improvement in the RFT-U33B setting with a 0.07 pre-training loss decrease. While
+minimizing pre-training loss is expensive compared to SFT and RFT, we believe other abilities may
+follow a similar pattern and better pre-training can benefit all other tasks.
+5 C ONCLUSIONS
+In this paper, we are investigating the scaling relationship in supervising math reasoning abilities
+with large language models. We find the relationship between math performance and pre-training
+11Preprint
+losses, supervised data amount, and distinct reasoning paths. We find that better language models
+benefit less with SFT and RFT, and the most important thing is to pre-train a better language model
+towards excellent math reasoning abilities.
+6 A CKNOWLEDGEMENT
+We would like to express our sincere appreciation to Tianhang Zhu, Runji Lin, Kai Dang, Keming
+Lu, Wei Wang, and Junyang Lin for their valuable insights and contributions to this paper.
+7 L IMITATIONS
+In this paper, we miss the following parts which are very important for building math reasoning
+abilities for LLMs and should be discussed in the revised version of this paper or future works.
+• RFT for 65B and 70B LLaMA models.
+• Pre-training on the math-related corpus. This is obviously useful shown in Lewkowycz
+et al. (2022). While the pre-training loss obtained here cannot align with general domain
+pre-trained models’ losses.
+• We do not regress any scaling laws in this paper since many numbers are estimated and
+pre-training losses, ICL prompts and SFT settings of various models may not be aligned.

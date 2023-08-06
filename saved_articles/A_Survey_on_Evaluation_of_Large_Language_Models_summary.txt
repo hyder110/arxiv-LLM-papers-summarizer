@@ -1,0 +1,13 @@
+bullet points:
+
+- Large language models (LLMs) are gaining popularity in both academia and industry due to their exceptional performance in various applications.
+- Evaluating LLMs is critical to understand their strengths, weaknesses, and potential risks.
+- Evaluation of LLMs focuses on what to evaluate, where to evaluate, and how to evaluate.
+- Natural language processing tasks such as sentiment analysis, text classification, natural language inference, and others are evaluated to assess LLMs' performance.
+- LLMs are also evaluated for their reasoning abilities, including mathematical reasoning, common sense reasoning, and professional field reasoning.
+- Natural language generation tasks, such as summarization, dialogue generation, translation, and question answering, are evaluated to measure the quality of LLMs' output.
+- Multilingual tasks assess LLMs' performance in different languages, highlighting challenges in non-Latin languages and low-resource languages.
+- Robustness, ethics, biases, and trustworthiness of LLMs are important evaluation aspects to ensure reliable and responsible AI systems.
+- Evaluation of social science tasks enables the use of LLMs in addressing scaling and measurement issues in fields such as economics, sociology, and political science.
+- Evaluation of natural science and engineering tasks, such as mathematics, science, and engineering domains, helps assess LLMs' capabilities in these specific areas.
+Keywords: large language models, evaluation, natural language processing, reasoning, natural language generation, multilingual tasks, robustness, ethics, biases, social science, natural science, engineering

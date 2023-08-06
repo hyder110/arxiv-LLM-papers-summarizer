@@ -1,0 +1,645 @@
+OpenFlamingo: An Open-Source Framework for Training
+Large Autoregressive Vision-Language Models
+Anas Awadalla∗1Irena Gao∗2Josh Gardner1Jack Hessel3Yusuf Hanafy1
+Wanrong Zhu5Kalyani Marathe1Yonatan Bitton6Samir Gadre7
+Shiori Sagawa2Jenia Jitsev4Simon Kornblith8Pang Wei Koh1,8
+Gabriel Ilharco1Mitchell Wortsman1Ludwig Schmidt1,3,4
+Abstract
+We introduce OpenFlamingo, a family of au-
+toregressive vision-language models ranging from
+3B to 9B parameters. OpenFlamingo is an on-
+going effort to produce an open-source replica-
+tion of DeepMind’s Flamingo models [ 3]. On
+seven vision-language datasets, OpenFlamingo
+models average between 80 - 89% of correspond-
+ing Flamingo performance. This technical re-
+port describes our models, training data, hy-
+perparameters, and evaluation suite. We share
+our models and code at https://github.com/
+mlfoundations/open_flamingo .
+1 Introduction
+A popular format for vision and language mod-
+els is (image, text) →text, i.e., models take as
+input an image and some text, and produce text
+as output, e.g., BLIP-2 [ 22].The flexible format
+directly supports tasks like image classification
+and visual question answering (VQA).
+However, assuming a single image as input is
+limiting: autoregressive vision-language models
+enable new capabilities by instead mapping an
+arbitrarily interleaved sequence of images and
+text to textual outputs. This interface provides
+*Equal contribution.1University of Washington
+2Stanford University3Allen Institute for AI4LAION
+5University of California Santa Barbara6Hebrew Univer-
+sity7Columbia University8Google DeepMind. Correspon-
+dence to <anasa2@cs.washington.edu, irena@cs.stanford.edu,
+schmidt@cs.washington.edu >.
+OF-3B OF-3B (I) OF-4B OF-4B (I) OF-9B
+OpenFlamingo model0%10%20%30%40%50%60%70%80%90%100%110%Percentage of Flamingo performanceOpenFlamingo average performance compared to FlamingoFigure 1: OpenFlamingo performance as a fraction of
+corresponding Flamingo performance, averaged across
+evaluation settings (7 datasets ×5 options for number
+of in-context examples). Demonstrations are chosen
+using RICES (Retrieval-based In-Context Example
+Selection). More details regarding selecting demon-
+strations can be found in Section 3.4. We compare
+OpenFlamingo-3B and -4B models to Flamingo-3B,
+and OpenFlamingo-9B to Flamingo-9B. Error bars
+are standard deviations over settings. “OF-3B (I)”
+refers to OpenFlamingo-3B (Instruct), the 3B model
+trained with a language-instruction-tuned backbone.
+important flexibility: the input sequence can in-
+clude demonstrations for a new task, enabling few-
+shot, in-context learning [ 3] or multi-round multi-
+modal chatbot interactions. Evaluations suggest
+that autoregressive vision-language models can
+be performant foundation models [ 5]: models like
+Flamingo [ 3], CM3 [ 1], Kosmos-1 [ 12], PALM-
+E [8], and multimodal GPT-4 [ 28] generalize well
+across diverse vision-language tasks.
+Unfortunately, these autoregressive vision-arXiv:2308.01390v1  [cs.CV]  2 Aug 2023Output: Two 
+cats are 
+sleeping next 
+to each other 
+on a sofa. 
+Output: A 
+racoon 
+wearing a 
+spacesuit. 
+An apple with the 
+word "iPod" 
+written on it. 👤
+ Input Prompt 🦩
+Completion 
+Output: 
+“Underground” 
+Output: 
+“Pike Pl” 
+“Red Brick Pizza” 
+Tesla Model 3. 
+Output: 
+Output: 
+Question: 
+Which video 
+game is 
+represented in 
+the image? 
+Answer: 
+Among Us. 
+Question: 
+What latte art 
+is presented in 
+the image? 
+Answer: A 
+swan. 
+Question: 
+What car is 
+featured in the 
+image? 
+Answer: 
+Figure 2: OpenFlamingo-9B (pictured) can process interleaved image-and-text sequences. This interface
+allows OpenFlamingo to learn many vision-language tasks through in-context demonstrations.
+language models are closed-source, and their
+weights, training data, code, and hyperparam-
+eters are proprietary. This limits the academic
+community’s ability to conduct research on au-
+toregressive vision-language models, e.g., to un-
+derstand how web-scraped image-text data affects
+models’ performance and safety. Open-source al-
+ternatives, such as LLaVA [ 25], LLaMA-Adapter
+[41], BLIP-2 [ 23], and mPLUG-Owl [ 39], only
+take in single images, and they often directly
+train on curated datasets like COCO [ 24] rather
+than web data.
+In this technical report, we document our expe-
+riences building an open-source reproduction of
+the Flamingo models [ 3]. Following Flamingo, we
+augment the layers of pretrained, frozen language
+models so that they cross attend to the outputs
+of a frozen vision encoder while predicting the
+next token. The cross-modal module is trained
+on web-scraped image-text sequences, in our case,
+two open source datasets: LAION-2B [ 32] andMultimodal C4 [ 45]. Our stack is built using
+publicly available components, including CLIP as
+a vision encoder [ 30] and open-source language
+models as decoders [27, 35].
+We call the resulting family of five models
+OpenFlamingo. These models range from 3B
+to 9B parameters, with both standard and
+instruction-tuned [ 37] language model backbones.
+When averaging performance across 7 evalua-
+tion datasets, OpenFlamingo-3B and -9B mod-
+els attain 85% and 89% of their corresponding
+Flamingo models respectively (Figure 1). Models
+and code are open-sourced at https://github.
+com/mlfoundations/open_flamingo .
+2 Related work
+Generative vision-language models output
+text conditioned on an image-text sequence.
+While many such architectures, such as BLIP-
+2 and LLaVa, can incorporate only one image in
+2Table 1: Architecture details of the OpenFlamingo models. All five models use a CLIP ViT-L/14 vision
+encoder [ 30]. A cross-attention interval of 4 means that a cross-attention module is inserted every 4th
+language model layer. Note that OpenFlamingo models labeled (Instruct) use language models that were
+finetuned on language-only tasks; we have not instruction-tuned OpenFlamingo models on vision-language
+tasks.
+Model Language model Cross-attention
+interval<image> and
+<|endofchunk|>
+OpenFlamingo-3B MPT-1B [27] 1 Trainable
+OpenFlamingo-3B (Instruct) MPT-1B (Instruct) [27] 1 Trainable
+OpenFlamingo-4B RedPajama-3B [35] 2 Frozen
+OpenFlamingo-4B (Instruct) RedPajama-3B (Instruct) [35] 2 Frozen
+OpenFlamingo-9B MPT-7B [27] 4 Trainable
+their context [ 6,16,22,25,39,41], autoregressive
+vision-language models accept interleaved image-
+text sequences, enabling in-context learning.
+We chose to replicate Flamingo because of its
+strong in-context learning abilities. Aggregated
+across evaluation sets, Flamingo models see
+steady performance improvements up to 32 in-
+context examples [ 3]. This is in contrast with
+other autoregressive vision-language models, for
+example Kosmos-1 [ 12]; on captioning tasks
+COCO [ 24] and Flickr-30K [ 29], Kosmos-1 shows
+performance improvements up to 4 in-context ex-
+amples, but performance degrades when using 8
+in-context examples.
+Open-source image-text datasets. Propri-
+etary autoregressive vision-language models are
+typically trained on closed-source datasets [ 1,3,
+8,12]. For example, Flamingo relies on image-
+text pairs from the ALIGN dataset [ 14] and in-
+terleaved image-text sequences from the M3W
+dataset [ 3]; both are unavailable to the pub-
+lic. Recent efforts to replicate these web-scraped
+datasets include LAION-2B, a dataset of image-
+text pairs, and Multimodal C4 [ 45] and OBELISC
+[18], datasets of image-text sequences. We use
+LAION-2B and Multimodal C4 for training Open-
+Flamingo models. Lauren¸ con et al. [18]also
+train 9B and 80B Flamingo-style models; their
+models differ in the choice of pretraining dataset
+(OBELISC instead of Multimodal C4) and lan-guage model (LLaMA-9B [ 41] instead of the MPT
+and RedPajama-3B models [27, 35]).
+3 Approach
+3.1 Architecture
+We match the Flamingo architecture [ 3]. Given
+an interleaved sequence of images with text to-
+kens, OpenFlamingo models predict the next text
+token conditioned on all previous text tokens and
+the last preceding image. Text tokens attend
+to their corresponding images via dense cross-
+attention modules , which we attach to the layers
+of a frozen, autoregressive language model. To
+embed images, we extract patch features from a
+frozen vision encoder and pass these through a
+trainable Perceiver resampler [13].
+As a preprocessing step, we first mark the loca-
+tions of images in the text sequence with <image>
+tokens. We also insert <|endofchunk|> tokens af-
+ter the text tokens following an image; e.g.the
+sequence xHello world, where xis an image,
+would be preprocessed into <image> Hello world
+<|endofchunk|> .
+Unlike Flamingo, we do not support video inputs
+at this time. We leave this for future work.
+Table 1 describes the five OpenFlamingo mod-
+els based on their language model and density
+of cross-attention layers; all models use CLIP
+3(A) LAION-2B (B) Multimodal C4 
+(C) ChatGPT-generated data Golden Week ( ゴールデンウィーク ) is one of the busiest holidays in Japan. 
+that occur within seven days every spring. Combined with weekends, the holidays 
+allow for almost the entire nation to take time oﬀ work and travel, making it the 
+longest vacation period of the year for most Japanese employees. Transportation 
+prices soar, hotels book up in advance, and whole towns’ populations seem to 
+travel around and even outside of Japan. Shōwa Day is a Japanese [...] Milk comes from cows. 
+Eggs come from chickens. 
+Golden Week refers to a collection of four national Japanese  holidays 
+Golden Week is the most popular time for Japanese people to  
+Manuelina Culinary Pasta Program 
+empty out. Figure 3: Samples from (A) LAION-2B [32], (B) Multimodal C4 [45], and (C) ChatGPT-generated data.
+Table 2: Statistics for training datasets. “ChatGPT”
+stands for the ChatGPT-generated sequences. The
+median numbers of images and tokens per sequence
+were calculated using a random sample of 1,000 se-
+quences.
+Dataset Median images
+per sequenceMedian tokens
+per sequence
+LAION-2B 1 17
+MMC4 2 256
+ChatGPT 3 56
+ViT-L/14 [ 30] as a vision encoder. In most
+cases, the <image> and <|endofchunk|> embed-
+dings are trainable, while other text embeddings
+are frozen. For the OpenFlamingo-4B models, all
+embeddings are frozen, including the randomly
+initialized <image> and <|endofchunk|> embed-
+dings. This was due to complications with gra-
+dient masking when using Fully Sharded Data
+Parallel ( §3.3).
+3.2 Training data
+We train our models on a mixture of image-text
+pairs and interleaved image-text sequences. Dur-
+ing training, we sample dataset shards with re-
+placement using the WebDataset format [34].
+0 50 100 150 200 25002040% of sequencesTokens per sequence
+1 2 3 4 5 60102030% of sequencesImages per sequenceFigure 4: Histograms of the number of text tokens
+and images per MMC4 sequence, based on a sample of
+1,000 sequences. Sequences are long with few images.
+LAION-2B [ 32].When training Flamingo,
+Alayrac et al. [3]use ALIGN [ 14], a closed-source
+dataset of over 1B single images paired with short
+alt-text captions. To train OpenFlamingo, we
+replace ALIGN with LAION-2B, an open-source
+web-scraped dataset consisting of 2B image-text
+pairs (Figure 3A). We use part of the English sub-
+set and truncate captions to 32 tokens. All image-
+text pairs in LAION-2B have a cosine similarity
+of at least 0.28 according to CLIP ViT-B/32.
+4Multimodal C4 [ 45].In addition to image-
+text pairs, Alayrac et al. [3]train Flamingo using
+M3W, an internal web-scraped dataset of 43M in-
+terleaved image-text sequences. We replace M3W
+with Multimodal C4 (MMC4), an open-source
+dataset of 101M interleaved samples (Figure 3B).
+Unlike M3W or OBELISC [ 18], which directly
+parse HTML documents to extract multimodal
+sequences, MMC4 uses CLIP to soft align images
+with sentences in a document. To ensure data
+quality, we exclude images if their cosine simi-
+larity with the subsequent text falls below 0.24,
+according to CLIP ViT-L/14. Sequences contain
+between 1 and 6 images (median 2). To encour-
+age learning from sequences with multiple images,
+we reject single-image sequences with probability
+0.5. The resulting distribution is shown in Figure
+4. Additional notes on MMC4 filtering are in
+Appendix B.
+Synthetic data. For the OpenFlamingo-4B
+models, we also experimented with training on
+ChatGPT-generated synthetic data (Figure 3C)
+These 417K image-text sequences were generated
+by prompting ChatGPT to generate a sequence
+of interleaved text and image alt-texts (in place of
+images). The alt-texts are used to retrieve a cor-
+responding images from LAION-5B. Additional
+details of the prompting and data construction
+process are described in Appendix C. The median
+number of images per sequence is higher than in
+MMC4, while the median number of text tokens
+is lower (Table 2). We release these sequences
+through the OpenFlamingo repository.
+3.3 Training details
+OpenFlamingo models were trained for 60M inter-
+leaved (MMC4) examples1and 120M LAION-2B
+examples. All models are trained using the next-
+token prediction objective and optimized with
+1OpenFlamingo-4B models use both MMC4 and
+ChatGPT-generated data as interleaved sequences; 60M
+interleaved examples translates to approximately 240K
+ChatGPT-generated sequences and 59.8M MMC4 se-
+quences. Other models train on 60M MMC4 examples.Table 3: Training used either DistributedDataParallel
+(DDP) or FullyShardedDataParallel (FSDP) [43].
+Model GPU type Sharding
+strategyPrecision
+OF-3B A100-80GB DDP fp32
+OF-3B (I) A100-40GB DDP fp32
+OF-4B A100-40GB FSDP fp32
+OF-4B (I) A100-40GB FSDP fp32
+OF-9B A100-80GB DDP amp bf16
+AdamW. The learning rate is linearly increased at
+the beginning of training, and then held constant
+at 1e-4 throughout training. We apply weight
+decay of 0.1 on the dense cross attention layers.
+The batch size for LAION-2B is twice the batch
+size of the interleaved dataset (MMC4, optionally
+with ChatGPT-generated sequences), and the
+loss weights are set to Flamingo defaults of 1 and
+0.2 for MMC4 and LAION-2B respectively. We
+accumulate gradients over both datasets between
+optimizer steps.
+Distributed training. We train all models
+using 64 GPUs distributed across 8 nodes on
+Stabilty AI’s cluster (Table 3). OpenFlamingo-4B
+models were trained using model sharding with
+Fully Sharded Data Parallel [ 43]; other models
+were trained using only data parallel.
+Loss curves. Figure 5 tracks LAION-2B and
+MMC4 loss over the course of training. After an
+initial improvement, MMC4 loss decreases very
+slowly. We speculate that, since MMC4 sequences
+tend to include long paragraphs between images
+(Figure 2), most text tokens can be generated
+without referencing the image. Thus, the loss may
+be dominated by whether the frozen language
+model can fit unrelated paragraphs of text.
+3.4 Evaluation method
+We evaluate OpenFlamingo on seven vision-
+language datasets including captioning (COCO
+[7], Flickr-30K [ 40]), visual question answer-
+50 10M 20M 30M 40M 50M 60M2.22.32.42.52.62.72.8MMC4 Loss
+0 20M 40M 60M 80M 100M 120M
+Number of samples2.22.42.62.83.03.23.43.63.8LAION LossOpenFlamingo-9B
+OpenFlamingo-4B (Instruct)
+OpenFlamingo-3BFigure 5: MMC4 and LAION-2B language modeling
+loss throughout training. Curves shown with Gaussian
+smoothing with window size 100.
+ing (VQAv2 [ 2], OK-VQA [ 26], TextVQA [ 33],
+VizWiz [ 11]), and rank classification (Hateful-
+Memes [ 15]). For each dataset, we measure per-
+formance at 0, 4, 8, 16, and 32 in-context exam-
+ples. Evaluation was done in automatic mixed
+precision, with linear layers computed in bfloat16.
+Selecting in-context examples. For each
+evaluation example, we sample in-context exam-
+ples from the training split uniformly at random.
+Additionally, in Appendix A.2, we include eval-
+uations of OpenFlamingo using Retrieval-based
+In-Context Example Selection (RICES) [38].
+Evaluation subsets. We evaluate on the
+dataset splits used by Alayrac et al. [3]. We
+run each evaluation across three seeds, where therandomness is over selected in-context demon-
+strations, and average the results to obtain our
+final scores.
+Prompts. For captioning tasks, we format
+demonstrations as <image> Output: [caption] , re-
+placing [caption] with the ground-truth caption.
+For VQA, we format examples as <image> Ques -
+tion: [question] Short answer: [answer] . For
+HatefulMemes, we prompt the model with
+<image> isanimagewith: ‘[text] ’writtenon
+it.Isithateful?Answer: [answer] .
+Following Alayrac et al. [3], we prompt the model
+with two in-context examples during zero-shot
+evaluations, removing their images, and for classi-
+fication tasks, we implement prompt ensembling
+by averaging logits across 6 permutations of the
+in-context examples.
+Decoding parameters. We evaluate caption-
+ing and VQA using beam search with 3 beams,
+stopping generation at 20 tokens for captioning, 5
+tokens for VQA, or whenever the model produces
+an<|endofchunk|> token. For HatefulMemes, we
+compute the log-likelihood of completions “yes”
+and “no” and answer with the most likely com-
+pletion.
+Metrics. For captioning, we use CIDEr
+score [ 36]. For VQA, we report VQA accuracy,
+i.e., exact match accuracy over a set of ground
+truth answers [ 2]. For HatefulMemes, we com-
+pute AUC ROC.
+4 Results
+In Table 4, we compare OpenFlamingo and
+Flamingo models across 0, 4, and 32 in-context
+examples. On average, OpenFlamingo-3B, -3B
+(Instruct), -4B (Instruct), and -9B attain more
+than 86% of the performance of their correspond-
+ing Flamingo models (Figure 1).
+In the 0- and 4-shot regimes, OpenFlamingo mod-
+els approach or match Flamingo performances on
+6048 16 328090100CIDEr
+COCO
+048 16 325055606570CIDEr
+Flickr30K
+048 16 324550556065ROC AUC
+HatefulMemes
+048 16 32304050VQA Accuracy
+OK-VQA
+048 16 3215202530VQA Accuracy
+TextVQA
+048 16 3245505560VQA Accuracy
+VQAv2
+048 16 32203040VQA Accuracy
+VizWiz
+048 16 3245505560Averaged scores
+(Average)
+Number of in-context examplesEvaluations with random demonstrations
+Flamingo-3B Flamingo-9B OF-3B OF-3B (I) OF-4B OF-4B (I) OF-9BFigure 6: Evaluation results per dataset across 0, 4, 8, 16, and 32 in-context examples. Each point is the
+average across three evaluation runs, where the randomness is over choice of in-context demonstrations. Error
+bars are standard deviations over random seeds. Results are reported in tabular form in Table 11.
+several datasets. For example, OpenFlamingo-
+9B improves upon Flamingo-9B’s 0-shot perfor-
+mance on VQAv2 (51 .8%→52.7% VQA ac-
+curacy) and COCO (79 .4→79.5 CIDEr), and
+OpenFlamingo-9B approaches Flamingo-9B’s 0-
+shot performance on Flickr-30K and VizWiz.
+Moreover, OpenFlamingo-9B approaches the 4-
+shot performance of Flamingo-9B on COCO,
+VQAv2, and VizWiz.
+However, on OK-VQA and TextVQA, Open-
+Flamingo models are notably weaker than their
+Flamingo counterparts: OpenFlamingo-9B un-
+derperforms Flamingo-9B in 0-shot evaluations
+by 6.9 percentage points on OK-VQA and 7.8 per-
+centage points on TextVQA. OpenFlamingo-3B
+also underperforms Flamingo-3B by 4.6 percent-
+age points in 0-shot VQAv2 accuracy. The reason
+for generally low VQA performance is unclear,
+although discussions in §5.2 may be related.
+Extrapolating to more in-context examples.
+In Figure 6, we plot performance as a functionof the number of in-context examples. We ob-
+serve that the OpenFlamingo-3B and -9B models
+generally improve with the number of in-context
+examples. However, the rate of improvement
+is lower than the Flamingo models: in the bot-
+tom right corner of Figure 6, we observe that
+gaps between OpenFlamingo-9B and Flamingo-
+9B widen with the number of in-context examples.
+We speculate that this behavior may stem from
+the quality of our pre-training data, which mostly
+consists of sequences with few images (Table 2).
+In contrast with the -3B and -9B models, which
+generally improve with more in-context examples,
+the OpenFlamingo-4B models unexpectedly de-
+grade in performance after 4 or 8 shots. The
+4B models use RedPajama language models [ 35]
+instead of MPT backbones [ 27]; they also use
+frozen <image> and <|endofchunk|> embeddings.
+We investigate the effect of the latter in §5.1.
+Trends by model size. OpenFlamingo-9B
+generally outperforms smaller models, except on
+7Benchmark Shots Fl-3B Fl-9B OF-3B OF-3B (I) OF-4B OF-4B (I) OF-9B
+COCO [7]0 73.0 79.4 74.9 (0.2) 74.4 (0.6) 76.7 (0.2) 81.2 (0.3) 79.5 (0.2)
+4 85.0 93.1 77.3 (0.3) 82.7 (0.7) 81.8 (0.4) 85.8 (0.5) 89.0 (0.3)
+32 99.0 106.3 93.0 (0.6) 94.8 (0.3) 95.1 (0.3) 99.2 (0.3) 99.5 (0.1)
+Flickr-30K [40]0 60.6 61.5 52.3 (1.0) 51.2 (0.2) 53.6 (0.9) 55.6 (1.3) 59.5 (1.0)
+4 72.0 72.6 57.2 (0.4) 59.1 (0.3) 60.7 (1.2) 61.2 (0.5) 65.8 (0.6)
+32 71.2 72.8 61.1 (1.3) 64.5 (1.3) 56.9 (0.7) 53.0 (0.5) 61.3 (0.7)
+VQAv2 [2]0 49.2 51.8 44.6 (0.0) 44.1 (0.1) 45.1 (0.1) 46.9 (0.0) 52.7 (0.2)
+4 53.2 56.3 45.8 (0.0) 45.7 (0.1) 49.0 (0.0) 49.0 (0.0) 54.8 (0.0)
+32 57.1 60.4 47.0 (0.1) 44.8 (0.1) 43.0 (0.2) 47.3 (0.0) 53.3 (0.1)
+OK-VQA [26]0 41.2 44.7 28.2 (0.2) 28.7 (0.1) 30.7 (0.1) 31.7 (0.1) 37.8 (0.2)
+4 43.3 49.3 30.3 (0.5) 30.6 (0.2) 35.1 (0.0) 34.6 (0.0) 40.1 (0.1)
+32 45.9 51.0 31.0 (0.1) 30.6 (0.1) 26.4 (0.2) 34.7 (0.3) 42.4 (0.0)
+TextVQA [33]0 30.1 31.8 24.2 (0.2) 23.1 (0.2) 21.0 (0.3) 21.1 (0.4) 24.2 (0.5)
+4 32.7 33.6 27.0 (0.3) 28.1 (0.4) 25.9 (0.0) 27.2 (0.3) 28.2 (0.4)
+32 30.6 32.6 28.3 (0.2) 28.5 (0.1) 14.1 (0.2) 23.2 (0.2) 23.8 (0.2)
+VizWiz [11]0 28.9 28.8 23.7 (0.5) 23.4 (0.3) 18.8 (0.1) 21.5 (0.2) 27.5 (0.2)
+4 34.0 34.9 27.0 (0.3) 27.7 (0.1) 26.6 (0.5) 26.5 (0.4) 34.1 (0.7)
+32 45.5 44.0 39.8 (0.1) 39.3 (0.4) 23.1 (1.1) 31.3 (0.2) 44.0 (0.5)
+HatefulMemes [15]0 53.7 57.0 51.2 (2.5) 50.1 (2.2) 52.3 (2.3) 53.1 (2.2) 51.6 (1.8)
+4 53.6 62.7 50.6 (0.8) 49.5 (0.6) 51.5 (1.4) 54.9 (1.1) 54.0 (2.0)
+32 56.3 63.5 50.2 (1.8) 47.8 (2.2) 52.2 (1.2) 54.9 (1.1) 53.8 (2.1)
+Table 4: Evaluation results across seven vision-language datasets using 0, 4, and 32 in-context examples.
+“OF-3B (I)” refers to OpenFlamingo-3B (Instruct), the 3B model trained with a language-instruction-tuned
+backbone, while “Fl-3B” refers to Flamingo-3B. Flamingo results taken from Alayrac et al. [3]. The highest
+number in each row is bolded. Full results (including 8- and 16-shot performance) are in Table 11.
+HatefulMemes and for large numbers of in-context
+examples on Flickr-30K and TextVQA. However,
+OpenFlamingo-4B models often underperform
+the smaller 3B models, including on Flickr-30K,
+HatefulMemes, TextVQA, and VizWiz.
+Effect of language instruction-tuning. We
+train two OpenFlamingo models at each of the
+3B and 4B scales: one model using a base lan-
+guage model, and one with an instruction-tuned
+variant of the same language model. In the
+lower right corner of Figure 6, we observe that
+the instruction-tuned variants of MPT-1B and
+RedPajama-3B on average outperform the base
+models. The difference is starkest for RedPajama-
+3B. Transfer of language instruction tuning to
+vision-language tasks was previously reported
+in Huang et al. [12], Li et al. [23].
+Comparison to fine-tuned state-of-the-art.
+Figure 7 plots each model’s performance rela-
+COCO Flickr30K VQAv2 OK-VQA TextVQA VizWiz HatefulMemes
+Evaluation dataset0%20%40%60%80%100%% of fine-tuned SoTAFlamingo-9B
+OpenFlamingo-9BFigure 7: OpenFlamingo-9B and Flamingo-9B perfor-
+mance relative to fine-tuned SoTA performance.
+tive to fine-tuned state-of-the-art performance,
+as listed on Papers With Code on June 19, 2023.
+OpenFlamingo-9B averages more than 62% of
+fine-tuned state-of-the-art performance with 32
+RICES-selected in-context examples, compared
+to 72% achieved by Flamingo-9B. For more de-
+tails on the fine-tuned SoTAs, see Appendix A.1.
+80-shot 4-shot 8-shot
+COCOtrainable 46.5 58.6 61.2
+frozen 41.9 (−4.6) 54.5 (−4.1) 57.4 (−3.8)
+VQAv2trainable 17.6 23.2 28.7
+frozen 5.5 (−12.1) 8.4 (−14.8) 18.8 (−9.9)
+Table 5: COCO and VQAv2 validation performance
+when using trainable <image> and <|endofchunk|>
+embeddings compared to frozen, randomly initialized
+embeddings. The model used in this experiment is
+based on CLIP ViT-L/14 and OPT 125M, with cross-
+attention every layer, and trained on 20M interleaved
+samples, including ChatGPT-sequences.
+5 Discussion
+5.1 Frozen embeddings
+In§4, we observed that OpenFlamingo-4B mod-
+els underperform their 3B counterparts on most
+datasets. One notable way the OpenFlamingo-
+4B models differ from the 3B and 9B models is
+that their <image> and <|endofchunk|> embed-
+dings are randomly initialized and frozen, rather
+than trained.
+In Table 5, we investigate the effect of this differ-
+ence. We train small models using OPT-125M as
+a language model [ 42] to 20M interleaved samples
+(one-third of full training). Freezing the <image>
+and <|endofchunk|> embeddings results in a drop
+of 4.6 CIDEr for 0-shot COCO, and 12.1% ac-
+curacy for 0-shot VQAv2. This suggests that
+frozen <image> and <|endofchunk|> embeddings
+may impact downstream trends.
+5.2 VQAv2 validation trends
+During development, we used the VQAv2 valida-
+tion set as a temperature check for visual question
+answering capabilities. In this section, we discuss
+trends observed during development.
+Training dynamics. To understand how eval-
+uation performance evolves over the course of
+training, Figure 8 plots validation performance
+of OpenFlamingo-9B on COCO and VQAv2
+throughout training. While COCO performance
+steadily improves, VQAv2 progress is flatter.
+5K 10K 15K 20K
+Steps0102030405060708090CIDEr scoreCOCO
+0-shot
+4-shot
+5K 10K 15K 20K
+Steps0102030405060VQA AccuracyVQAv2
+0-shot
+4-shotFigure 8: Validation split performance for
+OpenFlamingo-9B across training: while COCO
+CIDEr improves throughout training, VQAv2 per-
+formance is more stagnant.
+This matches trends reported by Li et al. [23].
+Effect of language model. Although addi-
+tional training did not dramatically affect VQAv2
+performance, changing language model backbones
+did. Table 7 illustrates this effect on the VQAv2
+validation split; notably, switching from OPT-
+1.3B to MPT-1B (Instruct) added nearly 10 per-
+centage points in 0-shot performance. We hy-
+pothesize that the language model has similarly
+large effects for other VQA tasks.
+Common VQA failure modes (Table 6).
+OpenFlamingo models struggle with counting; on
+the VQAv2 validation split, OpenFlamingo-9B
+scores 30.5% on questions with numerical an-
+swers, compared to 70.6% on yes / no questions.
+Additionally, because VQA accuracy uses an ex-
+act match criterion for generations, models must
+answer concisely to score well; OpenFlamingo
+models are often too verbose. Finally, VQA ques-
+tions can ask about objects other than the central
+object in the image; models sometimes answer
+about the central item instead.
+5.3 Applications of OpenFlamingo
+Multiple models have already developed on top
+of OpenFlamingo. Li et al. [20]fine-tuned Open-
+Flamingo on MIMIC-IT [ 19], a multi-image/video
+instruction following dataset, creating Otter, a
+9Counting Verbosity Non-central object
+Q:How many people are on the sidewalk? Q:What is this sheep trying to do? Q:What color are the curtains?
+OF-9B: “one” OF-9B: “it is trying to get” OF-9B: “green”
+Ground truth: {“4”, “5” } Ground truth: {“get out”, “escape” }Ground truth: {“yellow”, “gold” }
+Table 6: OpenFlamingo-9B errors from the VQAv2 validation split. Common failure modes for OpenFlamingo
+including counting, giving answers that are too verbose (and thus truncated), and answering about the central
+object in the image rather than the non-central object in the question.
+VQAv2 validation
+Shots
+Language model 0 4
+OPT-125M 17.6 23.2
+OPT-1.3B 32.8 27.2
+MPT-1B (Instruct) 41.9 43.7
+MPT-7B 47.4 49.4
+Table 7: VQAv2 validation performance at 20M in-
+terleaved samples across different language models.
+Performance largely differs between language models.
+multimodal assistant. Gong et al. [10]released
+Multimodal-GPT, an OpenFlamingo model in-
+struction fine-tuned on both vision and language
+instruction datasets. We hope the community
+continues to use OpenFlamingo models.
+5.4 Limitations
+OpenFlamingo models carry the same risks as
+their foundational language models. In particular,
+these models train on web-scraped data, and they
+have not undergone safety-focused fine-tuning.
+Models thus may produce unexpected, inappro-
+priate, or inaccurate outputs. We hope to further
+investigate the safety properties of autoregressive
+vision-language models like OpenFlamingo.6 Conclusion
+In this technical report, we described Open-
+Flamingo, a family of five autoregressive vision-
+language models across the 3B, 4B, and 9B scales.
+OpenFlamingo remains an active research project,
+and we continue to work on training and releas-
+ing high-quality autoregressive vision-language
+models. We hope our contribution enables more
+researchers to train and study such models.
+Acknowledgements
+We would like to thank Jean-Baptiste Alayrac and An-
+toine Miech for their advice on reproducing Flamingo.
+We also thank Rohan Taori, Nicholas Schiefer, Deep
+Ganguli, Thomas Liao, Tatsunori Hashimoto, and
+Nicholas Carlini for their help with assessing the safety
+risks of our first release of OpenFlamingo. Thanks to
+Stability AI for compute resources.
+R

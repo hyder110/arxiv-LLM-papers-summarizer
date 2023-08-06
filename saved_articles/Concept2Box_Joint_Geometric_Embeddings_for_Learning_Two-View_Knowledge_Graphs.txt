@@ -1,0 +1,787 @@
+Concept2Box: Joint Geometric Embeddings for Learning Two-View
+Knowledge Graphs
+Zijie Huang1∗, Daheng Wang2, Binxuan Huang2, Chenwei Zhang2, Jingbo Shang4,
+Yan Liang2, Zhengyang Wang2, Xian Li2, Christos Faloutsos3, Yizhou Sun1, Wei Wang1
+1University of California, Los Angeles, CA, USA2Amazon.com Inc, CA, USA
+3Carnegie Mellon University, PA, USA4University of California, San Diego, CA, USA
+{zijiehuang,yzsun,weiwang}@cs.ucla.edu ,
+{dahenwan,binxuan,cwzhang,ynliang,zhengywa,xianlee}@amazon.com ,
+jshang@ucsd.edu,christos@cs.cmu.edu
+Abstract
+Knowledge graph embeddings (KGE) have
+been extensively studied to embed large-scale
+relational data for many real-world applications.
+Existing methods have long ignored the fact
+many KGs contain two fundamentally differ-
+ent views: high-level ontology-view concepts
+and fine-grained instance-view entities. They
+usually embed all nodes as vectors in one la-
+tent space. However, a single geometric rep-
+resentation fails to capture the structural dif-
+ferences between two views and lacks proba-
+bilistic semantics towards concepts’ granularity.
+We propose Concept2Box, a novel approach
+that jointly embeds the two views of a KG us-
+ing dual geometric representations. We model
+concepts with box embeddings, which learn
+the hierarchy structure and complex relations
+such as overlap and disjoint among them. Box
+volumes can be interpreted as concepts’ gran-
+ularity. Different from concepts, we model
+entities as vectors. To bridge the gap between
+concept box embeddings and entity vector em-
+beddings, we propose a novel vector-to-box dis-
+tance metric and learn both embeddings jointly.
+Experiments on both the public DBpedia KG
+and a newly-created industrial KG showed the
+effectiveness of Concept2Box.
+1 Introduction
+Knowledge graphs (KGs) like Freebase (Bollacker
+et al., 2008) and DBpedia (Lehmann et al., 2015)
+have motivated various knowledge-driven appli-
+cations (Yasunaga et al., 2021; Lin et al., 2021).
+They contain structured and semantic information
+among nodes and relations where knowledge is in-
+stantiated as factual triples. One critical fact being
+ignored is that many KGs consist of two fundamen-
+tally different views as depicted in Figure 1: (1)
+an ontology-view component with high-level con-
+cepts and meta-relations, e.g., (“Singer”, “is_a”,
+∗Part of work was done during internship at Amazon.
+NewYorkCityPersonArtistCity
+ScientistTaylorSwiftWestReading
+TaylerSwiftWest ReadingNewYorkUniversityNewYorkCityGrammy Awardhas_awardwas_born_inis_located_atgraduated_fromPersonLocationArtistUniversityCitySingeris_ais_ais_alives_inis_ais_aat_locationScientistis_aLocationOntology-ViewKG
+Instance-ViewKGDualGeometricEmbeddingsCross-ViewLinksOntology-ViewLinksInstance-ViewLinksFigure 1: A two-view KG consisting of (1) an ontology-
+view KG with high-level concepts and meta-relations,
+(2) an instance-view KG with fine-grained instances
+and relations, and, (3) a set of cross-view links between
+two views of KG. Concept2Box learns dual geometric
+embeddings where each concept is modeled as a box in
+the latent space and entities are learned as point vectors.
+“Artist”) , and (2) an instance-view component with
+specific entities and their relations, e.g., (“Taylor
+Swift”, “has_award”, “Grammy Award”) . Also,
+there are valuable cross-view links that connect on-
+tological concepts with entities instantiated from
+them, which bridge the semantics of the two views.
+Modern KGs are usually far from complete as
+new knowledge is rapidly emerging (Huang et al.,
+2022). How to automatically harvest unknown
+knowledge from data has been an important re-
+search area for years. Knowledge graph embed-
+ding (KGE) methods achieve promising results for
+modeling KGs by learning low-dimensional vector
+representations of nodes and relations. However,
+most existing methods (Bordes et al., 2013; Wang
+et al., 2014; Sun et al., 2019; Wang et al., 2021b)
+have a major limitation of only considering KGs of
+a single view. The valuable semantics brought by
+jointly modeling the two views are omitted. In con-
+trast, modeling two-view KGs in a holistic way has
+a key advantage: entity embeddings provide rich
+information for understanding corresponding onto-
+logical concepts; and, in turn, a concept embeddingarXiv:2307.01933v1  [cs.AI]  4 Jul 2023provides a high-level summary of linked entities,
+guiding the learning process of entities with only
+few relational facts.
+Modeling two-view KG is non-trivial where the
+challenges are three-fold: First, there exists a signif-
+icant structural difference between the two views,
+where the ontology-view KG usually forms a hier-
+archical structure with concept nodes of different
+granularity, and the instance-view KG usually fol-
+lows a flat or cyclical structure (Iyer et al., 2022)
+with each entity associated with a specific meaning.
+Second, concepts often exhibit complex relations
+such as intersect, contain and disjoint. Traditional
+vector-based embeddings (Bordes et al., 2013; Sun
+et al., 2019) fail to adequately express them and
+capture interpretable probabilistic semantics to ex-
+plain the granularity of concepts. Third, to bridge
+the knowledge from two views, effective semantic
+mappings from fine-grained entities to their corre-
+sponding concepts need to be carefully considered.
+For work that models two-view KGs, they either
+model concepts and entities all as points in the Eu-
+clidean space (Hao et al., 2019) and in the product
+manifold space (Wang et al., 2021c), which can
+fail to capture the structural differences among the
+two views and result in suboptimal performance,
+or they embed concepts and entities separately as
+points in the hyperbolic and spherical space re-
+spectively (Iyer et al., 2022), which cannot provide
+interpretation towards concepts’ granularity.
+To this end, we propose Concept2Box , a novel
+two-view KG embedding model for jointly learning
+the representations of concepts and instances using
+dual geometric objects. Specifically, we propose to
+leverage the geometric objects of boxes (i.e. axis-
+aligned hyperrectangle) to embed concept nodes in
+the ontology-view KG. This is motivated by the de-
+sirable geometric properties of boxes to represent
+more complex relationships among concepts such
+as intersect, contain, and disjoint, and also capture
+the hierarchy structure. For example, in Figure 1
+we can see City is contained within Location , de-
+noting it’s a sub-concept of Location ;Artist and
+Scientist intersects with each other, denoting they
+are correlated. In addition, box embeddings pro-
+vide probabilistic measures of concepts’ granularity
+based on the volumes, such as Person is a larger box
+than Scientist . Entities in the instance-view KG are
+modeled with classic vector representations to cap-
+ture their specific meanings. As we model concepts
+and entities using boxes and vectors respectively,we further design a new metric function to mea-
+sure the distance from a vector to a box in order to
+bridge the semantics of the two views. Based on
+this vector-to-box distance function, the proposed
+model is trained to jointly model the semantics of
+the instance-view KG, the ontology-view KG, and
+the cross-view links. Empirically, Concept2Box
+outperforms popular baselines on both public and
+our newly-created industrial recipe datasets.
+Our contributions are as follows: (1) We propose
+a novel model for learning two-view KG representa-
+tions by jointly embedding concepts and instances
+with different geometric objects. (2) We design a
+new metric function to measure the distance be-
+tween concept boxes and entity vectors to bridge
+the two views. (3) We construct a new industrial-
+level recipe-related KG dataset. (4) Extensive ex-
+periments verify the effectiveness of Concept2Box.
+2 Related Work
+2.1 Knowledge Graph Embedding (KGE)
+The majority of work on knowledge graph embed-
+dings only considers a single view, where models
+learn the latent vector representations for nodes
+and relations and measure triple plausibility via
+varying score functions. Representatives include
+translation-based TransE (Bordes et al., 2013),
+TransH (Wang et al., 2014); rotation-based Ro-
+tatE (Sun et al., 2019), and neural network-based
+ConvE (Dettmers et al., 2018). Most recently, some
+work employs graph neural networks (GNNs) to ag-
+gregate neighborhood information in KGs (Huang
+et al., 2022; Zhang et al., 2020), which have shown
+superior performance on graph-structured data by
+passing local message (Huang et al., 2020, 2021;
+Javari et al., 2020; Wang et al., 2021a). For
+work that pushes two-view or multiple KGs to-
+gether (Hao et al., 2019; Huang et al., 2022), they
+either model all nodes as points in the Euclidean
+space (Hao et al., 2019; Huang et al., 2022) and in
+the product manifold space (Wang et al., 2021c),
+or separately embed entities and concepts as points
+in two spaces respectively (Iyer et al., 2022). Our
+work uses boxes and vectors for embedding con-
+cepts and entities respectively, which not only gives
+better performance but also provides a probabilistic
+explanation of concepts’ granularity based on box
+volumes.2.2 Geometric Representation Learning
+Representing elements with more complex geo-
+metric objects than vectors is an active area of
+study (Chen et al., 2021). Some representative
+models include Poincaré embeddings (Nickel and
+Kiela, 2017), which embeds data into the hyper-
+bolic space with the inductive basis of negative cur-
+vature. Hyperbolic entailment cones (Ganea et al.,
+2018) combine order embeddings with hyperbolic
+geometry, where relations are viewed as partial or-
+ders defined over nested geodesically convex cones.
+Elliptical distributions (Muzellec and Cuturi, 2018)
+model nodes as distributions and define distances
+based on the 2-Wasserstein metric. While they are
+promising for embedding hierarchical structures,
+they do not provide interpretable probabilistic se-
+mantics. Box embeddings not only demonstrate
+improved performance on modeling hierarchies but
+also model probabilities via box volumes to explain
+the granularity of concepts.
+3 Preliminaries
+3.1 Problem Formulation
+We consider a two-view knowledge graph Gcon-
+sisting of a set of entities E, a set of concepts C, and
+a set of relations R=RI∪RO∪S, where RI,RO
+are the entity-entity and concept-concept relation
+sets respectively. S={(e, c)}is the cross-view
+entity-concept relation set with e∈ E, c∈ C. Enti-
+ties and concepts are disjoint sets, i.e., E ∩ C =∅.
+We denote the instance-view KG as GI:=
+{E,RI,TI}where TI={(hI, rI, tI)}are
+factual triples connecting head and tail entities
+hI, tI∈ Ewith a relation rI∈ RI. The instance-
+view triples can be any real-world instance associa-
+tions and are often of a flat structure such as (“Tay-
+lor Swift”, “has_award”, “Grammy Award”) . Sim-
+ilarly, the ontology-view KG is denoted as GO:=
+{C,RO,TO}where TO={(hO, rO, tO)}are
+triples connecting hO, tO∈ C andrO∈ RO.
+The ontology-view triples describe the hierarchical
+structure among abstract concepts and their meta-
+relations such as (“Singer”, “is_a”, “Artist”) .
+Given: a two-view KG G, we want to learn a
+model which effectively embeds entities, concepts,
+and relations to latent representations with different
+geometric objects to better capture the structural
+differences of two views. We evaluate the quality of
+the learned embeddings on the KG completion task
+and concept linking task, described in Section 5.3.2 Probabilistic Box Embedding
+Box embeddings represent an element as a
+hyperrectangle characterized with two param-
+eters (Vilnis et al., 2018): the minimum and
+the maximum corners (xm,xM)∈Rdwhere
+xi
+m< xi
+Mfor each coordinates i∈1,2,···d.
+Box volume is computed as the product of
+side-lengths Vol(x) =Qd
+i=1 
+xi
+M−xi
+m
+. Given
+a box space ΩBox⊆Rd, the set of boxes
+B(ΩBox)is closed under intersection (Chen
+et al., 2021) and box volumes can be viewed
+as the unnormalized probabilities to interpret
+concepts’ granularity. The intersection vol-
+ume of two boxes is defined as Vol(x∩y) =Q
+imax 
+min 
+xi
+M, yi
+M
+−max 
+xi
+m, yi
+m
+,0
+and the conditional probability is computed as
+P(x|y) =Vol(x∩y)
+Vol(y),with value between 0 and
+1 (Vilnis et al., 2018).
+Directly computing the condition probabilities
+would pose difficulties during training. This can be
+caused by a variety of settings like when two boxes
+are disjoint but should overlap (Chen et al., 2021),
+there would be no gradient for some parameters. To
+alleviate this issue, we rely on Gumbel boxes (Das-
+gupta et al., 2020), where the min and max corners
+of boxes are modeled via Gumbel distributions:
+Vol(x) =dY
+i=1
+xi
+m, xi
+M
+where
+xi
+m∼GumbelMax 
+µi
+m, β
+,
+xi
+M∼GumbelMin 
+µi
+M, β
+,(1)
+µi
+m, µi
+Mare the minimum and maximum coordi-
+nates parameters; βis the global variance. Gumbel
+distribution provides min/max stability (Chen et al.,
+2021) and the expected volume is approximated as
+E[Vol(x)]≈dY
+i=1βlog
+1 + expµi
+M−µi
+m
+β−2γ
+,
+(2)
+where γis the Euler–Mascheroni constant (Onoe
+et al., 2021). The conditional probability becomes
+E[P(x|y)]≈E[Vol(x∩y)]
+E[Vol(y)]. (3)
+This also leads to improved learning as the noise
+ensembles over a large collection of boxes which
+allows the model to escape plateaus in the loss
+function (Chen et al., 2020; Onoe et al., 2021). We
+use this method when training box embeddings.𝑒"𝒢$𝑐&𝑐'𝑐(𝑐"𝑐)𝑐*
+𝑒'𝑒&𝑒(𝒢+𝑒)𝑒*𝐽-.
+𝐽-/𝐽01233Ontology-ViewKGCompletionLoss
+Instance-ViewKGCompletionLossCross-ViewLoss𝐵𝑒𝑟𝑡𝐸𝑛𝑐𝑜𝑑𝑒𝑟ℎ𝑒𝑎𝑑+𝑟𝑒𝑙𝑎𝑡𝑖𝑜𝑛𝑡𝑒𝑥𝑡ℎ𝑒𝑎𝑑,𝑟𝑒𝑙𝑎𝑡𝑖𝑜𝑛,𝑡𝑎𝑖𝑙?(headtransformation)(tailtransformation)𝑡𝑎𝑖𝑙+𝑟𝑒𝑙𝑎𝑡𝑖𝑜𝑛𝑡𝑒𝑥𝑡
+𝑓(.)head (h)relation (r)tail (t)𝑇𝑟𝑎𝑛𝑠𝐸∶𝑓=−|ℎ+𝑟−𝑡|𝑅𝑜𝑡𝑎𝑡𝐸∶𝑓=−|ℎ∘𝑟−𝑡|'𝐸𝑛𝑐O2P
+𝐸𝑛𝑐QRSGeneral concepts,Scatter entitiesConcrete conceptsClose entities𝐷istO2P'QRS𝐶𝑒𝑛(𝐵𝑜𝑥(𝑐))𝑒𝑑𝑖𝑠𝑡2YZ𝑑𝑖𝑠𝑡[\Figure 2: The overall framework of our proposed Concept2Box includes 3 modules. First, we employ probabilistic
+box embeddings to model the ontology-view KG, capturing the hierarchical structure and preserving the granularity
+of concepts (upper). Second, we model the instance-view KG by applying the vector-based KG embedding method
+(bottom). Third, to bridge these two views, we design a novel distance metric defined from a box to a vector (right).
+The model is learned by jointly optimizing three loss terms of each corresponding module.
+4 Method
+In this section, we introduce Concept2Box, a novel
+KGE model to learn two-view knowledge graph
+embeddings with dual geometric representations.
+As shown in Figure 2, Concept2Box consists of
+three main components: (1). The ontology-view
+box-based KG embedding module that captures
+the hierarchical structure and complex relations
+of concepts trained via the KG completion loss
+overGO; (2). The instance-view vector-based KG
+embedding module trained via the KG completion
+loss over GI. It has the flexibility to incorporate any
+off-the-shelf vector-based KGE methods (Bordes
+et al., 2013; Sun et al., 2019); (3). The cross-view
+module trained via the concept linking loss over
+S. This module relies on a new distance metric for
+bridging the semantics between a vector and a box.
+We now present each component in detail.
+4.1 Ontology-View Box Embedding
+For the ontology-view KG, we model each con-
+cept as a Gumbel box to capture the hierarchical
+structure and interpret concept granularity based
+on the box volume. Specifically, each Gumbel box
+x is parameterized using a center cen(x)∈Rd
+and offset off(x)∈Rd
++, and the minimum andmaximum location parameters are given by µm=
+cen(x)−off(x),µM= cen( x) + off( x). To com-
+pute the triple score from box embeddings, we use
+the approximate conditional probability of observ-
+ing a triple given its relation and tail, as shown
+ϕ(hO, rO, tO) =E[Vol(frO(Box(hO))∩frO(Box(tO)))]
+E[Vol(frO(Box(tO)))],
+(4)
+where frOdenotes the box transformation function
+to account for the influence of the relation rO. As
+shown in Figure 1, flives_in (Artist ),fis_a(Artist )are
+the transformed box embeddings of the concept
+Artist in the context of the living locations and
+supertypes. The bounded score ϕshould be close
+to 1 for positive triples and 0 for negative ones.
+Previous work Chen et al. (2021) defined the
+transformation function fras shifting the original
+center and offset of the input box x:cen(fr(x)) =
+cen(x)+τr,off(fr(x)) = off( x)◦∆r, where ◦is
+the Hadamard product and (τr,∆r)are relation-
+specific parameters. To further incorporate seman-
+tic information from the text of a concept cand
+relation r, we propose a new transformation func-
+tion as:
+h[CLS]= BERT ( ctext+’SEP’ +rtext)
+cen (fr(Box( c))),off (fr(Box( c))) = fproj(h[CLS]).(5)Specifically, we first concatenate the textual content
+of the concept and relation for feeding into a pre-
+trained language model BERT (Devlin et al., 2019)
+that captures the rich semantics of the text. We
+obtain the embedding by taking the hidden vector
+at the [CLS]token. Then, we employ a projection
+function fprojto map the hidden vector h[CLS]∈Rℓ
+to theR2dspace, where ℓis the hidden dimension
+of the BERT encoder, and dis the dimension of the
+box space. In practice, we implement fprojas a sim-
+ple two-layer Multi-Layer Perception (MLP) with
+a nonlinear activation function. We further split the
+hidden vector into two equal-length vectors as the
+center and offset of the transformed box.
+Remark 1. Instead of encoding relation text first
+to get the shifting and scaling parameters and then
+conducting the box transformation as introduced
+in (Chen et al., 2020), we feed the concept and
+relation text jointly to the BERT encoder to al-
+low interaction between them through the attention
+mechanism. The goal is to preserve both concept
+and relation semantics by understanding their tex-
+tual information as a whole.
+We train the ontology-view KG embedding mod-
+ule with the binary cross entropy loss as below:
+JGC=X
+(hO,rO,tO)∈TO,
+(ehO,rO,etO)/∈TO|ϕ(hO, rO, tO)−1|2
++|ϕ
+ehO, rO,etO
+|2,(6)
+where (ehO, rO,etO)is a negative sampled triple ob-
+tained by replacing head or tail of the true triple
+(hO, rO, tO). We do not use the hinge loss defined
+in vector-based KGE models (Bordes et al., 2013),
+as the triple scores are computed from the condi-
+tional probability and strictly fall within 0 and 1.
+4.2 Instance-View and Cross-View Modeling
+Next, we introduce learning the instance-view KG
+and the cross-view module for bridging two views.
+Instance-View KG Modeling. As entities in the
+instance-view KG are fine-grained, we choose to
+model entities and relations as classic point vec-
+tors. We employ the standard hinge loss defined as
+follows to train the instance-view KGE module.
+JGI=P
+(hI,rI,tI)∈TI
+(ehI,rI,etI)/∈TI
+fvec 
+hI, rI, tI
+−fvec
+ehI, rI,etI
++γKG
+
++,(7)where γKG>0is a positive margin, fvecis an arbi-
+trary vector-based KGE model such as TransE (Bor-
+des et al., 2013) and RotatE (Sun et al., 2019). And
+(ehI, rI,etI)is a sampled negative triple.
+Cross-View KG Modeling. The goal of the
+cross-view module is to bridge the semantics be-
+tween the entity embeddings and the concept em-
+beddings by using the cross-view links. It forces
+any entity e∈ E to be close to its corresponding
+concept c∈ C. As we model concepts and entities
+with boxes and vectors respectively, existing dis-
+tance measures between boxes (or between vectors)
+would be inappropriate for measuring the distance
+between them. To tackle this challenge, we now de-
+fine a new metric function to measure the distance
+from a vector to a box. Our model is trained to
+minimize the distances for the concept-entity pairs
+in the cross-view links based on this metric func-
+tion. Specifically, given a concept cand an entity e,
+if we denote the minimum and maximum location
+parameters of the concept box as µm,µM, and the
+vector for the entity as e, we define the distance
+function fdas:
+fd(e, c) = dist out(e, c) +α·dist in(e, c)
+dist out(e, c) =∥Max (e−µM,0) + Max ( µm−e,0)∥1
+dist in(e, c) =∥Cen(Box( c))−Min (µM,Max (µm,e))∥1
+(8)
+where dist outcorresponds to the distance between
+the entity and closest corner of the box; dist incor-
+responds to the distance between the center of the
+box and its side or the entity itself if the entity is
+inside the box (Ren et al., 2020). 0< α < 1is a
+fixed scalar to balance the outside and inside dis-
+tances, with the goal to punish more if the entity
+falls outside of the concept, and less if it is within
+the box but not close to the box center. An example
+is shown in Figure 2. The proposed vector-to-box
+distance metric is nonnegative and commutative.
+However, there is one drawback to the above for-
+mulation: different boxes should have customized
+volumes reflecting their granularity. A larger box
+may be a more general concept (e.g., Person ), so it
+is suboptimal for all paired entities to be as close
+as to its center, in contrast to more concrete con-
+cepts like Singer , as illustrated in Figure 2. More-
+over, for instances that belong to multiple concepts,
+roughly pushing them to be equally close to the
+centers of relevant concepts can result in poor em-
+bedding results. Consider we have two recipe con-
+cepts KungPao chicken andCurry chicken , suppose
+KungPao Chicken is more complicated and requiresmore ingredients. If we roughly push cooking wine,
+salt, and chicken breast these shared ingredient in-
+stances to be as close as to both of their centers, it
+will possibly result in forcing the centers and vol-
+ume of the two recipes to be very similar to each
+other. Therefore, we propose to associate the bal-
+ancing scalar αto be related to each concept box
+volume. Specifically, we define α(x)with regard
+to a box xas follows:
+α(x) =α·Sigmoid (1
+V ol(x)). (9)
+We multiply the original constant coefficient αwith
+a box-specific value negatively proportional to its
+volume. The idea is to force entities to be closer to
+the box center when the box has a smaller volume.
+The cross-view module is trained by minimizing
+the following loss with negative sampling:
+JCross=X
+(e,c)∈S
+(e′,c′)/∈Sh
+σ(fd(e, c))−σ 
+fd 
+e′, c′
++γCrossi
+,
+(10)
+where γCrossrepresents a fixed scalar margin.
+4.3 Overall Training Objective
+Now that we have presented all model components,
+the overall loss function is a linear combination of
+the instance-view and ontology-view KG comple-
+tion loss, and the cross-view loss, as shown below:
+J=JGO+λ1JGI+λ2JCross, (11)
+where λ1, λ2>0are two positive hyperparameters
+to balance the scale of the three loss terms.
+4.4 Time Complexity Analysis
+The time complexity of Concept2Box is
+O(3d|TO|+d|TI|+ 5d|S|), where TO,TI,S
+are the ontology-view KG triples, instance-view
+KG triples, and cross-view set defined in Sec 3.1.
+Heredis the embedding dimension of vectors. The
+time complexity of other vector-based methods is
+O(d|TO|+d|TI|+d|S|)which is asymptotically
+the same as Concept2Box.
+5 Experiments
+In this section, we introduce our empirical results
+against existing baselines to evaluate our model per-
+formance. We start with the datasets and baselines
+introduction and then conduct the performance
+evaluation. Finally, we conduct a model generaliza-
+tion experiment and a case study to better illustrate
+our model design.5.1 Dataset and Baselines
+We conducted experiments over two datasets: one
+public dataset from DBpedia (Hao et al., 2019),
+which describes general concepts and fine-grained
+entities crawled from DBpedia. We also created
+a new recipe-related dataset, where concepts are
+recipes, general ingredient and utensil names, etc,
+and the entities are specific products for cooking
+each recipe searched via Amazon.com, along with
+some selected attributes such as brand. The detailed
+data structure can be found in Appendix A. The
+statistics of the two datasets are shown in Table 1.
+We compare against both single-view KGE mod-
+els and two-view KGE models as follows:
+•Vector-based KGE models: : Single-view vector-
+based KGE models that represent triples as vectors,
+including TransE (Bordes et al., 2013), RotatE (Sun
+et al., 2019),DistMult (Yang et al., 2015), and Com-
+plexE (Trouillon et al., 2016).
+•KGBert (Yao et al., 2020): Single-view KG em-
+bedding method which employs BERT to incorpo-
+rate text information of triples.
+•Box4ET (Onoe et al., 2021): Single-view KGE
+model that represents triples using boxes.
+•Hyperbolic GCN (Chami et al., 2019): Single-
+view KGE method that represents triples in the
+hyperbolic space.
+•JOIE (Hao et al., 2019): Two-view KGE method
+that embeds entities and concepts all as vectors.
+5.2 KG Completion Performance
+The KG completion (KGC) task is to predict miss-
+ing triples based on the learned embeddings, which
+helps to facilitate the knowledge learning process
+in KG construction. Without loss of generality, we
+discuss the case of predicting missing tails, which
+we also refer to as a query q= (h, r,?t)(Huang
+et al., 2022; Chen et al., 2021). We conduct the
+KGC task for both views against baselines.
+Evaluation Protocol. We evaluate the KGC
+performance using mean reciprocal ranks (MRR),
+accuracy (Hits@1) and the proportion of correct
+answers ranked within the top 10 (Hits@10). All
+three metrics are preferred to be higher, so as to
+indicate better KGC performance. For both GI
+andGO, we randomly split the triples into three
+parts: 80 %for training, 10% for validation and
+10% for testing. During model training and testing,
+we utilize all cross-view links S.
+Results. The evaluation results are shown in
+Table 2. Firstly, by comparing the average per-Dataset Instance-View KG Ontology-View KG Cross-View Links
+# Entities # Relations # Triples # Concepts # Relations # Triples # Links
+DBpedia 111,762 305 863,643 174 20 763 99,748
+Recipe 21,457 9 200,288 32,922 5 445,632 11,474
+Table 1: Statistics of the DBpedia and Recipe datasets.
+Recipe DBpedia
+GIKG Completion GOKG Completion GIKG Completion GOKG Completion
+MRR H@1 H@10 MRR H@1 H@10 MRR H@1 H@10 MRR H@1 H@10
+TransE 0.28 26.31 38.59 0.18 11.24 30.67 0.32 22.70 48.12 0.54 47.90 61.84
+RotatE 0.30 28.31 40.01 0.22 15.68 35.47 0.36 29.31 54.60 0.56 49.16 68.19
+DistMult 0.29 27.33 39.04 0.18 12.37 32.04 0.28 27.24 29.70 0.50 45.52 64.73
+ComplexE 0.27 26.58 37.99 0.19 14.76 34.02 0.32 27.39 46.63 0.55 47.80 62.23
+JOIE 0.41 29.73 60.14 0.36 22.58 53.62 0.48 35.21 72.38 0.60 52.48 79.71
+Hyperbolic GCN 0.36 28.58 52.48 0.25 16.04 40.35 0.30 33.68 46.72 0.54 47.59 62.11
+KG-Bert 0.30 29.92 51.32 0.24 19.04 38.78 0.39 31.10 60.46 0.63 55.69 81.07
+Box4ET 0.42 28.81 59.88 0.35 23.01 53.79 0.42 33.69 68.12 0.64 55.89 81.45
+Concept2Box 0.44 30.33 62.01 0.37 23.16 54.92 0.51 36.52 73.11 0.65 56.82 83.01
+Table 2: Results of KG completion task. Best results are bold-faced
+formance between single-view and two-view KG
+models, we can observe that two-view methods
+are able to achieve better results for the KGC task.
+This indicates that the intuition behind modeling
+two-view KGs to conduct KG completion is indeed
+beneficial. Secondly, by comparing vector-based
+methods with other geometric representation-based
+methods such as Hyperbolic GCN, there is a per-
+formance improvement on most metrics, indicating
+that simple vector representations have its limita-
+tion, especially in capturing the hierarchical struc-
+ture among concepts (shown by the larger perfor-
+mance gap in GO). Our Concept2Box is able to
+achieve higher performance in most cases, verify-
+ing the effectiveness of our design.
+5.3 Concept Linking Performance
+The concept linking task predicts the associating
+concepts of given entities, where each entity can
+be potentially mapped to multiple concepts. It tests
+the quality of the learned embeddings.
+Evaluation Protocol. We split the cross-view
+linksSinto80%,10%,10% for training, valida-
+tion, testing respectively. We utilize all the triples
+in both views for training and testing. For each
+concept-entity pair, we rank all concept candidates
+for the given entity based on the distance metric
+from a box to a vector introduced in Sec 4.2, and
+report MRR, Hits@1 and Hits@3 for evaluation.
+Results. The evaluation results are shown in
+Table 3. We can see that Concept2Box is able
+to achieve the highest performance across mostmetrics, indicating its effectiveness. By compar-
+ing with Box4ET where both entities and concepts
+are modeled as boxes, our Concept2Box performs
+better, which indicates our intuition that entities
+and concepts are indeed two fundamentally differ-
+ent types of nodes and should be modeled with
+different geometric objects. Finally, we observe
+that Box4ET, and Concept2Box are able to surpass
+methods that are not using box embeddings, which
+shows the advantage of box embeddings in learning
+the hierarchical structure and complex behaviors
+of concepts with varying granularity.
+Datasets Recipe DBPedia
+Metrics MRR Acc. Hit@3 MRR Acc. Hit@3
+TransE 0.23 21.36 30.68 0.53 43.67 60.78
+RotatE 0.25 23.01 33.34 0.72 61.48 75.67
+DistMult 0.24 22.34 31.05 0.55 49.83 68.01
+ComplexE 0.22 22.50 31.45 0.58 55.07 70.17
+JOIE 0.57 54.58 66.39 0.85 75.58 96.02
+Hyper. GCN 0.60 53.49 67.03 0.86 76.11 96.50
+Box4ET 0.59 54.36 68.88 0.88 77.04 97.38
+Concept2Box 0.61 55.33 69.01 0.87 78.09 97.44
+Table 3: Results of concept linking task.
+Abaltion Studies. To evaluate the effectiveness
+of our model design, we conduct an ablation study
+on the DBpedia dataset as shown in Table 4. First,
+to show the effect of joint modeling the text seman-
+tics of relations and concepts for generating the
+relation-transformed box embeddings as in Eqn 5,
+we compare with separately modeling relations as
+box shifting and scaling introduced in (Chen et al.,
+2021). The latter one gives poorer results, indicat-
+ing the effectiveness of our proposed box encoder.Next, we study the effect of the volume-based bal-
+ancing scalar defined in Eqn 9. Compared with a
+fixed balancing scalar for all boxes, Concept2Box
+is able to generate better results.
+GIKG Completion GOKG Completion Concept Linking
+MRR H@1 H@10 MRR H@1 H@10 MRR H@1 H@3
+Concept2Box 0.506 36.52 73.11 0.644 56.82 83.01 0.874 78.09 97.44
+- relation
+shift&scale0.483 34.99 72.18 0.631 55.34 81.97 0.865 77.64 96.34
+- fixed distance
+coefficient0.479 35.13 71.88 0.635 54.98 82.33 0.854 76.91 96.13
+Table 4: Results of ablation study on DBpedia.
+5.4 Model Generalization
+We test our model’s generalization ability by train-
+ing our model on the Recipe dataset and evalu-
+ating it on the concept linking task with recipe-
+product pairs collected from other online resources.
+Specifically, in the evaluation data, all products are
+known entities in the Recipe dataset during training,
+where we can directly obtain their embeddings. For
+recipes, only 3 %of them are observed, and for un-
+seen recipes, we generate their box embeddings by
+sending their title as input to the box encoder. We
+divide these recipe-product pairs into two groups
+based on whether the recipes are known. We use
+the first group with known recipes to test the gener-
+alization ability in the transductive setting: When
+test data follows a different distribution as opposed
+to the training data, how does the model perform?
+It differs from Sec 5.3 in that the test data share
+the same distribution with the training data as we
+randomly split them from the same dataset. We use
+the second group with unknown recipes to test in
+the inductive setting: When unknown concepts are
+sent as input, how does the model perform?
+Diversity-Aware Evaluation. To verify our
+learned embeddings can capture complex relations
+and hierarchy structure among concepts, we use
+diversity-aware evaluation for the generalization
+experiment similar to that in (Hao et al., 2020).
+The idea is that for each recipe, a more preferred
+ranking list is one consisting of products from mul-
+tiple necessary ingredients, instead of the one with
+products all from one ingredient. Since we model
+Known Recipes Unknown Recipes
+# types *
+# items10*12 12*10 24*5 10*12 12*10 24*5
+JOIE 68.33 69.17 68.45 57.34 57.56 56.38
+Concept2Box 71.97 73.33 69.43 61.32 66.77 59.68
+Table 5: H@120 with different number of item types.recipes and ingredients as concepts, and products as
+entities, for each recipe, we first extract its top Kin-
+gredients (types) from GO, and then for each of the
+Kingredient we extract the top Mproducts (items).
+We set M×K= 120 and let K= 10,12,24.
+Results. Table 5 shows the results of H@120
+among two-view KGE methods. We can see that
+Concept2Box is able to achieve the best across
+different settings, showing its great generalization
+ability. Note that when changing the number of
+types, Concept2Box is able to bring more perfor-
+mance gain than JOIE. This can be understood
+as the hierarchy structure of concepts is well cap-
+tured by the box embeddings, when properly se-
+lecting the number of types, we first narrow down
+the concept (recipe) to the set of related concepts
+(ingredients) for a better understanding, which will
+generate better results.
+5.5 Case Study
+We conduct a case study to investigate the semantic
+meaning of learned box embeddings of concepts.
+We select recipe concepts and show the top 3 con-
+cepts that have the largest intersection with them
+after the relation transformation of "using ingre-
+dients". As shown in Figure 3, the dominant in-
+gredients for each recipe are at the top of the list,
+verifying the effectiveness of Concept2Box. Also,
+we found that Egyptian lentil Soup has a larger
+intersection with Black Rice Pudding than with
+Thai Iced Tea , since the first two are dishes with
+more similarities and the third one is beverage. We
+also examine the box volume of concepts which
+reflects their granularity. Among ingredient con-
+cepts, we observe that Water, Sugar, and Rice are
+of the largest volumes, indicating they are common
+ingredients shared across recipes. This observation
+confirms that the box volume effectively represents
+probabilistic semantics, which we believe to be a
+reason for the performance improvement.
+6 Conclusion
+In this paper, we propose Concept2Box , a novel
+two-view knowledge graph embedding method
+with dual geometric representations. We model
+high-level concepts as boxes to capture the hier-
+archical structure and complex relations among
+them and reflect concept granularity based on box
+volumes. For the instance-view KG, we model
+fine-grained entities as vectors and propose a novel
+metric function to define the distance between aEgyptian Lentil Soup:Water (0.891)RedLentil(0.864)Rom Tomato (0.776)Black Rice Pudding:Black Rice (0.765)White Rice (0.632)Palm Sugar (0.618)Thai Iced Tea:Water (0.904)Black Tea Leaf (0.811)White Sugar (0.674)Marrakesh Vegetable Curry:Potato(0.881)Eggplant(0.764)Green Bell Pepper (0.653)Figure 3: Case Study on the Recipe Dataset.
+box to a vector to bridge the semantics of the two
+views. Concept2Box is jointly trained to model
+the instance-view KG, the ontology-view KG, and
+the cross-view links. Empirical experiment re-
+sults on two real-world datasets including a newly-
+created recipe dataset verify the effectiveness of
+Concept2Box.
+7 Limitations
+Our model is developed to tackle the structural dif-
+ference between the ontology and instance views
+of a KG. However, many modern KGs are multi-
+lingual, where different portions of a KG may not
+only differ in structure but also differ in the text
+semantics. How to jointly capture these differences
+remain unsolved. Also since box embeddings natu-
+rally provide interpretability to the granularity of
+the learned concepts, how to use the current model
+to discover unknown concepts from these embed-
+dings is also challenging.
+8 Ethical Impact
+Our paper proposed Concept2Box, a novel two-
+view knowledge graph embedding model with dual
+geometric representations. Concept2Box neither
+introduces any social/ethical bias to the model nor
+amplifies any bias in the data. For the created recipe
+dataset, we did not include any customers’/sellers’
+personal information and only preserved informa-
+tion related to products’ attributes and their rela-
+tions. Our model implementation is built upon
+public libraries in Pytorch. Therefore, was e do not
+foresee any direct social consequences or ethical
+issues.9 Acknowledgement
+This work was partially supported by NSF
+1829071, 2106859, 2200274, 2211557,
+1937599, 2119643, 2303037, DARPA
+#HR00112290103/HR0011260656, NASA,
+Amazon Research Awards, and an NEC research
+award.

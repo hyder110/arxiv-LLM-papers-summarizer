@@ -1,0 +1,16 @@
+rectional Transformers for Language Understanding, Pr oceedings of the 2019 Conference of the North    American Chapter of the Association for Computational Ling uistics: Human Language Technologies, 1, 4171–4186, 2019.
+[2] Y. Liu, M. Ott, N. Goyal, J. Du, M. Joshi, D. Chen, O . Levy, M. Lewis, L. Zettlemoyer and V. Stoyanov, Robert a: A Robustly Optimized BERT Pretraining Approach, Proc eedings of the 2019 Conference on Empirical Methods in Natura l Language Processing and the 9th International Joint Co nference on Natural Language Processing, 2019.
+[3] Q. Huang, B. Dai, G. Goyal, Y. Liu, Y. Ganjoo, A. Bapna, H. Kumar, M. Shazeer, Z. Chen, C. Li, Z. Ma, L. Wang, J. Liu, W. H. Qi, M. Tar, Y. Sui, G. K. Kurdzo hev, A. Rudra, J. Zhang, X. Shinji, A. Kar, S. Chaudhary, N. Aghajarian, J. Guo, K. Murphy, P. Sun, Weilin W ang, J. Ainslie, M. D. Hoffman, S. Zan
+dro, Y. Chen, J. Qin, W. Wang and X. Liu, LLaMa: Efficient  Large-Scale Clustering of Sparse Embeddings, Proceedings of the  37th International Conference on Machine Le arning, 1, 442-453, 2020.
+[4] A. Radford, J. Wu, R. Child, D. Luan, D. Amodei and I. S utskever, Language Models are Few-Shot Learners, OpenAI Pr eprint, 2021.
+[5] T. Usuyama, Q. Ke, K. Qin and S. Rennie, Generalized Pre training of Graph Neural Networks with Preclus t, Advances in Neural Information Processing Systems, 2021.
+[6] Y. Zhu, M. Alam, G. Gao, H. Zhang, F. Li, P. Sun, W. Gao, K. Murphy and J. Han, EGES: An Edge Representation Learning Framework for Knowledge Graph Completion, Pro ceedings of the Web Conference 2021, 2021.
+[7] W. Hu, C. F. Chang, P. S. Yu and M. S. Chen, Harnessing L arge-scale Unannotated Data for Learning Entity Typing Embed dings, Proceedings of the 2021 SIAM International Confe rence on Data Mining, 2021.
+[8] M. A. Alaman, M. Acosta, F. V. Harmelen, Neurosymbolic A rtificial Intelligence,M. Springer International Publishing, 254-267, (2022).
+[9] R. Socher, C. C. Lin, C. Manning and A. Y. Ng, Parsi ng Natural Scenes and Natural Language with Recursive Mod els, 2009.
+[10] P. Paulheim, Knowledge Graph Refinement: A Survey of Appr oaches and Evaluation Methods, Semantic Web, 8(3):379–4 18, 2017.
+[11] Q. Wang, Z. Mao, B. Wang and L. Guo, Knowledge Graph Em bedding: A Survey of Approaches and Applications, IEEE T ransactions on Knowledge and Data Engineering, 29(12):272 4–2743, 2017.
+[12] M. Gesese, J. Meilicke and H. Stuckenschmidt, A Survey o f Embedding Approaches for Knowledge Graphs: Taxonomy, M ethodologies, and Challenges, Knowledge-Based Systems, 205:106425, 2020.
+[13] A. Bordes, N. Usunier, A. Garcia-Duran, J. Weston and O. Y. Bengio, Translating Embeddings for Modeling Multi-re lation Records, Proceedings of the 26th Annual Conference on Neural Information Processing Systems, 2013.
+[14] M. Nickel, V. Tresp and H. Kriegel, Factorizing YAGO, arX iv preprint arXiv:1302.3296, 2013.
+[15] T. Dettmers, P. Minervini, P. Stenetorp and S. Riedel, Co nvolutional 2D Knowledge Graph Embeddings, Proceedings of the 

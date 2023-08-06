@@ -1,0 +1,26 @@
+Summary:
+This paper introduces TaPA, a task planning agent for embodied tasks, which generates executable action plans according to instructions and the existing objects in the scene. The agent leverages large language models (LLMs) and visual perception models to align semantic knowledge with physical constraints. A multimodal dataset is constructed using GPT-3.5 to generate a large number of instructions and corresponding action plans. During inference, multi-view RGB images are collected to identify objects in the scene. Experimental results demonstrate that TaPA achieves a higher success rate compared to other LLMs and LMMs.
+
+Bullet Points:
+1. TaPA is a task planning agent for embodied tasks that generates executable action plans.
+2. The agent aligns large language models (LLMs) with visual perception models to consider physical constraints.
+3. A multimodal dataset is constructed using GPT-3.5 to generate instructions and action plans.
+4. Multi-view RGB images are collected during inference to identify objects in the scene.
+5. TaPA achieves a higher success rate compared to other LLMs and LMMs.
+6. The dataset contains complex tasks with longer steps.
+7. TaPA outperforms state-of-the-art models in the plausibility of generated action plans.
+8. Embodied task planning is important for robots to complete complex human instructions in diverse environments.
+9. LLMs lack knowledge about the realistic world and often generate infeasible action sequences.
+10. TaPA shows the practicality of embodied task planning in general and complex environments.
+
+Keywords:
+1. Embodied task planning
+2. Large language models
+3. Multi-view RGB images
+4. Multimodal dataset
+5. Executable action plans
+6. Physical scene constraint
+7. Grounded plan tuning
+8. Plausibility of action plans
+9. Complex human instructions
+10. Realistic indoor deployment scenarios.

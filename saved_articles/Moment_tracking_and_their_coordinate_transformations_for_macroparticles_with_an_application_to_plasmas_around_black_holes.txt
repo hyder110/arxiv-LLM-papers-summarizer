@@ -1,0 +1,2762 @@
+arXiv:2308.01276v1  [physics.plasm-ph]  2 Aug 2023Moment tracking and their coordinate transformations for m acroparticles with an application to
+plasmas around black holes
+Alexander Warwick and Jonathan Gratus
+Physics Department, Lancaster University, Lancaster, LA1 4YB, UK. and
+The Cockcroft Institute, Daresbury Laboratory, Daresbury , WA4 4AD, UK.
+(*j.gratus@lancaster.ac.uk, orcid:0000-0003-1597-6084 )
+(*a.warwick@lancaster.ac.uk, orcid:0009-0007-7300-9646 )
+(Dated: August 3, 2023)
+Particle-in-cell codes usually represent large groups of p articles as a single macroparticle. These codes are
+computationally efﬁcient but lose information about the in ternal structure of the macroparticle. To improve
+the accuracy of these codes, this work presents a method in wh ich, as well as tracking the macroparticle, the
+moments of the macroparticle are also tracked. Although the equations needed to track these moments are
+known, the coordinate transformations for moments where th e space and time coordinates are mixed cannot be
+calculated using the standard method for representing mome nts. These coordinate transformations are important
+in astrophysical plasma, where there is no preferred coordi nate system. This work uses the language of Schwartz
+distributions to calculate the coordinate transformation s of moments. Both the moment tracking and coordinate
+transformation equations are tested by modelling the motio n of uncharged particles in a circular orbit around
+a black hole in both Schwarzschild and Kruskal-Szekeres coo rdinates. Numerical testing shows that the error
+in tracking moments is small, and scales quadratically. Thi s error can be improved by including higher order
+moments. By choosing an appropriate method for using these m oments to deposit the charge back onto the grid,
+a full particle-in-cell code can be developed.
+I. INTRODUCTION
+In numerical simulations involving the dynamics of a
+large number of particles, for example, in a plasma, it is
+impossible to track the dynamics of every ion and electron.
+In particle-in-cell (PIC) codes, the plasma is modelled
+using macroparticles, where each simulated macroparticle
+represents a large number of actual particles. To improve
+the accuracy of a PIC code, there are two options: use more
+macroparticles, or give each macroparticle more informati on.
+A macroparticle typically has only a position and a velocity .
+This paper presents a different method, in which a macropar-
+ticle represents the moments of a group of particles [1–5]
+(ﬁgure 1). Such a model may be more efﬁcient in cases where
+a large number of particles can be accurately modelled by
+only a small number of macroparticles and their moments,
+and the electromagnetic ﬁeld does not vary much across the
+extent of the macroparticle. Additionally, in cases where
+the dominating interactive force can be calculated from the
+Liénard-Wiechert potential, the electromagnetic ﬁelds ca n be
+calculated directly from the moments of the macroparticle [ 6].
+There are several existing methods for tracking moments:
+the code MERLIN implements a transition matrix approach
+for particle accelerators [4] and a continuous model has bee n
+developed through a Hamiltonian approach [5]. Moment
+tracking can also be done continuously by differentiating t he
+deﬁnition of a moment and using the Vlasov equation [3, 7].
+In plasma physics, the concept of moment tracking is often
+used to describe hybrid-Vlasov approaches, where individu al
+species of the plasma may be modelled through their bulk
+properties [8–10]. Moments in the context of hybrid-Vlasov
+approaches are constructed by integrating over velocity sp ace
+only and can be interpreted as physical quantities such as
+temperature and pressure. In this work, moments shall beFIG. 1: Tracking several individual particles compared to a
+macroparticle with moments. The 5 particles (the black line s)
+in the left diagram are replaced by a single macroparticle (t he
+orange line) in the right diagram. By tracking the moments,
+quantities such as the difference between the centre of char ge
+of the 5 particles and the position of the macroparticle (the
+ﬁrst order moment, represented by the horizontal blue
+arrows), and the variance in position of the particles (the
+second order moment, represented by the green error bars)
+can be tracked.
+constructed by integrating over both velocity and position
+space, giving related, but different quantities. The trans port
+of moments is also used in wider ﬁelds where the Liouville
+equation holds, such as particle nucleation [11], crystal
+growth [12], and nuclear collisions [13].
+To perfectly track the moments, an inﬁnite set of moments
+is required. This is because, as is shown in this paper, highe r
+order moments generate lower order moments. Tracking
+more moments is more computationally expensive, as these
+moments come with additional computational work (both
+more differential equations to solve each time step and
+more memory usage per macroparticle). This increased
+computational work is balanced by reducing the total number
+of macroparticles in the simulation. At the quadrupole2
+(second) order there are 33 equations to solve each time step
+(21 quadrupole moments, 6 dipole (ﬁrst order) moments, 3
+components of velocity and 3 components of position). This
+expands to 215 equations if the expansion is carried out to th e
+hexadecapole level (fourth order) (table I). To make moment
+tracking computationally feasible, a truncation is required.
+This truncation is the highest order of moments considered,
+above which the contribution from higher order moments
+are neglected. Care must be taken to ensure the truncation
+is of as low an order as possible to minimise computational
+load, whilst also ensuring that neglecting the higher order
+moments does not signiﬁcantly impact accuracy. This articl e
+calculates all quantities to quadrupole order, although al l
+results presented can be generalised to arbitrary order.
+Recently there has been a focus on using PIC codes to
+model the dynamics of plasma around black holes [14–17].
+Such plasmas may be important in active galactic nuclei,
+pulsars and gamma-ray bursts [17–19]. Ref. [20] contains a
+full review of these studies. In such systems, there is not a
+preferred choice of coordinate system i.e. when modelling
+a static uncharged black hole, there is a choice to work in
+Schwarzschild coordinates, or Kruskal-Szekeres coordina tes,
+amongst others. Because there is a choice in coordinate
+systems, it is useful to be able to transform between differe nt
+coordinate systems, especially where the time and space
+coordinates are mixed together (such as the coordinate
+transform between Kruskal-Szekeres and Schwarzschild
+coordinates, shown in ﬁgure 2). Coordinate transformations
+that mix space and time coordinates also appear in particle
+accelerators. When simulating the motion of a linearly acce l-
+erating bunch in a particle accelerator, the transformatio n into
+the instantaneous rest frame of an accelerating bunch mixes
+space and time coordinates (this transformation is similar
+to the one shown in ﬁgure 2), so the spacetime coordinate
+transformations presented in this work are necessary.
+The moments of a macroparticle depend on the choice of
+time slicing (ﬁgure 3). In all coordinate systems considered
+in this article, the global coordinate time will be used as
+the time slicing. This time slicing is a foliation given by
+spatial hypersurfaces of constant coordinate time. In gene ral,
+different coordinate systems will give different time slic ings.
+This means when transforming between coordinate systems
+that mix temporal and spatial coordinates, for example,
+transforming between Schwarzschild and Kruskal-Szekeres
+coordinates, the time slicing will change (ﬁgure 2). This
+time slicing may be the global Killing timelike vector in
+relativistic scenarios, or the lab time in particle acceler ators.
+Another possible time slicing is the backward light cone of a n
+observer, which is the frame used when making astrophysical
+observations. A choice of time slicing commonly used in
+modelling plasma around black holes is found in the ﬁducial
+observer (FIDO) scheme, where the time slicing is given
+relative to local moving observers [21, 22]. A fourth possib le
+time slicing is to take all the vectors orthogonal to the velo city
+of the world line. By using geodesics to propagate these to
+the world line, these can be used for the Dixon representatio n
+t=constant
+T=constantr=constant
+t=constantEvent horizon
+RT
+FIG. 2: A spacetime diagram in Kruskal-Szekeres
+coordinates of a particle travelling at a constant rin
+Schwarzschild coordinates (the orange hyperbola). The
+diagonal blue lines are time slicings in Schwarzschild
+coordinates (constant t), and the horizontal purple lines are
+time slicings in Kruskal-Szekeres coordinates (constant T).
+The dashed black line is the event horizon. The moments in a
+given coordinate system have no components in the direction
+of the time slicing in that coordinate system.
+FIG. 3: An example of two different time slicings. When
+taking moments, the time slicing is the hypersurface the
+moments are integrated over. By using a different time
+slicing (e.g. either the horizontal dashed purple lines tor the
+curved dashed blue lines ˆt), the distance between the centre
+of the macroparticle (the orange line) and the nearby partic les
+the macroparticle is representing (the green contours) is
+different, so different moments will be found.
+of a multipole [23].
+One of the key results of this article is the formula for the
+coordinate transformation of moments between coordinate
+systems that mix space and time coordinates. The standard
+integral representation of moments cannot transform mo-
+ments between coordinate systems where the time slicing
+changes. Simply transforming the moments into the new
+coordinate system does not take into account the change in
+time slicing. If one were to use the standard representation
+of moments, an ‘effective’ coordinate transformation can
+be performed. This is the process of reconstructing the3
+Order of
+moments trackedInformation knownNumber of
+differential equations
+to solveSize relative to
+a standard macro-particle
+Monopole (zeroth order) Xµ,Uµ6 1
+Dipole (ﬁrst order) Xµ,Uµ,Va12 2
+Quadrupole (second order) Xµ,Uµ,Va,Vab33 5.5
+Octopole (third order) Xµ,Uµ,Va,Vab,Vabc89 14.83
+Hexadecapole (fourth order) Xµ,Uµ,Va,Vab,Vabc,Vabcd215 35.83
+TABLE I: The amount of information in a macroparticle that al so tracks moments compared to a standard macroparticle. Thi s
+increased information results in more memory usage and a lar ger number of differential equations to solve.
+distribution function from the moments, transforming the
+distribution function into the new coordinate system and
+retaking the moments in the new coordinate system. In
+order to ﬁnd the coordinate transformations that change the
+time slicing, a different representation of moments must be
+used, in terms of Schwartz distributions [24, 25]. In this
+representation of moments, the moments are transformed int o
+the new coordinate system, then projected onto the new time
+slicing to ﬁnd the full coordinate transformation.
+This article calculates the moment tracking equations and
+coordinate transformations for arbitrary coordinate syst ems.
+The structure of this article is as follows: Section IIintroduces
+the Vlasov equation, which describes the dynamics of colli-
+sionless charged particles. Section IIIintroduces moments,
+and the existing methods for modelling them. Section IV
+introduces a distributional representation of moments in
+terms of derivatives of Dirac delta functions and uses this
+representation to show the time evolution of moments. Sec-
+tionVﬁnds the coordinate transformations for the moments,
+which is the main result of this work. Section VIshows a
+computational model of uncharged particles circling a blac k
+hole to validate the theory at a proof-of-concept level. Las tly,
+section VIIuses the language of differential geometry and
+de Rham currents to present a geometric interpretation of
+the moment differential equations and ﬁnds the coordinate
+transformations of the moments through this language.
+A. Notation of indices
+To study the dynamics of plasma, calculations are per-
+formed in 7 dimensional phase space. Because of this, severa l
+different summation conventions for indices are needed: su m-
+mations over just space, just velocity, space and velocity, time
+and space but not velocity, and space, time and velocity. In o r-
+der to account for all these different summations, this arti cle
+uses the convention that Latin indices a,b,crepresent sum-
+mations over 0 ,..., 6; Greek indices µ,ν,ρrepresent summa-
+tions from 0 ,1,2,3; and an underlined index means there is no
+summation over the 0 index, i.e. a=1,..., 6 and µ=1,2,3.
+The coordinates used are (t,xµ,uµ), where tis the global time,xµis a space coordinate, and uµis a spatial component of the
+4-velocity. The notation (ξa)will be used to represent a gen-
+eral coordinate, such that
+ξ0=t,ξµ=xµ,ξµ+3=uµ(1)
+i.e.ξ4=u1. Dimensions are used such that c=G=1. The
+notation f|pwill be used to represent the evaluation of a func-
+tion at a point, i.e. f|pisfevaluated at p. After their intro-
+duction, the arguments of functions will not be written, unl ess
+needed for emphasis.
+II. THE VLASOV EQUATION
+A. 7 Dimensional phase space
+To calculated the complex dynamics of plasmas, calcula-
+tions are performed in 7 dimensional phase space. These di-
+mensions are time, 3 spatial dimensions and 3 proper velocit y
+(4-velocity) dimensions, where tis the global coordinate time .
+As previously stated, these will be represented in coordina tes
+as(t,xµ,uµ). The time component of 4-velocity, u0(t,xµ,uµ),
+is a function in phase space, deﬁned as the positive solution to
+the quadratic equation
+gµνuµuν=−1 (2)
+where g(t,xµ)is the metric. In the speciﬁc example of
+Minkowski spacetime with Cartesian coordinates, u0is the
+Lorentz factor in special relativity, given by
+u0=/parenleftBig
+1+3
+∑
+µ=1uµuµ/parenrightBig1
+2. (3)
+B. The Vlasov equation
+Consider the dynamics of a group of charged particles,
+each with charge qand mass mwith distribution function
+f(t,xµ,uµ). By assuming these particles are collisionless,
+they can be modelled by the Vlasov equation. To ﬁnd the4
+Vlasov equation, consider an arbitrary spacetime with met-
+ricgµν(t,xµ), Christoffel symbols Γµ
+νρ(t,xµ)and electromag-
+netic 2-form Fµν(t,xµ). Let C(t)be a world line parame-
+terised by t, the same parameter as the global time ξ0. Let
+η(t)be the prolongation of C(t), that is, a curve such that
+η0(t)=C0(t)=t,ηµ(t)=Cµ(t),ηµ+3(t)=dCµ(t)
+dt.
+(4)
+For a given value of t,η(t)is a point in 7-dimensional phase
+space. In terms of coordinate functions (t,xµ,uµ), this can be
+represented as
+η0(t)=C0(t)=t,ηµ(t)=Cµ(t)=xµ|η(t),
+ηµ+3=dCµ(t)
+dt=uµ
+u0/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+η(t).(5)
+In general, η(t)is a curve in position-velocity phase space.
+In this work η(t)will be the curve moments are taken around.
+In particle accelerators, the ideal orbit is a natural choic e for
+η(t). This choice does not exist in plasmas; in these cases
+choices for η(t)could be the position of the macroparticle,
+or a trajectory based on the initial centre of charge of the
+macroparticle.
+The Vlasov vector ﬁeld, W, is the integral curves of η, de-
+ﬁned as
+Wa|η(t)=d
+dtηa(t). (6)
+Finding these derivatives gives 7 ODEs,
+W0|η=dC0(t)
+dt/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+η=1,Wµ|η=dCµ(t)
+dt=uµ
+u0/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+η,
+Wµ+3|η=d2Cµ(t)
+dt2.(7)
+The acceleration can be found using the pregeodesic equatio n
+combined with the (pre-)Lorentz force,
+d2Cµ(t)
+dt2/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+η+/parenleftbigg
+Γµ
+νρdCν(t)
+dtdCρ(t)
+dt/parenrightbigg/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+η
+=/parenleftbigg
+κdCµ(t)
+dt/parenrightbigg/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+η+/parenleftbiggq
+m1
+u0FνρgµνdCρ(t)
+dt/parenrightbigg/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+η(8)
+where the 1 /u0term in the Lorentz force arises when coordi-
+nate time time is the parameterisation, rather than proper t ime,
+andκ(t)arises from the parameterisation. κ(t)can be found
+by noting C0=t, hence d2C0/dt2=0, solving this gives
+κ=Γµ
+νρdCν(t)
+dtdCρ(t)
+dt−q
+m1
+u0FνρgµνdCρ(t)
+dt. (9)
+From this, solving equation ( 7) for all ηgives
+W0=1,Wµ=uµ
+u0,
+Wµ+3=−Γµ
+νρuν
+u0uρ
+u0+q
+m1
+u0Fνρgµνuρ
+u0
++Γ0
+νρuν
+u0uρ
+u0uµ
+u0−q
+m1
+u0Fνρg0νuρ
+u0uµ
+u0.(10)The Vlasov equation describes the motion of the whole parti-
+cle distribution,
+Wa∂af=0. (11)
+where ∂a=∂/∂ξa.
+This article will work exclusively in coordinate time
+frames : these are frames where the parameterisation of ηis
+the same as the time coordinate. In any coordinate time frame ,
+the Vlasov vector ﬁeld has the form of equation ( 10). This for-
+mulation of the Vlasov vector ﬁeld is distinct from the 3 +1
+formalism used in other approaches for simulating plasma in
+general relativity [21, 22], although the moment tracking a nd
+coordinate transformations presented in this work can be us ed
+in both formalisms.
+III. MOMENTS
+The collective properties of a group of charged particles
+with distribution function fcan be modelled by their mo-
+ments. The zeroth order moment, known as the monopole,
+is deﬁned as
+q=/integraldisplay
+f(t,x,u)d3x d3u (12)
+and corresponds to the total charge of the macroparticle. Th e
+ﬁrst order moment, known as the dipole moment, is given by
+Vµ(t)=/integraldisplay/parenleftBig
+xµ−ηµ(t)/parenrightBig
+f(t,x,u)d3x d3u,
+Vµ+3(t)=/integraldisplay/parenleftBig
+uµ−dCµ
+dt(t)/parenrightBig
+f(t,x,u)d3x d3u.(13)
+These can be combined into a single equation,
+Va(t)=/integraldisplay/parenleftBig
+ξa−ηa(t)/parenrightBig
+f(t,x,u)d3x d3u (14)
+where ξaandηaare deﬁned by ( 1) and ( 5) respectively. The
+dipole moment corresponds to the deviation of the centre of
+charge from the centre of the macroparticle. If the initial
+centre of the macroparticle is chosen such that the dipole
+moments are initially zero, then whilst the centre of the
+macroparticle will obey the Lorentz force equation, the cen tre
+of charge will not [26]. Hence, the two paths will diverge.
+The dipole moment represents the difference between these.
+This formalism can be generalized to the nth order moment,
+Va1,...an(t)=1
+n!/integraldisplay/parenleftbigg/parenleftBig
+ξa1−ηa1(t)/parenrightBig
+.../parenleftBig
+ξan−ηan(t)/parenrightBig/parenrightbigg
+×f(t,x,u)d3x d3u(15)
+where Vis totally symmetric and n! is required for counting
+due to the symmetry. Note the sums are only over space and
+velocity coordinates, and there are no corresponding ‘time ’
+moments. The moments in this work are integrated over both5
+position and momentum space, in contrast to the conventiona l
+moment equations for plasmas, which are just integrated ove r
+velocity space [8]. The naming convention for multipoles
+scales as 2k, so the zeroth order moment is the monopole, then
+the dipole, quadrupole, octopole etc. (table I). The quadrupole
+moment corresponds to the variance of the macroparticle; th e
+octopole moment corresponds to the skew of the macroparti-
+cle, and the hexadecapole moment corresponds to the kurtosi s
+of the macroparticle.
+A. Dynamics of the moments
+When parameterising with a global time, the dynamics of
+the moments can be calculated by differentiating ( 15) with
+respect to time [1, 2],
+dVa1,...an
+dt=1
+n!d
+dt/integraldisplay
+(ξa1−ηa1)...(ξan−ηan)f d3xd3u.
+(16)
+By using the Vlasov equation and Taylor expanding around
+η, the dynamics can be found. As an example, the differential
+equation for the dipole is
+dVa
+dt=∞
+∑
+m=11
+m!Vb1...bm∂b1...∂bmWa|η. (17)
+This differential equation is an inﬁnite series of higher or der
+moments, and a choice must be made to truncate this series
+at some point. Truncating at quadrupole (second) order, the
+differential equations for the dipole and quadrupole are gi ven
+by
+dVa
+dt=Vb∂bWa|η+1
+2Vbc∂b∂cWa|η,
+dVab
+dt=Vcb∂cWa|η+Vac∂cWb|η.(18)
+The dipole generated from the quadrupole can clearly be seen .
+All moment tracking methods suffer from this error - higher
+order moments generate lower order moments. The impor-
+tance of the choice of truncation on the accuracy of the model
+is discussed in section VI.
+B. Coordinate transformations of moments where the time
+slicing is preserved
+As moments are deﬁned through integrals, they are highly
+coordinate dependent objects. For coordinate transformat ions
+where the time coordinate is unchanged, this deﬁnition of th e
+moments can be used to ﬁnd the coordinate transformation.
+Consider a new coordinate system denoted by hatted coor-
+dinates(ˆt,ˆξˆa)where ˆt=t(since the time coordinate stays
+the same) and use hatted indices to represent a summation in
+the new coordinate system. The distribution function ftrans-
+forms as a scalar density [27] of weight 1, i.e.
+ˆf=fd7ξ
+d7ˆξ(19)where a hatted variable represents that variable in the new c o-
+ordinate system, and d7ξ/d7ˆξis the Jacobian. By expanding
+ξin terms ofˆξaround ˆη,
+ξa=∞
+∑
+n=01
+n!/parenleftBigˆξb1−ˆηb1/parenrightBig
+.../parenleftBigˆξbn−ˆηbn/parenrightBig∂
+∂ˆξb1...∂
+∂ˆξbnξa|η,
+(20)
+and noting ˆη(ˆt)=η(t), the coordinate transformations can be
+found. These are inﬁnite sums in terms of all higher order
+moments. Truncating the expansion at quadrupole order, the
+coordinate transformations up to the quadrupole order for t he
+dipole and quadrupole are given by
+ˆVa=Vb∂ˆξa
+∂ξb+1
+2Vbc∂2ˆξa
+∂ξb∂ξc
+ˆVab=Vcd∂ˆξa
+∂ξc∂ˆξb
+∂ξd.(21)
+For coordinate transformations that mix the space and time
+coordinates, this method for coordinate transformations w ill
+not work. The difﬁculty in transforming coordinates using t his
+method arises from the important dependence on the choice
+of time. In order to ﬁnd the moments, the coordinate systems
+deﬁnes a time slicing , which is a hypersurface of constant t
+(ﬁgure 3). The integrals in the deﬁnition for the moments in
+equation ( 15) are over these hypersurfaces. When perform-
+ing a coordinate transformation that mixes the time and spac e
+coordinates, then the time slicing will also change. Chang-
+ing the time slicing will give different moments. The integr al
+representation of moments in equation ( 15) cannot be trans-
+formed between coordinate systems that mix time and space
+coordinates. In this article we present a new representatio n
+of moments using Schwartz distributions. These distributi ons
+are introduced in section IV, and the use of this language to
+ﬁnd the coordinate transformations for the moments is pre-
+sented in section V.
+IV . SCHWARTZ DISTRIBUTIONAL MULTIPOLES AND
+THEIR TIME EVOLUTION
+A. Ellis multipoles
+Rather than deﬁning moments explicitly through spatial in-
+tegrals (equation ( 15)), an alternative representation of mo-
+ments is through derivatives of Dirac delta functions. This
+means that rather than modelling a macroparticle as just a
+Dirac delta function and using a shape function to deposit
+charge (the cloud-in-cell approach), the macroparticle is rep-
+resented as a set of derivatives of Dirac delta functions. By
+using the language of the Schwartz distributions presented in
+this section, any coordinate transformation of the moments
+can be calculated, including those mixing space and time co-
+ordinates, which, as previously stated in section III B, cannot
+be done through equation ( 15). By deﬁning a moment through
+the method presented below, there is no dependence on the
+time slicing in the deﬁnition of the moment, and as such, the6
+spacetime coordinate transformation can be found. Represe nt-
+ing a multipole expansion using derivatives of a Dirac delta
+function is known as the Ellis representation of a multipole
+[6, 25, 28]. It may also be known as the Schwartz distribution
+representation of a multipole. In terms of Dirac delta func-
+tions the expansion to the second order (the quadrupole) is
+Ja=1
+2/integraldisplay
+R˙ηaVbc/parenleftBig
+∂b∂cδ(6)(ξ−η)/parenrightBig
+dt
+−/integraldisplay
+Rδa
+bXbc/parenleftBig
+∂cδ(6)(ξ−η)/parenrightBig
+dt
+−/integraldisplay
+R˙ηaVb/parenleftBig
+∂bδ(6)(ξ−η)/parenrightBig
+dt+/integraldisplay
+Rδa
+bXbδ(6)(ξ−η)dt
++/integraldisplay
+R˙ηaqδ(6)(ξ−η)dt(22)
+where
+δ(6)(ξ−η)=δ(ξ1−η1)...δ(ξ6−η6) (23)
+and
+Vbc(t)=/integraldisplay
+(ξb−ηb)(ξc−ηc)f d6ξ,
+Vb(t)=/integraldisplay
+(ξb−ηb)f d6ξ,q=/integraldisplay
+f d6ξ,
+Xab(t)=Vac∂cWb,Xa(t)=Vb∂bWa+1
+2Vbc∂b∂cWa.
+(24)
+where d6ξ=d3xd3u. Note qhas no dependence on time due
+to the conservation of charge.
+The terms Va,Xa,VabandXabare called the components
+of a multipole. As this deﬁnition involves derivatives of Di rac
+delta functions, they are deﬁned by their action on test func -
+tions(φ0,..., φ6)which are the components of a covector, and
+have compact support. Equation ( 22) acting on φagives
+/integraldisplay
+Jaφad7ξ=1
+2/integraldisplay
+R˙ηaVbc/parenleftbig
+∂c∂bφa|η/parenrightbig
+dt
++/integraldisplay
+RXab/parenleftbig
+∂bφa|η/parenrightbig
+dt+/integraldisplay
+R˙ηaVb/parenleftbig
+∂bφa|η/parenrightbig
+dt
++/integraldisplay
+RXaφa|ηdt+/integraldisplay
+R˙ηaqφa|ηdt.(25)
+The evaluation of the test form at ηwill not be explicitly
+written in future representations of Ja, but is implicitly
+present.
+The components in ( 24) are only over (1,..., 6)(there are
+no terms of the form V0orV01). By writing a multipole
+in this way the components of a multipole are unique. The
+components can be extracted by acting Jaon speciﬁc test
+forms. The details of these test forms and how they isolate
+the components of Jaare outlined in appendix A 1. A
+discussion on why this means they are unique can be found in
+ref. [25].B. Relating the components of Ellis multipoles and moments
+To show the components of ( 25) are the moments of f
+(equation ( 24)), the distribution function fissqueezed . This
+is the process of representing a function using a Dirac delta
+function and the derivative of Dirac delta functions (ﬁgure
+4). The moments of fare the coefﬁcients of this expansion.
+By doing this, it can be shown that the moments of the
+distribution function fnaturally appear in the components of
+the Ellis representation of a multipole.
+Squeezing a distribution can be shown using the language
+of differential geometry, the process of which can be found i n
+appendix A 2.
+FIG. 4: By squeezing the width of a function down whilst
+increasing its height, such that its area stays the same, a
+function can be represented by a series of derivatives of Dir ac
+delta functions. The coefﬁcients of this series are the
+moments of the function.
+C. Time evolution of moments
+The evolution of the moments deﬁned by ( 22) are governed
+by two conditions: the conservation of charge, described by
+the equation
+∂aJa=0, (26)
+and the Vlasov equation,
+JaWb−JbWa=0. (27)
+The combination of the equations ( 26) and ( 27) are called
+thetransport equations , and are used to ﬁnd the evolution of
+the moments in the Ellis representation. The transport equa -
+tions can also be deﬁned by their actions on test forms λand
+αab,
+/integraldisplay
+Ja∂aλdt=0,/integraldisplay
+JaWbαabdt=0 (28)
+where αabis antisymmetric, and both λandαabhave compact
+support. These two conditions give
+dVab
+dt=Xab+Xba,dVa
+dt=Xa,dq
+dt=0,
+Xab=Vac∂cWb,Xa=Vb∂bWa+1
+2Vbc∂b∂cWa.(29)7
+Equation ( 18) can be found as a trivial corollary of this, so
+this method can also be used to ﬁnd the differential equation s
+for the moments. These differential equations are the same a s
+directly differentiating ( 15).
+Proof. The proof of this is in appendix A 3.
+Whilst both methods achieve the same result, there is a
+different philosophy to each approach. The method presente d
+in section III A gives an inﬁnite Taylor expansion, and picks
+the truncation point at the end of the method. Alternatively ,
+the Ellis representation makes the choice of truncation whe n
+ﬁrst performing the multipole expansion to a speciﬁc order.
+This order of expansion is then kept throughout. Whilst this
+work only carries out this expansion to quadrupole order, it is
+trivial to extend this result to higher orders.
+V . COORDINATE TRANSFORMATIONS OF
+MULTIPOLES WHERE THE TIME SLICING CHANGES
+Having introduced the Schwartz distributional multipole w e
+are now in a position to calculate the coordinate transforma -
+tions where the time slicing changes. Consider a new coordi-
+nate system denoted by hatted coordinates (ˆt,ˆξˆa), where the
+time coordinate is changed, and use hatted indices to repres ent
+a summation in the new coordinate system. To ﬁnd the trans-
+formation rules of a multipole, it is assumed Jatransforms
+as a density, i.e.
+ˆJb=Ja∂ˆξb
+∂ξad7ξ
+d7ˆξ(30)
+such that
+/integraldisplay
+Jaφad7ξ=/integraldisplay
+ˆJaˆφad7ˆξ (31)
+is an invariant quantity.
+Since ˙ηaare functions on a world line, they transform as
+˙ˆηa=∂ˆξa
+∂ξbdˆt
+dt˙ηb(32)
+where
+˙ˆηa(ˆt)=dˆηa(ˆt)
+dˆt. (33)
+Recall φaand∂aare tensorial so the transformation rules
+for these are
+ˆφa=∂ξa
+∂ˆξbφb,∂
+∂ˆξa=∂ξb
+∂ˆξa∂
+∂ξb. (34)
+Note that if summations just run over (1,...6)in the original
+coordinate system, in general the indices in the new coordi-
+nate system will run over (0,...6). Using this, it can be shown
+that using these transformation rules givesUˆbˆc=VdeAˆb
+dAˆc
+e,
+Yˆcˆd=/parenleftbigg
+XabAˆc
+bAˆd
+a+1
+2Vef˙ηa∂a/parenleftBig
+Aˆd
+fAˆc
+e/parenrightBig/parenrightbiggdt
+dˆt,
+Uˆa=VbAˆa
+b+1
+2VbcAˆa
+bc,
+Yˆc=/parenleftBig
+XdAˆc
+d+Vb˙ηa∂a(Aˆc
+b)
++XabAˆc
+ab+1
+2Vde˙ηa∂a/parenleftBig
+Aˆc
+de/parenrightBig/parenrightbiggdt
+dˆt(35)
+where
+Aˆa
+c=∂ˆξa
+∂ξc,Aˆa
+bc=∂2ˆξa
+∂ξb∂ξc(36)
+and a hatted index represents a sum over coordinates in the
+new coordinate system.
+Proof. The proof of this is in appendix A 4.
+Observe that Ua,Uab,YaandYabhave indices ranging over
+(0,..., 6), not just(1,..., 6). Multipoles with components that
+have indices running over (0...6)do not have unique compo-
+nents. As shown in section IV A , for the components of a
+multipole to be unique, the components must only range over
+(1...6). The reason the multipole contains terms of the form
+U0etc. is because it is still adapted to the time slicing tfrom
+the original coordinate system. To adapt the components to
+the new time slicing, and thus ﬁnd the full coordinate trans-
+formation, they are projected onto the new time coordinate ˆt.
+Consider differentiating along a world line,
+∂˙η=˙ηa∂a=∂0+˙ηa∂a. (37)
+By rearranging this for ∂0, these terms are projected onto com-
+ponents along ∂a, and components along the world line,
+∂0=∂˙η−˙ηa∂a. (38)
+Since Uaare functions along a world line,
+∂˙ηUa=dUa
+dt(39)
+with similar relations for Uab,Ya,Yab, and φ|η. By using this
+projection, terms like the U00term get projected into terms in
+ˆVab,ˆXab,ˆVa, and ˆXa.
+Using this projection allows multipoles to be adapted to the
+time slicing ˆtin the new coordinate system, i.e. adapted such
+that the components indices only range over (1...6), giving
+the full coordinate transformation. The new moments are8
+ˆVab=VcdAˆa
+cAˆb
+d−˙ˆηaVcdAˆ0
+cAˆb
+d
+−˙ˆηbVcdAˆa
+cAˆ0
+d+˙ˆηa˙ˆηbVcdAˆ0
+cAˆ0
+d,(40)
+ˆVa=VbAˆa
+b−˙ˆηaVbAˆ0
+b+1
+2VbcAˆa
+bc−1
+2˙ˆηaVbcAˆ0
+bc
+−/parenleftbigg
+XabAˆc
+bAˆ0
+a+1
+2Vef˙ηa∂a/parenleftBig
+Aˆ0
+fAˆc
+e/parenrightBig/parenrightbiggdt
+dˆt
++1
+2¨ˆηaAˆ0
+bAˆ0
+cVbc+1
+2dt
+dˆt˙ˆηa˙ηˆd∂d/parenleftBig
+Aˆ0
+bAˆ0
+c/parenrightBig
+Vbc
++1
+2dt
+dˆt˙ˆηaAˆ0
+bAˆ0
+cdVbc
+dt(41)
+where
+¨ˆηa=d2ˆη(ˆt)
+dˆt2. (42)
+Similar terms exist for XabandXasuch that ( 29) is still satis-
+ﬁed, and are shown in equation ( A67) in appendix A 5. They
+can also be found using ( 24) in the new coordinate system.
+Proof. The proof of this is in appendix A 5.
+Equation ( 40) and equation ( 41) are a new result, and are
+numerically tested in the next section to show their validit y.
+In the case there is no change in time coordinate, Aˆ0
+b=0,
+this reduces to equation ( 21). This work has transformed be-
+tween two coordinate time frames, but can be generalized to
+any frame, not just one where ˙η0=1, with a more general
+projection
+∂0=1
+˙η0∂˙η−˙ηa
+˙η0∂a. (43)
+VI. COMPUTATIONAL V ALIDATION
+To test the accuracy of the moment tracking and coordinate
+transformation equations, a computational model was devel -
+oped. The code tests if the truncation to quadrupole order is
+acceptable, or if a higher order multipole expansion should
+be used for practical cases. The results presented here are a n
+example of a coordinate transformation that mixes time and
+space coordinates, focusing on the particularly challengi ng
+case of black holes. This work is not solely limited to plasma
+around black holes. In particular, the moment tracking can b e
+applied to any plasma.
+To develop the code, the derivatives of the Vlasov equation
+were calculated using the symbolic algebra software MAPLE.
+The simulation itself was written in C++. The model uses the
+forward Euler method to integrate both the particle motion
+and the moment equations. Despite the high numerical error
+associated with this method, it is acceptable for use as a tes t
+to assess the validity of the equations, as the dominating er ror
+is not numerical.In all cases, only uncharged particles will be tracked. The
+analytical results calculated in the previous sections can be ap-
+plied to charged particles. To calculate the inter-macropa rticle
+forces needed for a full PIC code, a method to use the mo-
+ments to deposit the charge from a macroparticle onto the
+grid must be developed. This deposition process is beyond
+the scope of this paper.
+A. Kruskal-Szekeres coordinates
+To validate the model, tests were performed in both
+Schwarzschild and Kruskal-Szekeres coordinates. Coordi-
+nates in Kruskal-Szekeres will be denoted with a capital let -
+ter, e.g. time in Kruskal-Szekeres coordinates is denoted b y
+T. The transformation from Schwarzschild coordinates to
+Kruskal-Szekeres coordinates (shown in ﬁgure 2) is given by
+R=/radicalbiggr
+rs−1 exp/parenleftbiggr
+2rs/parenrightbigg
+cosh/parenleftbiggt
+2rs/parenrightbigg
+, (44)
+T=/radicalbiggr
+rs−1 exp/parenleftbiggr
+2rs/parenrightbigg
+sinh/parenleftbiggt
+2rs/parenrightbigg
+. (45)
+The numerical testing performed in this article uses mo-
+ments over a size that may be considered small on astro-
+physical scales. This is because for numerical simulations
+in Kruskal-Szekeres, it is impossible to run the model with
+large moments, or for large amounts of time. As Ris updated,
+the particle will eventually cross the event horizon (the po int
+T2−R2=1) due to numerical errors from updating the po-
+sition of the particle. This will happen with any numerical
+differential equation solver that overestimates the true v alue.
+This is another reason it is important to transform coordina tes,
+so a full PIC simulation can be performed in Schwarzschild
+coordinates, then transformed to Kruskal-Szekeres at the e nd,
+avoiding these numerical issues.
+B. Computational results
+To test the model, the motion of 200 particles that began
+normally distributed at r=30000 in Schwarzschild coor-
+dinates with Schwarzschild radius rs=3000, and a time
+step size of ∆t=0.01 were modelled. These particles were
+also transformed into Kruskal-Szekeres coordinates. In bo th
+spacetimes, the particles were tracked and the moments take n
+att=10, and the moments were taken at t=0 and the
+moments tracked using the differential equations ( 29).
+The results of this tracking are shown in ﬁgure 5,
+with the moments used to calculate conﬁdence ellipses in
+Schwarzschild spacetime. Figure 5shows two things: ﬁrstly,
+whilst there is some deviation between the moment tracking
+and particle tracking ellipses, neither accurately reﬂect the
+underlying distribution of particles. This is because the d ata
+develops a large skew, as the faster particles orbits get thr own
+radially outwards. This means the particle distribution is no9
+(a)t=0, all ellipses overlap.
+ (b)t=10 showing particles and moments
+tracked in Schwarzschild coordinates.
+(c)t=10 showing the same particles
+transformed to Kruskal-Szekeres
+coordinates, then the moments and
+particles tracked, then transformed back to
+Schwarzschild coordinates.
+FIG. 5: The (r,uφ)phase space portraits in Schwarzschild coordinates for the individual particles, the centre of orbit with the
+path η, and the ellipses used to visualize the actual moments and tr acked moments of these particles. Also shown are the
+ellipses generated from tracking the same particles and the ir moments in Kruskal-Szekeres coordinates, then the momen ts
+coordinate transformed back into Schwarzschild coordinat es. These ellipses show the range that 95% of particles will b e
+within, if the particles are normally distributed. The reas on that 95% of particles are not within the ellipses in 5c and 5 b is
+because the data is no longer normally distributed. Note tha t if just a standard macroparticle was tracked, only the cent re of
+orbit would be known. [Associated dataset available at http ://dx.doi.org/10.5281/zenodo.8082181] (Ref. [29]).
+longer normally distributed, and as such, cannot be modelle d
+accurately with just the ﬁrst and second order moments. To
+improve this, higher order moments will also need to be
+tracked. All models correctly predict the spread in the radi al
+coordinate, such that if the randuφaxes were equally scaled,
+all models would correctly predict a long, horizontally thi n
+ellipse. The second feature is that whilst the data is initia lly
+uncoupled, the velocity and position very quickly develop a
+covariance (a V16moment), coupling the uφandrmotion
+together. In this particular case, this is an expected resul t, as
+particles with a faster magnitude of uφthan the one required
+for a circular orbit are spiraling outwards to a higher radiu s.
+There is a signiﬁcant displacement in the radial coordinate
+in the Kruskal-Szekeres coordinates tracking (ﬁgure 5b).
+This is because in Kruskal-Szekeres coordinates, small err ors
+from the numerical integration will compound, and result
+in the ideal orbit drifting from its expected position. This
+compounding of errors is because Kruskal-Szekeres coor-
+dinates involves exponential functions, so small deviatio ns
+can result in substantial offsets, which cannot be reduced b y
+decreasing step size. This effect is small, and can be avoide d
+by prescribing ηbeforehand, if it is known. If ηis not known
+beforehand it is still not a major issue, as the small offset
+from these numerical factors is likely to be small compared
+to the other effects within a plasma.
+To quantify the error in the model, there are six different er -
+rors that are analyzed: εsp−sm,εsp−kp,εsp−km,εkp−km,εkp−sp,
+andεkp−sm. These errors are deﬁned in table II. The subscript
+sprepresents that particles were tracked, then the moments
+taken and the end of the simulation, all in Schwarzschild
+coordinates. Whilst a subscript km represents moments
+being tracked in Kruskal-Szekeres coordinates. Thesesubscripts are deﬁned pictorially in ﬁgure 6. A hatted V
+in table IIrepresents a coordinate transformation. As an
+example, εsp−smrepresents the difference between tracking
+the group of particles and taking their moments at the end
+(the black ellipse in ﬁgure 5b), compared to tracking the
+moments using equation ( 18) (the blue ellipse in ﬁgure 5b),
+all in Schwarzschild coordinates. These errors assess eith er
+the error in the moment tracking model, the error in the
+coordinate transformations, or the combined error of both.
+These six errors allow both the errors in moment tracking
+and coordinate transformations to be quantiﬁed and measure d
+over time.
+The error εkm−smcould also be calculated, to show the
+error in the coordinate transformations between two differ ent
+of moments that were tracked. The origin of this error would
+not be discernible, as it would be impossible to distinguish
+between errors caused by moment tracking in either coor-
+dinate system, or the error from the coordinate transformat ion.
+To examine the error, another simulation was performed,
+again around a black hole with Schwarzschild radius
+rs=3000, and an ideal circular orbit at r=30000 in
+Schwarzschild coordinates. For these simulations the numb er
+of particles was decreased to 20, and the time step used was
+increased to ∆t=0.1, with 106total iterations. This adjust-
+ment was made to allow the simulation to run for longer, to
+obtain better information about the long term behaviour of
+the model. Note the time step size is in the respective frame,
+sot=10000 in Schwarzschild coordinates corresponds to
+T=1200 in Kruskal-Szekeres coordinates. Figure 7shows
+the three different total errors as functions of time, where the
+particles are normally distributed around the ideal orbit w ith
+variance 10−20in all dimensions.10
+Schwarzschild
+spacetimeKruskal-
+Szekeres
+coordinates
+Vsm Vkm
+Vsp VkpTransform coordinates
+Transport
+particlesTakemomentsTakemomentsTransport
+particles
+TakemomentsTransport
+momentsTransport
+moments
+Takemoments
+εsp−sm
+εkp−sm εsp−kmεkp−km
+εkp−sp
+εsp−kp
+FIG. 6: The model used to test the moment tracking and coordin ate transformation theories. The error in the moment tracki ng
+model is the difference between transporting the moments an d transporting the particles then taking moments. The error in
+coordinate transforming is the difference between transpo rting particles then taking moments in each frame. The combi ned
+error is the difference between transporting the moments in one frame, compared to tracking particle in the other. These errors
+are deﬁned numerically in table II.
+(a) Schwarzschild coordinates.
+(b) Kruskal-Szekeres coordinates. Note both blue and
+pink lines overlap.
+FIG. 7: The total error as a function of time for the different
+kinds of errors the theory can generate. [Associated datase t
+available at http://dx.doi.org/10.5281/zenodo.8082181 ] (Ref.
+[29]).
+The error in all methods is small, although the error
+from the coordinate transformations is more substantial th an
+the error from the moment tracking. It is postulated thatthis increased error is because the higher order moments
+affect the coordinate transformations twice, once during
+the coordinate transformation (during equation ( 35)), and
+once in the projection (during equation ( 38)). This suggests
+that for a moment tracking code that also incorporates a
+coordinate transformation, a higher order of moments will
+be needed. The bumps and discontinuities in the results are
+due to particles passing the macroparticle centre. If a part icle
+is travelling faster than the macroparticle centre, the par ticle
+tracking moments (i.e. Vsp) will decrease, then increase once
+the particle passes the macroparticle centre. The moment
+tracking code will not see this behaviour, and will track the
+moments as always either decreasing or increasing, rather
+than the true mixture of both. These discontinuities are an
+intrinsic part of modelling moments. They can be avoided
+by sorting the particles before the modelling starts, so hig her
+speed particles are ahead of the macroparticle centre, but t his
+is no longer realistic.
+To study the magnitude of the error, rather than just the
+shape, 3 main sources of error can be identiﬁed: ﬂoating poin t
+errors, numerical errors (the error arising from ﬁnite step size
+in numerical integration), and truncation errors (the erro r aris-
+ing from truncating the multipole expansion at second order ).
+These errors will dominate in different ways depending on th e
+size of the total initial moments µ, where
+µ=∑
+a/vextendsingle/vextendsingle/vextendsingleVa|t=0/vextendsingle/vextendsingle/vextendsingle2
++∑
+ab/vextendsingle/vextendsingle/vextendsingleVab|t=0/vextendsingle/vextendsingle/vextendsingle. (46)
+Floating point errors can arise from a sufﬁciently small tim e
+step and small number of iterations in any numerical differ-
+ential equation solver, but in the case of this work they also
+dominate if the moments are very small i.e. µ≈10−15. Nu-
+merical errors arise from the choice of integrator used, and in11
+Error and description of the error
+εsp−sm=/radicalbigg
+∑a/vextendsingle/vextendsingleVa
+sp−Va
+sm/vextendsingle/vextendsingle2+∑ab/vextendsingle/vextendsingle/vextendsingleVab
+sp−Vab
+sm/vextendsingle/vextendsingle/vextendsingle
+The error between tracking particles then taking moments,
+compared to tracking moments, both in Schwarzschild
+coordinates.
+εsp−kp=/radicalbigg
+∑a/vextendsingle/vextendsingle/vextendsingleVa
+sp−ˆVa
+kp/vextendsingle/vextendsingle/vextendsingle2
++∑ab/vextendsingle/vextendsingle/vextendsingleVab
+sp−ˆVab
+kp/vextendsingle/vextendsingle/vextendsingle
+The error between tracking particles and taking moments in
+Kruskal-Szekeres coordinates then transforming these int o
+moments in Schwarzschild coordinates, compared to trackin g
+particles and taking moments in Schwarzschild coordinates .
+εsp−km=/radicalbigg
+∑a/vextendsingle/vextendsingleVa
+sp−ˆVa
+km/vextendsingle/vextendsingle2+∑ab/vextendsingle/vextendsingle/vextendsingleVab
+sp−ˆVab
+km/vextendsingle/vextendsingle/vextendsingle
+The error between tracking moments in Kruskal-Szekeres
+coordinates then transforming these into moments in
+Schwarzschild coordinates, compared to tracking moments i n
+Schwarzschild coordinates.
+εkp−km=/radicalbigg
+∑a/vextendsingle/vextendsingle/vextendsingleVa
+kp−Va
+km/vextendsingle/vextendsingle/vextendsingle2
++∑ab/vextendsingle/vextendsingle/vextendsingleVab
+kp−Vab
+km/vextendsingle/vextendsingle/vextendsingle
+The error between tracking particles then taking moments,
+compared to tracking moments, both in Kruskal-Szekeres
+coordinates.
+εkp−sp=/radicalbigg
+∑a/vextendsingle/vextendsingle/vextendsingleVa
+kp−ˆVa
+sp/vextendsingle/vextendsingle/vextendsingle2
++∑ab/vextendsingle/vextendsingle/vextendsingleVab
+kp−ˆVab
+sp/vextendsingle/vextendsingle/vextendsingle
+The error between tracking particles and taking moments
+in Schwarzschild coordinates then transforming these into
+moments in Kruskal-Szekeres coordinates, compared to
+tracking particles and taking moments in Kruskal-Szekeres
+coordinates.
+εkp−sm=/radicalbigg
+∑a/vextendsingle/vextendsingle/vextendsingleVa
+kp−ˆVa
+sm/vextendsingle/vextendsingle/vextendsingle2
++∑ab/vextendsingle/vextendsingle/vextendsingleVab
+kp−ˆVab
+sm/vextendsingle/vextendsingle/vextendsingle
+The error between tracking moments in Schwarzschild co-
+ordinates then transforming these into moments in Kruskal-
+Szekeres coordinates, compared to tracking moments in
+Kruskal-Szekeres coordinates.
+TABLE II: The types of error the numerical testing generates .
+These errors show the accuracy of both the moment tracking
+model and the coordinate transformations by comparing the
+results to a particle tracking model. Figure 6 shows these
+errors diagrammatically.
+the case of forward Euler, are linear in ∆t. The truncation er-
+rors arise from only running the moment tracking code up to
+quadrupole order. There is an inﬁnite expansion of moments,
+which is truncated to quadrupole order in this paper. Includ ing
+more moments will decrease the total error. At the quadrupol e
+level, the truncation error is quadratic. This means total e rror
+ε(µ)≈µ2. This is veriﬁed in ﬁgure 8. The error is linear in
+the low µregime, where numerical errors dominate, and as µ
+increases, the total error increases at about ε(µ)≈µ1.7. This
+is a combination of the predicted quadratic increase, and th e
+numerical error. This quadratic behaviour suggests that if the
+moments are half the size, the total error will be quartered.
+(a) Schwarzschild coordinates.
+(b) Kruskal-Szekeres coordinates. Note blue and pink
+lines overlap for µkp<10−5.
+FIG. 8: The total error as a function of µ, the initial total
+moment, for the three different kinds of errors considered.
+The gradient of the lines is approximately linear in low µ,
+and approximately 1.7 for larger µ. [Associated dataset
+available at http://dx.doi.org/10.5281/zenodo.8082181 ] (Ref.
+[29]).
+VII. GEOMETRIC INTERPRETATION OF THE
+MULTIPOLE TRANSPORT EQUATIONS
+A. Introducing de Rham current distributions
+In this section we present the transport equations and
+coordinate transformations of multipoles in the language
+of differential geometry and de Rham currents[24, 25]. By
+using this method there is a more obvious split between the
+VaandXabcomponents. This split means it is simpler to
+isolate each term when doing complicated calculations that
+mix the two terms, such as during coordinate transformation s.
+It also means the evolution of the moments can be described
+in a coordinate free way. This is in contrast to working
+directly from equation ( 15), which is highly dependent on the
+coordinate system, in particular the choice of time slicing .
+The Ellis method also requires a coordinate system to deﬁne
+the action on a test form.
+On a manifold Mwith tangent bundle T M the coordinate
+time frame hypersurface Eis deﬁned such that the Z0compo-
+nent of any vector on Mis 1,
+E=/braceleftbig
+Z∈TM|Z0=1/bracerightbig
+. (47)
+The bundle of p-forms is written ΛpEsuch that a speciﬁc12
+p-form (ﬁeld) is denoted as α∈ΓΛpE. A vector ﬁeld is
+denoted as V∈ΓT E.
+A distributional p-form is deﬁned by its action on a test
+(7−p)-form φ∈ΓΛ7−pE, this is a (7−p)-form with com-
+pact support. Given α∈ΓΛpEis a smooth p-form, a regular
+distribution αDis constructed via
+αD[φ]=/integraldisplay
+Eφ∧α. (48)
+The deﬁnition of the wedge product, Lie derivatives, inter-
+nal contractions and exterior derivatives for an arbitrary dis-
+tribution Ψare deﬁned as
+(Ψ1+Ψ2)[φ]=Ψ1[φ]+Ψ2[φ],
+(β∧Ψ)[φ]=Ψ[φ∧β],
+iVΨ[φ]=−(−1)degφΨ[iVφ],dΨ[φ]=−(−1)degφΨ[dφ],
+LVΨ[φ]=−Ψ[LVφ].
+(49)
+where β∈ΓΛqEandV∈ΓT E.
+The order of a p-form distribution is deﬁned as follows. If
+Ψ[λk+1φ]=0 for all φ∈ΓΛqEwith compact support and
+λ∈ΓΛ0Esuch that η∗(λ)=0
+(50)
+where η∗is the pullback, then the order of Ψis at most
+k. Note that a quadrupole (a distribution of order 2) also
+includes the dipole and the monopole terms. Lie derivatives
+and exterior derivatives both increase order by one. Intern al
+contractions do not affect the order of a distribution.
+Given η:R→Eis a closed embedding parameterised by
+t, the de Rham pushforward with respect to ηof a p-form
+α∈ΓΛpRis given by the distribution
+ης(α)[φ]=/integraldisplay
+Rη∗(φ)∧α. (51)
+The degree of the distribution ης(α)is 6+deg(α). SinceR
+is a curve, the degree of αis either 0 or 1, and the degree
+ofης(α)is either 6 or 7. An internal contraction decreases
+the degree by one and an exterior derivative increases the
+degree by one. Lie derivatives do not affect the degree of a
+distribution.
+A distribution Ψof degree 6 is a semi-multipole of order at
+most lif
+Ψ[λldµ]=0 for all λ,µ∈ΓΛ0E
+such that η∗(λ)=η∗(µ)=0.(52)
+The integral curves of the Vlasov vector ﬁeld are tangent to
+the de Rham pushforward, such that
+iWης(α)=ης(id
+dtα). (53)This work concerns the dynamics of a semi-quadrupole,
+which is a semi-multipole Jof order 2 and degree 6. In
+coordinates, this is denoted as
+J=1
+2LaLbης(Vab)−iaLbης(Xabdt)
+−Laης(Va)+iaης(Xadt)+ης(q).(54)
+where Lais the Lie derivative with respect to ∂a, and ia
+is the internal contraction with respect to ∂a. Note in this
+representation of the semi-quadrupole, the XabandVaterm
+are easier to distinguish by the additional internal contra ction,
+as opposed to the Ellis representation (equation ( 22)), in
+which the separation between the terms was less clear.
+The de Rham current representation of a multipole can be
+related to the Ellis representation through the relationsh ip
+J=Jaiad7ξ, (55)
+and conversely
+Ja=J∧dξa. (56)
+InJ, there is no term of the form iaLbLcης(Xabcdt)even
+though this contains two Lie derivatives. Similarly, there is no
+Xabcterm in the Ellis representation. This term is included if
+Jis a full quadrupole, as opposed to a semi-quadrupole. The
+advantage of the coordinate free approach used in this secti on
+is that it can be shown that the Xabcterm vanishes in a coordi-
+nate system adapted to η, and hence Jis a semi-quadrupole
+in this adapted coordinate system. Since the deﬁnition of a
+semi-multipole is coordinate free, Jis a semi-quadrupole in
+every coordinate system. The coordinate free semi-multipo les
+written in this form correspond to the semi-multipoles of re f.
+[25], and the electric multipoles of ref. [24].
+B. The distributional transport equations
+By using the language of differential geometry, a more ge-
+ometric approach to understanding the origin of the transpo rt
+equations can be found. To ﬁnd the dynamics of multipoles
+deﬁned through distributions, the equivalent of equations (26)
+and ( 27) for distributions are used,
+dJ=0,iWJ=0. (57)
+where W=Wa∂a. The dJ=0 condition corresponds to the
+conservation of charge, and the iWJcondition says that the
+ﬂow lines of Jare the integral curves of the Vlasov ﬁeld.
+These equations are the same as equations ( 26) and ( 27), i.e.
+it is equivalent to the Ellis representation.
+Proof. Using equation ( 55)
+dJ=d/parenleftbig
+Jaiad7ξ/parenrightbig
+=d/parenleftbig
+Ja/parenrightbig
+∧iad7ξ+JaLad7ξ
+=∂bJadξbiad7ξ+(0)=∂bJaδb
+ad7ξ
+=∂aJad7ξ. (58)13
+This is zero if and only if ∂aJa=0, so dJ=0 is equivalent
+to (26). For the iWJterm,
+iWJ=iW/parenleftbig
+Jaiad7ξ/parenrightbig
+=JaWbibiad7ξ. (59)
+Since ibiais antisymmetric, we can take the symmetric part of
+JaWb,
+iWJ=/parenleftBig
+JaWb+JbWa/parenrightBig
+ibiad7ξ. (60)
+This is zero if and only if JaWb+JbWa=0, so iWJ=0
+is equivalent to equation ( 27).
+Since the conditions in the geometric approach are the same
+as the Ellis representation, both languages give the same di f-
+ferential equations for the moments.
+C. Coordinate transformations
+Coordinate transformations can also be found using the lan-
+guage of distributions. The coordinate transformations fo r in-
+ternal contractions are given by
+iaα=Aˆb
+aiˆbα=iˆb(Aˆb
+aα) (61)
+and for Lie derivatives the coordinate transformations are
+Laα=Aˆb
+aLˆbα=Lˆb(Aˆb
+aα)−α∧LˆbAˆb
+a. (62)
+Note that similarly to the transformation of ∂a, the indices in
+the transformed coordinate system run from (0...6), whilst
+the original indices only ran from (1...6). From these the
+coordinate transformations for the semi-quadrupole can be
+found. This is equivalent to the coordinate transformation s
+found through the Ellis representation (equation ( 35)).
+Proof. The proof of this is in the appendix A 6.
+As before, the transformed quadrupole is still based on
+the original time slicing. In this case the projections to th e
+new time slicing are based on the internal contraction and Li e
+derivatives along η. The projections are given by
+i0=i˙η−˙ηaia,L0=L˙η−˙ηaLa. (63)
+Pushing these through the distributions, ( 40) and ( 41) are
+found. These coordinate transformations are also the same a s
+the ones found through the Ellis representation.
+Proof. The proof of this is in appendix A 7.
+VIII. CONCLUSION AND DISCUSSION
+This paper found the dynamics of the moments of a
+macroparticle obeying the Vlasov equation (equation ( 18)),
+and the coordinate transformations of the quadrupole
+moments (equations ( 40) and ( 41)). By using the Ellis
+representation or the de Rham current representation ofthe moments, coordinate transformations can be found
+between frames that mix the space and time coordinates. By
+representing a group of particles as a macroparticle and its
+moments, this can be used in PIC codes. These results were
+validated numerically for the case of particles orbiting a b lack
+hole. This was done by transporting particles and moments
+in both Schwarzschild and Kruskal-Szekeres coordinates an d
+comparing results.
+The dynamics of the moments depend on the Vlasov ﬁeld
+and its derivatives. The focus of this paper was on how
+the number of moments taken affects the accuracy of the
+moment tracking. For a full PIC code, the derivatives of the
+Vlasov ﬁeld will also be important. If the electromagnetic o r
+gravitational ﬁelds quickly vary in space (i.e. the higher o rder
+derivatives of the ﬁelds are large), then this will mean more
+moments need to be tracked. The moment tracking model is
+likely to work well in situations where both the distributio n
+of particles represented by a macroparticle can be describe d
+by only a small number of moments, and the variation in
+electromagnetic and gravitational ﬁelds across the volume
+the macroparticle represents is small, such that the Vlasov
+ﬁeld across the extent of the macroparticle can be modelled
+by just the Vlasov ﬁeld and a small number of its derivatives
+at the macroparticle centre. Since numerically calculatin g
+the derivatives of the electromagnetic ﬁeld requires a high
+density grid, the moment tracking method may also work
+in cases where a high resolution grid is already needed,
+such as laser-solid interactions [30, 31]. In such cases, th e
+moment tracking method will be able to model much larger
+macroparticles, with less particles per cell, even if more c ells
+are needed to compensate.
+Another potential application of the moment tracking
+method is to model inter-bunch forces within particle ac-
+celerators. It is possible to calculate the Liénard-Wieche rt
+ﬁelds directly from the moments of a moving quadrupole
+[6]. By using this method the electromagnetic ﬁeld, and its
+derivatives, can be calculated without the need to deposit t he
+charge onto a grid. This is particularly useful for modellin g
+coherent synchrotron radiation in particle accelerators, where
+macroparticles are close together compared to the radius of
+the beam pipe, such that the effects of boundary conditions
+on the electromagnetic ﬁelds can be ignored.
+A natural extension of this work is to a full PIC code.
+With the work presented, it is possible to calculate all the
+dynamics for a single macroparticle in an arbitrary spaceti me
+and external electromagnetic ﬁeld. To convert this into a fu ll
+PIC code, a process that uses the moments to reconstruct the
+distribution function and deposit the charge over multiple grid
+points must be developed. This will allow inter-macroparti cle
+effects to be modelled. One approach for this is to use a
+model function [11, 32]. A model function is a function that
+is assumed to be of a similar shape to the actual distribution of
+particles, then shaped to have to have the required moments.
+This method works well in cases where the distribution of
+particles is similar to a top-hat function i.e. the distribu tion of14
+particles in a plasma. In particle accelerators, the distri bution
+of particles around the ideal orbit is not a top-hat, but rath er
+a Gaussian. The model function depositing method does not
+work well for modelling these. An alternative approach in
+this case is to model the particle distribution function as a
+series of Hermite polynomials [33]. This can be related to
+the moments, to approximate the distribution function usin g
+the moments and Hermite polynomials. It is possible to
+approximate the conventional plasma moments (the pressure
+tensor, the energy ﬂux density etc.) used in magnetohydro-
+dynamics by using the higher order moments to approximate
+the underlying distribution. This is through the same proce ss
+as depositing charge and current onto the grid, and requires
+tracking moments of a higher order than the plasma moment
+e.g. ﬁnding the pressure tensor would need the hexadecapole
+moments to be tracked.
+It may also be possible to add internal dynamics into the
+moment equations. Whilst this has been previously done in
+refs. [34] and [2] for speciﬁc applications of muon cooling
+and space-charge respectively, it may be possible to come
+up with general internal dynamics equations by modifying
+the transport equations (equation ( 18)). This would allow the
+moment tracking method to model intra-bunch effects within
+particle accelerators.
+The applications of the coordinate transformations in
+astrophysical scenarios are wide. A particularly useful ca se is
+the transformation from the global time to the backwards lig ht
+cone frame. This is particularly useful in cases where black
+holes are modelled in the ﬁducial observer (FIDO) frame,
+where the global time coordinate is signiﬁcantly different to
+the backwards light cone frame global time. By doing this
+the difﬁculty of calculating the backwards light cone throu gh
+ray tracing only needs to be done once, rather than each time
+step. This transformation would allow the moments observed
+by the observer a ﬁnite distance away from the black hole.
+There are also applications of the coordinate transforma-
+tion formulae in circular particle accelerators. Results f rom
+accelerators are often presented in Frenet-Serret coordin ates,
+where the parameter is the position along the beamline, rath er
+than time. By ﬁnding either the Vlasov equation in Frenet-Serret coordinates, or ﬁnding the coordinate transformati on
+between Cartesian and Frenet-Serret coordinate systems fo r
+a given beamline, the moment tracking can be applied to
+circular accelerators. Additionally by using the spacetim e
+coordinate transformations presented in this article, the
+coordinate transformation into the frame of an acceleratin g
+bunch can be found (this is a similar transformation to the
+one presented in ﬁgure 3).
+Lastly the use of the Vlasov equation to model dynamics
+may be extended to modelling stress-energy-momentum
+quadrupoles as a source for linearised gravity. In both refs .
+[25] and [23] it was shown that the dynamics of stress-
+energy-momentum quadrupoles contain a number of free
+components, known as constitutive relations . In the case of a
+plasma these constitutive relations may be determined by th e
+Vlasov equation. In this case the dynamics will be governed
+by the divergenceless of the stress-energy-momentum tenso r
+combined with the Vlasov equation.
+ACKNOWLEDGMENTS
+AW would like to thank the Faculty of Science and Tech-
+nology, Lancaster University for their support. JG is grate -
+ful for the support provided by STFC (the Cockcroft Institut e
+ST/V001612/1).
+AUTHOR DECLARATIONS
+A. Conﬂict of interest
+The authors have no conﬂicts to disclose.
+DATA A V AILABILITY STATEMENT
+The data that support the ﬁndings of this
+study are openly available in Zenodo at
+http://dx.doi.org/10.5281/zenodo.8082181 .
+[1]A. Dymnikov and E. Perelshtein, Nucl. Instrum. Methods 148,
+567 (1978).
+[2]P. J. Channell, IEEE Trans. Nucl. Sci. 30, 2607 (1983).
+[3]P. J. Channell, L. M. Healy, and W. P. Lysenko, IEEE Trans.
+Nucl. Sci. 32, 2565 (1985).
+[4]R. B. Appleby, R. J. Barlow, D. Krücker, J. Molson, S. Rowan,
+S. Tygier, H. Raﬁque, N. Walker, and A. Wolski, Comput. Phys.
+Commun. 271, 108204 (2022).
+[5]B. A. Shadwick and J. S. Wurtele, CERN Doc. Serv. (1999).
+[6]J. R. Ellis, J. Math. Phys. 7, 1185 (1966).
+[7]W. Ackermann and T. Weiland, in Proc. ICAP 2006 (Chamonix,
+France, 2006).[8]M. Palmroth, U. Ganse, Y . Pfau-Kempf, M. Battarbee, L. Turc,
+T. Brito, M. Grandin, S. Hoilijoki, A. Sandroos, and S. von
+Alfthan, Living Rev. Comput. Astrophys. 4, 1 (2018).
+[9]R. J. Mason, J. Comput. Phys. 41, 233 (1981).
+[10] A. R. Bell, J. R. Davies, S. Guerin, and H. Ruhl, Plasma Phys.
+Control. Fusion 39, 653 (1997).
+[11] H. M. Hulburt and S. Katz, Chem. Eng. Sci. 19, 555 (1964).
+[12] H. Grubin, T. Govindan, J. Kreskovsky, and M. Stroscio, Soli d-
+State Electron. 36, 1697 (1993).
+[13] M. A. Stroscio, Superlattices Microstruct. 2, 83 (1986).
+[14] B. Cerutti, G. R. Werner, D. A. Uzdensky, and M. C. Begelman,
+ApJ770, 147 (2013).15
+[15] B. Crinquand, Ph.D. thesis, Université Grenoble Alpes [202 0-
+....] (2021).
+[16] B. Crinquand, B. Cerutti, A. Philippov, K. Parfrey, and
+G. Dubus, Phys. Rev. Lett. 124, 145101 (2020).
+[17] K. Parfrey, A. Philippov, and B. Cerutti, Phys. Rev. Lett. 122,
+035101 (2019).
+[18] J. Rosenberg and F. Ebrahimi, Astrophys. J. Lett. 920, L29
+(2021).
+[19] A. A. Philippov and A. Spitkovsky, Astrophys. J. 855, 94
+(2018).
+[20] K. Nishikawa, I. Du¸ tan, C. Köhn, and Y . Mizuno, Living Rev.
+Comput. Astrophys. 7, 1 (2021).
+[21] K. S. Thorne and D. MacDonald, Mon. Not. R. Astron. Soc.
+198, 339 (1982).
+[22] I. Y . Dodin and N. J. Fisch, Phys. Plasmas 17, 112118 (2010).
+[23] J. Gratus and S. Talaganis, Class. Quantum Grav. 40, 085012
+(2023).
+[24] J. Gratus and T. Banaszek, Proc. R. Soc. Math. Phys. Eng. Sci.
+474, 20170652 (2018).
+[25] J. Gratus, P. Pinto, and S. Talaganis, Class. Quantum Grav. 38,
+035011 (2020).
+[26] S. L. Ginzburg, V . F. Dyachenko, Yu. N. Orlov, N. N. Fimin,
+and V . M. Chechetkin, Comput. Math. and Math. Phys. 56, 1611(2016).
+[27] An integral over the unit hyperboloid must contain the measu re
+det(g)/u0. There is a choice of making either fa density of
+weight 1, or to put the measure in the integrands. This articl e
+uses the convention that fis a scalar density of weight 1.
+[28] J. R. Ellis, Math. Proc. Camb. Philos. Soc. 78, 145 (1975).
+[29] A. Warwick and J. Gratus (2023). "Dataset of
+moment coordinate transformations", Zenodo.
+http://dx.doi.org/10.5281/zenodo.8082181.
+[30] C. P. Ridgers, C. S. Brady, R. Duclous, J. G. Kirk, K. Bennett,
+T. D. Arber, and A. R. Bell, Phys. Plasmas 20, 056701 (2013).
+[31] D. Wu, X. T. He, W. Yu, and S. Fritzsche, High Power Laser
+Sci. Eng. 6, e50 (2018/ed).
+[32] V . John, I. Angelov, A. A. Öncül, and D. Thévenin, Chem. Eng.
+Sci.62, 2890 (2007).
+[33] H. Cramér, Princeton Mathematical Series No. 9 (university
+press, Princeton, 1946).
+[34] B. Shadwick, J. Wurtele, A. Sessler, C. Celata, and P. Lee, in
+Proc. 1999 Part. Accel. Conf. Cat No99CH36366 , V ol. 3 (1999)
+pp. 1716–1718 vol.3.
+Appendix A: Proofs
+1. Proof of unique components
+This section shows that by acting an Ellis distribution Jaon speciﬁc test forms, the components of a multipole can be
+extracted. If it is possible to do this, the components of a mu ltipole are unique. The components are isolated using speci ﬁc tests
+forms:
+q(t0)=lim
+ε→01
+ε/integraldisplay
+EJaδ0
+aψ/parenleftbiggt−t0
+ε/parenrightbigg6
+∏
+i=1ψ/parenleftbig
+ξi−ηi/parenrightbig
+d7ξ
+Vb(t0)=lim
+ε→01
+ε/integraldisplay
+EJaδ0
+aψ/parenleftbiggt−t0
+ε/parenrightbigg/parenleftBig
+ξb−ηb/parenrightBig6
+∏
+i=1ψ/parenleftbig
+ξi−ηi/parenrightbig
+d7ξ
+Vbc(t0)=lim
+ε→02
+ε/integraldisplay
+EJaδ0
+aψ/parenleftbiggt−t0
+ε/parenrightbigg/parenleftBig
+ξb−ηb/parenrightBig/parenleftBig
+ξc−ηc/parenrightBig6
+∏
+i=1ψ/parenleftbig
+ξi−ηi/parenrightbig
+d7ξ
+Xb(t0)+q(t0)˙ηb(t0)=lim
+ε→01
+ε/integraldisplay
+EJaδb
+aψ/parenleftbiggt−t0
+ε/parenrightbigg6
+∏
+i=1ψ/parenleftbig
+ξi−ηi/parenrightbig
+d7ξ
+Xbc(t0)+Vb(t0)˙ηc(t0)=lim
+ε→01
+ε/integraldisplay
+EJaδc
+aψ/parenleftbiggt−t0
+ε/parenrightbigg/parenleftBig
+ξb−ηb/parenrightBig6
+∏
+i=1ψ/parenleftbig
+ξi−ηi/parenrightbig
+d7ξ(A1)
+where ψ:R→Ris a test function such that ψ1(0) =1, it is ﬂat about zero and/integraltextψ1(t)dt=1,t0is the point at which the
+moments are evaluated, and E, the coordinate time frame hypersurface, is deﬁned by equat ion (47) in section VII.
+Proof. Only the Vbcterm and Xbc+Vb˙ηcterm will be shown as the other terms follow trivially.
+Consider Jaacting on the Vbcequation of ( A1). The only non-zero derivatives are the ξbandξcterms. There are three
+possibilities, each ξborξccan either not be differentiated, differentiated once, or d ifferentiated twice. If it is not differentiated,
+then the evaluation at ηgives(ξb−ηb)|η=ηb−ηb=0. If it is differentiated exactly once, then ∂a(ξb−ηb)=δb
+a, a Kronecker
+delta. If this is differentiated twice, then the derivative of a Kronecker delta will vanish. Thus the only non zero term w hen acting
+Jaon the Vbcequation of ( A1) is the term where the number of derivatives matches the numb er of ξbterms. In this case this16
+happens when there are exactly two partial derivatives. Thi s gives
+lim
+ε→02
+ε/integraldisplay
+EJaδ0
+aψ/parenleftbiggt−t0
+ε/parenrightbigg/parenleftBig
+ξb−ηb/parenrightBig/parenleftBig
+ξc−ηc/parenrightBig6
+∏
+i=1ψ/parenleftbig
+ξi−ηi/parenrightbig
+d7ξ=lim
+ε→01
+ε/integraldisplay
+R˙η0Vbcψ/parenleftbiggt−t0
+ε/parenrightbigg6
+∏
+i=1ψ(ξi|η−ηi)dt.(A2)
+Noting ξa|η=ηa,˙η0=1,Vbc=Vbc(t)and introducing the substitution t=t0+εt′gives
+lim
+ε→02
+ε/integraldisplay
+EJaδ0
+aψ/parenleftbiggt−t0
+ε/parenrightbigg/parenleftBig
+ξb−ηb/parenrightBig/parenleftBig
+ξc−ηc/parenrightBig6
+∏
+i=1ψ/parenleftbig
+ξi−ηi/parenrightbig
+d7ξ=lim
+ε→0/integraldisplay
+RVbc(t0+εt′)ψ/parenleftbig
+t′/parenrightbig
+(ψ(0))6dt′. (A3)
+Integrating and taking the limit, noting ψ(0)=1 gives
+lim
+ε→02
+ε/integraldisplay
+EJaδ0
+aψ/parenleftbiggt−t0
+ε/parenrightbigg/parenleftBig
+ξb−ηb/parenrightBig/parenleftBig
+ξc−ηc/parenrightBig6
+∏
+i=1ψ/parenleftbig
+ξi−ηi/parenrightbig
+d7ξ=Vbc(t0) (A4)
+as required. In the extension to a higher order multipole, th is still works as the δ0
+aterm isolates only the Vabterm.
+To isolate the Xbc+Vb˙ηcterm of Ja, consider Jaacting on the Xbc+Vb˙ηcequation of ( A1),
+lim
+ε→01
+ε/integraldisplay
+EJaδc
+aψ/parenleftbiggt−t0
+ε/parenrightbigg/parenleftBig
+ξb−ηb/parenrightBig6
+∏
+i=1ψ/parenleftbig
+ξi−ηi/parenrightbig
+d7ξ=lim
+ε→01
+ε/integraldisplay
+R˙ηaVbψ/parenleftbiggt−t0
+ε/parenrightbigg6
+∏
+i=1ψ(ξi|η−ηi)dt
++lim
+ε→01
+ε/integraldisplay
+RXabψ/parenleftbiggt−t0
+ε/parenrightbigg6
+∏
+i=1ψ(ξi|η−ηi)dt.(A5)
+Repeating the previous process gives
+lim
+ε→01
+ε/integraldisplay
+EJaδc
+aψ/parenleftbiggt−t0
+ε/parenrightbigg/parenleftBig
+ξb−ηb/parenrightBig6
+∏
+i=1ψ/parenleftbig
+ξi−ηi/parenrightbig
+d7ξ=Xbc(t0)+Vb(t0)˙ηc(t0). (A6)
+Xabcan be isolated by ﬁnding Vausing the appropriate test form.
+Since the components Va,Vab,XaandXabcan all be extracted using test forms, the components of Jaare unique.
+2. Proof of squeezed forms
+This section shows that the components of the distribution Ja(equation ( 22)) are closely related to the moments of f, deﬁned
+by equation ( 24). Consider a smooth 6-form that describes the ﬂow of particl es in a collisionless plasma,
+θ=f iWd7ξ=f Waiad7ξ=f dξ1...6−f Wadt∧iadξ1...6(A7)
+where∧is the wedge product, iWis an internal contraction with respect to W,iais an internal contraction with respect to ∂a,
+dξ1...6=dξ1∧dξ2∧dξ3∧dξ4∧dξ5∧dξ6(A8)
+andfis a solution to the Vlasov equation. This 6-form obeys the tr ansport equations dθ=0,iWθ=0.
+The one parameter family of smooth 6-forms θεis deﬁned as
+θε|t,ξ=1
+ε6f/parenleftbigg
+t,ξ−η
+ε/parenrightbigg
+dξ1...6/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+(t,ξ)−1
+ε6/parenleftBig
+f(t,ξ−ηε)Wa/parenrightBig
+dt∧iadξ1...6/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+(t,ξ)(A9)
+whereξrefers to the combination of all spatial coordinates.
+By expanding θεabout ε=0,
+φ∧θε=¯Jaφa+O(ε3) (A10)17
+where φis a test form (a form with compact support) φadξa, and
+¯Ja=1
+2/integraldisplay
+R˙ηa¯Vbc/parenleftBig
+∂b∂cδ(6)(ξ−η)/parenrightBig
+dt−/integraldisplay
+Rδa
+b¯Xbc/parenleftBig
+∂cδ(6)(ξ−η)/parenrightBig
+dt−/integraldisplay
+R˙ηa¯Vb/parenleftBig
+∂bδ(6)(ξ−η)/parenrightBig
+dt
++/integraldisplay
+Rδa
+b¯Xbδ(6)(ξ−η)dt+/integraldisplay
+R˙ηaqδ(6)(ξ−η)dt(A11)
+where
+q=/integraldisplay
+Σf(t,¯ξ)d¯ξ1...6,¯Va=ε/integraldisplay
+Σf(t,¯ξ)/parenleftBig
+¯ξa−ηa/parenrightBig
+d¯ξ1...6,¯Vab=ε2/integraldisplay
+Σf(t,¯ξ)/parenleftBig
+¯ξa−ηa/parenrightBig/parenleftBig
+¯ξb−ηb/parenrightBig
+d¯ξ1...6,
+¯Xa=¯Vb(∂bWa)|η+1
+2¯Vbc(∂b∂cWa)|η,¯Xab=¯Vbc(∂cWa)|η.(A12)
+where Σis the spatial part of E. Note ¯Xais inhomogeneous in ε, since Vacontains an εterm whilst Vabcontains an ε2term.
+Proof. Begin by wedging θεagainst a test form φ=φadξa,
+φ∧θε|(t,ξ)=1
+ε6f/parenleftbigg
+t,ξ−η
+ε/parenrightbigg
+φ0dt∧dξ1...6/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+(t,ξ)−1
+ε6f/parenleftbigg
+t,ξ−η
+ε/parenrightbigg
+Waφbdξb∧dt∧iadξ1...6/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+(t,ξ)(A13)
+=1
+ε6f/parenleftbigg
+t,ξ−η
+ε/parenrightbigg
+φ0dt∧dξ1...6/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+(t,ξ)+1
+ε6f/parenleftbigg
+t,ξ−η
+ε/parenrightbigg
+Waφbdt∧dξb∧iadξ1...6/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+(t,ξ)(A14)
+=1
+ε6f/parenleftbigg
+t,ξ−η
+ε/parenrightbigg
+φ0(ξ)dt∧dξ1...6/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+(t,ξ)+1
+ε6f/parenleftbigg
+t,ξ−η
+ε/parenrightbigg
+Waφadt∧dξ1...6/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+(t,ξ). (A15)
+Making the substitution ¯ξ=(ξ−η)/ε, and making the evaluation at (t,ξ)implicitly,
+φ∧θε|t,ξ=1
+ε6f(t,¯ξ)φ0/parenleftbig
+t,η+ε¯ξ/parenrightbig
+ε6dt∧d¯ξ1...6
++1
+ε6f(t,¯ξ)Wa/parenleftbig
+η+ε¯ξ/parenrightbig
+φa/parenleftbig
+t,η+ε¯ξ/parenrightbig
+ε6dt∧d¯ξ1...6(A16)
+=f(t,¯ξ)φ0/parenleftbig
+t,η+ε¯ξ/parenrightbig
+dt∧d¯ξ1...6
++f(t,¯ξ)Wa/parenleftbig
+t,η+ε¯ξ/parenrightbig
+φa/parenleftbig
+t,η+ε¯ξ/parenrightbig
+dt∧d¯ξ1...6.(A17)
+Taylor expanding φ0,φaandWaaround η, noting there are only spatial derivatives as ξ0|η−η0=t−t=0,
+φ∧θε|t,ξ=f(t,¯ξ)φ0|ηdt∧d¯ξ1...6+f(t,¯ξ)Wa|ηφa|ηdt∧d¯ξ1...6
++f(t,¯ξ)ε/parenleftBig
+¯ξb−ηb/parenrightBig
+∂bφ0|ηdt∧d¯ξ1...6+f(t,¯ξ)ε/parenleftBig
+¯ξb−ηb/parenrightBig
+∂b(φaWa)|ηdt∧d¯ξ1...6
++1
+2f(t,¯ξ)ε2/parenleftBig
+¯ξb−ηb/parenrightBig/parenleftBig
+¯ξc−ηc/parenrightBig
+∂b∂cφ0|ηdt∧d¯ξ1...6
++1
+2f(t,¯ξ)ε2/parenleftBig¯ξb−ηb/parenrightBig/parenleftBig¯ξc−ηc/parenrightBig
+∂b∂c(φaWa)|ηdt∧d¯ξ1...6+O(ε3).(A18)
+Next, integrate this over E, splitting EintoR×Σ. The terms only depending on ¯ξcan be integrated out,
+/integraldisplay
+Eφ∧θε|t,ξ=/integraldisplay
+R/parenleftbigg/integraldisplay
+Σf(t,¯ξ)d¯ξ1...6/parenrightbigg
+φ0|ηdt+/integraldisplay
+R/parenleftbigg/integraldisplay
+Σf(t,¯ξ)d¯ξ1...6/parenrightbigg
+Wa|ηφa|ηdt
++/integraldisplay
+R/parenleftbigg
+ε/integraldisplay
+Σf(t,¯ξ)/parenleftBig
+¯ξb−ηb/parenrightBig
+d¯ξ1...6/parenrightbigg
+∂bφ0|ηdt+/integraldisplay
+R/parenleftbigg
+ε/integraldisplay
+Σf(t,¯ξ)/parenleftBig
+¯ξb−ηb/parenrightBig
+d¯ξ1...6/parenrightbigg
+∂b(φaWa)|ηdt
++1
+2/integraldisplay
+R/parenleftbigg
+ε2/integraldisplay
+Σf(t,¯ξ)/parenleftBig¯ξb−ηb/parenrightBig/parenleftBig¯ξc−ηc/parenrightBig
+d¯ξ1...6/parenrightbigg
+∂b∂cφ0|ηdt
++1
+2/integraldisplay
+R/parenleftbigg
+ε2/integraldisplay
+Σf(t,¯ξ)/parenleftBig¯ξb−ηb/parenrightBig/parenleftBig¯ξc−ηc/parenrightBig
+d¯ξ1...6/parenrightbigg
+∂b∂c(φaWa)|ηdt+O(ε3).(A19)18
+Using the deﬁnitions of q,¯Va, and ¯Vabfrom equation ( A12),
+/integraldisplay
+Eφ∧θε|t,ξ=/integraldisplay
+Rqφ0|ηdt+/integraldisplay
+RqWa|ηφa|ηdt+/integraldisplay
+R¯Vb∂bφ0|ηdt+/integraldisplay
+R¯Vb∂b(φaWa)|ηdt
++1
+2/integraldisplay
+R¯Vbc∂b∂cφ0|ηdt+1
+2/integraldisplay
+R¯Vbc∂b∂c(φaWa)|ηdt+O(ε3).(A20)
+Next, expand the partial derivatives, and note Wa|η=˙ηa,
+/integraldisplay
+Eφ∧θε|t,ξ=/integraldisplay
+Rqφ0|ηdt+/integraldisplay
+Rq˙ηaφa|ηdt+/integraldisplay
+R¯Vb∂bφ0|ηdt
++/integraldisplay
+R¯Vb˙ηa∂bφa|ηdt+/integraldisplay
+R¯Vbφa|η(∂bWa)|ηdt+1
+2/integraldisplay
+R¯Vbc∂b∂cφ0|ηdt
++1
+2/integraldisplay
+R¯Vbc˙ηa∂b∂cφa|ηdt+/integraldisplay
+R¯Vbc(∂cWa)|η(∂bφa)|ηdt+1
+2/integraldisplay
+R¯Vbcφa|η(∂b∂cWa)|ηdt+O(ε3).(A21)
+Inserting ¯Xaand ¯Xabfrom equation ( A12) into this,
+/integraldisplay
+Eφ∧θε|t,ξ=/integraldisplay
+Rqφ0|ηdt+/integraldisplay
+Rq˙ηaφa|ηdt+/integraldisplay
+R¯Vb∂bφ0|ηdt
++/integraldisplay
+R¯Vb˙ηa∂bφa|ηdt+/integraldisplay
+R¯Xaφa|ηdt+1
+2/integraldisplay
+R¯Vbc∂b∂cφ0|ηdt
++1
+2/integraldisplay
+R¯Vbc˙ηa∂b∂cφa|ηdt+1
+2/integraldisplay
+R¯Xac(∂cφa)|ηdt+O(ε3).(A22)
+Recalling ˙η0=1, this can be further simpliﬁed,
+/integraldisplay
+Eφ∧θε|t,ξ=/integraldisplay
+Rqφ0|ηdt+/integraldisplay
+Rq˙ηaφa|ηdt+/integraldisplay
+R¯Vb˙ηa∂bφa|ηdt+/integraldisplay
+R¯Xaφa|ηdt
++1
+2/integraldisplay
+R¯Vbc˙ηa∂b∂cφa|ηdt+/integraldisplay
+R¯Xac(∂cφa)|ηdt+O(ε3).(A23)
+This is the same as ¯Jaφa, as required.
+Thus there is a close relationship between the components of a multipole and the moments of f.
+3. Proof of Ellis multipole transport equations solutions
+In this section, the solutions to the transport equations ( 26) and ( 27) will be found. Begin by considering the conservation of
+charge (equation ( 26)), and act on a test form λ
+/integraldisplay
+EJa∂aλd7ξ=1
+2/integraldisplay
+RVab˙ηc∂a∂b∂cλdt+/integraldisplay
+RXab∂b∂aλdt+/integraldisplay
+RVa˙ηb∂a∂bλdt+/integraldisplay
+RXa∂aλdt+/integraldisplay
+Rq˙ηa∂aλdt=0. (A24)
+From here, note
+˙ηa∂λ(t)
+∂ξa=dλ
+dt/vextendsingle/vextendsingle/vextendsingle/vextendsingle
+η(A25)
+so integration by parts can be used to pass a derivative onto t heVaandVabterms. This gives
+/integraldisplay
+EJa∂aλd7ξ=−1
+2/integraldisplay
+RdVab
+dt∂a∂bλdt+/integraldisplay
+RXab∂b∂aλdt−/integraldisplay
+RdVa
+dt∂aλdt+/integraldisplay
+RXa∂aλdt+/integraldisplay
+Rdq
+dtλdt=0. (A26)
+Collecting terms based on derivatives of λgives the ﬁrst line of ( 29).19
+To consider the effects of the Vlasov equation (equation ( 27)), act on Wbαab, and expand the partial derivatives,
+/integraldisplay
+EJaWbαabd7ξ=1
+2/integraldisplay
+RVcb˙ηa/parenleftBig
+αad∂b∂cWd+∂bαad∂cWd+∂cαad∂bWd+Wd∂b∂cαad/parenrightBig
+dt
++/integraldisplay
+RXab/parenleftbig
+Wc∂bαac+αac∂bWc/parenrightbig
+dt+/integraldisplay
+RVb˙ηa/parenleftbig
+Wc∂bαac+αac∂bWc/parenrightbig
+dt
++/integraldisplay
+RXaWbαabdt+/integraldisplay
+RqWb˙ηcαbcdt.(A27)
+Next, look at terms of the form
+Wa˙ηbαab, (A28)
+recalling the implicit evaluation at η,W|η=˙ηa. Since αabis antisymmetric,
+Wa˙ηbαab=0. (A29)
+This is true for the derivatives of αabas well, since the derivatives are also antisymmetric. Rear ranging the remaining terms in
+derivatives of αabgives
+/integraldisplay
+EJaWbαabd7ξ=/integraldisplay
+R/parenleftBig
+Vcb∂cWa−Xab/parenrightBig
+˙ηd∂bαdadt+/integraldisplay
+R/parenleftBig
+Vcb∂cW0/parenrightBig
+˙ηd∂bαd0dt+/integraldisplay
+RXab∂bWdαaddt
++/integraldisplay
+R/parenleftbigg
+Vb∂bWa+1
+2Vbc∂b∂cWa−Xa/parenrightbigg
+˙ηdαdadt+/integraldisplay
+R/parenleftbigg1
+2Vbc∂b∂cW0+Vb∂bW0/parenrightbigg
+˙ηdαd0dt (A30)
+where the minus sign in the XaandXabterms comes from ﬂipping the αabindices. Next, note that calculations are in a frame
+where W0=1, so derivatives of W0vanish. Two of the remaining terms give the required differe ntial equations,
+Xab=Vbc∂cWa, (A31)
+Xa=Vb∂bWa+1
+2Vbc∂b∂cWa. (A32)
+Lastly, for the remaining integral, the third integral of eq uation ( A30), taking the antisymmetric part of Xab∂bWdgives
+Xab∂bWdαad=/parenleftBig
+Xab∂bWd−Xdb∂bWa/parenrightBig
+αad (A33)
+=/parenleftBig
+Vbc∂bWa∂cWd−Vcb∂cWa∂bWd/parenrightBig
+αad (A34)
+=0. (A35)
+So the differential equations in the bottom line of ( 29) uniquely solve the system, giving the equations of motion f or the moments
+through the Ellis representation of multipoles.
+4. Proof of the Ellis multipole coordinate transformation
+In this section the ﬁrst step of the coordinate transformati on for the moments is performed, to obtain non-unique compon ents
+in terms of Ua,Uab,YaandYab. Proceeding term by term using the known transformation rul es: For the Vabterm,
+/integraldisplay
+RVbc˙ηa∂b∂cφadt=/integraldisplay
+RˆVbc˙ˆηa∂ˆb∂ˆcˆφadˆt (A36)
+=/integraldisplay
+RVbc˙ˆηˆdAa
+ˆddt
+dˆtAˆe
+b∂ˆe/parenleftBig
+Aˆf
+c∂ˆf/parenleftbig
+Aˆg
+aˆφˆg/parenrightbig/parenrightBigdt
+dˆtdˆt. (A37)
+Performing these derivatives gives
+/integraldisplay
+RVbc˙ηa∂b∂cφadt=/integraldisplay
+RVbc˙ˆηˆdAa
+ˆddt
+dˆtAˆg
+abcˆφˆgdt
+dˆtdˆt+/integraldisplay
+RVbc˙ˆηˆdAa
+ˆddt
+dˆtAˆe
+bAˆg
+ac∂ˆe(ˆφˆg)dt
+dˆtdˆt
++/integraldisplay
+RVbc˙ˆηˆdAa
+ˆddt
+dˆtAˆe
+cAˆf
+ab∂ˆe(ˆφˆf)dt
+dˆtdˆt+/integraldisplay
+RVbc˙ˆηˆdAa
+ˆddt
+dˆtAˆe
+bAˆf
+cAˆg
+a∂ˆe∂ˆf(ˆφˆg)dt
+dˆtdˆt
++/integraldisplay
+RVbc˙ˆηˆdAa
+ˆddt
+dˆtAˆf
+cbAh
+ˆfAˆg
+ahˆφˆgdt
+dˆtdˆt+/integraldisplay
+RVbc˙ˆηˆdAa
+ˆddt
+dˆtAˆf
+cbAˆg
+a∂ˆf(ˆφˆg)dt
+dˆtdˆt.(A38)20
+Simplifying these terms down
+/integraldisplay
+RVbc˙ηa∂b∂cφadt=/integraldisplay
+RVbc˙ηa∂a/parenleftBig
+Aˆg
+bc/parenrightBig
+ˆφˆgdt
+dˆtdˆt+/integraldisplay
+RVbcAˆe
+b˙ηa∂a/parenleftbig
+Aˆg
+c/parenrightbig
+∂ˆe(ˆφˆg)dt
+dˆtdˆt
++/integraldisplay
+RVbcAˆe
+c˙ηˆa∂a/parenleftBig
+Aˆf
+b/parenrightBig
+∂ˆe(ˆφˆf)dt
+dˆtdˆt+/integraldisplay
+RVbc˙ˆηˆdAˆe
+bAˆf
+c∂ˆe∂ˆf(ˆφˆd)dˆt+/integraldisplay
+RVbc˙ˆηˆdAˆf
+cb∂ˆf(ˆφˆd)dˆt.(A39)
+For the Xabterm,
+/integraldisplay
+RXab∂bφadt=/integraldisplay
+RˆXab∂ˆbˆφadˆt (A40)
+=/integraldisplay
+RXabAˆc
+b∂ˆc/parenleftBig
+Aˆd
+aˆφˆd/parenrightBigdt
+dˆtdˆt (A41)
+=/integraldisplay
+RXabAˆd
+abˆφˆddt
+dˆtdˆt+/integraldisplay
+RXabAˆc
+bAˆd
+a∂ˆc(ˆφˆd)dt
+dˆtdˆt. (A42)
+For the Vaterm,
+/integraldisplay
+R˙ηaVb∂φa
+∂ξbdt=/integraldisplay
+Rˆ˙ηaˆVb∂ˆφa
+∂ˆξbdˆt (A43)
+=/integraldisplay
+R˙ˆηˆcAa
+ˆcdˆt
+dtVbAˆd
+b∂
+∂ˆξd/parenleftbig
+Aˆe
+aˆφˆe/parenrightbigdˆt
+dtdt (A44)
+=/integraldisplay
+R˙ηaVbAˆe
+baˆφˆedˆt
+dtdt+/integraldisplay
+R˙ˆηˆcAa
+ˆcVbAˆd
+bAˆe
+a∂ˆdˆφˆedt (A45)
+=/integraldisplay
+RVb˙ηa∂a(Aˆe
+c)ˆφˆedˆt
+dtdt+/integraldisplay
+R˙ˆηˆcVbAˆd
+b∂ˆdˆφˆcdt. (A46)
+For the Xaterm,
+/integraldisplay
+RXdφddt=/integraldisplay
+ˆRˆXdˆφddˆt=/integraldisplay
+ˆRXdAˆc
+dˆφˆcdˆt
+dtdt. (A47)
+Summing all these terms together gives the transformed quad rupole,
+/integraldisplay
+Jaφad7ξ=/integraldisplay
+ˆJaˆφad7ˆξ=1
+2/integraldisplay
+RVbc˙ˆηˆdAˆe
+bAˆf
+c∂ˆe∂ˆf(ˆφˆd)dˆt
++/integraldisplay
+R/parenleftbigg
+XabAˆc
+bAˆd
+a+1
+2VefAˆc
+e˙ηa∂a/parenleftBig
+Aˆd
+f/parenrightBig
++1
+2VefAˆd
+f˙ηa∂a/parenleftbig
+Aˆc
+e/parenrightbig/parenrightbigg
+∂ˆc(ˆφˆd)dt
+dˆtdˆt
++/integraldisplay
+R˙ˆηˆa/parenleftbigg
+VbAˆd
+b+1
+2VbcAˆa
+cb/parenrightbigg
+∂ˆdˆφˆadt
++/integraldisplay
+ˆR/parenleftbigg
+XdAˆc
+d+Vb˙ηa∂a(Aˆc
+b)+XabAˆc
+ab+1
+2Vde˙ηa∂a/parenleftBig
+Aˆc
+de/parenrightBig/parenrightbigg
+ˆφˆcdt
+dˆtdˆt.(A48)
+This gives the coordinate transformations for the quadrupo le components,
+Ubc=VdeAˆb
+dAˆc
+e,
+Ycd=/parenleftbigg
+XabAˆc
+bAˆd
+a+1
+2VefAˆc
+e˙ηa∂a/parenleftBig
+Aˆd
+f/parenrightBig
++1
+2VefAˆd
+f˙ηa∂a/parenleftbig
+Aˆc
+e/parenrightbig/parenrightbiggdt
+dˆt,
+Ua=VbAˆa
+b+1
+2VbcAˆa
+bc,
+Yc=/parenleftBig
+XdAˆc
+d+Vb˙ηa∂a(Aˆc
+b)+XabAˆc
+ab+1
+2Vde˙ηa∂a/parenleftBig
+Aˆc
+de/parenrightBig/parenrightbiggdt
+dˆt.(A49)
+where the components of the quadrupole in the new coordinate system are no longer unique.21
+5. Proof of the Ellis multipole projection
+This section performs the projection ∂0=∂˙η−˙ηa∂ainto the quadrupole with non unique components deﬁned by equ ation
+(35). By performing this projection Ua,Uab,YaandYabcan be written in a form where the components are unique, givi ng the
+full coordinate transformation for the quadrupole.
+Inserting ( 38) term by term into the non-unique semi-quadrupole
+/integraldisplay
+Jaφad6ξ=1
+2/integraldisplay
+R˙ηaUbc∂b∂cφadt+/integraldisplay
+RYab∂bφadt+/integraldisplay
+R˙ηaUb∂bφadt+/integraldisplay
+RYaφadt+/integraldisplay
+R˙ηaqφadt. (A50)
+For the Uabterm, noting the symmetry of Uab,
+/integraldisplay
+R˙ηaUbc∂b∂cφadt=/integraldisplay
+R˙ηaUbc∂b∂cφadt+2/integraldisplay
+R˙ηaUb0∂b∂0φadt+/integraldisplay
+R˙ηaU00∂0∂0φadt (A51)
+=/integraldisplay
+R˙ηaUbc∂b∂cφadt+2/integraldisplay
+R˙ηaUb0∂˙η∂bφadt−2/integraldisplay
+R˙ηa˙ηdUb0∂b∂dφadt
++/integraldisplay
+R˙ηaU00∂˙η∂0φadt−/integraldisplay
+R˙ηa˙ηbU00∂0∂bφadt(A52)
+=/integraldisplay
+R˙ηa/parenleftBig
+Ubc−2˙ηcUc0/parenrightBig
+∂b∂cφadt−2/integraldisplay
+Rd
+dt/parenleftBig
+˙ηaUb0/parenrightBig
+∂bφadt
++/integraldisplay
+Rd
+dt/parenleftbig˙ηaU00/parenrightbig
+∂0φadt−/integraldisplay
+R˙ηa˙ηbU00∂b∂0φadt(A53)
+=/integraldisplay
+R˙ηa/parenleftBig
+Ubc−2˙ηcUc0/parenrightBig
+∂b∂cφadt−2/integraldisplay
+Rd
+dt/parenleftBig
+˙ηaUb0/parenrightBig
+∂bφadt+/integraldisplay
+Rd
+dt/parenleftbig˙ηaU00/parenrightbig
+∂˙ηφadt
++/integraldisplay
+Rd
+dt/parenleftbig˙ηaU00/parenrightbig˙ηb∂bφadt−/integraldisplay
+R˙ηa˙ηbU00∂˙η∂bφadt+/integraldisplay
+R˙ηa˙ηb˙ηcU00∂b∂cφadt(A54)
+=/integraldisplay
+R˙ηa/parenleftBig
+Ubc−2˙ηcUc0+˙ηb˙ηcU00/parenrightBig
+∂b∂cφadt−2/integraldisplay
+Rd
+dt/parenleftBig
+˙ηaUb0/parenrightBig
+∂bφadt
++/integraldisplay
+Rd2
+dt2/parenleftbig˙ηaU00/parenrightbig
+φadt+/integraldisplay
+Rd
+dt/parenleftbig˙ηaU00/parenrightbig˙ηb∂bφadt−/integraldisplay
+Rd
+dt/parenleftBig
+˙ηa˙ηbU00/parenrightBig
+∂bφadt.(A55)
+For the Yabterm,
+/integraldisplay
+RYab∂bφadt=/integraldisplay
+RYab∂bφadt+/integraldisplay
+RYa0∂0φadt (A56)
+=/integraldisplay
+RYab∂bφadt+/integraldisplay
+RYa0∂˙ηφadt−/integraldisplay
+RYa0˙ηb∂bφadt (A57)
+=/integraldisplay
+R/parenleftBig
+Yab−Ya0˙ηb/parenrightBig
+∂bφadt−/integraldisplay
+Rd
+dtYa0φadt. (A58)
+For the Uaterm,
+/integraldisplay
+R˙ηaUb∂bφadt=/integraldisplay
+R˙ηaU0∂0φadt+/integraldisplay
+R˙ηaUb∂bφadt (A59)
+=/integraldisplay
+R˙ηaU0∂˙ηφadt−/integraldisplay
+R˙ηaU0˙ηa∂bφadt+/integraldisplay
+R˙ηaUb∂bφadt (A60)
+=−/integraldisplay
+Rd
+dt/parenleftbig˙ηaU0/parenrightbig
+φadt+/integraldisplay
+R˙ηa/parenleftBig
+Ub−U0˙ηb/parenrightBig
+∂bφadt. (A61)
+Summing all these terms together,
+/integraldisplay
+Jaφad7ξ=1
+2/integraldisplay
+R˙ηa/parenleftBig
+Ubc−2˙ηcUc0+˙ηb˙ηcU00/parenrightBig
+∂b∂cφadt−/integraldisplay
+Rd
+dt/parenleftBig
+˙ηaUb0/parenrightBig
+∂bφadt+1
+2/integraldisplay
+Rd2
+dt2/parenleftbig˙ηaU00/parenrightbig
+φadt
++1
+2/integraldisplay
+Rd
+dt/parenleftbig˙ηaU00/parenrightbig˙ηb∂bφadt−1
+2/integraldisplay
+Rd
+dt/parenleftBig
+˙ηa˙ηbU00/parenrightBig
+∂bφadt+/integraldisplay
+R/parenleftBig
+Yab−Ya0˙ηb/parenrightBig
+∂bφadt−/integraldisplay
+Rd
+dtYa0φadt
+−/integraldisplay
+Rd
+dt/parenleftbig˙ηaU0/parenrightbig
+φadt+/integraldisplay
+R˙ηa/parenleftBig
+Ub−U0˙ηb/parenrightBig
+∂bφadt+/integraldisplay
+RYaφadt+/integraldisplay
+R˙ηaqφadt.(A62)22
+Grouping terms together,
+/integraldisplay
+Jaφad7ξ=1
+2/integraldisplay
+R˙ηa/parenleftBig
+Ubc−2˙ηcUc0+˙ηb˙ηcU00/parenrightBig
+∂b∂cφadt
++/integraldisplay
+R/parenleftbigg
+Yab−Ya0˙ηb−d
+dt/parenleftBig
+˙ηaUb0/parenrightBig
++1
+2d
+dt/parenleftBig
+˙ηa˙ηbU00/parenrightBig/parenrightbigg
+∂bφadt
++1
+2/integraldisplay
+Rd2
+dt2/parenleftbig˙ηaU00/parenrightbig
+φadt+1
+2/integraldisplay
+Rd
+dt/parenleftbig˙ηaU00/parenrightbig˙ηb∂bφadt−/integraldisplay
+Rd
+dtYa0φadt+/integraldisplay
+R˙ηa/parenleftBig
+Ub−U0˙ηb/parenrightBig
+∂bφadt
++/integraldisplay
+R/parenleftbigg
+Ya−d
+dt/parenleftbig˙ηaU0/parenrightbig/parenrightbigg
+φadt+/integraldisplay
+R˙ηaqφadt.(A63)
+Calculating some derivatives and symmetrising U0bgives
+/integraldisplay
+Ja
+Qφad7ξ=1
+2/integraldisplay
+R˙ηa/parenleftBig
+Ubc−˙ηbUc0−˙ηcUb0+˙ηb˙ηcU00/parenrightBig
+∂b∂cφadt
++/integraldisplay
+R/parenleftbigg
+Yab−Ya0˙ηb−˙ηad
+dt/parenleftBig
+Ub0/parenrightBig
++1
+2˙ηa˙ηbd
+dt/parenleftbig
+U00/parenrightbig/parenrightbigg
+∂bφadt+/integraldisplay
+R/parenleftbigg
+−Ub0d
+dt(˙ηa)+1
+2U00d
+dt/parenleftBig
+˙ηa˙ηb/parenrightBig/parenrightbigg
+∂bφadt
++1
+2/integraldisplay
+Rd2
+dt2/parenleftbig˙ηaU00/parenrightbig
+φadt+1
+2/integraldisplay
+Rd
+dt/parenleftbig˙ηaU00/parenrightbig˙ηb∂bφadt−/integraldisplay
+Rd
+dtYa0φadt
++/integraldisplay
+R˙ηa/parenleftBig
+Ub−U0˙ηb/parenrightBig
+∂bφadt+/integraldisplay
+R/parenleftbigg
+Ya−d
+dt/parenleftbig˙ηaU0/parenrightbig/parenrightbigg
+φadt+/integraldisplay
+R˙ηaqφadt.(A64)
+Noting dUab/dt=Yab+Ybagives
+/integraldisplay
+Ja
+Qφad7ξ=1
+2/integraldisplay
+R˙ηa/parenleftBig
+Ubc−˙ηbUc0−˙ηcUb0+˙ηb˙ηcU00/parenrightBig
+∂b∂cφadt
++/integraldisplay
+R/parenleftBig
+Yab−Ya0˙ηb−˙ηaYb0−˙ηaY0b+˙ηa˙ηbY00/parenrightBig
+∂bφadt+/integraldisplay
+R/parenleftbigg1
+2U00d
+dt/parenleftBig
+˙ηa˙ηb/parenrightBig
+−Ub0d
+dt(˙ηa)/parenrightbigg
+∂bφadt
++1
+2/integraldisplay
+Rd2
+dt2/parenleftbig˙ηaU00/parenrightbig
+φadt+1
+2/integraldisplay
+Rd
+dt/parenleftbig˙ηaU00/parenrightbig˙ηb∂bφadt−/integraldisplay
+Rd
+dtYa0φadt
++/integraldisplay
+R˙ηa/parenleftBig
+Ub−U0˙ηb/parenrightBig
+∂bφadt+/integraldisplay
+R/parenleftbigg
+Ya−d
+dt/parenleftbig˙ηaU0/parenrightbig/parenrightbigg
+φadt+/integraldisplay
+R˙ηaqφadt.(A65)
+Rearranging for clarity,
+/integraldisplay
+Ja
+Qφad7ξ=1
+2/integraldisplay
+R˙ηa/parenleftBig
+Ubc−˙ηbUc0−˙ηcUb0+˙ηb˙ηcU00/parenrightBig
+∂b∂cφadt+/integraldisplay
+R/parenleftBig
+Yab−Ya0˙ηb−˙ηaY0b+˙ηa˙ηbY00/parenrightBig
+∂bφadt
++/integraldisplay
+R/parenleftbigg
+U00˙ηbd
+dt(˙ηa)−Ub0d
+dt(˙ηa)/parenrightbigg
+∂bφadt+/integraldisplay
+R˙ηa/parenleftbigg
+Ub−U0˙ηb+1
+2d
+dt/parenleftBig
+˙ηbU00/parenrightBig
+−Yb0/parenrightbigg
+∂bφadt
++/integraldisplay
+R/parenleftbigg
+Ya−d
+dt/parenleftbig˙ηaU0/parenrightbig
++1
+2d2
+dt2/parenleftbig˙ηaU00/parenrightbig
+−d
+dtYa0/parenrightbigg
+φadt.(A66)
+By noting ˙η0=1 the Y0a,Ya0,Y00andY0components vanish. Thus the projected moments are given by
+ˆVbc=Ubc−˙ηbUc0−˙ηcUb0+˙ηb˙ηcU00,
+ˆXab=Yab−Ya0˙ηb−˙ηaY0b+˙ηa˙ηbY00+U00˙ηbd
+dt(˙ηa)−Ub0d
+dt(˙ηa),
+ˆVb=Ub−U0˙ηb+1
+2d
+dt/parenleftBig
+˙ηbU00/parenrightBig
+−Yb0,
+ˆXa=Ya−d
+dt/parenleftbig˙ηaU0/parenrightbig
++1
+2d2
+dt2/parenleftbig˙ηaU00/parenrightbig
+−d
+dtYa0.(A67)
+Combining this with ( 35) give the full coordinate transformations for the quadrupo le.23
+6. De Rham current representation of the coordinate transfo rmation
+This section ﬁnds the ﬁrst step of the coordinate transforma tion for the de Rham current representation of a quadrupole,
+obtaining non-unique components in terms of Ua,Uab,YaandYab.
+Consider a unique distributional quadrupole,
+ΨQ=1
+2L(ξ)
+aL(ξ)
+bης(Vab)−L(ξ)
+ai(ξ)
+bης(Xabdt)−L(ξ)
+aης(Va)+i(ξ)
+aης(Xadt)+ης(q). (A68)
+This is transformed by noting
+∂
+∂ξa=∂ˆξb
+∂ξa∂
+∂ˆξb(A69)
+so
+i(ξ)
+a=i(ˆξ)
+b∂ˆξb
+∂ξa. (A70)
+Using Cartan’s identity the Lie derivative transformation can be found,
+La(α)=diaα+iadα (A71)
+=diˆb(Aˆb
+a∧α)+iˆb(Aˆb
+a∧dα) (A72)
+=diˆb(Aˆb
+a∧α)+iˆbd/parenleftBig
+Aˆb
+a∧α/parenrightBig
+−iˆb/parenleftBig
+dAˆb
+a∧α/parenrightBig
+(A73)
+=Lˆb/parenleftBig
+Aˆb
+a∧α/parenrightBig
+−iˆb/parenleftBig
+dAˆb
+a∧α/parenrightBig
+(A74)
+For the double Lie derivative term, use the standard differe ntial geometry result
+LU(f g)=f LUg+gLUf∀f,g∈ΓΛ0E,U∈ΓT E (A75)
+to ﬁnd
+LaLbα=La/parenleftBig
+Lˆd(Aˆd
+b∧α)−iˆd(dAˆd
+b∧α)/parenrightBig
+(A76)
+=Lˆc/parenleftBig
+Aˆc
+a∧/parenleftBig
+Lˆd(Aˆd
+b∧α)−iˆd(dAˆd
+b∧α)/parenrightBig/parenrightBig
+−iˆc/parenleftBig
+dAˆc
+a∧/parenleftBig
+Lˆd(Aˆd
+b∧α)−iˆd(dAˆd
+b∧α)/parenrightBig/parenrightBig
+(A77)
+=LˆcLˆd/parenleftBig
+Aˆc
+aAˆd
+b∧α/parenrightBig
+−Lˆc/parenleftBig
+iˆd(dAˆc
+a)∧Aˆd
+b∧α/parenrightBig
+−Lˆciˆd(Aˆc
+a∧dAˆd
+b∧α)−iˆcLˆd/parenleftBig
+dAˆc
+a∧Aˆd
+b∧α/parenrightBig
++iˆc/parenleftBig
+(diˆddAˆc
+a)∧Aˆd
+b∧α/parenrightBig
+−iˆciˆd/parenleftBig
+dAˆc
+a∧dAˆd
+b∧α/parenrightBig
++iˆc/parenleftBig
+iˆddAˆc
+a∧dAˆd
+b∧α/parenrightBig(A78)
+=LˆcLˆd/parenleftBig
+Aˆc
+aAˆd
+b∧α/parenrightBig
+−Lˆciˆd/parenleftBig
+d/parenleftBig
+Aˆc
+aAˆd
+b/parenrightBig
+∧α/parenrightBig
+−Lˆc/parenleftBig
+∂ˆdAˆc
+a∧Aˆd
+b∧α/parenrightBig
++iˆc/parenleftBig
+d/parenleftBig
+∂ˆdAˆc
+a∧Aˆd
+b/parenrightBig
+∧α/parenrightBig
+−iˆciˆd/parenleftBig
+dAˆc
+a∧dAˆd
+b∧α/parenrightBig
+.(A79)
+Using ∂ˆdAˆc
+a=Ae
+ˆdAˆc
+ab, and noting the iˆciˆdterm vanishes as the term inside the brackets is symmetric, g ives
+LaLbα=LˆcLˆd/parenleftBig
+Aˆc
+aAˆd
+b∧α/parenrightBig
+−Lˆciˆd/parenleftBig
+d/parenleftBig
+Aˆc
+aAˆd
+b/parenrightBig
+∧α/parenrightBig
+−Lˆc/parenleftBig
+Aˆc
+ab∧α/parenrightBig
++iˆc/parenleftBig
+dAˆc
+ab∧α/parenrightBig
+. (A80)
+This gives the coordinate transformation for the Vabterm,
+LaLbης(Vab)=LˆcLˆdης/parenleftBig
+Aˆc
+aAˆd
+bVab/parenrightBig
+−Lˆciˆdης/parenleftBig
+d/parenleftBig
+Aˆc
+aAˆd
+b/parenrightBig
+∧Vab/parenrightBig
+−Lˆcης/parenleftBig
+Aˆc
+abVab/parenrightBig
++iˆcης/parenleftBig
+dAˆc
+ab∧Vab/parenrightBig
+. (A81)24
+For the Xabterm,
+iaLbης(Xabdt)=iaLˆcης(Aˆc
+b∧Xabdt)−iaiˆc/parenleftBig
+ης(dAˆc
+b∧Xabdt)/parenrightBig
+(A82)
+=iˆdAˆd
+aLˆcης(Aˆc
+b∧Xabdt) (A83)
+=iˆdLˆcης(Aˆd
+aAˆc
+b∧Xabdt)−iˆdης/parenleftBig
+Lˆc(Aˆd
+a)∧Aˆc
+b∧Xabdt/parenrightBig
+(A84)
+=iˆdLˆcης(Aˆd
+aAˆc
+b∧Xabdt)−iˆdης(Aˆd
+ab∧Xabdt) (A85)
+=iˆdLˆcης/parenleftbigg
+Aˆd
+aAˆc
+b∧Xabdt
+dˆtdˆt/parenrightbigg
+−iˆdης/parenleftbigg
+Aˆd
+ab∧Xabdt
+dˆtdˆt/parenrightbigg
+(A86)
+where dAˆc
+b∧Xabdt=0 is used. The VaandXaterms are more straightforward,
+Laης(Va)=Lˆbης/parenleftBig
+Aˆb
+a∧Va/parenrightBig
+−iˆbης/parenleftBig
+dAˆb
+a∧Va/parenrightBig
+(A87)
+iaης(Xadt)=iˆbης/parenleftbigg
+Aˆb
+aXadt
+dˆtdˆt/parenrightbigg
+. (A88)
+Summing these together (noting that the monopole term is inv ariant under transformation), gives
+J=ˆJ=1
+2LaLbης(Vab)−iaLbης(Xabdt)−Laης(Va)+iaης(Xadt)+ης(q)
+=1
+2LˆcLˆdης/parenleftBig
+Aˆc
+aAˆd
+bVab/parenrightBig
+−iˆdLˆcης/parenleftbigg
+Aˆd
+aAˆc
+bXabdt
+dˆtdˆt+1
+2d/parenleftBig
+Aˆc
+aAˆd
+b/parenrightBig
+Vab/parenrightbigg
+−Lˆcης/parenleftbigg
+Aˆc
+aVa+1
+2Aˆc
+abVab/parenrightbigg
++iˆcης/parenleftbigg
+Aˆc
+aXadt
+dˆtdˆt+(d(Aˆc
+a)Va+d(Aˆc
+abVab)+Aˆc
+abXab)dt
+dˆtdˆt/parenrightbigg
++ης(q).(A89)
+By taking the external derivatives, this is equivalent to ( 35).
+7. De Rham current representation of the projections
+This section performs the projections L0=L˙η−˙ηaLaandi0=i˙η−˙ηaiainto the de Rham current representation of the
+quadrupole with non-unqiue components. By performing this projection Ua,Uab,YaandYabcan be written in a form where the
+components are unique, ﬁnding the full coordinate transfor mation for the quadrupole.
+The non-unique quadrupole is given by
+J=1
+2LaLbης(Uab)−iaLbης(Yabdt)−Laης(Ua)+iaης(Yadt)+ης(q). (A90)
+To ﬁnd the projections, proceed term by term, beginning with theLaLbterm,
+LaLbης(Uab)=LaLbης(Uab)+LaL0(Ua0) (A91)
+=LaLbης(Uab)+LaL˙η(Ua0)−La˙ηbLbης(Ua0) (A92)
+=LaLbης(Uab−˙ηbUa0)+Laης/parenleftbiggdUa0
+dt/parenrightbigg
++Laibης/parenleftBig
+Ua0d˙ηb/parenrightBig
+(A93)
+=LaLbης(Uab−˙ηbUa0)+LbL˙ηης(U0b−˙ηbU00)−Lb˙ηaLaης(U0b−˙ηbU00)+Laης/parenleftbiggdUa0
+dt/parenrightbigg
++L˙ηης/parenleftbiggdU00
+dt/parenrightbigg
+−˙ηaLaης/parenleftbiggdU00
+dt/parenrightbigg
++Laibης/parenleftBig
+Ua0d˙ηb/parenrightBig
++ibL˙ηης/parenleftBig
+U00d˙ηb/parenrightBig
+−ib˙ηaLaης/parenleftBig
+U00d˙ηb/parenrightBig(A94)
+=LaLbης/parenleftBig
+Uab−˙ηbUa0−˙ηaUb0+˙ηa˙ηbU00/parenrightBig
++Lbiaης/parenleftBig
+(2U0b−2˙ηbU00)d˙ηa/parenrightBig
++Laης/parenleftbigg
+2dUa0
+dt−˙ηadU00
+dt−d
+dt/parenleftbig˙ηaU00/parenrightbig/parenrightbigg
++iaης/parenleftbiggdU00
+dtd˙ηa+d
+dt/parenleftbig
+U00d˙ηa/parenrightbig/parenrightbigg
++ης/parenleftbiggd2U00
+dt2/parenrightbigg
++ibiaης/parenleftBig
+U00d˙ηa∧d˙ηb/parenrightBig(A95)25
+and note the last term vanishes as Ris only 1-dimensional. For the Laibterm,
+Lbiaης(Yabdt)=Lbiaης(Yabdt)+Lai˙ηης(Y0bdt)−La˙ηbibης(Y0bdt) (A96)
+=Lbiaης(Yabdt−˙ηaY0bdt)+Lbης(Y0b) (A97)
+=Lbiaης(Yabdt−˙ηaY0bdt)+L0iaης(Ya0dt−˙ηaY00dt)+Lbης(Y0b)+L0ης(Y00) (A98)
+=Lbiaης(Yabdt−˙ηaY0bdt)+L˙ηiaης(Ya0dt−˙ηaY00dt)−˙ηbLbiaης(Ya0dt−˙ηaY00dt)
++Lbης(Y0b)+L˙ηης(Y00)−˙ηaLaης(Y00)(A99)
+=Lbiaης(Yabdt−˙ηaY0bdt)+L˙ηiaης(Ya0dt−˙ηaY00dt)
+−Lb˙ηbiaης(Ya0dt−˙ηaY00dt)+Lbης(Y0b)+L˙ηης(Y00)−La˙ηaης(Y00)
++iaης(Y00d˙ηa)+ibiaης/parenleftBig
+d˙ηb∧(Ya0−˙ηY00)dt/parenrightBig(A100)
+=Lbiaης(Yabdt−˙ηaY0bdt−˙ηbYa0dt+˙ηa˙ηbY00dt)+Lbης(Y0b−˙ηbY00)
++iaης/parenleftbiggdYa0
+dtdt−d
+dt/parenleftbig˙ηaY00/parenrightbig
+dt+Y00d˙ηa/parenrightbigg
++ης/parenleftbiggdY00
+dt/parenrightbigg
+.(A101)
+TheUaterm,
+Laης(Ua)=Laης(Ua)+L˙ηης(U0)−˙ηaLaης(U0) (A102)
+=Laης(Ua−˙ηaU0)+iaης(U0d˙ηa)+ης/parenleftbiggdU0
+dt/parenrightbigg
+. (A103)
+Lastly the Yaterm,
+iaης(Yadt)=iaης(Yadt)+i˙ηης(Y0dt)−ia˙ηaης(Y0dt) (A104)
+=iaης(Yadt−˙ηaY0dt)+ης(Y0). (A105)
+Summing these together,
+ΨQ=1
+2LaLbης/parenleftBig
+Uab−˙ηbUa0−˙ηaUb0+˙ηa˙ηbU00/parenrightBig
+−Lbiaης/parenleftBig
+Yabdt−˙ηaY0bdt−˙ηbYa0dt+˙ηa˙ηbY00dt−(U0b−˙ηbU00)d˙ηa/parenrightBig
+−Laης(Ua−˙ηaU0+Y0a−˙ηaY00)−1
+2Laης/parenleftbigg
+˙ηadU00
+dt+d
+dt/parenleftbig˙ηaU00/parenrightbig
+−2dUa0
+dt/parenrightbigg
++iaης/parenleftbigg
+Yadt−˙ηaY0dt−dYa0
+dtdt−U0d˙ηa+d
+dt/parenleftbig˙ηaY00/parenrightbig
+dt−Y00d˙ηa/parenrightbigg
++1
+2iaης/parenleftbiggdU00
+dtd˙ηa+d
+dt/parenleftBig
+U00d˙ηb/parenrightBig/parenrightbigg
++1
+2ης/parenleftbiggd2U00
+dt2/parenrightbigg
+−ης/parenleftbiggdY00
+dt/parenrightbigg
+−ης/parenleftbiggdU0
+dt/parenrightbigg
++ης(Y0)+ης(q).(A106)
+To simplify this, recall ( 29), giving
+ΨQ=1
+2LaLbης/parenleftBig
+Uab−˙ηbUa0−˙ηaUb0+˙ηa˙ηbU00/parenrightBig
+−Lbiaης/parenleftBig
+Yabdt−˙ηaY0bdt−˙ηbYa0dt+˙ηa˙ηbY00dt+(U0b−˙ηbU00)d˙ηa/parenrightBig
+−Laης/parenleftbigg
+Ua−˙ηaU0+1
+2d
+dt/parenleftbig˙ηaU00/parenrightbig
+−Ya0/parenrightbigg
++iaης/parenleftbigg
+Yadt−˙ηaY0dt−U0d˙ηa−dYa0
+dtdt+1
+2d2
+dt2/parenleftbig˙ηaU00/parenrightbig
+dt/parenrightbigg
++ης(q).(A107)
+This is the full coordinate transformation for the quadrupo le in the de Rham current representation.

@@ -1,0 +1,2932 @@
+arXiv:2307.02419v1  [cs.LG]  5 Jul 2023In-Context Learning for Attention Scheme: from Single Soft max
+Regression to Multiple Softmax Regression via a Tensor Tric k
+Yeqi Gao∗Zhao Song†Shenghao Xie‡
+Abstract
+Large language models (LLMs) have brought signiﬁcant and transf ormative changes in hu-
+man society. These models have demonstrated remarkable capabilit ies in natural language
+understanding and generation, leading to various advancements a nd impacts across several do-
+mains.
+We consider the in-context learning under two formulation for atte ntion related regression
+in this work. Given matrices A1∈Rn×d, andA2∈Rn×dandB∈Rn×n, the purpose is to solve
+some certain optimization problems,
+•Normalized version min X/ba∇dblD(X)−1exp(A1XA⊤
+2)−B/ba∇dbl2
+F
+•Rescaled version /ba∇dblexp(A1XA⊤
+2)−D(X)·B/ba∇dbl2
+F
+HereD(X) := diag(exp( A1XA⊤
+2)1n).
+Our regression problem shares similarities with previous studies on so ftmax-related regres-
+sion. Prior research has extensively investigated regression tech niques related to softmax regres-
+sion.
+•Normalized version /ba∇dbl/an}b∇acketle{texp(Ax),1n/an}b∇acket∇i}ht−1exp(Ax)−b/ba∇dbl2
+2(see [ LSX+23])
+•Resscaled version /ba∇dblexp(Ax)−/an}b∇acketle{texp(Ax),1n/an}b∇acket∇i}htb/ba∇dbl2
+2(see [ GSY23 ])
+In contrast to previous approaches, we adopt a vectorization te chnique to address the re-
+gression problem in matrix formulation. This approach expands the d imension from dtod2,
+resembling the formulation of the regression problem mentioned ear lier.
+Upon completing the lipschitz analysis of our regression function, we have derived our main
+result concerning in-context learning.
+∗a916755226@gmail.com . The University of Washington.
+†zsong@adobe.com . Adobe Research.
+‡xsh1302@gmail.com . The Chinese University of Hong Kong, Shenzhen.Contents
+1 Introduction 3
+2 Our Results 5
+2.1 Normalized Version . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+2.2 Rescaled Version . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+2.3 Lipschitz of Gradient . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+3 Related Work 8
+4 Preliminary 9
+4.1 Notations. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+4.2 Facts . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+5 Gradient 10
+5.1 Preliminary . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+5.2 Basic Equivalence . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+5.3 Basic Derivatives . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+6 Bounds for Basic Functions 20
+6.1 Lower bound on βofu(x) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+6.2 Lower bound on βofu(A) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+6.3 Upper bound on /ba∇dblu(x)j1/ba∇dbl2. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+6.4 Upper bound on |α−1(x)j1|. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+6.5 Upper bound on /ba∇dblf(x)j1/ba∇dbl2. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+6.6 Upper bound on /ba∇dblh(x)j1/ba∇dbl2. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+6.7 Upper bound on /ba∇dblc(x)j1/ba∇dbl2. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+6.8 Upper bound on |α(x)j1|. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+6.9 Upper bound on /ba∇dblq(x)j1/ba∇dbl2. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+7 Lipschitz of Basic Functions 23
+7.1 Lipschitz for u(x) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+7.2 Lipschitz for α(x) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+7.3 Lipschitz for α−1(x) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+7.4 Lipschitz for f(x) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+7.5 Lipschitz for h(x) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+7.6 Lipschitz for c(x) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+7.7 Lipschitz for q(x) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+7.8 Lipschitz for u(A) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27
+7.9 Lipschitz for α(A) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27
+7.10 Lipschitz for α−1(A) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+7.11 Lipschitz for f(A) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+7.12 Lipschitz for h(A) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+7.13 Lipschitz for c(A) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 30
+7.14 Lipschitz for q(A) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 30
+18 Lipschitz for Softmax Loss Function (Normalized Version) 31
+8.1 Lipschitz for Lc(x) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31
+8.2 Lipschitz for Lc(A) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 32
+8.3 Lipschitz for ∇Lc(x) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 33
+8.4 Lipschitz for ∇Lc(A) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 36
+9 Lipschitz for Softmax Loss Function (Rescaled Version) 40
+9.1 Lipschitz for Lq(x) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 40
+9.2 Lipschitz for Lq(A) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 41
+9.3 Lipschitz for ∇Lq(x) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 42
+9.4 Lipschitz for ∇Lq(A) function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 45
+10 Lipschitz for Sparse Loss Function 49
+10.1 Lipschitz for Lsparse (x) Function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 49
+10.2 Lipschitz for Lsparse (A) Function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 50
+10.3 Lipschitz for ∇Lsparse (x) Function . . . . . . . . . . . . . . . . . . . . . . . . . . . . 50
+10.4 Lipschitz for ∇Lsparse (A) Function . . . . . . . . . . . . . . . . . . . . . . . . . . . . 51
+11 Lipschitz for Cross Entropy Loss Function 53
+11.1 Lipschitz for Lcent(x) Function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 53
+11.2 Lipschitz for Lcent(A) Function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
+11.3 Lipschitz for ∇Lcent(x) Function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
+11.4 Lipschitz for ∇Lcent(A) Function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 57
+12 Lipschitz for Entropy Loss Function 60
+12.1 Lipschitz for Lent(x) Function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 60
+12.2 Lipschitz for Lent(A) Function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 61
+12.3 Lipschitz for ∇Lent(x) Function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 62
+12.4 Lipschitz for ∇Lent(A) Function . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 67
+13 In-Context Learning for Rescaled Version 72
+13.1 For the xcase . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 73
+13.2 For the Acase . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 74
+13.3 Main Result . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 74
+14 In-Context Learning for Normalized Version 75
+14.1 For the xcase . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 75
+14.2 For the Acase . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 77
+14.3 Main Result . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 77
+21 Introduction
+Large Language Models (LLMs) such as GPT [ RWC+19,Ope23 ], BERT [ DCLT18 ], RoBERTa
+[LOG+19], T5 [ RSR+20], and XLNet [ YDY+19] have emerged as signiﬁcant breakthroughs in nat-
+ural language processing and artiﬁcial intelligence. Thes e models, built on deep learning techniques
+and advanced architectures like Transformers [ VSP+17], have revolutionized the ﬁeld of language
+understanding and generation.
+The success of Transformers [ VSP+17] in natural language processing has also spurred rapid
+advancements in the development of ”in-context learning” t echniques. Traditionally, natural lan-
+guage understanding models relied on isolated, context-in dependent representations of words or
+sentences [ HS97 ,Gra13 ]. However, Transformers introduced the concept of context ual embed-
+dings, which capture the meaning and relationships of words within their surrounding context.
+This breakthrough enabled models to better understand the n uances and complexities of language.
+The large-scale parameters signiﬁcantly enhances the in-c ontext learning ability of LLMs dur-
+ing both the training and inference stages. This improvemen t in in-context learning capabil-
+ity has led to successful applications in numerous ﬁelds. At the same time, in-context learning
+[MLZH21 ,WBZ+21,KHSDM22 ,ONR+22,GTLV22 ,HSD+22] has revolutionized the way we ap-
+proach various tasks in computer vision and natural languag e processing. By considering the con-
+textual information and dependencies within a sequence or v isual data, models can capture richer
+and more nuanced representations [ BMR+20]. This not only improves the performance of existing
+tasks but also opens up new possibilities for tackling more c omplex and challenging problems, which
+laid the foundation for the widespread application of Trans formers [ VSP+17].
+The application of Transformers [ VSP+17,RNS+18,PVU+18,DCLT18 ,SLL19 ,BMR+20,
+CMS+20] in tasks like natural language queries [ TDB08 ,BMR+20,Ope23 ], language translation
+services [ HWL21 ,IZSN19 ,SLL19 ], and creative writing [ Ope23 ] showcased the power of in-context
+learning (ICL). By incorporating contextual information, models could generate more accurate and
+coherent translations, generate contextually relevant an d ﬂuent text, and better capture sentiment
+nuances. They have enriched our understanding and brought u s closer to the concerns portrayed
+in books and movies, as many ideas that were once conﬁned to sc ience ﬁction now hold real-world
+signiﬁcance.
+In spite of the success of transformers based on their ICL abi lity in various ﬁelds, a profound
+understanding of the ICL theory remains imperative for futu re research endeavors. This aspect is
+also a focal point of concern in our paper. Indeed, a comprehe nsive understanding of in-context
+learning [ ASA+22,GTLV22 ,ONR+22,KHSDM22 ,ZFB23 ,WZW23 ], both in theory and practice,
+holds signiﬁcant importance for future research. Our paper presents an analysis of in-context
+learning phenomenon about the regression problem in attent ion computation [ SZKS21 ,ZKV+20,
+LSZ+23b], an area extensively researched by some researchers. To ai d readers’ comprehension,
+we will introduce several works [ GMS23 ,LSZ23a ,SSZ23 ,DLS23 ,LSZ+23b,GSY23 ,ZSZ+23] that
+contribute to a better understanding of this topic.
+Recent softmax regression A number of recent work have focused on the following three
+formulations: exponential regression [ GMS23 ,LSZ23a ], the softmax regression [ DLS23 ,LSX+23,
+SSZ23 ,WYW+23,ZSZ+23] and the rescaled softmax regression [ GSY23 ],
+Deﬁnition 1.1. The objective is to work with a matrix A∈Rn×dandb∈Rn, aiming to achieve
+the following
+3•Exponential regression
+min
+x∈Rd/ba∇dblexp(Ax)−b/ba∇dbl2
+2
+•Softmax regression
+min
+x∈Rd/ba∇dbl/an}b∇acketle{texp(Ax),1n/an}b∇acket∇i}ht−1·exp(Ax)−b/ba∇dbl2
+2
+•Rescaled regression
+min
+x∈Rd/ba∇dblexp(Ax)−/an}b∇acketle{texp(Ax),1n/an}b∇acket∇i}ht·b/ba∇dbl2
+2
+Based on the aforementioned regression, our focus will be on the matrix formulation for attention
+regression as follows. Our paper will study the phenomenon o f in-context learning based on it.
+The matrix formulation for attention regression
+Deﬁnition 1.2 (Normalized version) .Given a matrix B∈Rn×nand matrices A1,A2∈Rn×d, the
+optimization formulation is
+min
+X∈Rd×d/ba∇dblD(X)−1exp(A1XA⊤
+2)−B/ba∇dbl2
+F
+Here diagonal matrix D(X)∈Rn×ncan be written as follows D(X) := diag(exp( A1XA⊤
+2)1n).
+Deﬁnition 1.3 (Rescaled version) .Given a matrix B∈Rn×nand matrices A1,A2∈Rn×d, the
+optimization task is
+min
+X∈Rd×d/ba∇dblexp(A1XA⊤
+2)−D(X)·B/ba∇dbl2
+F.
+To simplify our problem formulation, we denote the query mat rix and key matrix as A1and
+A2, respectively. In this context, A1represents the matrix Q, which contains the query vectors,
+whileA2represents the matrix K, which contains the key vectors. The techniques utilized as
+demonstrated in Section 4, rely on vectorization to address the aforementioned probl em.
+Turning matrix formulation to vector formulation The above equation looks more compli-
+cated than the original equation, however, we can use a well- known tensor-trick [ SWZ19 ,DSSW18 ,
+DJS+19,SWYZ21 ,SZZ21 ,Zha22 ] to turn the multiple regression into a single regression wi th
+re-ordering/re-grouping all the entries.
+Deﬁnition 1.4 (Vector (equivalence) version of Deﬁnition 1.2).Given a matrix B∈Rn×nand
+matrices A1,A2∈Rn×d, letA=A1⊗A2and letb= vec(B), the formulation is
+min
+x∈Rd2/ba∇dblD(x)−1exp(Ax)−b/ba∇dbl2
+2
+Here the diagonal matrix D(x)∈Rn2×n2can be written as D(x) :=D(X)⊗In
+Deﬁnition 1.5 (Vector (equivalence) version of Deﬁnition 1.3).Given a matrix B∈Rn×nand
+matrices A1,A2∈Rn×d, letA=A1⊗A2and letb= vec(B), the formulation is
+min
+x∈Rd2/ba∇dblexp(Ax)−D(x)·b/ba∇dbl2
+2
+Here the diagonal matrix D(x)∈Rn2×n2can be written as D(x) :=D(X)⊗In
+42 Our Results
+Our result concerns in-context learning phenomena based on the Lipschitz analysis of the regression
+problem mentioned earlier (see Deﬁnition 1.2and Deﬁnition 1.3).
+To provide readers with a better understanding of our result s, we will oﬀer an explanation of
+our theorem. The x∈Rd2here can be considered as the vectorization of A1andA2. The training
+process can be viewed as updating x. Among in-context learning applications, an update on the
+gradient of xcan be likened to an update on tokenized document A. This implies a high similarity
+between Transformers and gradient descent.
+Our analysis of in-context learning phenomena can be divide d into two parts: the normalized
+version in Section 2.2and the rescaled version in Section 2.2. For the purpose of assisting future
+research, we present additional results on Lipschitz analy sis for some common loss functions in
+Section 2.3.
+2.1 Normalized Version
+Theorem 2.1 (Learning in-context for Normalized Version) .Provided that the subsequent require-
+ment are satisﬁed
+•LetR≥4.
+•Letxt∈Rd2,xt+1∈Rd2satisfy/ba∇dblxt/ba∇dbl2≤Rand/ba∇dblxt+1/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(xt−xt+1)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•LetM= exp(O(R2+ logn)).
+We consider the matrix formulation for attention regressio n (Deﬁnition 1.2)
+min
+x∈Rd2/ba∇dblD(x)−1exp(Ax)−b/ba∇dbl2
+2.
+•Part 1. By transitioning xttoxt+1, we are eﬀectively addressing a fresh normalized softmax
+regression problem involving
+min
+x∈Rd2/ba∇dblD(x)−1exp(Ax)−/tildewideb/ba∇dbl2
+2
+where
+/ba∇dblb−/tildewideb/ba∇dbl2≤M·/ba∇dblxt+1−xt/ba∇dbl2
+•Part 2. By transitioning AttoAt+1, we are eﬀectively addressing a fresh normalized softmax
+regression problem involving
+min
+x∈Rd2/ba∇dblD(x)−1exp(Ax)−/hatwideb/ba∇dbl2
+2
+where
+/ba∇dblb−/hatwideb/ba∇dbl2≤M·/ba∇dblAt+1−At/ba∇dbl
+See details in Section 14.
+52.2 Rescaled Version
+Theorem 2.2 (Learning in-context for Rescaled Version) .Provided that the subsequent requirement
+are satisﬁed
+•LetR≥4.
+•Letxt∈Rd2,xt+1∈Rd2satisfy/ba∇dblxt/ba∇dbl2≤Rand/ba∇dblxt+1/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(xt−xt+1)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•LetM= exp(O(R2+ logn)).
+We consider the matrix formulation for attention regressio n (Deﬁnition 1.3) problem
+min
+x∈Rd2/ba∇dblexp(Ax)−D(x)b/ba∇dbl2
+2.
+•Part 1. By transitioning xttoxt+1, we are eﬀectively addressing a fresh rescaled softmax
+regression problem involving
+min
+x∈Rd2/ba∇dblexp(Ax)−D(x)/tildewideb/ba∇dbl2
+2
+where
+/ba∇dblb−/tildewideb/ba∇dbl2≤M·/ba∇dblxt+1−xt/ba∇dbl2
+•Part 2. By transitioning AttoAt+1, we are eﬀectively addressing a fresh rescaled softmax
+regression problem involving
+min
+x∈Rd2/ba∇dblexp(Ax)−D(x)/hatwideb/ba∇dbl2
+2
+where
+/ba∇dblb−/hatwideb/ba∇dbl2≤M·/ba∇dblAt+1−At/ba∇dbl
+See details in Section 13.
+2.3 Lipschitz of Gradient
+We have derived additional ﬁndings as follows:
+Corollary 2.3. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+6•Letx,y∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R,/ba∇dbly/ba∇dbl2≤R
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(x−y)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•/ba∇dbl1n−f(x)j1
+f(y)j1/ba∇dbl∞≤0.1
+•/ba∇dbl1n−f(A)j1
+f(B)j1/ba∇dbl∞≤0.1
+•R > 4
+•Let/ba∇dblA−B/ba∇dbl∞,2= max j1∈[n]/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+•LetLc(A)be deﬁned as Deﬁnition 5.10andLq(A)be deﬁned as Deﬁnition 5.11
+•LetLsparse,LcentandLentbe deﬁned in Deﬁnition 5.12, Deﬁnition 5.13and Deﬁnition 5.14
+respectively.
+•LetM0:= exp(O(R2+ log(nd))
+it follows that
+•Normalize version Loss (See Details in Section 8, informal version of Lemma 8.3and Lemma 8.4)
+–/ba∇dbl∇Lc(x)−∇Lc(y)/ba∇dbl2≤M0·/ba∇dblx−y/ba∇dbl2
+–/ba∇dbl∇Lc(A)−∇Lc(B)/ba∇dbl2≤M0·/ba∇dblA−B/ba∇dbl∞,2
+•Rescaled version Loss (See Details in Section 9, informal version of Lemma 9.3and Lemma 9.4)
+–/ba∇dbl∇Lq(x)−∇Lq(y)/ba∇dbl2≤M0·/ba∇dblx−y/ba∇dbl2
+–/ba∇dbl∇Lq(A)−∇Lq(B)/ba∇dbl2≤M0·/ba∇dblA−B/ba∇dbl∞,2
+•Sparse Loss (See Details in Section 10, informal version of Lemma 10.3and Lemma 10.4)
+–|∇Lsparse (x)−∇Lsparse (y)| ≤M0·/ba∇dblx−y/ba∇dbl2
+–|∇Lsparse (A)−∇Lsparse (B)| ≤M0·/ba∇dblA−B/ba∇dbl∞,2
+•Cross Entropy Loss (See Details in Section 11, informal version of Lemma 11.3and Lemma 11.4)
+–/ba∇dbl∇Lcent(x)−∇Lcent(y)/ba∇dbl2≤M0·/ba∇dblx−y/ba∇dbl2
+–/ba∇dbl∇Lcent(A)−∇Lcent(B)/ba∇dbl2≤M0·/ba∇dblA−B/ba∇dbl∞,2
+•Entropy Loss (See Details in Section 12, informal version of Lemma 12.3and Lemma 12.4)
+–/ba∇dbl∇Lent(x)−∇Lent(y)/ba∇dbl2≤M0·/ba∇dblx−y/ba∇dbl2
+–/ba∇dbl∇Lent(A)−∇Lent(B)/ba∇dbl2≤M0·/ba∇dblA−B/ba∇dbl∞,2
+7Roadmap. In Section 4, we cite several lemmas from matrix algebra. In Section 5, we deﬁne
+some functions discussed. We prove the equivalence between matrix version and vector version of
+softmax regression formulation, and we calculate the gradi ents of Loss functions. In Section 6, we
+state some bounds for auxiliary functions. In Section 7, we calculate the Lipschitz for auxiliary
+functions. In Section 8, we discuss the Lipschitz condition for softmax loss functi on in normalized
+version. In Section 9, we discuss the Lipschitz condition for softmax loss functi on in rescaled version.
+In Section 10, we discuss the Lipschitz condition for sparse loss functio n. In Section 11, we discuss
+the Lipschitz condition for cross entropy loss function. In Section 12, we discuss the Lipschitz
+condition for entropy loss function. In Section 13and Section 14, a signiﬁcant contribution lies in
+the application of Lipshcitz analysis to both the rescaled a nd normalized versions of regression in
+the ﬁeld of in-context learning.
+3 Related Work
+In-Context Learning In in-context learning, deep learning models consider the c ontextual in-
+formation of input data during training and inference, enab ling them to better understand and
+leverage the relevant relationships within the data. This m eans that models learn and make de-
+cisions based not only on individual samples but also by cons idering the surrounding context or
+related tasks. [ ASA+22] was demonstrated that transformers utilized as in-contex t learners can im-
+plicitly execute conventional learning algorithms. This a ccomplishment is attained by integrating
+smaller models into their activations. Models are updated c onsistently when new examples emerge
+in the speciﬁed context.
+[GTLV22 ] is centered around gaining a comprehensive understanding of in-context learning.
+They achieve this by exploring tasks in which models are trai ned under speciﬁc in-context require-
+ments to learn speciﬁc classes of functions (linear functio ns). The central question they prioritize
+is whether the model can be trained to master the most of funct ions within that class, even when
+provided with data obtained from other functions belonging to the same class.
+Transformers’ mechanisms are perceived as in-context acco rding to [ ONR+22]. There are sim-
+ilarities between in-context tasks and meta-learning form ulations that rely on gradient descent.
+This suggests that transformers can leverage meta-learnin g principles to adapt and enhance their
+performance in in-context learning scenarios. Meta-learn ing [KS21 ], or learning-to-learn, aims to
+automate the learning of these aspects, reducing the need fo r manual eﬀort and unlocking greater
+capabilities. [ KHSDM22 ] demonstrates that Transformers and other black-box model s can be
+meta-trained to function as general-purpose in-context le arners.
+Based on transformers trained through gradient ﬂow on linea r regression tasks with a single
+linear self-attention layer, [ ZFB23 ] conduct a comprehensive investigation into the dynamics o f
+ICL. The study aims to explore why transformers, when applie d to random instances of linear
+regression problems, exhibit similarities with the predic tions of ordinary least squares models.
+[WZW23 ] demonstrates that ICL can be regarded as a procedure of Baye sian selection, enabling it
+to implicitly infer information relevant to the designated tasks.
+Transformer Theory [SZKS21 ] investigated the behavior about single-head attention me cha-
+nism in Seq2Seq model learning and provided instructions on parameter selection for better per-
+formance. The research by [ SZKS21 ] serves as a inspiration for parameter selection in Seq2Seq
+model learning. Their investigation speciﬁcally focuses o n the single-head attention mechanism.
+[ZKV+20] conducted an investigation into adaptive methods and prop osed a speciﬁc approach for
+attention models. For regularized exponential regression , [LSZ23a ] proposed an algorithm operates
+8in input sparsity time. Its eﬀectiveness has been demonstrat ed across any datasets.
+When exponential activation functions were utilized, [ GMS23 ] examined the convergence of
+over-parameterized neural networks An extensive elucidat ion was presented by [ LLR23 ] on how
+transformers can acquire the ”semantic structure” require d for identifying patterns of word co-
+occurrence. Optimization techniques used in transformers and their weakness and strengths are
+discussed.
+Some studies are dedicated to fast computation methods for a ttention. [ BSZ23 ] examined the
+dynamic attention computation and presented both favorabl e and unfavorable outcomes. The
+eﬀectiveness of static attention algorithms across diverse applications is explored by [ ZHDK23 ].
+[AS23 ] proposed an algorithm for static attention and a hardness r esult is presented based on the
+exponential time hypothesis. [ DMS23 ] put forth both deterministic and randomized algorithms
+while studying the sparsiﬁcation of feature dimensions in a ttention computation.
+4 Preliminary
+In this section, we discuss the notations and mathematical t ools used in this paper. The notations
+are explained in Section 4.1, while the mathematical facts and tools are discussed in Sec tion4.2.
+4.1 Notations.
+Given that x∈Rn, exp(x)∈Rndenotes the vector that exp( x)i= exp(xi). log(x)∈Rnis used
+to denote the vector that log( x)i= log(xi). For all i∈[n],x−1∈Rnis used to denote the vector
+y∈Rnsuch that yi=x−1
+i.
+For a matrix A∈Rn×d, exp(A)∈Rn×ddenotes the matrix where exp( A)i,j= exp(Ai,j).
+Letx∈Rnbe a vector, let tbe a scalar, we deﬁnedx
+dt∈Rnto be a vector that i-th entrydxi
+dt.
+Letf:Rd→Rn, lettbe a scalar,df
+dt∈Rndenotes a vector whose i-th entry isdfi
+dt.
+For a matrix A∈Rn×d, we use/ba∇dblA/ba∇dblto denote its spectral norm, i.e., /ba∇dblA/ba∇dbl:= maxx∈Rd/ba∇dblAx/ba∇dbl2//ba∇dblx/ba∇dbl2
+Letx, y be two vectors ∈Rn, let/an}b∇acketle{tx,y/an}b∇acket∇i}htbe/summationtextn
+i=1xi·yi.
+Letx, y be two vectors ∈Rn, letx◦y:=z∈Rnwherezi=xi·yi.
+Let1ndenotes a vector with n entries and all of them are 1.
+Letn∈Z+, [n] denotes a set {1,2,···,n}.
+Letx∈Rn2be a vector, let X∈Rn×nbe a matrix, we say x= vec(X) if thei-th row of
+Xis equivalent to the ( i−1)n+ 1-th term to the in-th term of xfor alli∈[n]. Symmetrically,
+X= mat(x).
+For matrix A∈Rn1×d1and a matrix B∈Rn2×d2,A⊗B∈Rn1n2×d1d2denotes a new matrix that
+(i1−1)n2+i2, (j1−1)d2+j2-th entry is Ai1,j1Bi2,j2, wherei1∈[n1],j1∈[d1],i2∈[n2],j2∈[d2].
+4.2 Facts
+Fact 4.1 (Basic vector properties) .Provided that the subsequent requirement are satisﬁed
+•Letd∈Z+.
+•Letx,y,z∈Rd.
+•Leta,b∈R.
+it follows that
+•Part 1./an}b∇acketle{tx,y/an}b∇acket∇i}ht=/an}b∇acketle{tx◦y,1n/an}b∇acket∇i}ht.
+9•Part 2.a/an}b∇acketle{tx,z/an}b∇acket∇i}ht+b/an}b∇acketle{ty,z/an}b∇acket∇i}ht=/an}b∇acketle{tax+by,z/an}b∇acket∇i}ht=/an}b∇acketle{tz,ax +by/an}b∇acket∇i}ht=a/an}b∇acketle{tz,x/an}b∇acket∇i}ht+b/an}b∇acketle{tz,y/an}b∇acket∇i}ht.
+Fact 4.2 (Basic derivative rules) .Provided that the subsequent requirement are satisﬁed
+•Letn,d∈Z+andk∈Z.
+•Letx∈Rdbe a vector.
+•Lett∈Rbe a scalar.
+•Letcbe independent of t.
+•Letf:Rd→Rn.
+•Leth:Rd→Rn.
+•Letg:Rd→R.
+it follows that
+•Part 1.d(c·f(x))
+dt=c·df(x)
+dt(constant multiple rule).
+•Part 2.d(g(x)k)
+dt=k·g(x)k−1·dg(x)
+dt(power rule).
+•Part 3.d(h(x)+f(x))
+dt=dh(x)
+dt+df(x)
+dt(sum rule).
+•Part 4.d(h(x)◦f(x))
+dt=dh(x)
+dt◦f(x) +h(x)◦df(x)
+dt(product rule for Hadamard product).
+Fact 4.3. For vectors x,y∈Rn, we have
+•/ba∇dblx◦y/ba∇dbl2≤ /ba∇dblx/ba∇dbl∞·/ba∇dbly/ba∇dbl2
+•/ba∇dblx/ba∇dbl∞≤ /ba∇dblx/ba∇dbl2≤√n/ba∇dblx/ba∇dbl∞
+•/ba∇dblexp(x)/ba∇dbl∞≤exp(/ba∇dblx/ba∇dbl2)
+•/ba∇dblexp(x)/ba∇dbl2·2/ba∇dblx−y/ba∇dbl∞≥ /ba∇dblexp(x)−exp(y)/ba∇dbl2, for any /ba∇dblx−y/ba∇dbl∞≤0.01
+Fact 4.4. For matrices X,Y, we have
+•/ba∇dblX⊤/ba∇dbl=/ba∇dblX/ba∇dbl
+•/ba∇dblX/ba∇dbl ≥ /ba∇dblY/ba∇dbl−/ba∇dblX−Y/ba∇dbl
+•/ba∇dblX+Y/ba∇dbl ≤ /ba∇dblX/ba∇dbl+/ba∇dblY/ba∇dbl
+•/ba∇dblX·Y/ba∇dbl ≤ /ba∇dblX/ba∇dbl·/ba∇dblY/ba∇dbl
+•IfX/√∇ecedesequalα·Y, then/ba∇dblX/ba∇dbl ≤α·/ba∇dblY/ba∇dbl
+5 Gradient
+In Section 5.1, we provide an overview of some concepts used for gradient co mputation, with
+a speciﬁc emphasis on the fundamental idea in this paper rega rding vectorization for matrices.
+Section 5.2focuses on basic equivalence, while Section 5.3presents the derivatives.
+105.1 Preliminary
+Deﬁnition 5.1. GivenA1∈Rn×d,A2∈Rn×d, we deﬁne A∈Rn2×d2to be the matrix A1⊗A2,
+where the (i1−1)·n+i2-th row is
+A(i1−1)n+i2,∗/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+1×d2:=A1,i1,∗/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+1×d⊗A2,i2,∗/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+1×d
+for alli1∈[n]andi2∈[n]. HereA1,i1,∗is thei1-th row of matrix A1.
+Deﬁnition 5.2. GivenA1,A2∈Rn×dandX∈Rd×d,D(X)∈Rn×nis deﬁned as outlined below
+D(X) := diag(exp( A1XA⊤
+2)1n).
+Note that X∈Rd×dis matrix version of vector x∈Rd2×1, i.e.,X= mat(x).
+Deﬁnition 5.3. Given matrices A1∈Rn×d,A2∈Rn×dandx∈Rd2×1. LetD(X)∈Rn×nis
+deﬁned in Deﬁnition 5.2. We deﬁne diagonal matrix D(x)∈Rn2×n2as outlined below
+D(x)(i1−1)n+i2,(i1−1)·n+i2:= exp(A1,i1,∗XA⊤
+2)1n
+In other words, D(x) =D(X)⊗In. Herexis the vectorization of matrix X, i.e.,x= vec(X).
+Deﬁnition 5.4 (Function α(x)).We also deﬁne α(x)∈Rn
+α(x)j1:=/an}b∇acketle{texp(A[j1],∗x),1n/an}b∇acket∇i}ht,∀j1∈[n]
+HereA[j1],∗∈Rn×d2denotes the rows from index (j1−1)·n+ 1to index j1·n.
+Deﬁnition 5.5 (Function u(x)).For each j1∈[n],u(x)j1∈Rnis deﬁned as outlined below
+u(x)j1:= exp(A[j1],∗x)
+Deﬁnition 5.6 (Function f(x)).For each j1∈[n], we deﬁne f(x)j1∈Rnas outlined below
+f(x)j1:=α(x)−1
+j1·u(x)j1.
+Deﬁnition 5.7 (Function h(x)).For each j1∈[n], we deﬁne h(x)j1∈Rnas outlined below
+h(x)j1:= log(f(x)j1).
+Deﬁnition 5.8 (Function c(x)).For each j1∈[n], we deﬁne c(x)j1∈Rnas outlined below
+c(x)j1:=f(x)j1−b[j1].
+Here we use b[j1]∈Rnto denote the (j1−1)·n+ 1)-th to (j1·n)-th entry of b∈Rn2.
+Deﬁnition 5.9 (Function q(x)).For each j1∈[n], we deﬁne q(x)j1∈Rnas outlined below
+q(x)j1:=u(x)j1−b[j1]·α(x)j1
+Here we use b[j1]∈Rnto denote the (j1−1)·n+ 1-th to (j1·n)-th entry of b∈Rn2.
+11Deﬁnition 5.10 (Loss Function Lc(x)).We deﬁne the normalized softmax version loss Lcas
+outlined below
+Lc(x) := 0.5n/summationdisplay
+j1=1/ba∇dblc(x)j1/ba∇dbl2
+2.
+Deﬁnition 5.11 (Loss Function Lq(x)).We deﬁne the rescaled softmax version loss Lq(x)as
+outlined below
+Lq(x) := 0.5n/summationdisplay
+j1=1/ba∇dblq(x)j1/ba∇dbl2
+2
+Deﬁnition 5.12 (Sparse Penalty, a generalization of Deﬁnition D.41 in [ ZSZ+23]).We deﬁne
+Lsparse (x) :=n/summationdisplay
+j1=1α(x)j1
+Deﬁnition 5.13 (Cross entropy, a generalization of Deﬁnition C.7 in [ WYW+23]).We deﬁne
+Lcent(x) :=−n/summationdisplay
+j1=1/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht
+Deﬁnition 5.14 (Entropy, a generalization of Deﬁnition 4.7 in [ SSZ23 ]).We deﬁne
+Lent(x) :=−n/summationdisplay
+j1=1/an}b∇acketle{tf(x)j1,logf(x)j1/an}b∇acket∇i}ht
+5.2 Basic Equivalence
+Lemma 5.15. GivenA= diag(a1,···,an), a matrix B∈Rn×nandIn∈Rn×nbe the identity
+matrix, we have
+vec(AB) =A⊗Invec(B).
+Proof. It simply follows that (( i−1)n+j)-th entry of vec( AB), which is aibij, is equal to the
+corresponding entry of A⊗Invec(B).
+For help the proof of Claim 5.17, we propose the following deﬁnitions.
+Deﬁnition 5.16. We have
+•We useaijto denote the i,j-th entry of matrix A1.
+•We useAito denote the i-th row of matrix A2.
+•We useXjto denote the j-th row of matrix X, wherei∈[n],j∈[d].
+Claim 5.17. Provided that the subsequent requirement are satisﬁed
+•Letb∈Rn2denote the vectorization of B∈Rn×n, i.e.,b= vec(B).
+•Letaij,AiandXjbe deﬁned in Deﬁnition 5.16.
+12It follows that
+•Part 1.
+vec(A1/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+n×dX/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+d×dA⊤
+2/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+d×n) = (A1⊗A2)/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+n2×d2vec(X)/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+d2×1
+•Part 2. minX∈Rd×d/ba∇dblA1XA⊤
+2−B/ba∇dbl2
+Fis equivalent to minx∈Rd2/ba∇dbl(A1⊗A2)x−b/ba∇dbl2
+2.
+•Part 3. minX∈Rd×d/ba∇dblexp(A1XA⊤
+2)−B/ba∇dbl2
+Fis equivalent to minx∈Rd2/ba∇dblexp((A1⊗A⊤
+2)x)−b/ba∇dbl2
+2.
+•Part 4. minX∈Rd×d/ba∇dblD(X)−1exp(A1XA⊤
+2)−B/ba∇dbl2
+Fis equivalent to minx∈Rd2/ba∇dblD(x)−1exp((A1⊗
+A2)x)−b/ba∇dbl2
+2.
+–The diagonal matrix D(X)∈Rn×nis deﬁned as D(X) := diag(exp( A1XA⊤
+2)1n)
+–The diagonal matrix D(x)∈Rn2×n2is be written as D(x) =D(X)⊗In.
+Proof. Our proof is as outlined below.
+Proof of Part 1. By directly calculating the matrices, we can conclude that
+(A1XA⊤
+2)i,j=d/summationdisplay
+k=1aikXkA⊤
+j
+= ((A1⊗A2) vec(X))i(d−1)+j
+Therefore, Part 1 holds.
+Proof of Part 2. We have
+vec(A1XA⊤
+2−B) = vec(A1XA⊤
+2x)−b
+= (A1⊗A2)x−b
+where the 1st step is due to vec( B) =band the 2nd step is because of Part 1 above.
+Hence, by the deﬁnition of Frobenius norm and Euclidean norm , we have
+/ba∇dblA1XA⊤
+2−B/ba∇dbl2
+F=/ba∇dbl(A1⊗A2)x−b/ba∇dbl2
+2
+Therefore, the equivalence is veriﬁed.
+Proof of Part 3. Similar to Part 2 , the result can be derived from the equation vec(exp( A1XA⊤
+2)−
+B) = exp(( A1⊗A2)x)−b.
+Proof of Part 4. We have
+D(x)−1= (D(X)⊗In)−1
+=D(X)−1⊗In (1)
+According to Lemma 5.15, it follows that
+vec(D(X)−1exp(A1XA⊤
+2)) =D(x)−1⊗Invec(exp(A1XA⊤
+2))
+13=D(x)−1vec(exp(A1XA⊤
+2))
+=D(x)−1exp((A1⊗A2)x)
+where the 1st step is based on Lemma 5.15, the 2nd step follows from Eq. ( 1) and the 3rd step is
+because of Part 1 .
+Then, the proof is complete.
+5.3 Basic Derivatives
+Lemma 5.18. Provided that the subsequent requirement are satisﬁed
+•LetA1,A2∈Rn×d.
+•LetA=A1⊗A2.
+•LetX∈Rd×d.
+•Leti= (i1−1)d+i2
+•For each i∈[d2], we use A∗,i∈Rn2to denote the i-th column of A∈Rn2×d2
+•LetD(x)be deﬁned as in Deﬁnition 5.3.
+•Letx∈Rd2andx= vec(X).
+•A[j1],∗∈Rn×d2be the matrix formed by the rows from index (j1−1)·n+ 1to index j1·nof
+matrixA∈Rn2×d2.
+•LetA[j1],ibe thei-th column of matrix A[j1],∗.
+Then, we can show
+•Part 1. For each i∈[d2]
+dAx
+dxi=A∗,i
+•Part 2. For each i∈[d2]
+d exp(Ax)
+dxi=A∗,i◦exp(Ax)
+•Part 3. For each j1∈[n], for each i∈[d2]
+dA[j1],∗x
+dxi=A[j1],i
+•Part 4. For each j1∈[n], for each i∈[d2]
+du(x)j1
+dxi=u(x)j1◦A[j1],i
+14•Part 5. For each j1∈[n], for each i∈[d2]
+dα(x)j1
+dxi=/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht
+•Part 6. For each j1∈[n], for each i∈[d2],
+dq(x)j1
+dxi=u(x)j1◦A[j1],i−b[j1]·/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht
+•Part 7. For each i∈[d2],
+dLq(x)
+dxi=n/summationdisplay
+j1=1/an}b∇acketle{tq(x)j1,u(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht
+•Part 8. For each j1∈[n], for each i∈[d2],
+dα(x)−1
+j1
+dxi=−α(x)−1
+j1·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht
+•Part 9. For each j1∈[n], for each i∈[d2],
+df(x)j1
+dxi=f(x)j1◦A[j1],i−f(x)j1·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht
+•Part 10. For each j1∈[n], for each i∈[d2],
+dh(x)j1
+dxi=A[j1],i−/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·1n
+•Part 11. For each j1∈[n], for each i∈[d2],
+dc(x)j1
+dxi=f(x)j1◦A[j1],i−f(x)j1·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht.
+•Part 12. For each i∈[d2],
+dLc(x)
+dxi=n/summationdisplay
+j1=1(/an}b∇acketle{tc(x)j1,f(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(x)j1,f(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht).
+•Part 13. For each i∈[d2]
+dLsparse (x)
+dxi=n/summationdisplay
+j1=1/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht
+•Part 14. For each i∈[d2]
+dLcent(x)
+dxi=n/summationdisplay
+j1=1(/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht)
+15•Part 15. For each i∈[d2]
+Lent(x) =n/summationdisplay
+j1=1(/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1◦A[j1],i,h(x)j1/an}b∇acket∇i}ht+
+/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht)
+Proof.Proof of Part 1.
+We have
+d(Ax)
+dxi=Adx
+dxi
+=A∗,i,
+where the 1st step is because of Part 1 of Fact 4.2, the 2nd step is based on the fact that only the
+i-th entry ofdx
+dxiis 1 and other entries of it are 0.
+Proof of Part 2.
+We have
+d exp(Ax)
+dxi= exp(Ax)◦d(Ax)
+dxi
+= exp(Ax)◦A∗,i,
+where the 1st step is because of the chain rule and the 2nd step is due to Part 1 of this Lemma.
+Proof of Part 3. It follows that
+dA[j1],∗x
+dxi=A[j1],∗dx
+dxi
+=A[j1],i,
+where the 1st step follows form Part 1 of Fact 4.2and the 2nd step is from the fact that only the
+i-th entry ofdx
+dxiis 1 and other entries of it are 0.
+Proof of Part 4. We have
+du(x)j1
+dxi=d exp(A[j1],∗x)
+dxi
+= exp(A[j1],∗x)◦dA[j1],∗x
+dxi
+=u(x)j1◦A[j1],i,
+where the 1st step is given by Deﬁnition 5.5, the 2nd step holds because of the chain rule, and the
+3rd step is due to Part 3 of this Lemma.
+Proof of Part 5.
+Letj1∈[n]. Leti∈[d2].
+We have
+dα(x)j1
+dxi=d/an}b∇acketle{texp(A[j1],∗x),1n/an}b∇acket∇i}ht
+dxi
+=/an}b∇acketle{td exp(A[j1],∗x)
+dxi,1n/an}b∇acket∇i}ht
+16=/an}b∇acketle{tu(x)j1◦A[j1],i,1n/an}b∇acket∇i}ht
+=/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht,
+where the 1st step is given by Deﬁnition 5.4, the 2nd step uses property of the inner product and
+fromPart 3 of Fact 4.2, the 3rd step follows from Part 4 of this Lemma, and the last step uses
+Part 1 of Fact 4.1.
+Proof of Part 6.
+We have
+dq(x)j1
+dxi=d(u(x)j1−b[j1]·α(x)j1)
+dxi
+=du(x)j1
+dxi−b[j1]·dα(x)j1
+dxi
+=u(x)j1◦A[j1],i−b[j1]·/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht
+where the 1st step is due to Deﬁnition 5.8, the 2nd step is due to Part 3 of Fact 4.2, and the fact
+thatb[j1]does not contain xi, the last step follows from Part 4 andPart 5 of this lemma.
+Proof of Part 7.
+dLq(x)
+dxi= 0.5·d
+dxin/summationdisplay
+j1=1/an}b∇acketle{tq(x)j1,q(x)j1/an}b∇acket∇i}ht
+=n/summationdisplay
+j1=1/an}b∇acketle{tq(x)j1,dq(x)j1
+dxi/an}b∇acket∇i}ht
+=n/summationdisplay
+j1=1/an}b∇acketle{tq(x)j1,u(x)j1◦A[j1],i−b[j1]·/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht/an}b∇acket∇i}ht
+=n/summationdisplay
+j1=1/an}b∇acketle{tq(x)j1,u(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht
+where the 1st step is owing to the deﬁnition of 2-norm, the 2nd step follows from chain rule, the
+3rd step is derived from Part 6 of this lemma, and the last step is due to deﬁnition and basic
+calculation rules of inner product.
+Proof of Part 8. We have
+dα(x)−1
+j1
+dxi=−1·α(x)−2
+j1·dα(x)j1
+dxi
+=−1·α(x)−2
+j1·/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht
+=−α(x)−1
+j1·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht
+where the 1st step is because of chain rule, the 2nd step follo ws byPart 5 of this Lemma, and the
+3rd step is given by the deﬁnition of f(see Deﬁnition 5.6).
+Proof of Part 9.
+We have
+df(x)j1
+dxi=d(α(x)−1
+j1u(x)j1)
+dxi
+17=α(x)−1
+j1·du(x)j1
+dxi+dα(x)−1
+j1
+dxi·u(x)j1
+=α(x)−1
+j1·u(x)j1◦A[j1],i−α(x)−1
+j1·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·u(x)j1
+=f(x)j1◦A[j1],i−f(x)j1·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht
+where the 1st step is due to Deﬁnition 5.6, the 2nd step is due to chain rule, the 3rd step is due to
+Part 4 andPart 8 of this Lemma, and the last step is according to Deﬁnition 5.6.
+Proof of Part 10.
+We have
+dh(x)j1
+dxi=f(x)−1
+j1◦df(x)j1
+dxi
+=f(x)−1
+j1◦(f(x)j1◦A[j1],i−f(x)j1·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht)
+=A[j1],i−/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·1n
+where the 1st step is because of Deﬁnition 5.7, the 2nd step is due to Part 9 of this lemma, the
+3rd step holds since f(x)−1
+j1◦f(x)j1=1n.
+Proof of Part 11.
+We have
+dc(x)j1
+dxi=d(f(x)j1−b[j1])
+dxi
+=df(x)j1
+dxi−db[j1]
+dxi
+=df(x)j1
+dxi,
+where the 1st step is because of Deﬁnition 5.8, the 2nd step is due to Fact 4.2, and the last step
+holds, since b[j1]does not contain xi.
+Proof of Part 12.
+dLc(x)
+dxi= 0.5d
+dxin/summationdisplay
+j1=1/an}b∇acketle{tc(x)j1,c(x)j1/an}b∇acket∇i}ht
+=n/summationdisplay
+j1=1/an}b∇acketle{tc(x)j1,dc(x)j1
+dxi/an}b∇acket∇i}ht
+=n/summationdisplay
+j1=1/an}b∇acketle{tc(x)j1,f(x)j1◦A[j1],i−f(x)j1·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht/an}b∇acket∇i}ht
+=n/summationdisplay
+j1=1(/an}b∇acketle{tc(x)j1,f(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(x)j1,f(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht),
+where the 1st step is due to Deﬁnition 5.10, the 2nd step is becaused of chain rule, the 3rd step is
+due toPart 9 andPart 10 of this Lemma, and the last step is based on Fact 4.1.
+Proof of Part 13.
+dLsparse (x)
+dxi=d
+dxin/summationdisplay
+j1=1α(x)j1
+18=n/summationdisplay
+j1=1dα(x)j1
+dxi
+=n/summationdisplay
+j1=1/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht
+where the 1st step is Deﬁnition 5.12, the 2nd step follows by Fact 4.2, the 3rd step is because of
+Part 5 of this lemma.
+Proof of Part 14
+dLcent(x)
+dxi=−d
+dxin/summationdisplay
+j1=1/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht
+=−n/summationdisplay
+j1=1/an}b∇acketle{tdf(x)j1
+dxi,b[j1]/an}b∇acket∇i}ht
+=−n/summationdisplay
+j1=1/an}b∇acketle{tf(x)j1◦A[j1],i−f(x)j1·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht,b[j1]/an}b∇acket∇i}ht
+=n/summationdisplay
+j1=1(/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht)
+where the 1st step uses the deﬁnition of Lcent(x) (see Deﬁnition 5.13), the 2nd step is derived from
+Fact 4.2, the 3rd step uses Part 9 of this lemma, the last step is inner product calculation.
+Proof of Part 15
+dLent(x)
+dxi=−d
+dxin/summationdisplay
+j1=1/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht
+=−n/summationdisplay
+j1=1(/an}b∇acketle{tdf(x)j1
+dxi,h(x)j1/an}b∇acket∇i}ht+/an}b∇acketle{tf(x)j1,dh(x)j1
+dxi/an}b∇acket∇i}ht)
+=−n/summationdisplay
+j1=1(/an}b∇acketle{tdf(x)j1
+dxi,h(x)j1/an}b∇acket∇i}ht+/an}b∇acketle{tf(x)j1,A[j1],i−/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·1n/an}b∇acket∇i}ht)
+=−n/summationdisplay
+j1=1(/an}b∇acketle{tf(x)j1◦A[j1],i−f(x)j1·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht,h(x)j1/an}b∇acket∇i}ht+
+/an}b∇acketle{tf(x)j1,A[j1],i−/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·1n/an}b∇acket∇i}ht)
+=n/summationdisplay
+j1=1(/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1◦A[j1],i,h(x)j1/an}b∇acket∇i}ht+
+/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht)
+where the 1st step is from the deﬁnition of Lent(x) (see Deﬁnition 5.14), the 2nd step uses the chain
+rule, the 3rd step is due to Part 10 of this lemma, the 4th step is due to Part 9 of this lemma,
+the last step is inner product calculation and rearrangemen t.
+196 Bounds for Basic Functions
+We state and prove some bounds for auxiliary functions in thi s section. In Section 6.1and Sec-
+tion 6.2, we state a lower bound of β. In Section 6.3, we derive an upper bound for /ba∇dblu(x)/ba∇dbl2. In
+Section 6.4, we derive an upper bound for |α−1(x)|. In Section 6.5, we state an upper bound for
+/ba∇dblf(x)/ba∇dbl2. In Section 6.6, we state an upper bound for /ba∇dblh(x)/ba∇dbl2. In Section 6.7, we derive an upper
+bound for /ba∇dblc(x)/ba∇dbl2. In Section 6.8, we derive an upper bound for /ba∇dblα(x)/ba∇dbl2. In Section 6.9, we derive
+an upper bound for /ba∇dblq(x)/ba∇dbl2.
+6.1 Lower bound on βofu(x)
+Lemma 6.1 ([DLS23 ,LSX+23]).Provided that the subsequent requirement are satisﬁed
+•Letu(x)j1be denoted as Deﬁnition 5.5
+•Letx∈Rd2satisfy/ba∇dblx/ba∇dbl2≤R
+•The greatest lower bound of /an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}htis denoted as β
+•Letmaxj∈[n]/ba∇dblA[j],∗/ba∇dbl ≤R
+Then we have
+β≥exp(−R2).
+6.2 Lower bound on βofu(A)
+Lemma 6.2 ([DLS23 ,LSX+23]).Provided that the subsequent requirement are satisﬁed
+•LetA∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•We deﬁne u(A)as Deﬁnition 5.5
+•Letβbe the greatest lower bound of /an}b∇acketle{tu(A)j1,1n/an}b∇acket∇i}ht
+Then we have
+β≥exp(−R2).
+6.3 Upper bound on /ba∇dblu(x)j1/ba∇dbl2
+Lemma 6.3 ([DLS23 ,LSX+23]).Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2satisfy/ba∇dblx/ba∇dbl2≤R
+•We deﬁne u(x)as Deﬁnition 5.5.
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+Then we have
+/ba∇dblu(x)j1/ba∇dbl2≤√n·exp(R2).
+206.4 Upper bound on |α−1(x)j1|
+Lemma 6.4. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2satisfy/ba∇dblx/ba∇dbl2≤R
+•We deﬁne α(x)j1as Deﬁnition 5.4
+•The greatest lower bound of /an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}htis denoted as β.
+•Letmaxj∈[n]/ba∇dblA[j],∗/ba∇dbl ≤R
+Then we have
+|α−1(x)j1| ≤exp(R2).
+Proof.
+|α−1(x)j1|=1
+/an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}ht
+≤1
+β
+≤exp(R2)
+where the ﬁrst step uses Deﬁnition 5.4, the 2nd step is based on assumptions of Lemma 6.4, the
+last step is given by Lemma 6.1.
+6.5 Upper bound on /ba∇dblf(x)j1/ba∇dbl2
+Lemma 6.5. Provided that the subsequent requirement are satisﬁed
+•We deﬁne f(x)as Deﬁnition 5.6
+It follows that
+/ba∇dblf(x)j1/ba∇dbl2≤1.
+Proof.
+/ba∇dblf(x)j1/ba∇dbl2
+2=1
+|/an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}ht|2·/ba∇dblu(x)j1/ba∇dbl2
+2
+≤1
+the reason for the last step is that every entry of u(x)j1is positive.
+6.6 Upper bound on /ba∇dblh(x)j1/ba∇dbl2
+Lemma 6.6 (Lemma F.2 in [ SSZ23 ]).Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2satisfy/ba∇dblx/ba∇dbl2≤R
+•We deﬁne h(x)as Deﬁnition 5.7
+•The greatest lower bound of /an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}htis denoted as β
+Then, for all j1∈[n]we have
+/ba∇dblh(x)j1/ba∇dbl2≤2√nR2
+216.7 Upper bound on /ba∇dblc(x)j1/ba∇dbl2
+Lemma 6.7. Provided that the subsequent requirement are satisﬁed
+•We deﬁne c(x)as Deﬁnition 5.8
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+Then we have
+/ba∇dblc(x)j1/ba∇dbl2≤2.
+Proof.
+/ba∇dblc(x)j1/ba∇dbl2=/ba∇dblf(x)j1−b[j1]/ba∇dbl2
+≤ /ba∇dblf(x)j1/ba∇dbl2+/ba∇dblb[j1]/ba∇dbl2
+≤2
+where the ﬁrst step uses Deﬁnition 5.8, the 2nd step is given by triangle inequality, the last step i s
+due to Lemma 6.5and lemma assumption.
+6.8 Upper bound on |α(x)j1|
+Lemma 6.8. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2satisﬁes /ba∇dblx/ba∇dbl2≤R
+•We deﬁne α(x)as Deﬁnition 5.4
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+Then, for all j∈[n]it follows that
+|α(x)j1| ≤nexp(R2).
+Proof.
+|α(x)j1|=|/an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}ht|
+≤√n·/ba∇dblu(x)j1/ba∇dbl2
+≤√n·√n·exp(R2)
+=nexp(R2)
+where the ﬁrst step is owing to Deﬁnition 5.4, the 2nd step follows by Cauchy-Schwartz inequality,
+the 3rd step is given by Lemma 6.3.
+6.9 Upper bound on /ba∇dblq(x)j1/ba∇dbl2
+Lemma 6.9. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2satisﬁes that /ba∇dblx/ba∇dbl2≤R
+•Letq(x)be deﬁned as Deﬁnition 5.9
+22•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+It follows that
+/ba∇dblq(x)j1/ba∇dbl2≤2nexp(R2).
+Proof./ba∇dblq(x)j1/ba∇dbl2is bounded as follows:
+/ba∇dblq(x)j1/ba∇dbl2=/ba∇dblu(x)j1−α(x)j1b[j1]/ba∇dbl2
+≤ /ba∇dblu(x)j1/ba∇dbl2+|α(x)j1|·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dblu(x)j1/ba∇dbl2+|α(x)j1|
+≤√nexp(R2) +|α(x)j1|
+≤√nexp(R2) +nexp(R2)
+≤2nexp(R2)
+where the ﬁrst step is due to Deﬁnition 5.9, the 2nd step follows by triangle inequality, the 3rd
+step is derived by lemma assumption, the 4th step follows fro m Lemma 6.3, the 5th step is due to
+Lemma 6.8, the last step follows from n≥1.
+7 Lipschitz of Basic Functions
+In this section, we state some lemmas of Lipschitz condition s for basic functions. For functions of
+A, their deﬁnitions and gradients are the same as functions of x, except that they have diﬀerent
+independent variables, i.e., u(A) =u(x),dLc(A)
+dxi=dLc(x)
+dxi.
+In Section 7.1, he Lipschitz for function uwith respect to xis computed. Section 7.2presents
+the Lipschitz for function αwith respect to x. Section 7.3provides the Lipschitz for function α−1
+with respect to x. In Section 7.4, we compute the Lipschitz for function fwith respect to x. In
+Section 7.5, we state the Lipschitz for function fwith respect to x. In Section 7.6, we compute the
+Lipschitz for function cwith respect to x. In Section 7.7, we compute the Lipschitz for function q
+with respect to x.
+The Lipschitz for function uwith respect to Ais computed in Section 7.8. In Section 7.9, we
+compute the Lipschitz for function αwith respect to A. In Section 7.10, we compute the Lipschitz
+for function α−1with respect to A. In Section 7.11, we compute the Lipschitz for function fwith
+respect to A. In Section 7.12, we state the Lipschitz for function hwith respect to A. In Section 7.13,
+we compute the Lipschitz for function cwith respect to A. In Section 7.14, we compute the Lipschitz
+for function qwith respect to A.
+7.1 Lipschitz for u(x)function
+Lemma 7.1. Provided that the subsequent requirement are satisﬁeds
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•We deﬁne u(x)as Deﬁnition 5.5
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+23•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+Then, for all j1∈[n],
+/ba∇dblu(x)j1−u(y)j1/ba∇dbl2≤2√nRexp(R2)·/ba∇dblx−y/ba∇dbl2.
+Proof.
+/ba∇dblexp(A[j1],∗x)−exp(A[j1],∗y)/ba∇dbl2≤exp(/ba∇dblA[j1],∗x/ba∇dbl2)·2/ba∇dblA[j1],∗(x−y)/ba∇dbl∞
+≤√nexp(R2)·2/ba∇dblA[j1],∗(x−y)/ba∇dbl2
+≤√nexp(R2)·2/ba∇dblA[j1],∗/ba∇dbl·/ba∇dblx−y/ba∇dbl2
+≤2√nRexp(R2)·/ba∇dblx−y/ba∇dbl2
+where the 1st step is because of max j1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01 and Fact 4.3, the 2nd step
+follows from Lemma 6.3, the 3rd step follows from Fact 4.4, the last step follows from lemma
+assumptions.
+7.2 Lipschitz for α(x)function
+Lemma 7.2. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•We deﬁne α(x)as Deﬁnition 5.4
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+Then, for all j1∈[n], it follows that
+|α(x)j1−α(y)j1| ≤√n·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2
+Proof.
+|α(x)j1−α(y)j1|=|/an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tu(y)j1,1n/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tu(x)j1−u(y)j1,1n/an}b∇acket∇i}ht|
+≤ /ba∇dblu(x)j1−u(y)j1/ba∇dbl2·√n
+where the last step follows after Cauchy-Schwarz inequalit y.
+7.3 Lipschitz for α−1(x)function
+Lemma 7.3. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•We deﬁne α(x)as Deﬁnition 5.4
+•The greatest lower bound of /an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}htis denoted as β
+Then, for all j1∈[n]we have
+•|α(x)−1
+j1−α(y)−1
+j1| ≤β−2·|α(x)j1−α(y)j1|
+Proof. The proof is similar to [ DLS23 ], so we omit the details here.
+247.4 Lipschitz for f(x)function
+Lemma 7.4. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•Letf(x)be deﬁned as Deﬁnition 5.6
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•The greatest lower bound of /an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}htis denoted as β
+Then, for all j1∈[n]we have
+•/ba∇dblf(x)j1−f(y)j1/ba∇dbl2≤4β−2n1.5Rexp(2R2)·/ba∇dblx−y/ba∇dbl2
+Proof. We can show that
+/ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+=/ba∇dblα(x)−1
+j1u(x)j1−α(y)−1
+j1u(y)j1/ba∇dbl2
+≤ /ba∇dblα(x)−1
+j1u(x)j1−α(y)−1
+j1u(x)j1/ba∇dbl2+/ba∇dblα(y)−1
+j1u(x)j1−α(y)−1
+j1u(y)j1/ba∇dbl2
+=|α(x)−1
+j1−α(y)−1
+j1|·/ba∇dblu(x)j1/ba∇dbl2+|α(y)−1
+j1|·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2 (2)
+where the ﬁrst step follow by the deﬁnition of f(see Deﬁnition 5.6), the 2nd and the last step
+follows from Fact 4.4.
+For the ﬁrst term of Eq. ( 2), we have
+|α(x)−1
+j1−α(y)−1
+j1|·/ba∇dblu(x)j1/ba∇dbl2
+≤β−2·|α(x)j1−α(y)j1|·/ba∇dblu(x)j1/ba∇dbl2
+≤β−2·|α(x)j1−α(y)j1|·√n·exp(R2)
+≤β−2·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2·√n·√n·exp(R2)
+≤β−2·2√nRexp(R2)·/ba∇dblx−y/ba∇dbl2·√n·√n·exp(R2)
+≤2β−2n1.5Rexp(2R2)·/ba∇dblx−y/ba∇dbl2 (3)
+where the ﬁrst step holds because of Lemma 7.3, the 2nd step follows by Lemma 6.3, the 3rd step
+follows from Lemma 7.2, the 4th step is due to Lemma 7.1, the last step is a rearrangement of step
+4.
+For the second term of the equation, we have
+|α(y)−1
+j1|·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2≤β−1·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2
+≤β−1·2√nRexp(R2)·/ba∇dblx−y/ba∇dbl2
+≤2β−1n0.5Rexp(R2)·/ba∇dblx−y/ba∇dbl2 (4)
+where the ﬁrst step is given by the assumption in Lemma 7.3, the second step follows from
+Lemma 7.1.
+Putting Eq. ( 3) and Eq. ( 4) into Eq. ( 2), we have
+/ba∇dblf(x)j1−f(y)j1/ba∇dbl2≤2β−2n1.5Rexp(2R2)·/ba∇dblx−y/ba∇dbl2+ 2β−1n0.5Rexp(R2)·/ba∇dblx−y/ba∇dbl2
+≤4β−2n1.5Rexp(2R2)·/ba∇dblx−y/ba∇dbl2
+where the 2nd step follows by Lemma 6.1
+257.5 Lipschitz for h(x)function
+Lemma 7.5 (Lemma G.2 in [ SSZ23 ]).Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•We deﬁne h(x)as Deﬁnition 5.7
+•LetA∈Rn2×d2
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•/ba∇dbl1n−f(x)j1
+f(y)j1/ba∇dbl∞≤0.1
+Then, for all j1∈[n]we have
+/ba∇dblh(x)j1−h(y)j1/ba∇dbl2≤ /ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+7.6 Lipschitz for c(x)function
+Lemma 7.6. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•Letc(x)be deﬁned as Deﬁnition 5.8
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•The greatest lower bound of /an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}htis denoted as β
+Then, for all j1∈[n]we have
+•/ba∇dblc(x)j1−c(y)j1/ba∇dbl2≤4β−2n1.5Rexp(2R2)·/ba∇dblx−y/ba∇dbl2
+Proof. It follows from the deﬁnition of c(see Deﬁnition 5.8) and we use Lemma 7.4directly.
+7.7 Lipschitz for q(x)function
+Lemma 7.7. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•Letq(x)be deﬁned as Deﬁnition 5.9
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+Then we have
+26•/ba∇dblq(x)j1−q(y)j1/ba∇dbl2≤4nRexp(R2)/ba∇dblx−y/ba∇dbl2
+Proof. We have
+/ba∇dblq(x)j1−q(y)j1/ba∇dbl2=/ba∇dblu(x)j1−α(x)j1b[j1]−(u(y)j1−α(y)j1b[j1])/ba∇dbl2
+≤ /ba∇dblu(x)j1−u(y)j1/ba∇dbl2+/ba∇dblα(x)j1b[j1]−α(y)j1b[j1]/ba∇dbl2
+≤ /ba∇dblu(x)j1−u(y)j1/ba∇dbl2+|α(x)j1−α(y)j1|·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dblu(x)j1−u(y)j1/ba∇dbl2+|α(x)j1−α(y)j1|
+≤ /ba∇dblu(x)j1−u(y)j1/ba∇dbl2+√n/ba∇dblu(x)j1−u(y)j1/ba∇dbl2
+≤2√n·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2
+≤2√n·2√nRexp(R2)/ba∇dblx−y/ba∇dbl2
+= 4nRexp(R2)/ba∇dblx−y/ba∇dbl2
+where the ﬁrst step is from the deﬁnition of q(x) (see Deﬁnition 5.9), the 2nd step is because of
+triangle inequality, the 3rd step follows by property of nor m, the 4th step follows from lemma
+assumption, the 5th step is due to Lemma 7.2, the 6th step follows from n≥1, the 7th step follows
+from Lemma 7.1, and the last step is a rearrangement of step 6.
+7.8 Lipschitz for u(A)function
+Lemma 7.8. Provided that the subsequent requirement are satisﬁeds
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•We deﬁne u(A)as Deﬁnition 5.5
+Then, for all j1∈[n]we have
+/ba∇dblu(A)j1−u(B)j1/ba∇dbl2≤2√nRexp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl.
+Proof. We have
+/ba∇dblexp(A[j1],∗x)−exp(B[j1],∗x)/ba∇dbl2≤ /ba∇dblexp(A[j1],∗x)/ba∇dbl2·2/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞
+≤√nexp(R2)·2/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl2
+≤√nexp(R2)·2/ba∇dblx/ba∇dbl·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+≤2√nRexp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+where the 1st step is due to max j1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01 and Fact 4.3, the 2nd step follows
+by Lemma 6.3, the 3rd step follows after Fact 4.4, the last step follows from lemma assumptions.
+7.9 Lipschitz for α(A)function
+Lemma 7.9. Provided that the subsequent requirement are satisﬁed
+•We deﬁne α(A)as Deﬁnition 5.4.
+27•We deﬁne u(A)as Deﬁnition 5.5
+Then, for all j1∈[n]we have
+•|α(A)j1−α(B)j1| ≤√n·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2
+Proof. We have
+|α(A)j1−α(B)j1|=|/an}b∇acketle{tu(A)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tu(B)j1,1n/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tu(A)j1−u(B)j1,1n/an}b∇acket∇i}ht|
+≤ /ba∇dblu(A)j1−u(B)j1/ba∇dbl2·√n
+where the last step is because of Cauchy-Schwarz inequality .
+7.10 Lipschitz for α−1(A)function
+Lemma 7.10. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•We deﬁne α(A)as Deﬁnition 5.4
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•Letβbe the greatest lower bound of /an}b∇acketle{tu(A)j1,1n/an}b∇acket∇i}ht
+for allj1∈[n], it follows that
+•|α(A)−1
+j1−α(B)−1
+j1| ≤β−2·|α(A)j1−α(B)j1|
+Proof. The proof shares similarities with that of [ DLS23 ], so we omit the details here.
+7.11 Lipschitz for f(A)function
+Lemma 7.11. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•We deﬁne f(A)as Deﬁnition 5.6
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•Letβbe the greatest lower bound of /an}b∇acketle{tu(A)j1,1n/an}b∇acket∇i}ht
+Then, for all j1∈[n]we have
+•/ba∇dblf(A)j1−f(B)j1/ba∇dbl2≤4β−2n1.5Rexp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+28Proof. We can show that
+/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+=/ba∇dblα(A)−1
+j1u(A)j1−α(B)−1
+j1u(B)j1/ba∇dbl2
+≤ /ba∇dblα(A)−1
+j1u(A)j1−α(B)−1
+j1u(A)j1/ba∇dbl2+/ba∇dblα(B)−1
+j1u(A)j1−α(B)−1
+j1u(B)j1/ba∇dbl2
+≤ |α(A)−1
+j1−α(B)−1
+j1|·/ba∇dblu(A)j1/ba∇dbl2+|α(B)−1
+j1|·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2 (5)
+where the ﬁrst step uses Deﬁnition 5.6, the 2nd and the last step follows by Fact 4.4.
+For the ﬁrst term of the Eq. ( 5), it follows that
+|α(A)−1
+j1−α(B)−1
+j1|·/ba∇dblu(A)j1/ba∇dbl2
+≤β−2·|α(A)j1−α(B)j1|·/ba∇dblu(A)j1/ba∇dbl2
+≤β−2·|α(A)j1−α(B)j1|·√n·exp(R2)
+≤β−2·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2·√n·√n·exp(R2)
+≤β−2·2√nRexp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl·√n·√n·exp(R2)
+≤2β−2n1.5Rexp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (6)
+where the ﬁrst step is derived from Lemma 7.10, the 2nd step follows by Lemma 6.3, the 3rd step
+is owing to Lemma 7.9, the 4th step is because of Lemma 7.8, the last step is a rearrangement of
+step 4.
+For the second term of the Eq. ( 5), we have
+|α(B)−1
+j1|·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2≤β−1·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2
+≤β−1·2√nRexp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+≤2β−1n0.5Rexp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (7)
+where the ﬁrst step holds because of the assumption in Lemma 7.10, the second step follows from
+Lemma 7.8.
+Putting Eq. ( 6) and Eq. ( 7) into Eq. ( 5), we have
+/ba∇dblf(A)j1−f(B)j1/ba∇dbl2≤2β−2n1.5Rexp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl+ 2β−1n0.5Rexp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+≤4β−2n1.5Rexp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+where the 2nd step is because of Lemma 6.2
+7.12 Lipschitz for h(A)function
+Lemma 7.12 (Lemma G.2 in [ SSZ23 ]).Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•We deﬁne h(x)as Deﬁnition 5.7
+•/ba∇dbl1n−f(A)j1
+f(B)j1/ba∇dbl∞≤0.1
+Then, for all j1∈[n]we have
+/ba∇dblh(A)j1−h(B)j1/ba∇dbl2≤ /ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+297.13 Lipschitz for c(A)function
+Lemma 7.13. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•Letc(A)be deﬁned as Deﬁnition 5.8
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•Letβbe the greatest lower bound of /an}b∇acketle{tu(A)j1,1n/an}b∇acket∇i}ht
+Then, for all j1∈[n]we have
+•/ba∇dblc(A)j1−c(B)j1/ba∇dbl2≤4β−2n1.5Rexp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+Proof. It follows from using Lemma 7.11 directly.
+7.14 Lipschitz for q(A)function
+Lemma 7.14. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•Letq(A)be deﬁned as Deﬁnition 5.9
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+Then, for all j1∈[n]we have
+•/ba∇dblq(A)j1−q(B)j1/ba∇dbl2≤4nRexp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+Proof. We have
+/ba∇dblq(A)j1−q(B)j1/ba∇dbl2=/ba∇dblu(A)j1−α(A)j1b[j1]−(u(B)j1−α(B)j1b[j1])/ba∇dbl2
+≤ /ba∇dblu(A)j1−u(B)j1/ba∇dbl2+/ba∇dblα(A)j1b[j1]−α(B)j1b[j1]/ba∇dbl2
+≤ /ba∇dblu(A)j1−u(B)j1/ba∇dbl2+|α(A)j1−α(B)j1|·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dblu(A)j1−u(B)j1/ba∇dbl2+|α(A)j1−α(B)j1|
+≤ /ba∇dblu(A)j1−u(B)j1/ba∇dbl2+√n/ba∇dblu(A)j1−u(B)j1/ba∇dbl2
+≤2√n·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2
+≤2√n·2√nRexp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+≤4nRexp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+where the 1st step follows by Deﬁnition 5.9, the 2nd step is due to the triangle inequality, the 3rd
+step is derived from property of norm, the 4th step uses lemma assumption, the 5th step follows
+from Lemma 7.9, the 6th step holds because n≥1, the 7th step is given by Lemma 7.8, and the
+last step is a rearrangement of step 6.
+308 Lipschitz for Softmax Loss Function (Normalized Version)
+In this section, we discuss the Lipschitz conditions for fun ctionLcand∇Lc.
+8.1 Lipschitz for Lc(x)function
+Lemma 8.1. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•LetLc(x)be deﬁned as Deﬁnition 5.10
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•The greatest lower bound of /an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}htis denoted as β
+•R > 4
+then, we have
+|Lc(x)−Lc(y)| ≤n2.5exp(5R2)·/ba∇dblx−y/ba∇dbl2
+Proof. We can show
+|Lc(x)−Lc(y)|
+=1
+2·|n/summationdisplay
+j1=1(/ba∇dblc(x)j1/ba∇dbl2
+2−/ba∇dblc(y)j1/ba∇dbl2
+2)|
+≤1
+2·n/summationdisplay
+j1=1|/ba∇dblc(x)j1/ba∇dbl2
+2−/ba∇dblc(y)j1/ba∇dbl2
+2|
+≤1
+2·n/summationdisplay
+j1=1|/an}b∇acketle{tc(x)j1,c(x)j1/an}b∇acket∇i}ht−/an}b∇acketle{tc(x)j1,c(y)j1/an}b∇acket∇i}ht+/an}b∇acketle{tc(x)j1,c(y)j1/an}b∇acket∇i}ht−/an}b∇acketle{tc(y)j1,c(y)j1/an}b∇acket∇i}ht|
+≤1
+2·n/summationdisplay
+j1=1|/an}b∇acketle{tc(x)j1,c(x)j1−c(y)j1/an}b∇acket∇i}ht|+|/an}b∇acketle{tc(x)j1−c(y)j1,c(y)j1/an}b∇acket∇i}ht|
+≤1
+2·n/summationdisplay
+j1=1(/ba∇dblc(x)j1/ba∇dbl2+/ba∇dblc(y)j1/ba∇dbl2)·/ba∇dblc(x)j1−c(y)j1/ba∇dbl2
+≤1
+2·n/summationdisplay
+j1=14/ba∇dblc(x)j1−c(y)j1/ba∇dbl2
+≤2n·4β−2n1.5Rexp(2R2)·/ba∇dblx−y/ba∇dbl2
+≤2Rn2.5exp(4R2)·/ba∇dblx−y/ba∇dbl2
+≤n2.5exp(5R2)·/ba∇dblx−y/ba∇dbl2
+31where the 1st step is from Deﬁnition 5.10, the 2nd step is because of triangle inequality, the 3rd
+step is derived from deﬁnition of inner product, the 4th step is from triangle inequality, the 5th
+step uses Cauchy-Schwartz inequality, the 6th step holds, a ccording to Lemma 6.7, the 7th step
+follows by Lemma 7.6, the 8th step is due to Lemma 6.1, the last step is because R > 4.
+8.2 Lipschitz for Lc(A)function
+Lemma 8.2. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•LetLc(A)be deﬁned as Deﬁnition 5.10
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•The greatest lower bound of /an}b∇acketle{tu(A)j1,1n/an}b∇acket∇i}htis denoted as β
+•R > 4
+•Let/ba∇dblA−B/ba∇dbl∞,2= max j1∈[n]/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+then, we have
+|Lc(A)−Lc(B)| ≤n2.5exp(5R2)·/ba∇dblA−B/ba∇dbl∞,2
+Proof. We can show
+|Lc(A)−Lc(B)|
+=1
+2·|n/summationdisplay
+j1=1(/ba∇dblc(A)j1/ba∇dbl2
+2−/ba∇dblc(B)j1/ba∇dbl2
+2)|
+≤1
+2·n/summationdisplay
+j1=1|/ba∇dblc(A)j1/ba∇dbl2
+2−/ba∇dblc(B)j1/ba∇dbl2
+2|
+≤1
+2·n/summationdisplay
+j1=1|/an}b∇acketle{tc(A)j1,c(A)j1/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,c(B)j1/an}b∇acket∇i}ht+/an}b∇acketle{tc(A)j1,c(B)j1/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,c(B)j1/an}b∇acket∇i}ht|
+≤1
+2·n/summationdisplay
+j1=1|/an}b∇acketle{tc(A)j1,c(A)j1−c(B)j1/an}b∇acket∇i}ht|+|/an}b∇acketle{tc(A)j1−c(B)j1,c(B)j1/an}b∇acket∇i}ht|
+≤1
+2·n/summationdisplay
+j1=1(/ba∇dblc(A)j1/ba∇dbl2+/ba∇dblc(B)j1/ba∇dbl2)·/ba∇dblc(A)j1−c(B)j1/ba∇dbl2
+≤1
+2·n/summationdisplay
+j1=14·/ba∇dblc(A)j1−c(B)j1/ba∇dbl2
+≤2n·4β−2n1.5Rexp(2R2)·/ba∇dblA−B/ba∇dbl∞,2
+≤8n2.5Rexp(4R2)·/ba∇dblA−B/ba∇dbl∞,2
+32≤n2.5exp(5R2)·/ba∇dblA−B/ba∇dbl∞,2
+where the ﬁrst step is from the deﬁnition of Lc(A) (see Deﬁnition 5.10), the 2nd step is due to
+triangle inequality, the 3rd step follows from deﬁnition of inner product, the 4th step follows by
+triangle inequality, the 5th step is because of Cauchy-Schw artz inequality, the 6th step follows by
+Lemma 6.7, the 7th step is due to Lemma 7.13, the 8th step is because R≥4, the 9th step is
+following after Lemma 6.2.
+8.3 Lipschitz for ∇Lc(x)function
+Lemma 8.3. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•LetLc(x)be deﬁned as Deﬁnition 5.10
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•The greatest lower bound of /an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}htis denoted as β
+•R > 4
+then, we have
+/ba∇dbl∇Lc(x)−∇Lc(y)/ba∇dbl2≤dn2exp(5R2)·/ba∇dblx−y/ba∇dbl2
+Proof. We can show
+/ba∇dbl∇Lc(x)−∇Lc(y)/ba∇dbl2
+2
+=d2/summationdisplay
+i=1|dLc(x)
+dxi−dLc(y)
+dyi|2
+=d2/summationdisplay
+i=1|n/summationdisplay
+j1=1(/an}b∇acketle{tc(x)j1,f(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(x)j1,f(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht)−
+n/summationdisplay
+j1=1(/an}b∇acketle{tc(y)j1,f(y)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(y)j1,f(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht)|2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(|/an}b∇acketle{tc(x)j1,f(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(y)j1,f(y)j1◦A[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tc(x)j1,f(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(y)j1,f(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|)2(8)
+where the ﬁrst step follows from the deﬁnition of gradient, t he 2nd step follows by Part 11 of
+Lemma 5.18, the last step follows by triangle inequality.
+33For the ﬁrst part of Eq. ( 8), because of triangle inequality, we have
+|/an}b∇acketle{tc(x)j1,f(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(y)j1,f(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tc(x)j1,f(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(x)j1,f(y)j1◦A[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tc(x)j1,f(y)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(y)j1,f(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+:=C1+C2 (9)
+For the ﬁrst item ( C1) of Eq. ( 9) we have,
+C1=|/an}b∇acketle{tc(x)j1,f(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(x)j1,f(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tc(x)j1,f(x)j1◦A[j1],i−f(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tc(x)j1,(f(x)j1−f(y)j1)◦A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblc(x)j1/ba∇dbl2·/ba∇dbl(f(x)j1−f(y)j1)◦A[j1],i/ba∇dbl2
+≤2/ba∇dbl(f(x)j1−f(y)j1)◦A[j1],i/ba∇dbl2
+≤2/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1,i]/ba∇dbl∞
+≤2/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1,i]/ba∇dbl2
+≤2R·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+≤8R2β−2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2 (10)
+where the 1st step is inner product calculation, the 2nd is Ha damard product calculation, the 3rd
+step is due to Cauchy-Schwartz inequality, the 4th step foll ows by Lemma 6.7, the 5th step and
+the 6th step follow from Fact 4.3, the 7th step holds because of lemma assumptions, the last st ep
+is given by Lemma 7.4.
+Next, we can upper bound the second term ( C2),
+C2=|/an}b∇acketle{tc(x)j1,f(y)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(y)j1,f(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tc(x)j1−c(y)j1,f(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblc(x)j1−c(y)j1/ba∇dbl2·/ba∇dblf(y)j1◦A[j1],i/ba∇dbl2
+≤ /ba∇dblc(x)j1−c(y)j1/ba∇dbl2·/ba∇dblf(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl∞
+≤ /ba∇dblc(x)j1−c(y)j1/ba∇dbl2·/ba∇dblf(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤4β−2n1.5Rexp(2R2)·/ba∇dblx−y/ba∇dbl2·/ba∇dblf(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤4β−2n1.5Rexp(2R2)·/ba∇dblx−y/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤4β−2R2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2 (11)
+where the ﬁrst step is inner product calculation, the 2nd ste p follows by Cauchy-Schwartz inequality,
+the 3rd step and the 4th step are due to Fact 4.3, the 5th step is given by Lemma 7.6, the 6th step
+is due to Lemma 6.5, the last step follows by max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R.
+Putting Eq. ( 10) and Eq. ( 11) into Eq. ( 9) we have,
+|/an}b∇acketle{tc(x)j1,f(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(y)j1,f(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+≤C1+C2
+≤12β−2R2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2 (12)
+34For the second item of Eq ( 8), due to triangle inequality we have
+|/an}b∇acketle{tc(x)j1,f(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(y)j1,f(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tc(x)j1,f(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(x)j1,f(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tc(x)j1,f(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(x)j1,f(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tc(x)j1,f(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(y)j1,f(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+:=C4+C5+C6 (13)
+For the ﬁrst term ( C4) of Eq ( 13) we have,
+C4=|/an}b∇acketle{tc(x)j1,f(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(x)j1,f(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tc(x)j1,f(x)j1/an}b∇acket∇i}ht|·|/an}b∇acketle{tf(x)j1−f(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblc(x)j1/ba∇dbl2·/ba∇dblf(x)j1/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤2/ba∇dblf(x)j1/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤2/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤8Rβ−2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤8R2β−2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2 (14)
+where the 1st step is inner product calculation, the 2nd step is from Cauchy-Schwartz inequality,
+the 3rd step follows by Lemma 6.7, the 4th step is given by Lemma 6.5, the 5th step is due to
+Lemma 7.4, the 6th step holds because max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R.
+For the secomd term ( C5) of Eq ( 13) we have,
+C5=|/an}b∇acketle{tc(x)j1,f(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(x)j1,f(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tc(x)j1,f(x)j1−f(y)j1/an}b∇acket∇i}ht|·|/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblc(x)j1/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblf(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤2/ba∇dblf(y)j1/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤2/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤8Rβ−2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤8R2β−2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2 (15)
+where the 1st step is inner product calculation, the 2nd step is from Cauchy-Schwartz inequality,
+the 3rd step follows by Lemma 6.7, the 4th step is given by Lemma 6.5, the 5th step is due to
+Lemma 7.4, the 6th step holds because max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R.
+For the third term ( C6) of Eq ( 13) we have,
+C6=|/an}b∇acketle{tc(x)j1,f(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(y)j1,f(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tc(x)j1−c(y)j1,f(y)j1/an}b∇acket∇i}ht|·|/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblc(x)j1−c(y)j1/ba∇dbl2·/ba∇dblf(y)j1/ba∇dbl2
+2·/ba∇dblA[j1],i/ba∇dbl2
+≤ /ba∇dblc(x)j1−c(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤4Rβ−2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤4R2β−2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2 (16)
+35where the 1st step is inner product calculation, the 2nd step follows from Cauchy-Schwartz inequal-
+ity, the 3rd step is due to Lemma 6.5, the 4th step is due to Lemma 7.6, the 5th step holds because
+maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R.
+Putting Eq. ( 14), Eq. ( 15), and Eq. ( 16) into Eq. ( 13), we have
+|/an}b∇acketle{tc(x)j1,f(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(y)j1,f(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤C4+C5+C6
+≤20R2β−2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2 (17)
+Putting Eq. ( 12) and Eq. ( 17) into Eq. ( 8), we have
+/ba∇dbl∇Lc(x)−∇Lc(y)/ba∇dbl2
+2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(32R2β−2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2)2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(32R2n1.5exp(4R2)·/ba∇dblx−y/ba∇dbl2)2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2)2
+=nd2(n1.5exp(5R2)·/ba∇dblx−y/ba∇dbl2)2
+where the second step is from Lemma 6.1, the 3rd step is given by R > 4.
+Therefore, we have
+/ba∇dbl∇Lc(x)−∇Lc(y)/ba∇dbl2≤dn2exp(5R2)·/ba∇dblx−y/ba∇dbl2
+The proof is complete.
+8.4 Lipschitz for ∇Lc(A)function
+Lemma 8.4. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•LetLc(A)be deﬁned as Deﬁnition 5.10
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•The greatest lower bound of /an}b∇acketle{tu(A)j1,1n/an}b∇acket∇i}htis denoted as β
+•R > 4
+•Let/ba∇dblA−B/ba∇dbl∞,2= max j1∈[n]/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+then, we have
+/ba∇dbl∇Lc(A)−∇Lc(B)/ba∇dbl2≤dn2exp(5R2)·/ba∇dblA−B/ba∇dbl∞,2
+36Proof. We can show
+/ba∇dbl∇Lc(A)−∇Lc(B)/ba∇dbl2
+2
+=d2/summationdisplay
+i=1|dLc(A)
+dxi−dLc(B)
+dxi|2
+=d2/summationdisplay
+i=1|n/summationdisplay
+j1=1(/an}b∇acketle{tc(A)j1,f(A)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht)−
+n/summationdisplay
+j1=1(/an}b∇acketle{tc(B)j1,f(B)j1◦B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(B)j1,f(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht)|2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(|/an}b∇acketle{tc(A)j1,f(A)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(B)j1,f(B)j1◦B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(B)j1,f(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|)2(18)
+where the ﬁrst step is because of the deﬁnition of gradient, t he 2nd step is due to Part 11 of
+Lemma 5.18, the last step is based on triangle inequality.
+For the ﬁrst item of Eq. ( 18), according to triangle inequality, we have
+|/an}b∇acketle{tc(A)j1,f(A)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(B)j1,f(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tc(A)j1,f(A)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,f(A)j1◦B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tc(A)j1,f(A)j1◦B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,f(B)j1◦B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tc(A)j1,f(B)j1◦B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,f(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+:=C1+C2+C3 (19)
+For the ﬁrst item ( C1) of Eq. 19, we have
+C1=|/an}b∇acketle{tc(A)j1,f(A)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,f(A)j1◦B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tc(A)j1,f(A)j1◦A[j1],i−f(A)j1◦B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tc(A)j1,f(A)j1◦(A[j1],i−B[j1],i)/an}b∇acket∇i}ht|
+≤ /ba∇dblc(A)j1/ba∇dbl2·/ba∇dblf(A)j1◦(A[j1],i−B[j1],i)/ba∇dbl2
+≤ /ba∇dblc(A)j1/ba∇dbl2·/ba∇dblf(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl∞
+≤ /ba∇dblc(A)j1/ba∇dbl2·/ba∇dblf(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2/ba∇dblf(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (20)
+where the 1st is the calculation of inner product, the 2nd ste p is the calculation of Hadamard
+product, the 3rd step is because of Cauchy-Schwartz inequal ity, the 4th step and the 5th step are
+given by Fact 4.3, the 6th step is derived from Lemma 6.7, the 7th step is derived from Lemma 6.5,
+the last step is due to the deﬁnition of matrix norm.
+For the second item ( C2) of Eq. ( 19), we have
+C2=|/an}b∇acketle{tc(A)j1,f(A)j1◦B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,f(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+37=|/an}b∇acketle{tc(A)j1,f(A)j1◦B[j1],i−f(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tc(A)j1,(f(A)j1−f(B)j1)◦B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblc(A)j1/ba∇dbl2·/ba∇dbl(f(A)j1−f(B)j1)◦B[j1],i/ba∇dbl2
+≤ /ba∇dblc(A)j1/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl∞·/ba∇dblB[j1],i/ba∇dbl2
+≤ /ba∇dblc(A)j1/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤2/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤2R·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤8β−2n1.5R2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (21)
+where the 1st is the calculation of inner product, the 2nd ste p is the calculation of Hadamard prod-
+uct, the 3rd step is because of Cauchy-Schwartz inequality, the 4th step and the 5th step are given by
+Fact 4.3, the 6th step is derived from Lemma 6.7, the 7th step holds because max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R,
+the 8th step is derived from Lemma 7.11.
+For the third item ( C3) of Eq. ( 19), we have
+C3=|/an}b∇acketle{tc(A)j1,f(B)j1◦B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(B)j1,f(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tc(A)j1−c(B)j1,f(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblc(A)j1−c(B)j1/ba∇dbl2·/ba∇dblf(B)j1◦B[j1],i/ba∇dbl2
+≤ /ba∇dblc(A)j1−c(B)j1/ba∇dbl2·/ba∇dblf(B)j1/ba∇dbl∞·/ba∇dblB[j1],i/ba∇dbl2
+≤ /ba∇dblc(A)j1−c(B)j1/ba∇dbl2·/ba∇dblf(B)j1)/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤ /ba∇dblc(A)j1−c(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤R·/ba∇dblc(A)j1−c(B)j1/ba∇dbl2
+≤4β−2n1.5R2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (22)
+where the 1st is the calculation of inner product, the 2nd ste p is because of Cauchy-Schwartz in-
+equality, the 3rd step and the 4th step are given by Fact 4.3, the 5th step is derived from Lemma 6.5,
+the 6th step holds since max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the 7th step is derived from Lemma 7.13.
+Putting Eq. ( 20), Eq. ( 21), and Eq. ( 22) into Eq. ( 19), we have
+|/an}b∇acketle{tc(A)j1,f(A)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(B)j1,f(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+≤C1+C2+C3
+≤(2 + 12β−2n1.5R2exp(2R2))·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (23)
+For the second item of Eq ( 18), because of the triangle inequality, we have
+|/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(B)j1,f(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,f(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tc(A)j1,f(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(B)j1,f(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+:=C4+C5+C6+C7 (24)
+For the ﬁrst item ( C4) of Eq ( 24), we have
+C4=|/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht|
+38=|/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht|·|/an}b∇acketle{tf(A)j1,A[j1],i−B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblc(A)j1/ba∇dbl2·/ba∇dblf(A)j1/ba∇dbl2
+2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2/ba∇dblf(A)j1/ba∇dbl2
+2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (25)
+where the 1st step is the calculation of inner product, the 2n d step follows by Cauchy-Schwartz
+inequality, the 3rd step is due to Lemma 6.7, the 4th step is because of Lemma 6.5, the 5th step is
+due to the deﬁnition of matrix norm.
+For the second item ( C5) of Eq ( 24), we have
+C5=|/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht|·|/an}b∇acketle{tf(A)j1−f(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblc(A)j1/ba∇dbl2·/ba∇dblf(A)j1/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤2/ba∇dblf(A)j1/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤2/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤2R·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤8R2β−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (26)
+where the 1st step is the calculation of inner product, the 2n d step follows by Cauchy-Schwartz
+inequality, the 3rd step is due to Lemma 6.7, the 4th step is because of Lemma 6.5, the 5th step
+follows from max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the last step is due to Lemma 7.11.
+For the third item ( C6) of Eq ( 24), we have
+C6=|/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,f(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tc(A)j1,f(A)j1−f(B)j1/an}b∇acket∇i}ht|·|/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblc(A)j1/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblf(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤2/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblf(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤2/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤2R·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤8R2β−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (27)
+where the 1st step is the calculation of inner product, the 2n d step follows by Cauchy-Schwartz
+inequality, the 3rd step is due to Lemma 6.7, the 4th step is because of Lemma 6.5, the 5th step
+follows from max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the last step is due to Lemma 7.11.
+For the fourth item ( C7) of Eq ( 24), we have
+C7=|/an}b∇acketle{tc(A)j1,f(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(B)j1,f(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tc(A)j1−c(B)j1,f(A)j1/an}b∇acket∇i}ht|·|/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblc(A)j1−c(B)j1/ba∇dbl2·/ba∇dblf(A)j1/ba∇dbl2·/ba∇dblf(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤ /ba∇dblc(A)j1−c(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤R·/ba∇dblc(A)j1−c(B)j1/ba∇dbl2
+≤4R2β−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (28)
+39where the 1st step is the calculation of inner product, the 2n d step follows by Cauchy-Schwartz
+inequality, the 3rd step is due to Lemma 6.5, the 4th step follows from max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the
+last step is due to Lemma 7.13.
+Putting Eq. ( 25), Eq. ( 26), Eq. ( 27), and Eq. ( 28) into Eq. ( 24), we have
+|/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tc(A)j1,f(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht|
+≤C4+C5+C6+C7
+≤(2 + 20β−2n1.5R2exp(2R2))·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (29)
+Putting Eq. ( 23) and Eq. ( 29) into Eq. ( 18), we have
+/ba∇dbl∇Lc(A)−∇Lc(B)/ba∇dbl2
+2≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1((4 + 32β−2n1.5R2exp(2R2))·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl)2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1((4 + 32n1.5R2exp(4R2))·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl)2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(n1.5exp(5R2))·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl)2
+≤nd2(n1.5exp(5R2)·/ba∇dblA−B/ba∇dbl∞,2)2
+where the second step holds since Lemma 6.2, the 3rd step holds because R > 4, the last step is
+given by the deﬁnition of /ba∇dblA−B/ba∇dbl∞,2.
+Therefore, we have
+/ba∇dbl∇Lc(A)−∇Lc(B)/ba∇dbl2≤dn2exp(5R2)·/ba∇dblA−B/ba∇dbl∞,2
+The proof is complete.
+9 Lipschitz for Softmax Loss Function (Rescaled Version)
+In this section, we discuss the Lipschitz condition for func tionLqand∇Lq.
+9.1 Lipschitz for Lq(x)function
+Lemma 9.1. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•We deﬁne Lq(x)as Deﬁnition 5.11
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•R > 4
+40then, we have
+|Lq(x)−Lq(y)| ≤n3·exp(3R2)·/ba∇dblx−y/ba∇dbl2
+Proof. We can upper bound |Lq(x)−Lq(y)|as follows:
+|Lq(x)−Lq(y)|=1
+2·|n/summationdisplay
+j1=1(/ba∇dblq(x)j1/ba∇dbl2
+2−/ba∇dblq(y)j1/ba∇dbl2
+2)|
+≤1
+2·n/summationdisplay
+j1=1|/ba∇dblq(x)j1/ba∇dbl2
+2−/ba∇dblq(y)j1/ba∇dbl2
+2|
+≤1
+2·n/summationdisplay
+j1=1|/an}b∇acketle{tq(x)j1,q(x)j1/an}b∇acket∇i}ht−/an}b∇acketle{tq(x)j1,q(y)j1/an}b∇acket∇i}ht+/an}b∇acketle{tq(x)j1,q(y)j1/an}b∇acket∇i}ht−/an}b∇acketle{tq(y)j1,q(y)j1/an}b∇acket∇i}ht|
+≤1
+2·n/summationdisplay
+j1=1|/an}b∇acketle{tq(x)j1,q(x)j1−q(y)j1/an}b∇acket∇i}ht|+|/an}b∇acketle{tq(x)j1−q(y)j1,q(y)j1/an}b∇acket∇i}ht|
+≤1
+2·n/summationdisplay
+j1=1(/ba∇dblq(x)j1/ba∇dbl2+/ba∇dblq(y)j1/ba∇dbl2)·/ba∇dblq(x)j1−q(y)j1/ba∇dbl2
+≤1
+2·n/summationdisplay
+j1=14nexp(R2)·/ba∇dblq(x)j1−q(y)j1/ba∇dbl2
+≤n·2nexp(R2)·4nRexp(R2)·/ba∇dblx−y/ba∇dbl2
+= 8n3Rexp(2R2)·/ba∇dblx−y/ba∇dbl2
+≤n3exp(3R2)·/ba∇dblx−y/ba∇dbl2
+where the ﬁrst step holds because of the deﬁnition of Lq(x) (see Deﬁnition 5.11), the 2nd step
+follows by triangle inequality, the 3rd step follows from de ﬁnition of inner product, the 4th step is
+given by triangle inequality, the 5th step is from Cauchy-Sc hwartz inequality, the 6th step follows
+from Lemma 6.9, the 7th step is due to Lemma 7.7, and the last step is due to R≥4.
+9.2 Lipschitz for Lq(A)function
+Lemma 9.2. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•We deﬁne Lq(A)as Deﬁnition 5.11
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•R > 4
+•Let/ba∇dblA−B/ba∇dbl∞,2= max j1∈[n]/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+it follows that
+|Lq(A)−Lq(B)| ≤n3·exp(3R2)·/ba∇dblA−B/ba∇dbl∞,2
+41Proof. We can show:
+|Lq(A)−Lq(B)|=1
+2·|n/summationdisplay
+j1=1(/ba∇dblq(A)j1/ba∇dbl2
+2−/ba∇dblq(B)j1/ba∇dbl2
+2)|
+≤1
+2·n/summationdisplay
+j1=1|/ba∇dblq(A)j1/ba∇dbl2
+2−/ba∇dblq(B)j1/ba∇dbl2
+2|
+≤1
+2·n/summationdisplay
+j1=1|/an}b∇acketle{tq(A)j1,q(A)j1/an}b∇acket∇i}ht−/an}b∇acketle{tq(A)j1,q(B)j1/an}b∇acket∇i}ht+/an}b∇acketle{tq(A)j1,q(B)j1/an}b∇acket∇i}ht−/an}b∇acketle{tq(A)j1,q(B)j1/an}b∇acket∇i}ht|
+≤1
+2·n/summationdisplay
+j1=1|/an}b∇acketle{tq(A)j1,q(A)j1−q(B)j1/an}b∇acket∇i}ht|+|/an}b∇acketle{tq(A)j1−q(B)j1,q(B)j1/an}b∇acket∇i}ht|
+≤1
+2·n/summationdisplay
+j1=1(/ba∇dblq(A)j1/ba∇dbl2+/ba∇dblq(B)j1/ba∇dbl2)·/ba∇dblq(A)j1−q(B)j1/ba∇dbl2
+≤1
+2·n/summationdisplay
+j1=12nexp(R2)·/ba∇dblq(A)j1−q(B)j1/ba∇dbl2
+≤4n3Rexp(2R2)·/ba∇dblA−B/ba∇dbl∞,2
+≤n3exp(3R2)·/ba∇dblA−B/ba∇dbl∞,2
+where the ﬁrst step follows by the deﬁnition of Lq(A) (see Deﬁnition 5.11), the 2nd step is due
+to triangle inequality, the 3rd step follows by deﬁnition of inner product, the 4th step is from
+triangle inequality, the 5th step follows from Cauchy-Schw artz inequality, the 6th step follows from
+Lemma 6.9, the 7th step is because of Lemma 7.14, and the 8th step holds since R≥4.
+9.3 Lipschitz for ∇Lq(x)function
+Lemma 9.3. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•We deﬁne Lq(x)as Deﬁnition 5.11
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•R > 4
+then, we have
+|∇Lq(x)−∇Lq(y)| ≤dn2exp(3R2)·/ba∇dblx−y/ba∇dbl2
+Proof. We can show
+/ba∇dbl∇Lq(x)−∇Lq(y)/ba∇dbl2
+2
+42=d2/summationdisplay
+i=1|dLq(x)
+dxi−dLq(y)
+dyi|2
+=d2/summationdisplay
+i=1|n/summationdisplay
+j1=1(/an}b∇acketle{tq(x)j1,u(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht)−
+n/summationdisplay
+j1=1(/an}b∇acketle{tq(y)j1,u(y)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(y)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(y)j1,A[j1],i/an}b∇acket∇i}ht)|2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(|/an}b∇acketle{tq(x)j1,u(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(y)j1,u(y)j1◦A[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tq(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(y)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(y)j1,A[j1],i/an}b∇acket∇i}ht|)2(30)
+where the ﬁrst step follows from the deﬁnition of gradient, t he 2nd step follows by Part 11 of
+Lemma 5.18, the last step follows by triangle inequality.
+For the ﬁrst term of Eq. ( 30), according to triangle inequality, we have
+|/an}b∇acketle{tq(x)j1,u(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(y)j1,u(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tq(x)j1,u(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(x)j1,u(y)j1◦A[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tq(x)j1,u(y)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(y)j1,u(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+:=C1+C2 (31)
+For the ﬁrst term C1of Eq. ( 31), we have
+C1=|/an}b∇acketle{tq(x)j1,u(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(x)j1,u(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tq(x)j1,u(x)j1◦A[j1],i−u(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tq(x)j1,(u(x)j1−u(y)j1)◦A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblq(x)j1/ba∇dbl2·/ba∇dbl(u(x)j1−u(y)j1)◦A[j1],i/ba∇dbl2
+≤ /ba∇dblq(x)j1/ba∇dbl2·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl∞
+≤ /ba∇dblq(x)j1/ba∇dbl2·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤2nexp(R2)·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤2nRexp(R2)·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2
+≤4n1.5Rexp(2R2)·/ba∇dblx−y/ba∇dbl2 (32)
+where the 1st step is inner product calculation, the 2nd step is Hadamard product calculation, the
+3rd step is given by Cauchy-Schwartz inequality, the 4th ste p and the 5th step are due to Fact 4.3,
+the 6th step is derived from Lemma 6.9, the 7th step is according to max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the
+last step is following from Lemma 7.1.
+For the second term ( C2) of Eq. ( 31), we have
+C2=|/an}b∇acketle{tq(x)j1,u(y)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(y)j1,u(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tq(x)j1−q(y)j1,u(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblq(x)j1−q(y)j1/ba∇dbl2·/ba∇dblu(y)j1◦A[j1],i/ba∇dbl2
+≤ /ba∇dblq(x)j1−q(y)j1/ba∇dbl2·/ba∇dblu(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl∞
+43≤ /ba∇dblq(x)j1−q(y)j1/ba∇dbl2·/ba∇dblu(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤4nRexp(R2)·/ba∇dblx−y/ba∇dbl2·/ba∇dblu(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤4nR2exp(2R2)·/ba∇dblx−y/ba∇dbl2·/ba∇dblu(y)j1/ba∇dbl2
+≤4n1.5R2exp(2R2)·/ba∇dblx−y/ba∇dbl2 (33)
+where the ﬁrst step is inner product calculation, the 2nd is d ue to Cauchy-Schwartz inequality, the
+3rd and the 4th step holds because of Fact 4.3, the 5th step is derived after Lemma 7.7, the 6th
+step follows by max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the 7th step follows from Lemma 6.3.
+Putting Eq. ( 32) and Eq. ( 33) into Eq. ( 31) we have,
+|/an}b∇acketle{tq(x)j1,u(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(y)j1,u(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+≤C1+C2
+≤8R2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2 (34)
+For the second term of Eq ( 30), by triangle inequality, we derive
+|/an}b∇acketle{tq(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(y)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tq(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(y)j1,A[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tq(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(y)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(y)j1,A[j1],i/an}b∇acket∇i}ht|
+:=C3+C4 (35)
+For the ﬁrst term ( C3) of Eq. ( 35), we have
+C3=|/an}b∇acketle{tq(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(y)j1,A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tq(x)j1,b[j1]/an}b∇acket∇i}ht|·|/an}b∇acketle{tu(x)j1−u(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblq(x)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤ /ba∇dblq(x)j1/ba∇dbl2·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤R·/ba∇dblq(x)j1/ba∇dbl2·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2
+≤2nRexp(R2)/ba∇dblu(x)j1−u(y)j1/ba∇dbl2
+≤4n1.5R2exp(2R2)/ba∇dblx−y/ba∇dbl2 (36)
+where the ﬁsrt step is inner product calculation, the 2nd ste p is beacause of Cauchy-Schwartz
+inequality, the 3rd step is given by max j1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1. the 4th step follows by max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤
+R, the 5th step is due to Lemma 6.9, the 6th step is from Lemma 7.1.
+For the second term( C4) of Eq. ( 35), we have
+C4=|/an}b∇acketle{tq(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(y)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(y)j1,A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tq(x)j1−q(y)j1,b[j1]/an}b∇acket∇i}ht|·|/an}b∇acketle{tu(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblq(x)j1−q(y)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2·/ba∇dblu(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤ /ba∇dblq(x)j1−q(y)j1/ba∇dbl2·/ba∇dblu(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤R·/ba∇dblq(x)j1−q(y)j1/ba∇dbl2·/ba∇dblu(y)j1/ba∇dbl2
+≤4nR2exp(R2)·/ba∇dblx−y/ba∇dbl2·/ba∇dblu(y)j1/ba∇dbl2
+≤4n1.5R2exp(2R2)/ba∇dblx−y/ba∇dbl2 (37)
+44where the ﬁsrt step is inner product calculation, the 2nd ste p is beacause of Cauchy-Schwartz
+inequality, the 3rd step is given by max j1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1. the 4th step follows by max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤
+R, the 5th step is due to Lemma 7.7, the 6th step is from Lemma 6.3.
+Putting Eq. ( 36) and Eq. ( 37) into Eq. ( 35) we have,
+|/an}b∇acketle{tq(x)j1,u(x)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(y)j1,u(y)j1◦A[j1],i/an}b∇acket∇i}ht|
+≤C3+C4
+≤8R2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2 (38)
+Putting Eq. ( 34) and Eq. ( 38) into Eq. ( 30) we have,
+/ba∇dbl∇Lq(x)−∇Lq(y)/ba∇dbl2
+2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(16R2n1.5exp(2R2)·/ba∇dblx−y/ba∇dbl2)2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(n1.5exp(3R2)·/ba∇dblx−y/ba∇dbl2)2
+=nd2·(n1.5exp(3R2)·/ba∇dblx−y/ba∇dbl2)2
+where the second step is because of R > 4.
+Therefore, we have
+/ba∇dbl∇Lq(x)−∇Lq(y)/ba∇dbl2≤dn2exp(3R2)·/ba∇dblx−y/ba∇dbl2
+The proof is complete.
+9.4 Lipschitz for ∇Lq(A)function
+Lemma 9.4. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•We deﬁne Lq(A)as Deﬁnition 5.11
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•R > 4
+•Let/ba∇dblA−B/ba∇dbl∞,2= max j1∈[n]/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+then, we have
+/ba∇dbl∇Lq(A)−∇Lq(B)/ba∇dbl2≤dn2exp(3R2)·/ba∇dblA−B/ba∇dbl∞,2
+45Proof. We can show
+/ba∇dbl∇Lq(A)−∇Lq(A)/ba∇dbl2
+2
+=d2/summationdisplay
+i=1|dLq(A)
+dxi−dLq(B)
+dxi|2
+=d2/summationdisplay
+i=1|n/summationdisplay
+j1=1(/an}b∇acketle{tq(A)j1,u(A)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(A)j1,A[j1],i/an}b∇acket∇i}ht)−
+n/summationdisplay
+j1=1(/an}b∇acketle{tq(B)j1,u(B)j1◦B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(B)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht)|2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(|/an}b∇acketle{tq(A)j1,u(A)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(B)j1,u(B)j1◦B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(B)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht|)2(39)
+where the ﬁrst step is due to the deﬁnition of gradient, the 2n d step is based on Part 11 of
+Lemma 5.18, the last step is because of triangle inequality.
+For the ﬁrst term of Eq. ( 39), by the triangle inequality, we have
+|/an}b∇acketle{tq(A)j1,u(A)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(B)j1,u(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tq(A)j1,u(A)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(A)j1,u(A)j1◦B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tq(A)j1,u(A)j1◦B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(A)j1,u(B)j1◦B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tq(A)j1,u(B)j1◦B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(B)j1,u(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+:=C1+C2+C3 (40)
+For the ﬁrst item ( C1) of Eq. ( 40), we have
+C1=|/an}b∇acketle{tq(A)j1,u(A)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(A)j1,u(A)j1◦B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tq(A)j1,u(A)j1◦A[j1],i−u(A)j1◦B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tq(A)j1,u(A)j1◦(A[j1],i−B[j1],i)/an}b∇acket∇i}ht|
+≤ /ba∇dblq(A)j1/ba∇dbl2·/ba∇dblu(A)j1◦(A[j1],i−B[j1],i)/ba∇dbl2
+≤ /ba∇dblq(A)j1/ba∇dbl2·/ba∇dblu(A)j1/ba∇dbl∞·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤ /ba∇dblq(A)j1/ba∇dbl2·/ba∇dblu(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2nexp(R2)·/ba∇dblu(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2nexp(R2)·√nexp(R2)·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2n1.5exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (41)
+where the 1st step is inner product calculation, the 2nd step is calculation of Hadamard product, the
+3rd step follows by Cauchy-Schwartz inequality, the 4th ste p and the 5th step are due to Fact 4.3,
+the 6th step follows from Lemma 6.9, the 7th step is derived from Lemma 6.3, the last step follows
+after the deﬁnition of matrix norm.
+For the second term ( C2) of Eq. ( 40), we have
+C2=|/an}b∇acketle{tq(A)j1,u(A)j1◦B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(A)j1,u(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+46=|/an}b∇acketle{tq(A)j1,u(A)j1◦B[j1],i−u(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tq(A)j1,(u(A)j1−u(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblq(A)j1/ba∇dbl2·/ba∇dbl(u(A)j1−u(B)j1)◦B[j1],i/ba∇dbl2
+≤ /ba∇dblq(A)j1/ba∇dbl2·/ba∇dblu(A)j1−u(B)j1/ba∇dbl∞·/ba∇dblB[j1],i/ba∇dbl2
+≤ /ba∇dblq(A)j1/ba∇dbl2·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤2nexp(R2)·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤2nexp(R2)R·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2
+≤4n1.5R2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (42)
+where the 1st step is inner product calculation, the 2nd step is calculation of Hadamard product, the
+3rd step follows by Cauchy-Schwartz inequality, the 4th ste p and the 5th step are due to Fact 4.3,
+the 6th step follows from Lemma 6.9, the 7th step is derived because max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the
+last step follows after Lemma 7.8.
+For the third item ( C3) of Eq. ( 40), we have
+C3=|/an}b∇acketle{tq(A)j1,u(B)j1◦B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(B)j1,u(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tq(A)j1−q(B)j1,u(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblq(A)j1−q(B)j1/ba∇dbl2·/ba∇dblu(A)j1◦B[j1],i/ba∇dbl2
+≤ /ba∇dblq(A)j1−q(B)j1/ba∇dbl2·/ba∇dblu(A)j1/ba∇dbl∞·/ba∇dblB[j1],i/ba∇dbl2
+≤ /ba∇dblq(A)j1−q(B)j1/ba∇dbl2·/ba∇dblu(A)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤√nexp(R2)·/ba∇dblq(A)j1−q(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤√nexp(R2)R·/ba∇dblq(A)j1−q(B)j1/ba∇dbl2
+≤4n1.5R2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (43)
+where the 1st step is inner product calculation, the 2nd step follows by Cauchy-Schwartz inequality,
+the 3rd step and the 4th step are due to Fact 4.3, the 5th step follows from Lemma 6.3, the 6th
+step is derived because max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the last step follows after Lemma 7.14.
+Putting Eq. ( 41), Eq. ( 42), and Eq. ( 43) into Eq. ( 40), we have
+|/an}b∇acketle{tq(A)j1,u(A)j1◦A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(B)j1,u(B)j1◦B[j1],i/an}b∇acket∇i}ht|
+≤C1+C2+C3
+≤(2 + 8R2)·n1.5exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (44)
+For the second term of Eq ( 39), due to the triangle inequality, we have
+|/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(B)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(A)j1,B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(A)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(B)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht|
+:=C4+C5+C6 (45)
+For the ﬁrst term ( C4) of Eq. ( 45), we have
+C4=|/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(A)j1,B[j1],i/an}b∇acket∇i}ht|
+47=|/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht|·|/an}b∇acketle{tu(A)j1,A[j1],i−B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblq(A)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2·/ba∇dblu(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2nexp(R2)·/ba∇dblb[j1]/ba∇dbl2·/ba∇dblu(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2nexp(R2)·/ba∇dblu(A)j1/ba∇dbl2/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2nexp(R2)·√nexp(R2)·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2n1.5exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (46)
+where the ﬁrst step is inner product calculation, the 2nd ste p is given by Cauchy-Schwartz inequal-
+ity, the 3rd step is derived by Lemma 6.9, the 4th step is given by max j1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1, the 5th
+step follows by Lemma 6.3, the 6th step follows from the deﬁnition of matrix norm.
+For the second term ( C5) of Eq. ( 45), we have
+C5=|/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(A)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht|·|/an}b∇acketle{tu(A)j1−u(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblq(A)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤2nexp(R2)·/ba∇dblb[j1]/ba∇dbl2·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤2nexp(R2)·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2/ba∇dblB[j1],i/ba∇dbl2
+≤2nRexp(R2)·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2
+≤4R2n1.5exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (47)
+where the ﬁrst step is inner product calculation, the 2nd ste p is given by Cauchy-Schwartz inequal-
+ity, the 3rd step is derived by Lemma 6.9, the 4th step is given by max j1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1, the 5th
+step follows by max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the 6th step follows from Lemma 7.8.
+For the third term ( C6) of Eq. ( 45), we have
+C6=|/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(B)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tq(A)j1−q(B)j1,b[j1]/an}b∇acket∇i}ht|·|/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblq(A)j1−q(B)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2·/ba∇dblu(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤4nRexp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl·/ba∇dblb[j1]/ba∇dbl2·/ba∇dblu(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤4nRexp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl·/ba∇dblu(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤4nR2exp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl·/ba∇dblu(B)j1/ba∇dbl2
+≤4R2n1.5exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (48)
+where the ﬁrst step is inner product calculation, the 2nd ste p is given by Cauchy-Schwartz inequal-
+ity, the 3rd step is derived by Lemma 7.14, the 4th step is given by max j1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1, the 5th
+step follows by max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the 6th step follows from Lemma 6.3.
+Putting Eq. ( 46), Eq. ( 47), and Eq. ( 47) into Eq. ( 45), we have
+|/an}b∇acketle{tq(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tq(B)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤C4+C5+C6
+≤(2 + 8R2)·n1.5exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (49)
+Putting Eq. ( 44) and Eq. ( 49) into Eq. ( 39), we have
+/ba∇dbl∇Lq(A)−∇Lq(B)/ba∇dbl2
+2≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1((4 + 16R2)·n1.5exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl)2
+48≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(n1.5exp(3R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl)2
+≤nd2(n1.5exp(3R2)·/ba∇dblA−B/ba∇dbl∞,2)2
+where the second step holds since R > 4, the last step is given by the deﬁnition of /ba∇dblA−B/ba∇dbl∞,2.
+Therefore, we have
+/ba∇dbl∇Lq(A)−∇Lq(B)/ba∇dbl2≤dn2exp(3R2)·/ba∇dblA−B/ba∇dbl∞,2
+The proof is complete.
+10 Lipschitz for Sparse Loss Function
+In this Section, we discuss Lipschitz conditions for functi onLsparse and∇Lsparse .
+10.1 Lipschitz for Lsparse(x)Function
+Lemma 10.1. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•LetLsparse (x)be deﬁned as Deﬁnition 5.12
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+Then, for all j1∈[n]we have
+|Lsparse (x)−Lsparse (y)| ≤2n2Rexp(R2)·/ba∇dblx−y/ba∇dbl2
+Proof.
+|Lsparse (x)−Lsparse (y)| ≤ |n/summationdisplay
+j1=1α(x)j1−n/summationdisplay
+j1=1α(y)j1|
+≤n/summationdisplay
+j1=1|α(x)j1−α(y)j1|
+≤n/summationdisplay
+j1=1√n·/ba∇dblu(x)j1−u(y)j1/ba∇dbl2
+≤2n2Rexp(R2)·/ba∇dblx−y/ba∇dbl2
+where the 1st step is due to deﬁnition of Lsparse (x) (see Deﬁnition 5.12), the 2nd step follows by
+triangle inequality, the 3rd step is from Lemma 7.2, the last step is because of Lemma 7.1.
+4910.2 Lipschitz for Lsparse(A)Function
+Lemma 10.2. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•LetLsparse (A)be deﬁned as Deﬁnition 5.12
+•Let/ba∇dblA−B/ba∇dbl∞,2= max j1∈[n]/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+Then, for all j1∈[n]we have
+|Lsparse (A)−Lsparse (B)| ≤2n2Rexp(R2)·/ba∇dblA−B/ba∇dbl∞,2
+Proof.
+|Lsparse (A)−Lsparse (B)| ≤ |n/summationdisplay
+j1=1α(A)j1−n/summationdisplay
+j1=1α(B)j1|
+≤n/summationdisplay
+j1=1|α(A)j1−α(B)j1|
+≤n/summationdisplay
+j1=1√n·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2
+≤2n2Rexp(R2)·/ba∇dblA−B/ba∇dbl∞,2
+where the 1st step is due to deﬁnition of Lsparse (x) (see Deﬁnition 5.12), the 2nd step follows by
+triangle inequality, the 3rd step is from Lemma 7.9, the last step is because of Lemma 7.8.
+10.3 Lipschitz for ∇Lsparse(x)Function
+Lemma 10.3. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•LetLsparse (x)be deﬁned as Deﬁnition 5.12
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+Then, for all j1∈[n], we have
+/ba∇dbl∇Lsparse (x)−∇Lsparse (y)/ba∇dbl2≤2ndRexp(R2)·/ba∇dblx−y/ba∇dbl2
+50Proof.
+/ba∇dbl∇Lsparse (x)−∇Lsparse (y)/ba∇dbl2
+2=d2/summationdisplay
+i=1|n/summationdisplay
+j1=1/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht−n/summationdisplay
+j1=1/an}b∇acketle{tu(y)j1,A[j1],i/an}b∇acket∇i}ht|2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1|/an}b∇acketle{tu(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tu(y)j1,A[j1],i/an}b∇acket∇i}ht|2
+=d2/summationdisplay
+i=1n/summationdisplay
+j1=1|/an}b∇acketle{tu(x)j1−u(y)j1,A[j1],i/an}b∇acket∇i}ht|2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(/ba∇dblu(x)j1−u(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2)2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(2√nRexp(R2)·/ba∇dblx−y/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2)2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(2√nR2exp(R2)·/ba∇dblx−y/ba∇dbl2)2
+=d2n·(2√nR2exp(R2)·/ba∇dblx−y/ba∇dbl2)2
+where the 1st step is due to Part 13 of Lemma 5.18, the 2nd step is from triangle inequality, the
+3rd step is inner product calculation, the 4th step uses Cauc hy-Schwartz inequality, the 5th step is
+due to Lemma 7.1, the 6th holds because max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R.
+Therefore, we have
+/ba∇dbl∇Lsparse (x)−∇Lsparse (y)/ba∇dbl2≤2ndRexp(R2)·/ba∇dblx−y/ba∇dbl2
+10.4 Lipschitz for ∇Lsparse(A)Function
+Lemma 10.4. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•LetLsparse (A)be deﬁned as Deﬁnition 5.12
+•Let/ba∇dblA−B/ba∇dbl∞,2= max j1∈[n]/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+•R > 4
+Then, for all j1∈[n]we have
+/ba∇dbl∇Lsparse (A)−∇Lsparse (B)/ba∇dbl2≤dnexp(2R2)·/ba∇dblA−B/ba∇dbl∞,2
+51Proof.
+/ba∇dbl∇Lsparse (A)−∇Lsparse (B)/ba∇dbl2
+2=d2/summationdisplay
+i=1|n/summationdisplay
+j1=1/an}b∇acketle{tu(A)j1,A[j1],i/an}b∇acket∇i}ht−n/summationdisplay
+j1=1/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht|2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(|/an}b∇acketle{tu(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tu(A)j1,B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tu(A)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht|)2
+:=d2/summationdisplay
+i=1n/summationdisplay
+j1=1(C1+C2)2(50)
+(51)
+where the 1st step is due to Part 13 of Lemma 5.18, the 2nd step is from triangle inequality.
+For the ﬁrst item ( C1) of Eq. ( 50) , we have
+C1=|/an}b∇acketle{tu(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tu(A)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tu(A)j1,A[j1],i−B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblu(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤√nexp(R2)·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤√nexp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (52)
+where the 1st step is calculation of inner product, the 2nd st ep is due to Cauchy-Schwartz inequality,
+the 3rd step follows from Lemma 6.3, the 4th step holds because of deﬁnition of matrix norm.
+For the second item ( C2) of Eq. ( 50) , we have
+C2=|/an}b∇acketle{tu(A)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tu(B)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tu(A)j1−u(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblu(A)j1−u(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤R·/ba∇dblu(A)j1−u(B)j1/ba∇dbl2
+≤2√nR2exp(R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (53)
+where the 1st step is calculation of inner product, the 2nd st ep is due to Cauchy-Schwartz inequality,
+the 3rd step follows from max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the 4th step holds because of Lemma 7.8.
+Putting Eq. ( 52) and Eq. ( 53) into Eq. ( 50), sinceR > 4, we have
+/ba∇dbl∇Lsparse (A)−∇Lsparse (B)/ba∇dbl2
+2≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(C1+C2)2
+≤d2n2exp(2R2)2·/ba∇dblA−B/ba∇dbl2
+∞,2
+Therefore, we have
+/ba∇dbl∇Lsparse (A)−∇Lsparse (B)/ba∇dbl2≤dnexp(2R2)·/ba∇dblA−B/ba∇dbl∞,2
+5211 Lipschitz for Cross Entropy Loss Function
+In this Section, we discuss Lipschitz conditions for functi onLcentand∇Lcent.
+11.1 Lipschitz for Lcent(x)Function
+Lemma 11.1. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•LetLcent(x)be deﬁned as Deﬁnition 5.12
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•The greatest lower bound of /an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}htis denoted as β
+•maxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+Then, for all j1∈[n]we have
+|Lcent(x)−Lcent(y)| ≤4n2.5Rβ−2exp(2R2)·/ba∇dblx−y/ba∇dbl2
+Proof.
+|Lcent(x)−Lcent(y)|=|n/summationdisplay
+j1=1/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht−n/summationdisplay
+j1=1/an}b∇acketle{tf(y)j1,b[j1]/an}b∇acket∇i}ht|
+≤n/summationdisplay
+j1=1|/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,b[j1]/an}b∇acket∇i}ht|
+≤n/summationdisplay
+j1=1|/an}b∇acketle{tf(x)j1−f(y)j1,b[j1]/an}b∇acket∇i}ht|
+≤n/summationdisplay
+j1=1/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤n/summationdisplay
+j1=1/ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+≤4n2.5Rβ−2exp(2R2)·/ba∇dblx−y/ba∇dbl2
+where the 1st step is due to the deﬁnition of Lcent(x) (see Deﬁnition 5.13), the 2nd is because
+of the triangle inequality, the 3rd step is inner product cal culation, the 4th step holds since
+maxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1, the 5th step is given by Lemma 7.4.
+5311.2 Lipschitz for Lcent(A)Function
+Lemma 11.2. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•LetLsparse (A)be deﬁned as Deﬁnition 5.12
+•The greatest lower bound of /an}b∇acketle{tu(A)j1,1n/an}b∇acket∇i}htis denoted as β
+•maxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•Let/ba∇dblA−B/ba∇dbl∞,2= max j1∈[n]
+Then, for all j1∈[n]we have
+|Lcent(A)−Lcent(B)| ≤4n2.5Rβ−2exp(2R2)·/ba∇dblA−B/ba∇dbl∞,2
+Proof.
+|Lcent(A)−Lcent(B)|=|n/summationdisplay
+j1=1/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht−n/summationdisplay
+j1=1/an}b∇acketle{tf(B)j1,b[j1]/an}b∇acket∇i}ht|
+≤n/summationdisplay
+j1=1|/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,b[j1]/an}b∇acket∇i}ht|
+≤n/summationdisplay
+j1=1|/an}b∇acketle{tf(A)j1−f(B)j1,b[j1]/an}b∇acket∇i}ht|
+≤n/summationdisplay
+j1=1/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤n/summationdisplay
+j1=1/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤4n2.5Rβ−2exp(2R2)·/ba∇dblA−B/ba∇dbl∞,2
+where the 1st step is due to the deﬁnition of Lcent(x) (see Deﬁnition 5.13), the 2nd is because
+of the triangle inequality, the 3rd step is inner product cal culation, the 4th step holds since
+maxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1, the 5th step is given by Lemma 7.11.
+11.3 Lipschitz for ∇Lcent(x)Function
+Lemma 11.3. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•LetLcent(x)be deﬁned as Deﬁnition 5.12
+54•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•The greatest lower bound of /an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}htis denoted as β
+•maxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•R > 4
+Then, for all j1∈[n]we have
+/ba∇dbl∇Lcent(x)−∇Lcent(y)/ba∇dbl2≤dn2exp(5R2)·/ba∇dblx−y/ba∇dbl2
+Proof.
+/ba∇dbl∇Lcent(x)−∇Lcent(y)/ba∇dbl2
+2
+=d2/summationdisplay
+i=1|n/summationdisplay
+j1=1(/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht)
+−n/summationdisplay
+j1=1(/an}b∇acketle{tf(y)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht)|2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(|/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
++|/an}b∇acketle{tf(x)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht|)2
+(54)
+For the ﬁrst term of Eq. ( 54), according to triangle inequality:
+|/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+:=C1+C2 (55)
+For the ﬁrst item ( C1) of Eq. ( 55), we have
+C1=|/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1−f(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(x)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dblA[j1],i/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dblA[j1],i/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+≤R·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤4n1.5R2β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2 (56)
+where the 1st step is inner product calculation, the 2nd step uses Cauchy-Schwartz inequality, the
+3rd step uses Lemma 6.5, the 4th step is due to max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the 5th step holds since
+maxj1∈[n]/ba∇dblb[j1]/ba∇dbl2<1, the 6th step is given by Lemma 7.4.
+55For the ﬁrst item ( C2) of Eq. ( 55), we have
+C2=|/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(x)j1−f(y)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dblA[j1],i/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dblA[j1],i/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+≤R·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤4n1.5R2β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2 (57)
+where the 1st step is inner product calculation, the 2nd step uses Cauchy-Schwartz inequality, the
+3rd step uses Lemma 6.5, the 4th step is due to max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the 5th step holds since
+maxj1∈[n]/ba∇dblb[j1]/ba∇dbl2<1, the 6th step is given by Lemma 7.4.
+Putting Eq. ( 56) and Eq. ( 57) into Eq. ( 55) yields,
+|/an}b∇acketle{tf(x)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤C1+C2
+≤8n1.5R2β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2 (58)
+For the second term in Eq. ( 54), we have
+|/an}b∇acketle{tf(x)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(x)j1◦A[j1],i−f(y)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht|
+=|/an}b∇acketle{t(f(x)j1−f(y)j1)◦A[j1],i,b[j1]/an}b∇acket∇i}ht|
+≤ /ba∇dbl(f(x)j1−f(y)j1)◦A[j1],i/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dbl(f(x)j1−f(y)j1)◦A[j1],i/ba∇dbl2
+≤ /ba∇dbl(f(x)j1−f(y)j1)/ba∇dbl∞·/ba∇dblA[j1],i/ba∇dbl2
+≤ /ba∇dbl(f(x)j1−f(y)j1)/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤R·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+≤4n1.5R2β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2 (59)
+where the 1st step is inner product calculation, the 2nd step is Hadamard product calculation, the
+3rd step is given by Cauchy-Schwartz inequality, the 4th ste p is because max j1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1, the
+5th and the 6th step are due to Fact 4.3, the 7th step holds because max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the
+8th step is from Lemma 7.4.
+Now we put Eq. ( 58) and Eq. ( 59) into Eq. 54,
+/ba∇dbl∇Lcent(x)−∇Lcent(y)/ba∇dbl2
+2≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(12n1.5R2β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2)2
+=d2n(12n1.5R2β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2)2
+Therefore,
+/ba∇dbl∇Lcent(x)−∇Lcent(y)/ba∇dbl2≤12dn2R2β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2
+56≤12dn2R2exp(4R2)·/ba∇dblx−y/ba∇dbl2
+≤dn2exp(5R2)·/ba∇dblx−y/ba∇dbl2
+where the 2nd step is derived from Lemma 6.1, the 3rd step is because R > 4.
+11.4 Lipschitz for ∇Lcent(A)Function
+Lemma 11.4. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•LetLsparse (A)be deﬁned as Deﬁnition 5.12
+•The greatest lower bound of /an}b∇acketle{tu(A)j1,1n/an}b∇acket∇i}htis denoted as β
+•maxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•Let/ba∇dblA−B/ba∇dbl∞,2= max j1∈[n]
+•R > 4
+Then, for all j1∈[n]we have
+/ba∇dbl∇Lcent(A)−∇Lcent(B)/ba∇dbl2≤dn2exp(5R2)·/ba∇dblA−B/ba∇dbl∞,2
+Proof.
+/ba∇dbl∇Lcent(A)−∇Lcent(B)/ba∇dbl2
+2
+=d2/summationdisplay
+i=1|n/summationdisplay
+j1=1(/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht)
+−n/summationdisplay
+j1=1(/an}b∇acketle{tf(B)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1◦B[j1],i,b[j1]/an}b∇acket∇i}ht)|2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(|/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
++|/an}b∇acketle{tf(A)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1◦B[j1],i,b[j1]/an}b∇acket∇i}ht)|)2
+(60)
+For the ﬁrst term of Eq. ( 60), by triangle inequality, we have
+|/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+57:=C1+C2+C3 (61)
+For the ﬁrst term ( C1) of Eq. ( 61), we have
+C1=|/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i−B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1/ba∇dbl2
+2·/ba∇dblb[j1]/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤ /ba∇dblb[j1]/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤ /ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤ /ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (62)
+where the 1st step is inner product calculation, the 2nd step is because of Cauchy-Schwartz in-
+equality, the 3rd step is due to Lemma 6.5, the 4th step is given by max j1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1, the last
+step is due to the deﬁnition of matrix norm.
+For the second term ( C2) of Eq. ( 61), we have
+C2=|/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1−f(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤ /ba∇dblb[j1]/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤ /ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤R·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤4n1.5R2β−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (63)
+where the 1st step is inner product calculation, the 2nd step is because of Cauchy-Schwartz in-
+equality, the 3rd step is due to Lemma 6.5, the 4th step is given by max j1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1, the 5th
+step holds since max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R,the 6th step follows by Lemma 7.11.
+For the third term ( C3) of Eq. ( 61), we have
+C3=|/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1−f(B)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2·/ba∇dblf(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤ /ba∇dblb[j1]/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤ /ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤R·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤4n1.5R2β−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (64)
+where the 1st step is inner product calculation, the 2nd step is because of Cauchy-Schwartz in-
+equality, the 3rd step is due to Lemma 6.5, the 4th step is given by max j1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1, the 5th
+step holds since max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R,the 6th step follows by Lemma 7.11.
+Putting Eq. ( 62), Eq. ( 63), and Eq. ( 64) into Eq. ( 61), we have
+|/an}b∇acketle{tf(A)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,b[j1]/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤C1+C2+C3
+58≤(8n1.5R2β−2exp(2R2) + 1)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (65)
+For the second term of Eq. ( 60), we have
+|/an}b∇acketle{tf(A)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1◦B[j1],i,b[j1]/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tf(A)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1◦B[j1],i,b[j1]/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(A)j1◦B[j1],i,b[j1]/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1◦B[j1],i,b[j1]/an}b∇acket∇i}ht|
+:=C4+C5 (66)
+For the ﬁrst item ( C4) of Eq. ( 66), we have,
+C4=|/an}b∇acketle{tf(A)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1◦B[j1],i,b[j1]/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1◦A[j1],i−f(A)j1◦B[j1],i,b[j1]/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1◦(A[j1],i−B[j1],i),b[j1]/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1◦(A[j1],i−B[j1],i)/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dblf(A)j1/ba∇dbl∞·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dblf(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dblA[j1],i−B[j1],i/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤ /ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (67)
+where the 1st step is inner product calculation, the 2nd step is Hadamard product calculation, the
+3rd step uses Cauchy-Schwartz inequality, the 4th and the 5t h steps are due to Fact 4.3, the 6th
+step is from Lemma 6.5, the 7th step is because max j1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1, the 8th step follows by the
+deﬁnition of matrix norm.
+For the second item ( C5) of Eq. ( 66), we have,
+C5=|/an}b∇acketle{tf(A)j1◦B[j1],i,b[j1]/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1◦B[j1],i,b[j1]/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1◦B[j1],i−f(B)j1◦B[j1],i,b[j1]/an}b∇acket∇i}ht|
+=|/an}b∇acketle{t(f(A)j1−f(B)j1)◦B[j1],i,b[j1]/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1−f(B)j1)◦B[j1],i/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dblf(A)j1−f(B)j1/ba∇dbl∞·/ba∇dblB[j1],i/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤ /ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤R·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblb[j1]/ba∇dbl2
+≤R·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤4n1.5R2β−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (68)
+where the 1st step is inner product calculation, the 2nd step is Hadamard product calculation, the
+3rd step uses Cauchy-Schwartz inequality, the 4th and the 5t h steps are due to Fact 4.3, the 6th
+step is from max j1∈[n]/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl ≤R, the 7th step is because max j1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1, the 8th
+step follows by Lemma 7.11.
+Putting Eq. ( 67) and Eq. ( 68) into Eq. ( 66), we have
+|/an}b∇acketle{tf(A)j1◦A[j1],i,b[j1]/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1◦B[j1],i,b[j1]/an}b∇acket∇i}ht|
+59≤C4+C5
+≤(4n1.5R2β−2exp(2R2) + 1)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (69)
+Putting Eq. ( 65) and Eq.( 69) into Eq. ( 60) yields,
+/ba∇dbl∇Lcent(A)−∇Lcent(B)/ba∇dbl2
+2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1((12n1.5R2β−2exp(2R2) + 2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl)2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1((12n1.5R2exp(4R2) + 2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl)2
+≤d2n(n1.5exp(5R2)·/ba∇dblA−B/ba∇dbl∞,2)2
+where the 2nd step is due to Lemma 6.2, the 3rd step is because R > 4.
+Therefore,
+/ba∇dbl∇Lcent(A)−∇Lcent(B)/ba∇dbl2≤n2exp(5R2)·/ba∇dblA−B/ba∇dbl∞,2
+12 Lipschitz for Entropy Loss Function
+In this Section, we discuss Lipschitz conditions for functi onLentand∇Lent.
+12.1 Lipschitz for Lent(x)Function
+Lemma 12.1. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•LetLent(x)be deﬁned as Deﬁnition 5.14
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•The greatest lower bound of /an}b∇acketle{tu(x)j1,1n/an}b∇acket∇i}htis denoted as β
+•/ba∇dbl1n−f(x)j1
+f(y)j1/ba∇dbl∞≤0.1
+•R > 4
+Then, for all j1∈[n]we have
+|Lent(x)−Lent(y)| ≤n3β−2exp(3R2)·/ba∇dblx−y/ba∇dbl2
+60Proof.
+|Lent(x)−Lent(y)|=|n/summationdisplay
+j1=1/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht−n/summationdisplay
+j1=1/an}b∇acketle{tf(y)j1,h(y)j1/an}b∇acket∇i}ht|
+≤n/summationdisplay
+j1=1(|/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1,h(y)j1/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(x)j1,h(y)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,h(y)j1/an}b∇acket∇i}ht|)
+=n/summationdisplay
+j1=1(|/an}b∇acketle{tf(x)j1,h(x)j1−h(y)j1/an}b∇acket∇i}ht|+|/an}b∇acketle{tf(x)j1−f(y)j1,h(y)j1/an}b∇acket∇i}ht|)
+≤n/summationdisplay
+j1=1(/ba∇dblf(x)j1/ba∇dbl2·/ba∇dblh(x)j1−h(y)j1/ba∇dbl2+/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblh(y)j1/ba∇dbl2)
+≤n/summationdisplay
+j1=1(/ba∇dblh(x)j1−h(y)j1/ba∇dbl2+/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblh(y)j1/ba∇dbl2)
+≤n/summationdisplay
+j1=1(/ba∇dblf(x)j1−f(y)j1/ba∇dbl2+/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblh(y)j1/ba∇dbl2)
+≤n/summationdisplay
+j1=1(1 + 2√nR2)·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+≤n/summationdisplay
+j1=1(1 + 2√nR2)·4n1.5Rβ−2exp(2R2)·/ba∇dblx−y/ba∇dbl2
+≤n3β−2exp(3R2)·/ba∇dblx−y/ba∇dbl2
+where the 1st step is due to the deﬁnition of Lent(see Deﬁnition 5.14), the 2nd step uses triangle
+inequality, the 3rd step is inner product calculation, the 4 th step follows from Cauchy-Schwartz
+inequality, the 5th step is from Lemma 6.5, the 6th step is from Lemma 7.5, the 7th step follows
+by Lemma 6.6, the 8th step follows by Lemma 7.4, the last step holds because R > 4.
+12.2 Lipschitz for Lent(A)Function
+Lemma 12.2. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•LetLent(A)be deﬁned as Deﬁnition 5.14
+•The greatest lower bound of /an}b∇acketle{tu(A)j1,1n/an}b∇acket∇i}htis denoted as β
+•Let/ba∇dblA−B/ba∇dbl∞,2= max j1∈[n]
+•/ba∇dbl1n−f(A)j1
+f(B)j1/ba∇dbl∞≤0.1
+•R > 4
+61Then, for all j1∈[n]we have
+|Lent(A)−Lent(B)| ≤n3β−2exp(3R2)·/ba∇dblA−B/ba∇dbl∞,2
+Proof.
+|Lent(A)−Lent(B)|=|n/summationdisplay
+j1=1/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht−n/summationdisplay
+j1=1/an}b∇acketle{tf(B)j1,h(B)j1/an}b∇acket∇i}ht|
+≤n/summationdisplay
+j1=1(|/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,h(B)j1/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(A)j1,h(B)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,h(B)j1/an}b∇acket∇i}ht|)
+=n/summationdisplay
+j1=1(|/an}b∇acketle{tf(A)j1,h(A)j1−h(B)j1/an}b∇acket∇i}ht|+|/an}b∇acketle{tf(A)j1−f(B)j1,h(B)j1/an}b∇acket∇i}ht|)
+≤n/summationdisplay
+j1=1(/ba∇dblf(A)j1/ba∇dbl2·/ba∇dblh(A)j1−h(B)j1/ba∇dbl2+/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblh(B)j1/ba∇dbl2)
+≤n/summationdisplay
+j1=1(/ba∇dblh(A)j1−h(B)j1/ba∇dbl2+/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblh(B)j1/ba∇dbl2)
+≤n/summationdisplay
+j1=1(/ba∇dblf(A)j1−f(B)j1/ba∇dbl2+/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblh(B)j1/ba∇dbl2)
+≤n/summationdisplay
+j1=1(1 + 2√nR2)·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤n/summationdisplay
+j1=1(1 + 2√nR2)·4n1.5Rβ−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+≤n3β−2exp(3R2)·/ba∇dblA−B/ba∇dbl∞,2
+where the 1st step is due to the deﬁnition of Lent(see Deﬁnition 5.14), the 2nd step uses triangle
+inequality, the 3rd step is inner product calculation, the 4 th step follows from Cauchy-Schwartz
+inequality, the 5th step is from Lemma 6.5, the 6th step is from Lemma 7.12, the 7th step follows
+by Lemma 6.6, the 8th step is due to Lemma 7.11, the last step holds because R > 4.
+12.3 Lipschitz for ∇Lent(x)Function
+Lemma 12.3. Provided that the subsequent requirement are satisﬁed
+•Letx∈Rd2,y∈Rd2satisfy/ba∇dblx/ba∇dbl2≤Rand/ba∇dbly/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•LetLent(x)be deﬁned as Deﬁnition 5.14
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(y−x)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•/ba∇dbl1n−f(x)j1
+f(y)j1/ba∇dbl∞≤0.1
+62•The greatest lower bound of /an}b∇acketle{tu(A)j1,1n/an}b∇acket∇i}htis denoted as β
+•R > 4
+Then, for all j1∈[n]we have
+/ba∇dbl∇Lent(x)−∇Lent(y)/ba∇dbl2≤dn2.5exp(5R2)·/ba∇dblx−y/ba∇dbl2
+Proof. Utilizing triangle inequality, we have
+/ba∇dbl∇Lent(x)−∇Lent(y)/ba∇dbl2
+2
+=d2/summationdisplay
+i=1|n/summationdisplay
+j1=1(/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1◦A[j1],i,h(x)j1/an}b∇acket∇i}ht+
+/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht)−
+n/summationdisplay
+j1=1(/an}b∇acketle{tf(y)j1,h(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1◦A[j1],i,h(y)j1/an}b∇acket∇i}ht+
+/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht)|2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(|/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,h(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(x)j1◦A[j1],i,h(x)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1◦A[j1],i,h(y)j1/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,1n/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|)2(70)
+For the ﬁrst item of Eq. ( 70), by triangle inequality, we have
+|/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,h(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1,h(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(x)j1,h(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,h(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+:=C1+C2+C3 (71)
+For the ﬁrst item ( C1) of Eq. ( 71), we have
+C1=|/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1−f(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(x)j1/ba∇dbl2·/ba∇dblh(x)j1/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤ /ba∇dblh(x)j1/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤2√nR2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤2√nR3·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+≤8n2R4β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2 (72)
+where the 1st step is inner product calculation, the 2nd step is derived from Cauchy-Schwartz
+inequality, the 3rd step follows by Lemma 6.5, the 4th step follows by Lemma 6.6, the 5th step is
+due to max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the last step follows from Lemma 7.4.
+63For the second item ( C2) of Eq. ( 71), we have
+C2=|/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1,h(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(x)j1,h(x)j1−h(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(x)j1/ba∇dbl2·/ba∇dblh(x)j1−h(y)j1/ba∇dbl2·/ba∇dblf(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤ /ba∇dblh(x)j1−h(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤R·/ba∇dblh(x)j1−h(y)j1/ba∇dbl2
+≤R·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+≤4n1.5R2β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2 (73)
+where the 1st step is inner product calculation, the 2nd step is derived from Cauchy-Schwartz
+inequality, the 3rd step follows by Lemma 6.5, the 4th step follows by max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,
+the 5th step is due to Lemma 7.5, the last step follows from Lemma 7.4.
+For the ﬁrst item ( C3) of Eq. ( 71), we have
+C3=|/an}b∇acketle{tf(x)j1,h(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,h(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(x)j1−f(y)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblh(x)j1/ba∇dbl2·/ba∇dblf(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤ /ba∇dblh(x)j1/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤2√nR2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤2√nR3·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+≤8n2R4β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2 (74)
+where the 1st step is inner product calculation, the 2nd step is derived from Cauchy-Schwartz
+inequality, the 3rd step follows by Lemma 6.5, the 4th step follows by Lemma 6.6, the 5th step is
+due to max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the last step follows from Lemma 7.4.
+Putting Eq. ( 72), Eq. ( 73), and Eq. ( 74) into Eq. ( 71), we have
+|/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,h(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤C1+C2+C3
+≤(4n0.5R2+ 1)·4n1.5R2β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2 (75)
+For the second term of Eq. ( 70), we have
+|/an}b∇acketle{tf(x)j1◦A[j1],i,h(x)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1◦A[j1],i,h(y)j1/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tf(x)j1◦A[j1],i,h(x)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1◦A[j1],i,h(y)j1/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(x)j1◦A[j1],i,h(y)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1◦A[j1],i,h(y)j1/an}b∇acket∇i}ht|
+:=C4+C5 (76)
+For the ﬁrst term ( C4) of Eq. ( 76), we have
+C4=|/an}b∇acketle{tf(x)j1◦A[j1],i,h(x)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1◦A[j1],i,h(y)j1/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(x)j1◦A[j1],i,h(x)j1−h(y)j1/an}b∇acket∇i}ht|
+≤ /ba∇dblf(x)j1◦A[j1],i/ba∇dbl2·/ba∇dblh(x)j1−h(y)j1/ba∇dbl2
+64≤ /ba∇dblf(x)j1/ba∇dbl∞·/ba∇dblA[j1],i/ba∇dbl2·/ba∇dblh(x)j1−h(y)j1/ba∇dbl2
+≤ /ba∇dblf(x)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2·/ba∇dblh(x)j1−h(y)j1/ba∇dbl2
+≤ /ba∇dblA[j1],i/ba∇dbl2·/ba∇dblh(x)j1−h(y)j1/ba∇dbl2
+≤R·/ba∇dblh(x)j1−h(y)j1/ba∇dbl2
+≤R·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+≤4n1.5R2β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2 (77)
+where the 1st step is inner product calculation, the 2nd is du e to Cauchy-Schwartz inequality, the
+3rd step and the 4th step are from Fact. 4.3, the 5th step is because of Lemma 6.5, the 6th step
+is because max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the 7th step follows by Lemma 7.5, the 8th step is given by
+Lemma 7.4.
+For the second term ( C5) of Eq. ( 76), we have
+C5=|/an}b∇acketle{tf(x)j1◦A[j1],i,h(y)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1◦A[j1],i,h(y)j1/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(x)j1◦A[j1],i−f(y)j1◦A[j1],i,h(y)j1/an}b∇acket∇i}ht|
+=|/an}b∇acketle{t(f(x)j1−f(y)j1)◦A[j1],i,h(y)j1/an}b∇acket∇i}ht|
+≤ /ba∇dbl(f(x)j1−f(y)j1)◦A[j1],i/ba∇dbl2·/ba∇dblh(y)j1/ba∇dbl2
+≤ /ba∇dblf(x)j1−f(y)j1/ba∇dbl∞·/ba∇dblA[j1],i/ba∇dbl2·/ba∇dblh(y)j1/ba∇dbl2
+≤ /ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2·/ba∇dblh(y)j1/ba∇dbl2
+≤R·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblh(y)j1/ba∇dbl2
+≤2√nR3·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+≤8n2R4β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2 (78)
+where the 1st step is inner product calculation, the 2nd is Ha damard product calculation, the 3rd
+step is due to Cauchy-Schwartz inequality, the 4th step and t he 5th step are from Fact. 4.3, the 6th
+step is because max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the 7th step follows by Lemma 6.6, the 8th step is given by
+Lemma 7.4.
+Putting Eq. ( 77) and Eq. ( 78) into Eq. ( 76), we have
+|/an}b∇acketle{tf(x)j1,h(x)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,h(y)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤C4+C5
+≤(2n0.5R2+ 1)·4n1.5R2β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2 (79)
+For the third term of Eq. ( 70), we have
+|/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,1n/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,1n/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,1n/an}b∇acket∇i}ht|
+:=C6+C7 (80)
+For the ﬁrst item ( C6) of Eq. ( 80), we have
+C6=|/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,1n/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1−f(y)j1,1n/an}b∇acket∇i}ht|
+65≤ /ba∇dblf(x)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤ /ba∇dblA[j1],i/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dbl1n/ba∇dbl
+≤R·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤4n1.5R2β−2 exp(2R2)·/ba∇dblx−y/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤4n2R2β−2 exp(2R2)·/ba∇dblx−y/ba∇dbl2 (81)
+where the 1st step is inner product calculation, the 2nd step is due to Cauchy-Schwartz inequality,
+the 3rd step is derived from Lemma 6.5, the 4th step holds because max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the 5th
+step uses Lemma 7.4.
+For the second item ( C7) of Eq. ( 80), we have
+C7=|/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,1n/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tf(x)j1−f(y)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,1n/an}b∇acket∇i}ht|
+≤ /ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2·/ba∇dblf(y)j1/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤ /ba∇dblA[j1],i/ba∇dbl2·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dbl1n/ba∇dbl
+≤R·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤4n1.5R2β−2 exp(2R2)·/ba∇dblx−y/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤4n2R2β−2 exp(2R2)·/ba∇dblx−y/ba∇dbl2 (82)
+where the 1st step is inner product calculation, the 2nd step is due to Cauchy-Schwartz inequality,
+the 3rd step is derived from Lemma 6.5, the 4th step holds because max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the 5th
+step uses Lemma 7.4.
+Putting Eq. ( 81) and Eq. ( 82) into Eq. ( 80), we have
+|/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(x)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(y)j1,1n/an}b∇acket∇i}ht|
+≤C6+C7
+≤8n2R2β−2 exp(2R2)·/ba∇dblx−y/ba∇dbl2 (83)
+For the fourth item of Eq. ( 70), we have
+|/an}b∇acketle{tf(x)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(y)j1,A[j1],i/an}b∇acket∇i}ht| ≤ |/an}b∇acketle{tf(x)j1−f(y)j1,A[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(x)j1−f(y)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2
+≤R·/ba∇dblf(x)j1−f(y)j1/ba∇dbl2
+≤4n2R2β−2 exp(2R2)·/ba∇dblx−y/ba∇dbl2 (84)
+where the 1st step is inner product calculation, the 2nd step is due to Cauchy-Schwartz inequality,
+the 3th step holds because max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the 4th step uses Lemma 7.4.
+Putting Eq. ( 75), Eq. ( 79) , Eq. ( 83) and Eq. ( 84) into Eq. ( 70), we have
+/ba∇dbl∇Lent(x)−∇Lent(y)/ba∇dbl2
+2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1((6n0.5R2+ 5)·4n1.5R2β−2exp(2R2)·/ba∇dblx−y/ba∇dbl2)2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1((6n0.5R2+ 5)·4n1.5R2exp(4R2)·/ba∇dblx−y/ba∇dbl2)2
+66≤d2n·(n2exp(5R2)·/ba∇dblx−y/ba∇dbl2)2
+Therefore, we have
+/ba∇dbl∇Lent(x)−∇Lent(y)/ba∇dbl2≤dn2.5exp(5R2)·/ba∇dblx−y/ba∇dbl2
+12.4 Lipschitz for ∇Lent(A)Function
+Lemma 12.4. Provided that the subsequent requirement are satisﬁed
+•LetA,B∈Rn2×d2satisfy maxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R,maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dbl(A[j1],∗−B[j1],∗)x/ba∇dbl∞<0.01
+•Letx∈Rd2satisfy that /ba∇dblx/ba∇dbl2≤R
+•LetLent(A)be deﬁned as Deﬁnition 5.14
+•The greatest lower bound of /an}b∇acketle{tu(A)j1,1n/an}b∇acket∇i}htis denoted as β
+•Let/ba∇dblA−B/ba∇dbl∞,2= max j1∈[n]
+•/ba∇dbl1n−f(A)j1
+f(B)j1/ba∇dbl∞≤0.1
+•R > 4
+•Let/ba∇dblA−B/ba∇dbl∞,2= max j1∈[n]/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl
+Then, for all j1∈[n]we have
+/ba∇dbl∇Lent(A)−∇Lent(B)/ba∇dbl2≤dn2.5exp(5R2)·/ba∇dblA−B/ba∇dbl∞,2
+Proof. Applying triangle inequality, we have
+/ba∇dbl∇Lent(A)−∇Lent(B)/ba∇dbl2
+2
+=d2/summationdisplay
+i=1|n/summationdisplay
+j1=1(/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1◦A[j1],i,h(A)j1/an}b∇acket∇i}ht+
+/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht)−
+n/summationdisplay
+j1=1(/an}b∇acketle{tf(B)j1,h(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1B[j1],i,h(B)j1/an}b∇acket∇i}ht+
+/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht)|2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(|/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,h(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(A)j1◦A[j1],i,h(A)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1◦B[j1],i,h(B)j1/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|)2(85)
+67For the ﬁrst term of Eq. ( 60), we have
+|/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,h(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,h(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(A)j1,h(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,h(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+:=C1+C2+C3+C4 (86)
+For the ﬁrst term ( C1) of Eq. ( 86), we have
+C1=|/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i−B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1/ba∇dbl2
+2·/ba∇dblh(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤ /ba∇dblh(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2√nR2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2√nR2·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (87)
+where 1st step is inner product calculation, the 2nd step is d ue to Cauchy-Schwartz inequality, the
+3rd step is from Lemma 6.5, the 4th step is from Lemma 6.6, the 5th step is because of deﬁnition
+of matrix norm.
+For the second term ( C2) of Eq. ( 86), we have
+C2=|/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1−f(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1/ba∇dbl2·/ba∇dblh(A)j1/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl
+≤ /ba∇dblh(A)j1/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl
+≤2√nR2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl
+≤2√nR3·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤8n2R4β−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (88)
+where 1st step is inner product calculation, the 2nd step is d ue to Cauchy-Schwartz inequality,
+the 3rd step is from Lemma 6.5, the 4th step is from Lemma 6.6, the 5th step is because of
+maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the 6th step is due to Lemma 7.11.
+For the third term ( C3) of Eq. ( 86), we have
+C3=|/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,h(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1,h(A)j1−h(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1/ba∇dbl2·/ba∇dblh(A)j1−h(B)j1/ba∇dbl2·/ba∇dblf(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl
+≤ /ba∇dblh(A)j1−h(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl
+≤ /ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl
+≤R·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤4n1.5R2β−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (89)
+68where 1st step is inner product calculation, the 2nd step is d ue to Cauchy-Schwartz inequality,
+the 3rd step is from Lemma 6.5, the 4th step is from Lemma 7.12, the 5th step is because of
+maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the 6th step is due to Lemma 7.11.
+For the fourth term ( C4) of Eq. ( 86), we have
+C4=|/an}b∇acketle{tf(A)j1,h(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,h(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1−f(B)j1,h(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblh(B)j1/ba∇dbl2·/ba∇dblf(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl
+≤ /ba∇dblh(B)j1/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl
+≤2√nR2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl
+≤2√nR3·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤8n2R4β−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (90)
+where 1st step is inner product calculation, the 2nd step is d ue to Cauchy-Schwartz inequality,
+the 3rd step is from Lemma 6.5, the 4th step is from Lemma 6.6, the 5th step is because of
+maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the 6th step is due to Lemma 7.11.
+Putting Eq. ( 87), Eq. ( 88), Eq. ( 89) and Eq. ( 90) into Eq. ( 86), we have
+|/an}b∇acketle{tf(A)j1,h(A)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,h(B)j1/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤C1+C2+C3+C4
+≤(1 + 4n1.5R2β−2exp(2R2) + 16n2R4β−2exp(2R2))·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (91)
+For the second term of Eq. ( 85), we have
+|/an}b∇acketle{tf(A)j1◦A[j1],i,h(A)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1◦B[j1],i,h(B)j1/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tf(A)j1◦A[j1],i,h(A)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1◦A[j1],i,h(B)j1/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(A)j1◦A[j1],i,h(B)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1◦B[j1],i,h(B)j1/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(A)j1◦B[j1],i,h(B)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1◦B[j1],i,h(B)j1/an}b∇acket∇i}ht|
+:=C5+C6+C7 (92)
+For the ﬁrst item ( C5) of Eq. ( 92), we have
+C5=|/an}b∇acketle{tf(A)j1◦A[j1],i,h(A)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1◦A[j1],i,h(B)j1/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1◦A[j1],i,h(A)j1−h(B)j1/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1◦A[j1],i/ba∇dbl2·/ba∇dblh(A)j1−h(B)j1/ba∇dbl2
+≤ /ba∇dblf(A)j1/ba∇dbl∞·/ba∇dblA[j1],i/ba∇dbl2·/ba∇dblh(A)j1−h(B)j1/ba∇dbl2
+≤ /ba∇dblf(A)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2·/ba∇dblh(A)j1−h(B)j1/ba∇dbl2
+≤ /ba∇dblA[j1],i/ba∇dbl2·/ba∇dblh(A)j1−h(B)j1/ba∇dbl2
+≤R·/ba∇dblh(A)j1−h(B)j1/ba∇dbl2
+≤R·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤4n1.5R2β−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (93)
+where the 1st step is inner product calculation, the 2nd step is due to Cauchy-Schwartz inequality,
+the 3rd and the 4th step is owing to Fact 4.3, the 5th step follows from Lemma 6.5, the 6th step
+holds because max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the last step follows by Lemma 7.11.
+69For the second item ( C6) of Eq. ( 92), we have
+C6=|/an}b∇acketle{tf(A)j1◦A[j1],i,h(B)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1◦B[j1],i,h(B)j1/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1◦A[j1],i−f(A)j1◦B[j1],i,h(B)j1/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1◦(A[j1],i−B[j1],i),h(B)j1/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1◦(A[j1],i−B[j1],i)/ba∇dbl2·/ba∇dblh(B)j1/ba∇dbl2
+≤ /ba∇dblf(A)j1/ba∇dbl∞·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2·/ba∇dblh(B)j1/ba∇dbl2
+≤ /ba∇dblf(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2·/ba∇dblh(B)j1/ba∇dbl2
+≤ /ba∇dblA[j1],i−B[j1],i/ba∇dbl2·/ba∇dblh(B)j1/ba∇dbl2
+≤2√nR2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤2√nR2·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (94)
+where the 1st step is inner product calculation, the 2nd step is Hadamard product calculation, the
+3rd step is due to Cauchy-Schwartz inequality, the 4th and th e 5th step is owing to Fact 4.3, the
+6th step follows from Lemma 6.5, the 7th step is derived from Lemma 6.6, the last step follows by
+deﬁnition of matrix norm.
+For the third item ( C7) of Eq. ( 92), we have
+C7=|/an}b∇acketle{tf(A)j1◦B[j1],i,h(B)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1◦B[j1],i,h(B)j1/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1◦B[j1],i−f(B)j1◦B[j1],i,h(B)j1/an}b∇acket∇i}ht|
+=|/an}b∇acketle{t(f(A)j1−f(B)j1)◦B[j1],i,h(B)j1/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1−f(B)j1)◦B[j1],i/ba∇dbl2·/ba∇dblh(B)j1/ba∇dbl2
+≤ /ba∇dblf(A)j1−f(B)j1/ba∇dbl∞·/ba∇dblB[j1],i/ba∇dbl2·/ba∇dblh(B)j1/ba∇dbl2
+≤ /ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2·/ba∇dblh(B)j1/ba∇dbl2
+≤R·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblh(B)j1/ba∇dbl2
+≤2√nR3·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤8n2R4β−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (95)
+where the 1st step is inner product calculation, the 2nd step is Hadamard product calculation, the
+3rd step is due to Cauchy-Schwartz inequality, the 4th and th e 5th step is owing to Fact 4.3, the
+6th step follows from max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the 7th step is derived from Lemma 6.6, the last step
+follows by Lemma 7.11.
+Putting Eq. ( 93), Eq. ( 94), and Eq. ( 95) into Eq. ( 92), we have
+|/an}b∇acketle{tf(A)j1◦A[j1],i,h(A)j1/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1◦B[j1],i,h(B)j1/an}b∇acket∇i}ht|
+≤C5+C6+C7
+≤(2√nR2+ 4n1.5R2β−2exp(2R2) + 8n2R4β−2exp(2R2))·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (96)
+For the third term of Eq. ( 85), we have
+|/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht|+
+|/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht|+
+70|/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht|
+:=C8+C9+C10 (97)
+For the ﬁrst item ( C8) of Eq. ( 97), we have
+C8=|/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1−f(B)j1,1n/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1/ba∇dbl2·/ba∇dblA[j1],i/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤ /ba∇dblA[j1],i/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤R·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤√nR·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤4n2R2β−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (98)
+where the 1st step is inner product calculation, the 2nd step is given by Cauchy-Schwartz inequality,
+the 3rd step is due to Lemma 6.5, the 4th step holds because max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the last step
+is due to Lemma 7.11.
+For the second item ( C9) of Eq. ( 97), we have
+C9=|/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1,A[j1],i−B[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2·/ba∇dblf(B)j1/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤ /ba∇dblA[j1],i/ba∇dbl2·/ba∇dblA[j1],i−B[j1],∗/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤R·/ba∇dblA[j1],i−B[j1],∗/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤√nR·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2
+≤√nR·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (99)
+where the 1st step is inner product calculation, the 2nd step is given by Cauchy-Schwartz inequality,
+the 3rd step is due to Lemma 6.5, the 4th step holds because max j1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R, the last step
+uses the deﬁnition of matrix norm.
+For the third item ( C10) of Eq. ( 97), we have
+C10=|/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1−f(B)j1,B[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2·/ba∇dblf(B)j1/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤ /ba∇dblB[j1],i/ba∇dbl2·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤R·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dbl1n/ba∇dbl2
+≤√nR·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤4n2R2β−2exp(2R2)·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (100)
+where the 1st step is inner product calculation, the 2nd step is given by Cauchy-Schwartz inequality,
+the 3rd step is due to Lemma 6.5, the 4th step holds because max j1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the last step
+is due to Lemma 7.11.
+Putting Eq. ( 98), Eq. ( 99), and Eq. ( 100) into Eq. ( 97), we have
+|/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(A)j1,1n/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht·/an}b∇acketle{tf(B)j1,1n/an}b∇acket∇i}ht|
+71≤C8+C9+C10
+≤(√nR+ 8n2R2β−2exp(2R2))·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (101)
+For the fourth term of Eq. ( 85), we have
+|/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ |/an}b∇acketle{tf(A)j1,A[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht|+|/an}b∇acketle{tf(A)j1,B[j1],i/an}b∇acket∇i}ht−/an}b∇acketle{tf(B)j1,B[j1],i/an}b∇acket∇i}ht|
+=|/an}b∇acketle{tf(A)j1,A[j1],i−B[j1],i/an}b∇acket∇i}ht|+|/an}b∇acketle{tf(A)j1−f(B)j1,B[j1],i/an}b∇acket∇i}ht|
+≤ /ba∇dblf(A)j1/ba∇dbl2·/ba∇dblA[j1],i−B[j1],i/ba∇dbl2+/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤ /ba∇dblA[j1],i−B[j1],i/ba∇dbl2+/ba∇dblf(A)j1−f(B)j1/ba∇dbl2·/ba∇dblB[j1],i/ba∇dbl2
+≤ /ba∇dblA[j1],i−B[j1],i/ba∇dbl2+R·/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤ /ba∇dblA[j1],∗−B[j1],∗/ba∇dbl+/ba∇dblf(A)j1−f(B)j1/ba∇dbl2
+≤(1 + 4n1.5R2β−2exp(2R2))·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl (102)
+where the 1st step is from triangle inequality, the 2nd step i s inner product calculation, the 3rd
+step uses Cauchy-Schwartz inequality, the 4th step is due to Lemma 6.5, the 5th step follows by
+maxj1∈[n]/ba∇dblB[j1],∗/ba∇dbl ≤R, the 6th step is given by matrix norm deﬁnition, the 7th step f ollows by
+Lemma 7.11.
+Putting Eq. ( 91), Eq. ( 96) , Eq. ( 101) and Eq. ( 102) into Eq. ( 85), we have
+/ba∇dbl∇Lent(A)−∇Lent(B)/ba∇dbl2
+2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(2 +√nR+ 2√nR2+ 12n1.5R2β−2exp(2R2) +
+4n2R2β−2exp(2R2) + 24n2R4β−2exp(2R2))·/ba∇dblA[J1],∗−B[j1],∗/ba∇dbl)2
+≤d2/summationdisplay
+i=1n/summationdisplay
+j1=1(2 +√nR+ 2√nR2+ 12n1.5R2exp(4R2) +
+4n2R2exp(4R2) + 24n2R4exp(4R2))·/ba∇dblA[j1],∗−B[j1],∗/ba∇dbl)2
+≤d2n·(n2exp(5R2)·/ba∇dblA−B/ba∇dbl∞,2)2
+where the 2nd step is from Lemma 6.2, the 3rd step is because R > 4.
+Therefore, we have
+/ba∇dbl∇Lent(x)−∇Lent(y)/ba∇dbl2≤dn2.5exp(5R2)·/ba∇dblA−B/ba∇dbl∞,2
+13 In-Context Learning for Rescaled Version
+To bring the Lipschitz property into an in-context learning application, we will introduce two
+lemmas in Section 13.1 and Section 13.2. Additionally, a new deﬁnition will be presented to assist
+in establishing the main result in Section 13.3.
+7213.1 For the xcase
+Deﬁnition 13.1. Letδq∈Rn2be the vector that fulﬁlls the following condition
+/ba∇dblexp(Axt+1)−D(xt+1)b/ba∇dbl2
+2=/ba∇dblexp(Axt)−D(xt)(b−δq)/ba∇dbl2
+2
+Lemma 13.2. Provided that the subsequent requirement are satisﬁed
+•Letδqbe deﬁned in Deﬁnition 13.1.
+•LetR≥4.
+•Letxt∈Rd2,xt+1∈Rd2satisfy/ba∇dblxt/ba∇dbl2≤Rand/ba∇dblxt+1/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(xt−xt+1)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•LetM= exp(O(R2+ logn)).
+We have
+/ba∇dblδq/ba∇dbl2≤M·/ba∇dblxt+1−xt/ba∇dbl2
+Proof. We have
+exp(Axt+1)−D(xt+1)·b= (exp(Axt)−D(xt)·(b−δq))◦{−1,+1}n2
+Since all solutions have the same norm, we can simplify the pr oblem by focusing on a single solution,
+namely the one presented below.
+exp(Axt+1)/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+n2×1 vector−D(xt+1)/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+n2×n2matrix·b/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+n2×1 vector= exp(Axt)−D(xt)·(b−δq)
+One possible choice for δq∈Rn2is
+δq=D(xt)−1(exp(Axt+1)−D(xt+1)·b−(exp(Axt)−D(xt)·b)) (103)
+In particular, we have
+(δq)[j]/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+n×1 vector=α(xt)−1
+j·(u(xt+1)j−α(xt+1)j·b[j])−α(xt)−1
+j·(u(xt)j−α(xt)j·b[j]) (104)
+Thus,
+/ba∇dblδq/ba∇dbl2
+2=/ba∇dblD(xt)−1(exp(Axt+1)−D(xt+1)·b−(exp(Axt)−D(xt)·b))/ba∇dbl2
+2
+=n/summationdisplay
+j=1/ba∇dblα(xt)−1
+j·(u(xt+1)j−α(xt+1)j·b[j])−α(xt)−1
+j·(u(xt)j−α(xt)j·b[j])/ba∇dbl2
+2
+73=n/summationdisplay
+j=1/ba∇dblα(xt)−1
+j·(q(xt+1)j−q(xt)j)/ba∇dbl2
+2
+=n/summationdisplay
+j=1|α(xt)−1
+j|2·/ba∇dblq(xt+1)j−q(xt)j/ba∇dbl2
+2
+≤n/summationdisplay
+j=1(exp(R2))2·/ba∇dblq(xt+1)j−q(xt)j/ba∇dbl2
+2
+≤n·(exp(R2))2·(4nRexp(R2))2·/ba∇dblxt+1−xt/ba∇dbl2
+2
+≤M2·/ba∇dblxt+1−xt/ba∇dbl2
+2
+where the ﬁrst step follows from Eq. ( 103), the 2nd step follows from Eq. ( 104), the 3rd step follows
+from deﬁnition of function q(x) (see Deﬁnition 5.9), the 4th step is based on Fact 4.4, the 5th step
+is because of Lemma 6.4, the 6th is because of Lemma 7.7and the last step follows from Deﬁnition
+ofMin Lemma statement.
+Thus, we have shown that
+/ba∇dblδq/ba∇dbl2≤M·/ba∇dblxt+1−xt/ba∇dbl2
+The proof is complete.
+13.2 For the Acase
+Deﬁnition 13.3. Letδq∈Rn2be the vector that fulﬁlls the following condition
+/ba∇dblexp(At+1)−D(At+1)b/ba∇dbl2
+2=/ba∇dblexp(At)−D(At)(b−δq)/ba∇dbl2
+2
+Lemma 13.4. Provided that the subsequent requirement are satisﬁed
+•Letδqbe deﬁned in Deﬁnition 13.3.
+•LetM= exp(O(R2+ logn))
+We have
+/ba∇dblδq/ba∇dbl2≤M·/ba∇dblAt+1−At/ba∇dbl2
+13.3 Main Result
+Now, we will apply the results mentioned above to in-context learning. The formal version of
+Theorem 13.5 is presented as follows.
+Theorem 13.5 (Learning in-context for Rescaled Version) .Provided that the subsequent require-
+ment are satisﬁed
+•LetR≥4.
+•Letxt∈Rd2,xt+1∈Rd2satisfy/ba∇dblxt/ba∇dbl2≤Rand/ba∇dblxt+1/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(xt−xt+1)/ba∇dbl∞<0.01
+74•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•LetM= exp(O(R2+ logn)).
+We consider the matrix formulation for attention regressio n (Deﬁnition 1.2) problem
+min
+x∈Rd2/ba∇dblexp(Ax)−D(x)b/ba∇dbl2
+2.
+•Part 1. By transitioning xttoxt+1, we are eﬀectively addressing a fresh rescaled softmax
+regression problem involving
+min
+x∈Rd2/ba∇dblexp(Ax)−D(x)/tildewideb/ba∇dbl2
+2
+where
+/ba∇dbl/tildewideb−b/ba∇dbl2≤M·/ba∇dblxt+1−xt/ba∇dbl2
+•Part 2. By transitioning AttoAt+1, we are eﬀectively addressing a fresh rescaled softmax
+regression problem involving
+min
+x∈Rd2/ba∇dblexp(Ax)−D(x)/hatwideb/ba∇dbl2
+2
+where
+/ba∇dbl/hatwideb−b/ba∇dbl2≤M·/ba∇dblAt+1−At/ba∇dbl
+Proof. The proof straightforwardly derives from Lemma 13.2 and Lemma 13.4.
+14 In-Context Learning for Normalized Version
+In this section, we introduce our analysis about in-context learning for normalized version. In
+Section 14.1and Section 14.2, Lipschitz result for Aandxare presented. In Section 14.3, the main
+result is presented by us.
+Deﬁnition 14.1. Letδc∈Rn2be the vector that fulﬁlls the following condition
+/ba∇dblD(xt+1)−1exp(Axt+1)−b/ba∇dbl2
+2=/ba∇dblD(xt)−1exp(Axt)−(b−δc)/ba∇dbl2
+2
+14.1 For the xcase
+Lemma 14.2. Provided that the subsequent requirement are satisﬁed
+•Letδcbe deﬁned in Deﬁnition 14.1.
+•LetM= exp(O(R2+ logn))
+•LetR≥4.
+•Letxt∈Rd2,xt+1∈Rd2satisfy/ba∇dblxt/ba∇dbl2≤Rand/ba∇dblxt+1/ba∇dbl2≤R
+75•LetA∈Rn2×d2
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(xt−xt+1)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•LetM= exp(O(R2+ logn)).
+We have
+/ba∇dblδc/ba∇dbl2≤M·/ba∇dblxt+1−xt/ba∇dbl2
+Proof. We have
+D(xt+1)−1·exp(Axt+1)−b= (D(xt)−1·exp(Axt)−(b−δc))◦{−1,+1}n2
+Since all solutions have the same norm, we can simplify the pr oblem by focusing on a single solution,
+namely the one presented below.
+D(xt+1)−1
+/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+n2×n2matrix·exp(Axt+1)/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+n2×1 vector−b/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+n2×1 vector=D(xt)−1exp(Axt)−(b−δc)
+One possible choice for δc∈Rn2is
+δc=D(xt+1)−1·exp(Axt+1)−D(xt)−1exp(Axt) (105)
+In particular, we have
+(δc)[j]/bracehtipupleft/bracehtipdownright/bracehtipdownleft/bracehtipupright
+n×1 vector=α(xt+1)−1
+ju(xt+1)j−α(xt)−1
+ju(xt)j (106)
+Thus,
+/ba∇dblδc/ba∇dbl2
+2=/ba∇dblD(xt+1)−1·exp(Axt+1)−D(xt)−1exp(Axt)/ba∇dbl2
+2
+=n/summationdisplay
+j=1/ba∇dblα(xt+1)−1
+ju(xt+1)j−α(xt)−1
+ju(xt)j/ba∇dbl2
+2
+=n/summationdisplay
+j=1/ba∇dblc(xt+1)−c(xt)/ba∇dbl2
+2
+≤n/summationdisplay
+j=1(4β−2n1.5R)2exp(2R2)·/ba∇dblxt+1−xt/ba∇dbl2
+2
+≤n/summationdisplay
+j=1(4n1.5Rexp(4R2))2·/ba∇dblxt+1−xt/ba∇dbl2
+2
+≤(4n2Rexp(4R2))2·/ba∇dblxt−xt+1/ba∇dbl2
+≤M2·/ba∇dblxt+1−xt/ba∇dbl2
+2
+where the ﬁrst step is based on Eq. ( 105), the 2nd step uses Eq. ( 106), the 3rd step is due to
+Deﬁnition 5.8, the 4th step is based on Lemma 7.6, the 5th step is because of Lemma 6.1, the 6th
+step follows from simple algebra, the 7th is from the deﬁniti on ofMin Lemma statement.
+Thus, we have shown that
+/ba∇dblδc/ba∇dbl2≤M·/ba∇dblxt+1−xt/ba∇dbl2
+The proof is complete.
+7614.2 For the Acase
+Deﬁnition 14.3. We deﬁne δc∈Rn2be to the vector satisﬁes
+/ba∇dblD(At+1)−1exp(At+1)−b/ba∇dbl2
+2=/ba∇dblD(At)−1exp(At)−(b−δc)/ba∇dbl2
+2
+Lemma 14.4. Provided that the subsequent requirement are satisﬁed
+•Letδcbe deﬁned in Deﬁnition 13.3.
+•LetM= exp(O(R2+ logn))
+We have
+/ba∇dblδc/ba∇dbl2≤M·/ba∇dblAt+1−At/ba∇dbl2
+14.3 Main Result
+Theorem 14.5 (Learning in-context for Normalized Version) .Provided that the subsequent re-
+quirement are satisﬁed
+•LetR≥4.
+•Letxt∈Rd2,xt+1∈Rd2satisfy/ba∇dblxt/ba∇dbl2≤Rand/ba∇dblxt+1/ba∇dbl2≤R
+•LetA∈Rn2×d2
+•Letmaxj1∈[n]/ba∇dblA[j1],∗(xt−xt+1)/ba∇dbl∞<0.01
+•Letmaxj1∈[n]/ba∇dblA[j1],∗/ba∇dbl ≤R
+•Letmaxj1∈[n]/ba∇dblb[j1]/ba∇dbl2≤1
+•LetM= exp(O(R2+ logn)).
+We consider the matrix formulation for attention regressio n (Deﬁnition 1.3) problem
+min
+x∈Rd2/ba∇dblD(x)−1exp(Ax)−b/ba∇dbl2
+2.
+•Part 1. By transitioning xttoxt+1, we are eﬀectively addressing a fresh normalized softmax
+regression problem involving
+min
+x∈Rd2/ba∇dblD(x)−1exp(Ax)−/tildewideb/ba∇dbl2
+2
+where
+/ba∇dbl/tildewideb−b/ba∇dbl2≤M·/ba∇dblxt+1−xt/ba∇dbl2
+•Part 2. By transitioning AttoAt+1, we are eﬀectively addressing a fresh normalized softmax
+regression problem involving
+min
+x∈Rd2/ba∇dblD(x)−1exp(Ax)−/hatwideb/ba∇dbl2
+2
+where
+/ba∇dbl/hatwideb−b/ba∇dbl2≤M·/ba∇dblAt+1−At/ba∇dbl
+Proof. The proof straightforwardly derives from Lemma 14.2 and Lemma 14.4.
+77References
+[AS23] Josh Alman and Zhao Song. Fast attention requires bou nded entries. arXiv preprint
+arXiv:2302.13214 , 2023.
+[ASA+22] Ekin Aky¨ urek, Dale Schuurmans, Jacob Andreas, Tengyu M a, and Denny Zhou. What
+learning algorithm is in-context learning? investigation s with linear models. arXiv
+preprint arXiv:2211.15661 , 2022.
+[BMR+20] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbia

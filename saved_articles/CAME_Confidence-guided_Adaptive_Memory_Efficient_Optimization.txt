@@ -1,0 +1,683 @@
+CAME: Confidence-guided Adaptive Memory Efficient Optimization
+Yang Luo1*,Xiaozhe Ren2,Zangwei Zheng1,Zhuo Jiang1,Xin Jiang2,Yang You1
+1School of Computing, National University of Singapore
+2Noah’s Ark Lab, Huawei
+{yangluo,zangwei,jiangz,youy}@comp.nus.edu.sg
+{renxiaozhe,jiang.xin}@huawei.com
+Abstract
+Adaptive gradient methods, such as Adam and
+LAMB, have demonstrated excellent perfor-
+mance in the training of large language models.
+Nevertheless, the need for adaptivity requires
+maintaining second-moment estimates of the
+per-parameter gradients, which entails a high
+cost of extra memory overheads. To solve this
+problem, several memory-efficient optimizers
+(e.g., Adafactor) have been proposed to obtain
+a drastic reduction in auxiliary memory usage,
+but with a performance penalty. In this pa-
+per, we first study a confidence-guided strategy
+to reduce the instability of existing memory
+efficient optimizers. Based on this strategy,
+we propose CAME to simultaneously achieve
+two goals: fast convergence as in traditional
+adaptive methods, and low memory usage as
+in memory-efficient methods. Extensive exper-
+iments demonstrate the training stability and
+superior performance of CAME across various
+NLP tasks such as BERT and GPT-2 training.
+Notably, for BERT pre-training on the large
+batch size of 32,768, our proposed optimizer
+attains faster convergence and higher accuracy
+compared with the Adam optimizer. The im-
+plementation of CAME is publicly available1.
+1 Introduction
+Robust training of large language models (LLMs)
+often relies on adaptive gradient-based optimiza-
+tion methods (Li et al., 2022; Kingma and Ba, 2015;
+Zhuang et al., 2020). Through the use of cumula-
+tive second-order statistics, these methods adapt the
+per-parameter learning rate and demonstrate supe-
+rior convergence speed during the training process
+of LLMs. However, the remarkable performance
+of adaptive methods incurs an extra cost of mem-
+ory usage indeed. For example, Adam requires
+to preserve the first moment estimate and second
+*Work was done when Yang Luo was an intern at Huawei
+Noah’s Ark Lab.
+1https://github.com/huawei-noah/
+Pretrained-Language-Model/tree/master/CAME
+Figure 1: Visualization of Non-negative Matrix Factor-
+ization (NMF). Generally, NMF reduces the memory
+requirements from O(nm)toO(n+m). In this paper,
+we focus on the special case of rank-1 factors.
+raw moment estimate of each gradient in order to
+tune the learning rate for each parameter, which
+inevitably triples the memory usage concerning the
+optimizer states. Besides, with the growing size
+of the model, LLMs are becoming increasingly ex-
+pensive in terms of memory, and the limitation of
+memory is gradually emerging as a main bottleneck
+for training LLMs.
+Many existing memory-efficient optimizers at-
+tempt to store second-order statistics with sublin-
+ear memory requirement while retaining the excep-
+tional convergence property of adaptivity (Shazeer
+and Stern, 2018; Anil et al., 2019). Adafactor opti-
+mizer achieves remarkable memory cost reduction
+by applying the non-negative matrix factorization
+algorithm (Lee and Seung, 2000) to factorize the
+accumulator matrix for squared gradients into two
+rank-1 factors as shown in Figure 1, where the
+memory requirement for the original matrix Vde-
+creases from O(nm)toO(n+m). Whereas, it
+is observed that Adafactor suffers a performance
+degradation in the training of large language mod-
+els universally compared with conventional adap-
+tive gradient-based optimization methods. The rea-
+son for this phenomenon is Adafactor inevitably in-
+troduces some errors that cause instability in train-
+ing deep networks due to the operation of non-
+negative matrix factorization.arXiv:2307.02047v1  [cs.CL]  5 Jul 2023In addition, in the case of large-batch training
+that aims to accelerate the training of deep neu-
+ral networks, the memory consumption of each
+machine (GPU/TPU) is much higher than general
+batch size training, which further imposes a grave
+constraint on the performance of the trained model.
+In comparison to standard training tasks, large-
+batch training presents more challenges for op-
+timizers. Empirically, when the mini-batch size
+increases after a certain point (e.g. 1024), the test
+accuracy of the converged solution decreases sig-
+nificantly compared with the baseline (He et al.,
+2021). To our knowledge, there is currently no
+work related to memory-efficient optimizers for
+large-batch training.
+Motivated by these challenges, we firstly study
+a confidence-guided strategy catered to alleviate
+the instability of Adafactor by calculating the con-
+fidence of the generated update at each training
+step. On the basis of the adaptation strategy, we
+propose a novel CAME optimizer that saves nearly
+the same memory footprint as existing memory-
+efficient optimizers while attaining faster conver-
+gence and superior generalization performance. To
+further assess the scalability of our proposed algo-
+rithm, we consider an additional challenging exper-
+iment - performing large-batch training on BERT
+using CAME optimizer.
+Contributions of our paper can be summarized
+in the following:
+•Inspired by training instability of Adafactor,
+we explore a confidence-guided strategy cen-
+tered on the existing error in the raw updates
+of Adafactor for parameters of large language
+models.
+•In light of the dedicated strategy, we pro-
+pose a novel optimization algorithm, CAME,
+for achieving faster convergence and less
+performance degradation catered at memory-
+efficient optimization. We further investigate
+the effect of the proposed memory-efficient
+optimization algorithm in large-batch training
+settings.
+•We demonstrate the powerful performance
+of CAME with extensive NLP experiments:
+CAME shows faster convergence and better
+generalization capability than Adam in BERT
+pre-training task with two different batch sizes
+(32k and 8k); in the training of GPT-2 modeland T5 model, CAME achieves fast conver-
+gence speed as Adam without degrading of
+performance. Notably, in the large-batch train-
+ing of the BERT model, CAME obtains com-
+parable validation accuracy with LAMB using
+around 15% less memory usage.
+2 Related Work
+Memory Efficient Adaptive Optimization Mem-
+ory efficient optimizers maintain the benefits of
+standard per-parameter adaptivity while signif-
+icantly reducing memory footprint. Adafactor
+(Shazeer and Stern, 2018) proposes to reconstruct
+a low-rank approximation of the exponentially
+smoothed accumulator at each training step that
+is optimal with respect to the generalized Kullback-
+Leibler divergence. SM3 (Anil et al., 2019) divides
+the elements in the second-order gradient matrix
+into sets by the observed similarity of the elements,
+and each item in the generated approximation ma-
+trix is the minimum of the maximum value of each
+set in which it is located. The methods mentioned
+above behave poorly in the training of large lan-
+guage models and converge slowly, which raises
+a significant challenge for memory-efficient opti-
+mization methods.
+Large Batch Training A large-batch training
+scheme is preferred in distributed machine learn-
+ing because of its ability to increase parallelism
+by enhancing large-scale cluster utilization. It has
+seen growing interest in recent years in large-batch
+training (Liu et al., 2022; Li et al., 2021; Huo et al.,
+2021). In particular, a layer-wise adaptive learn-
+ing rate algorithm LARS (You et al., 2017a) is
+proposed to scale the batch size to 32k for ResNet-
+50. Based on LARS, LAMB optimizer (You et al.,
+2019) can finish the BERT training in 76 minutes
+through TPU v3 Pod. Despite the success of these
+approaches for BERT models, the much larger
+batch size highly boosts the GPU usage which is
+prohibitively expensive and inaccessible to most
+researchers.
+Moreover, training with a large batch size incurs
+additional challenges (Hoffer et al., 2017; Keskar
+et al., 2016). Large-batch training is prone to
+converge to sharp local minima, since the num-
+ber of interactions will decrease when the batch
+size is increased if the number of epochs is fixed,
+which causes a wide gap in generalization of the
+model(Keskar et al., 2016). Traditional methods
+seek to narrow the generalization gap by carefullytuning hyperparameters, such as learning rate, mo-
+mentum, and label smoothing, to narrow the gen-
+eralization gap (Goyal et al., 2017a; Shallue et al.,
+2018; You et al., 2017b). Yet there have been few
+attempts to reduce memory usage in large-batch
+training, and the underlying challenge remains un-
+clear.
+3 Method
+In this section, we firstly provide a brief description
+of the Adafactor optimizer and discuss the errors
+contained in the update of Adafactor (erroneous up-
+date). We further study a confidence-guided strat-
+egy and introduce the proposed CAME in detail in
+light of the strategy.
+3.1 An overview of Adafactor
+TheL(θ)∈Rrepresents the loss function that we
+plan to minimize, where θ∈Rn×mis the parame-
+ter of the model. gtis the gradient at step t,ηis the
+learning rate, rtandctare the exponential moving
+average of two low-rank factors for the second mo-
+ments of the gradient. ϵ1is a small regularization
+constants and utis the current approximate update.
+In the training of large language models, Adafac-
+tor is required to apply momentum to ensure the
+convergence (Chowdhery et al., 2022), and the cor-
+responding pseudocode is illustrated in Algorithm
+1. The problem setting is as follows. Assume that
+we aim to minimize the expected value of an ob-
+jective function f(θ). At each training step, we
+receive the loss derived from a mini-batch of data,
+and calculate the gradient gtof the function based
+on the previous parameters. Subsequently, we up-
+date the exponential running averages of two fac-
+tors for second moments of the gradient rtandct,
+compute approximations for the second moments
+of the gradient vt, and adjust the generated update
+(ut) when RMS (ut)surpasses a specific threshold
+value das in:
+ˆut=ut
+max(1, RMS (ut)/d)(1)
+where RMS (ut)refers to the root-mean-square
+calculation of the components of ut. Finally, the
+first moment of the adjusted update mtis utilized
+to update the parameter, resulting in a new iteration
+θt. The optimization continues until the parameters
+converge and returns the final iteration θTas our
+approximate solution.
+Adafactor derives an effective solution for non-
+negative matrix factorization in the special case
+Figure 2: Loss landscape visualization for erroneous
+update of Adafactor in 1-layer multilayer perceptron
+(MLP) (Haykin, 1994) with same training steps. Adafac-
+tor deviates from the training curve of Adam.
+of rank-1 factors, which obtains the minimal Kull-
+back–Leibler divergence (Lee and Seung) between
+the matrix Vand the approximated matrix WH .
+The formulation of the solution is as follows, in
+which 1m= (1, ...,1)∈Rmrepresents a column
+vector of mones:
+W=V1m, H =1T
+nV
+1TnV1m. (2)
+It should be noted that Adafactor stores only
+the moving averages of these factors rather than
+the entire matrix V, yielding considerable memory
+savings and requiring memory usage proportional
+toO(n+m)instead of O(nm).
+3.2 Erroneous Update
+The non-negative matrix factorization operation in
+Adafactor will inevitably incur erroneous update in
+the training of deep neural networks. As shown in
+Figure 2, Adafactor always converge slower than
+Adam due to the existing error in calculated up-
+dates, which further limits the application scenarios
+of memory-efficient optimizers.
+As shown in Figure 3, two scenarios demonstrate
+how two types of erroneous updates are supposed
+to be handled in the ideal case. In Figure 3(a), the
+difference between the momentum of updates mt
+and the current update utis large, illustrating that
+the historical experience for the update of original
+Adafactor contains high level of errors that will
+inevitably influence the stability of the training pro-
+cess. If we utilize the raw mtto take an optimiza-
+tion step, the direction of optimization will deviate
+increasingly from the desired direction, which is
+reflected by the slow convergence and performanceAlgorithm 1: Adafactor Optimizer
+Input: Initial parameters θ0, learning rate η, momentum of update m0,r0,c0, step t, regularization
+constant ϵ1, exponential moving average parameters β1, β2, clipping threshold d
+while θtnot converge do
+Compute gt=∇f(θt−1)
+rt=β2rt−1+ (1−β2)(g2
+t+ϵ11n1T
+m)1m
+ct=β2ct−1+ (1−β2)1T
+n(g2
+t+ϵ11n1T
+m)
+vt=rtct/1T
+nrt
+ut=gt/√vt
+ˆut=ut/max(1, RMS (ut)/d)
+mt=β1mt−1+ (1−β1)ˆut
+θt=θt−1−ηmt
+end
+degradation of existing memory-efficient optimiz-
+ers. By contrast, when the difference between mt
+andutis small as shown in Figure 3(b), the mo-
+mentum mtis stable with limited errors and high
+confidence therefore a large optimization step is
+required with the updating direction close to mt.
+(a) scenario 1
+(b) scenario 2
+Figure 3: Visualization of two scenarios where Adafac-
+tor updates have different stability.
+Inspired by the erroneous update that is universal
+in existing memory-efficient optimizers, we firstly
+consider an efficient approach to decrease the side
+effect caused by insecure updating. Given mtand
+ut, we take the residual between them as the insta-
+bility in the preserved momentum and set gener-
+ated instability as the denominator of original mt
+to more adaptively take an update step. Followingis the formulation of the adjusted update u′, where
+ϵis the regularization constant:
+u′
+t=mtp
+(mt−ut)2+ϵ(3)
+Extending further on the plain method, we pro-
+pose a confidence-guided strategy that enables self-
+adjusted updates by taking the confidence of the
+raw update of Adafactor into consideration. The in-
+tuition behind the proposed strategy is to calculate
+the residual between the exponential moving aver-
+age (EMA) of the update and the current update,
+which represents the deviation of the approximated
+update. The larger the deviation of the EMA value
+from the current generated update, the wider the
+error EMA of update contains, resulting in a lower
+level of confidence in the EMA of update. Ob-
+viously, we expect the optimizer to take a small
+update when it incorporates huge error (a large
+residual from the present update), while updating
+parameters more when the optimization process is
+stable (involved error of EMA is limited).
+Specifically, the EMA of update mtis directly
+used to take an update step in Adafactor, while in
+our proposed strategy, mtis divided by√Ut, where
+Utis the calculated instability matrix. Therefore,
+1√Utis the confidence in the observation: viewing
+mtas the prediction of the update, if mtdeviates
+greatly from ut(Utis large), which indicates a
+weak confidence in mt, the optimizer performs a
+small optimization step; if utclosely matches mt,
+we have solid confidence in mt, and correspond-
+ingly take a large optimization step.
+3.3 CAME Algorithm
+Based on the proposed confidence-guided strat-
+egy, we develop a brand-new variant of memory-Algorithm 2: CAME Optimizer
+Input: Initial parameters θ0, learning rate η, momentum of update m0= 0,r0= 0, c0= 0, step t
+= 0, regularization constants ϵ1, ϵ2, exponential moving average parameters β1, β2, β3,
+clipping threshold d
+while θtnot converge do
+Compute gt=∇f(θt−1)
+rt=β2rt−1+ (1−β2)(g2
+t+ϵ11n1T
+m)1m
+ct=β2ct−1+ (1−β2)1T
+n(g2
+t+ϵ11n1T
+m)
+vt=rtct/1T
+nrt
+ut=gt/√vt
+ˆut=ut/max(1, RMS (ut)/d)
+mt=β1mt−1+ (1−β1)ˆut
+Ut= (ˆut−mt)2
+Rt=β3Rt−1+ (1−β3)(Ut+ϵ21n1T
+m)1m
+Ct=β3Ct−1+ (1−β3)1T
+n(Ut+ϵ21n1T
+m)
+St=RtCt/1T
+nRt
+θt=θt−1−η√Stmt
+end
+efficient optimization methods with faster con-
+vergence. Our proposed CAME optimization
+method successfully obtains the same rate of con-
+vergence as prevailing first-order optimization algo-
+rithms (e.g., Adam) and with almost equal memory
+cost to available memory-efficient optimizers (e.g.,
+Adafactor). The pseudocode of CAME algorithm
+is specified in Algorithm 2.
+By calculating Utat each training step, we em-
+ploy non-negative matrix factorization on the in-
+stability matrix Utfollowing (Shazeer and Stern,
+2018) where the generalized Kullback-Leibler di-
+vergence between VandWH is minimal. With Ut
+factorized into RtandCt, it is sufficient to store
+only the moving averages of these factors rather
+than the full matrix Ut, thus saving considerable
+memory footprint.
+We simply validate intuitions and the correspond-
+ing example is shown in Figure 4, in which the
+proposed CAME reaches the optimal point much
+faster than Adafactor. Learning rate is 10−3for all
+optimizers. In the example, we set the parameters
+of CAME to be the same as the default in Adafactor,
+β1= 0.9, β2= 0.999and set extra β3= 0.9999
+for CAME.
+4 Experiments
+In this section, we present extensive comparisons
+with existing optimizers on training tasks of three
+important large language models: BERT (Devlin
+et al., 2019), GPT-2 (Radford et al., 2018a) and T5
+Figure 4: Loss trajectories of Adafactor and CAME.
+CAME reaches the target local minimum (marked as
+green cross in 2D plots) much faster than Adafactor.
+(Raffel et al., 2022).
+4.1 Setup
+Dataset We perform experiments on the BookCor-
+pus (Radford et al., 2018a) and English Wikipedia
+with 800M and 2.5B words respectively. Further-
+more, we focus on the GLUE benchmark (Pe-
+ters et al., 2018), SQuAD v1.1 dataset (Rajpurkar
+et al., 2016) and SQuAD v2.0 dataset (Rajpurkar
+et al., 2018) to demonstrate the performance of
+pre-trained BERT models with CAME optimizer.
+Model We evaluate the efficiency of our pro-
+posed CAME on three trending large language
+models: BERT, GPT-2 and T5. We further test
+the performance of CAME for large-batch training0 5 10 15 20
+Steps(K)10%20%30%40%50%60%Accuracy
+Adam
+Adafactor
+CAMEFigure 5: Masked LM test accuracy of BERT-Large
+model trained on Wikipedia dataset with 8k batch size.
+with BERT-Large.
+Compared methods The main baselines com-
+prise two widely-used optimizers: classic optimizer
+Adam and memory-efficient optimizer Adafactor.
+With regard to large-batch training, LAMB opti-
+mizer is additionally considered when setting base-
+lines.
+Implementation Detail We implement our opti-
+mization algorithm in Pytorch (Paszke et al., 2019).
+The parameters β1andβ2in Algorithm 2 are set as
+0.9 and 0.999 respectively, and we search for opti-
+malβ3among {0.9, 0.99, 0.999, 0.9999, 0.99999}.
+We use 8 Tesla V-100 GPUs and set ϵ1,ϵ2as10−30,
+10−16in all experiments with gradient accumula-
+tion and model parallelism. Besids, we set ηas
+2×10−4,6×10−4,3×10−4for BERT-Large
+(32K), GPT-2, T5 training and apply learning rate
+warmup scheduling (Goyal et al., 2017b) to avoid
+divergence due to the large learning rate, by starting
+with a smaller learning rate ηand gradually increas-
+ing to the large learning rate η. To make sure we
+are comparing with solid baselines, we use grid
+search to tune the hyperparameters for Adafactor,
+Adam and LAMB. We further improve the perfor-
+mance of large-batch training by applying Mixup
+(Zhang et al., 2017) to scale the batch size up to
+32,768.
+4.2 BERT Training
+We firstly present empirical results in the training
+task of BERT model to evaluate the performance
+of our proposed CAME optimizer, focusing on its
+larger variant, BERT-Large, which has 340M pa-
+rameters in all. Following the default setting, we
+pre-train the BERT-Large model ( L= 24 , H=
+1024 ) with a sequence length of 128 on 8 Tesla
+0 5 10 15 20
+Steps(K)10%20%30%40%50%60%70%Accuracy LAMB
+Adam
+Adafactor
+CAMEFigure 6: Masked LM test accuracy of BERT-Large
+model trained on Wikipedia dataset with 32k batch size.
+CAME achieves comparable accuracy with Adafactor
+using around only half of required training steps (10k).
+V-100 GPUs. The experiments were implemented
+with the code from NVIDIA2and mainly include
+two types of batch sizes: 8k and 32k, one of which
+represents the widely used setting for pre-training
+BERT and the other denotes the training scenario
+under large-batch training. The empirical results
+are presented in Figure 5 and Figure 6. As illus-
+trated in Figure 5, CAME achieves a significant
+improvement compared with Adam and Adafactor.
+To be specific, CAME ( 66.5%) increases valida-
+tion accuracy at with an increment 3.4%in com-
+parison to Adafactor ( 63.1%) using same number
+of training steps (20k). Apart from Adafactor, our
+proposed CAME achieves better performance than
+Adam in the pre-training of BERT-Large model
+with a huge reduction of memory cost.
+To evaluate the performance of our proposed
+CAME for large-batch training, we scale the
+batch size for BERT-Large training to 32,768 on
+Wikipedia dataset. As illustrated in Figure 6,
+CAME consistently reaches a more remarkable
+improvement compared with Adafactor. We notice
+that the accuracy of CAME on BERT-Large pre-
+training is 68.0%, which is highly over the original
+Adafactor ( 61.9%) with same number of training
+steps. In addition, CAME reaches comparable ac-
+curacy with only half the training steps required
+for Adafactor. With batch size getting larger from
+8k to 32k, CAME brings more enhancements to
+the training of BERT-Large in comparison with
+Adam and Adafactor. Compared with LAMB in
+large-batch training, CAME saves a high-level of
+2https://github.com/NVIDIA/
+DeepLearningExamplesBaseline CAME Adafactor05101520253035Memory Usage (GB)30.6
+16.3 15.9second-order estimate
+first-order estimate
+othersFigure 7: The memory reduction about optimizer states
+of CAME when training BERT-4B using PyTorch.
+memory footprint with slight training performance
+degradation.
+Memory Usage Comparison We set batch
+size to 1 to measure the memory usage of each
+optimizer more efficiently. As shown in Table 1,
+the two optimizers (Adam and LAMB) frequently
+employed for training large language models con-
+sume the highest amount of memory usage. Mean-
+while, our proposed CAME optimizer exhibits a
+reduced memory footprint over the existing SM3
+memory-efficient optimizer. As a consequence of
+our confidence-guided strategy in CAME, there is
+no doubt that CAME will introduce an increased
+memory footprint in comparison with Adafactor.
+However, the extra memory footprint incurred of
+CAME is almost negligible ( 1%) with a substantial
+performance improvement.
+For further demonstration of the memory sav-
+ing effect of CAME, we expand BERT model to
+BERT-4B with 4 billion weights using the scaling
+method of GPT-3 (Brown et al., 2020). We set the
+mini-batch size to 64 and the accumulation steps to
+16 in this experiment. In Figure 7, we train BERT-
+4B with three different optimizers using PyTorch
+framework. As a result, CAME can save 47% mem-
+ory footprint about optimizer states compared with
+Baseline (Adam) when the weights number of a
+model get to 4 billion.
+4.3 Downstream Tasks
+We select a representative set of downstream tasks
+to further demonstrate the performance of BERT
+models pre-trained by our proposed CAME. In this
+part we adopt BERT-Base model for the fine-tuning
+task and follow the originally published BERT-Table 1: Quantitative memory usage per GPU (GB)
+comparison in the pre-training of BERT-Large model.
+Optimizer Memory Cost (GB)
+Adam 8.24
+LAMB 8.23
+Adafactor 7.00
+SM3 7.44
+CAME 7.07
+Base results in (Devlin et al., 2019) and (Liu et al.,
+2019) as the main baseline. The learning rate is
+tuned on the dev set for each setting and each task
+is fine-tuned for three epochs.
+We compare the end-task performance of BERT-
+Base with the baseline on typical downstream tasks
+and the empirical results are presented in Table 2.
+The experimental results demonstrate the efficiency
+of our proposed CAME optimizer by showing that
+BERT-Base model trained with CAME on two
+batch sizes both achieve comparable performance
+to the baseline with less memory cost. In particu-
+lar, we observe that BERT-Base model trained with
+large batch (32k) presents no performance degra-
+dation and even attains higher evaluation metrics
+scores on some downstream tasks. Specifically, the
+BERT-Base model trained on CAME improves on
+average by 0.5 across five metrics compared to the
+baseline, proving the feasibility of CAME for the
+large-batch training task.
+4.4 GPT-2 Training
+In addition to BERT pre-training task, we perform
+CAME-based training task on another typical large
+language model, GPT-2. Using the original struc-
+ture of GPT-2 (Radford et al., 2018b), we specif-
+ically adopt GPT-medium ( L= 24 , H= 1024 )
+with 345M parameters in our experiment. This
+implementation is based on the code provided by
+Megatron3. Identically, we take English Wikipedia
+as the training dataset for this section. Unlike the
+pre-training of BERT in Section 4.2, we only con-
+centrate on standard training batch size (128) for
+GPT-2 pre-training.
+The empirical results of validation loss are
+shown in Figure 8. We are able to find that CAME
+achieves similar convergence and final accuracy
+compared to Adam, which reveals an impressive
+improvement over the performance of Adafactor
+3https://github.com/NVIDIA/Megatron-LMTable 2: Results of fine-tuning performance on MNLI-m, SST-2, MRPC and two SQuAD datasets. The F1 and EM
+for SQuAD v1.1 dataset are firstly averaged, and the average of all results across five datasets is further calculated.
+Model MNLI-m SST-2 MRPC SQuAD v1.1 SQuAD v2.0 Average
+(Acc) (Acc) (Acc) (F1/EM) (F1) -
+Baseline 84.3 92.8 88.9 88.5/80.8 76.3 85.4
+CAME (batch size = 8k) 84.8 92.8 89.9 88.8/81.8 77.9 86.1 ( +0.7)
+CAME (batch size = 32k) 84.5 92.9 89.8 88.5/81.2 77.4 85.9 ( +0.5)
+0 20 40 60 80 100 120
+Steps(K)4.04.55.05.56.06.57.07.5Validation LossAdam
+Adafactor
+CAME
+Figure 8: Validation loss of GPT-2 language model.
+CAME demonstrates similar optimization performance
+to Adam.
+with comparable training steps. Moreover, as
+indicated in Figure 9, the validation perplexity
+of CAME presents the same convergence perfor-
+mance as Adam but faster convergence speed than
+Adafactor, which clearly supports the validity of
+CAME that has fast convergence as in traditional
+adaptive methods and low memory usage as in
+existing memory-efficient methods. For instance,
+the converged validation perplexity of CAME and
+Adafactor is 50.1 and 56.9 respectively, which
+yields a considerable improvement of 12.0%.
+4.5 T5 Training
+Finally, we report empirical results from a differ-
+ent large language model training task: Text-to-
+Text Transfer Transformer, T5. Concretely, we fol-
+low the architecture of T5 (Raffel et al., 2022) and
+choose T5-Base ( L= 24, H= 1024 ) with 220M
+parameters for the experiment. All of our imple-
+mentations are also based on the code provided by
+Megatron. Similarly, we consider Wikipedia with
+2.5B words as the training dataset in this part. As
+with the training of GPT-2 in Section 4.4, we only
+concentrate on standard training batch size (128)
+for T5.
+0 20 40 60 80 100 120
+Steps(K)020406080100120140160Validation PerplexityAdam
+Adafactor
+CAMEFigure 9: Validation perplexity of GPT-2 language
+model. CAME demonstrates comparable convergence
+speed with Adam.
+The comparison of CAME with Adafactor and
+Adam is conducted in the same manner as Section
+4.4, and corresponding results of validation loss
+and validation perplexity are illustrated in Figure
+10 and Figure 11 seperately. Note that CAME con-
+sistently obtains comparable convergence perfor-
+mance for validation loss and validation perplexity
+on par with Adam, while reducing similar memory
+usage as Adafactor.
+5 Conclusion
+In this paper we propose a novel memory-efficient
+optimizer called CAME, which supports adaptive
+confidence-based updating guided by the resid-
+ual between predicted update and generated up-
+date. CAME achieves a considerable improvement
+compared to existing memory-efficient optimiz-
+ers in the training of large language models, with
+an ignorable extra memory footprint. Moreover,
+CAME shows comparable convergence to Adam
+and LAMB with huge memory reduction. In par-
+ticular, CAME has proven effective for large-batch
+training, which serves as an advantageous exten-
+sion to memory-efficient optimizers. We hope our
+work will provide insight into memory reduction0 10 20 30 40 50
+Steps(K)2.02.53.03.54.04.55.05.5Validation LossAdam
+Adafactor
+CAMEFigure 10: Validation loss of T5 language model.
+CAME exhibits similar convergence rates to Adam.
+0 10 20 30 40 50
+Steps(K)102030405060708090100Validation PerplexityAdam
+Adafactor
+CAME
+Figure 11: Validation perplexity of T5 language model.
+CAME demonstrates similar convergence speed to
+Adam.
+of optimizers in future exploration.
+6 Limitations
+Despite the success of our CAME optimizer in
+training large language models with memory effi-
+ciency, there are still some limitations that need to
+be addressed in the future.
+Our proposed memory-efficient optimizer intro-
+duces additional computation costs for the non-
+negative matrix factorization of the instability ma-
+trix in comparison with Adafactor. We observe,
+however, that the training time of CAME increases
+only slightly in our experiments. Beyond that,
+CAME exhibits minor performance degradation in
+large-batch training of the BERT-Large model ver-
+sus LAMB, which allows for further improvement
+in the future. Meanwhile, it is possible to conduct
+further experiments on other models in other fields,
+such as Computer Vision and Reinforcement Learn-
+ing, thereby exploring the effectiveness of CAMEtraining under more application scenarios. As a
+final point, it would be much more helpful to pro-
+vide an in-depth theoretical analysis of CAME to
+improve comprehensiveness of the paper.
+Acknowledgements
+Yang You’s research group is being sponsored by
+NUS startup grant (Presidential Young Professor-
+ship), Singapore MOE Tier-1 grant, ByteDance
+grant, ARCTIC grant, SMI grant and Alibaba grant.
+We also thank Huawei Noah’s Ark Lab for provid-
+ing the necessary computing resources and support
+for datasets.

@@ -1,0 +1,15 @@
+Summary: This paper proposes a pattern extraction and selection framework called PatternGPT for large language models (LLMs) to improve the accuracy and reliability of text generation. The framework generates diverse and useful patterns through the extraction ability of LLMs and utilizes the idea of federation learning to generate high-quality patterns. PatternGPT aims to optimize the text generation capability of LLMs and drive further development in the field of intelligent dialogue and content generation.
+
+Bullet points:
+1. Large Language Models (LLMs) have excellent text generation capabilities but suffer from accuracy and reliability issues.
+2. The pattern extraction stage of LLMs is crucial for generating good content.
+3. PatternGPT is a framework that extracts and selects patterns to guide LLMs in text generation.
+4. The framework generates rich and diverse patterns and uses federation learning for collaborative pattern generation.
+5. High-quality patterns are selected using defined criteria and optimization algorithms.
+6. PatternGPT extends relevant knowledge and facilitates efficient pattern use and transfer.
+7. It optimizes the quality of generated results and user experience.
+8. The framework provides an effective method for improving the text generation capability of LLMs.
+9. PatternGPT is expected to drive further development in intelligent dialogue and content generation.
+10. Keywords: Pattern, LLM, Text Generation, knowledge discovery, pattern sharing, pattern pool, prompt.
+
+Keywords: Pattern, LLM, Text Generation, knowledge discovery, pattern sharing, pattern pool, prompt.

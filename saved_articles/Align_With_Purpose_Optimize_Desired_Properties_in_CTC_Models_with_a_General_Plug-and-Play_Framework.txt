@@ -1,0 +1,434 @@
+Preprint. Under review.
+ALIGN WITHPURPOSE : OPTIMIZE DESIRED PROPER -
+TIES IN CTC M ODELS WITH A GENERAL PLUG-AND -
+PLAY FRAMEWORK
+Eliya Segev∗Maya Alroy∗Ronen Katsir Noam Wies Ayana Shenhav Yael Ben-Oren
+David Zar Oren Tadmor Jacob Bitterman Amnon Shashua Tal Rosenwein
+OrCam Technologies LTD, Jerusalem, Israel
+ABSTRACT
+Connectionist Temporal Classification (CTC) is a widely used criterion for train-
+ing supervised sequence-to-sequence (seq2seq) models. It enables learning the re-
+lations between input and output sequences, termed alignments, by marginalizing
+over perfect alignments (that yield the ground truth), at the expense of imperfect
+alignments. This binary differentiation of perfect and imperfect alignments falls
+short of capturing other essential alignment properties that hold significance in
+other real-world applications. Here we propose Align With Purpose , ageneral
+Plug-and-Play framework for enhancing a desired property in models trained
+with the CTC criterion. We do that by complementing the CTC with an addi-
+tional loss term that prioritizes alignments according to a desired property. Our
+method does not require any intervention in the CTC loss function, enables easy
+optimization of a variety of properties, and allows differentiation between both
+perfect and imperfect alignments. We apply our framework in the domain of Au-
+tomatic Speech Recognition (ASR) and show its generality in terms of property
+selection, architectural choice, and scale of training dataset (up to 280,000 hours).
+To demonstrate the effectiveness of our framework, we apply it to two unrelated
+properties: emission time and word error rate (WER). For the former, we report
+an improvement of up to 570ms in latency optimization with a minor reduction in
+WER, and for the latter, we report a relative improvement of 4.5% WER over the
+baseline models. To the best of our knowledge, these applications have never been
+demonstrated to work on a scale of data as large as ours. Notably, our method can
+be implemented using only a few lines of code1, and can be extended to other
+alignment-free loss functions and to domains other than ASR.
+1 I NTRODUCTION
+Figure 1: The Align With Purpose flow: Nalignments are sampled from the output of a pre-trained
+CTC model, on which fprop is applied, to create Npairs of alignments. Then, hinge loss with an
+adjustable weight is applied on the probabilities of each pair of alignments, trained jointly with a
+CTC loss. see full details in section 2.2
+Sequence-to-sequence (seq2seq) tasks, in which the learner needs to predict sequence of labels from
+unsegmented input data, are prevalent in various domains, e.g. handwriting recognition (Graves &
+Schmidhuber, 2008), automatic speech recognition (Collobert et al., 2017; Hannun et al., 2014),
+∗Equally contributed. email: {first.last }@orcam.com
+1The code will be made publicly available in the supplementary materials.
+1arXiv:2307.01715v2  [cs.CL]  6 Jul 2023Preprint. Under review.
+audio-visual speech recognition (Afouras et al., 2022), neural machine translation (Huang et al.,
+2022), and protein secondary structure prediction (Yang et al., 2022), to name a few. For many years,
+the segmentation issue was a bottleneck as finding the input-output relations, termed alignments, is
+the most difficult aspect of many seq2seq tasks (Graves, 2012).
+Two main approaches were introduced to overcome the absence of explicit supervision of the input
+segmentation, namely soft and hard alignment. Soft alignment methods use attention mechanism
+(Chan et al., 2016; Vaswani et al., 2017) that softly predict the alignment using attention weights,
+while hard alignment methods learn in practice an explicit alignment (Graves et al., 2006; Graves,
+2012; Collobert et al., 2017), by marginalizing over all alignments that create the ground truth labels.
+As streaming audio and video become prevalent (Cisco, 2018), architectures that can work in a
+streaming fashion gain attention. Although soft alignment techniques can be applied in chunks for
+streaming applications (Bain et al., 2023), their implementation is not intuitive and less computa-
+tionally efficient compared to hard alignment methods, which are naturally designed for streaming
+processing. Among the hard alignment methods, the CTC criterion (Graves et al., 2006) is a com-
+mon choice due to its simplicity and interpretability. During training, CTC minimizes the negative
+log-likelihood of the ground truth (GT) sequence. To overcome the segmentation problem, CTC
+marginalizes over all possible input-GT output pairings, termed perfect alignments. This is done
+using an efficient and differentiable forward-backward algorithm, which is the core algorithm in
+CTC. Note that Zeyer et al. (2021) and Tian et al. (2023a) showed that the CTC posteriors tend to
+be peaky, and hence the posterior of one certain alignment is dominant over all others. Thus, as a by
+product, in practice CTC learns to predict an alignment without a direct supervision related to the
+alignment,
+While convenient, the implicit alignment learning comes with the cost of inability to control de-
+sired properties of the learned alignment. This can be explained by the inherent nature of CTC
+that marginalizes solely over all perfect alignments. Therefore, the CTC does not induce further
+prioritization between perfect alignments, nor does it prioritize between imperfect alignments.
+However, many real-world seq2seq applications may come with a property that induces, and some-
+times requires, such prioritization. For example, in the contexts of ASR and OCR, a standard metric
+to test the quality of the system is the word error rate (WER). Therefore, prioritizing imperfect
+alignments with low WER can improve the performance of a system measured by this metric, and
+by that reduce the gap between the training and the testing criteria (Graves & Jaitly, 2014). Another
+example is a low-latency ASR system. Here, even a perfect CTC score can only guarantee a perfect
+transcription while completely ignoring the latency of the system. Clearly, under this setting, for
+an application that requires fast response, prioritizing alignments with fast emission time is crucial.
+Figure 2 visualizes the above mentioned properties.
+Table 1: CTC score is not a good proxy for WER and latency of a system. Reults shown on Lib-
+riSpeech test clean.
+ASR Model Type CTC Score WER (%) Latency (ms)
+Offline 0.0033 4.28 0
+Online 0.003 5.43 217
+To exemplify the importance of prioritization, Table 1 shows that a CTC score is not a good proxy
+for some properties of the output alignment. It shows two different models with a similar training
+loss that have different WER and emission time, although trained on the same data. In general, there
+are many other properties that also necessitate prioritization between alignments, whether perfect or
+imperfect.
+A similar phenomenon, where some property remains indistinguishable based on the training crite-
+ria, was also observed with the maximum likelihood criterion in natural language processing (NLP)
+domain. More specifically, Liu et al. (2022) suggested BRIO, a simple and elegant mitigation tech-
+nique, that achieved state-of-the-art results in abstraction text summarization, overcoming the chal-
+lenge of multiple ground-truths. Essentially, this technique adds an additional loss term that priori-
+tizes sequences that have a high ROUGE (Lin, 2004) score.
+2Preprint. Under review.
+Figure 2: A visualization of two properties that are not captured by CTC. (a) Emission Time: Two
+alignments that yield the same text, but the green alignment emits the last token of CAT at timestamp
+3 (t3) while the purple alignment emits it at t 6. (b) Word-Error-Rate: two imperfect predictions
+with the same CER but different WER.
+To complement the CTC with additional prioritization between alignments, we aim to control the
+learned alignments by taking inspiration from BRIO. To achieve such controllability, we propose
+Align With Purpose (AWP) -a Plug-and-Play framework , which allows enhancing a given property
+in the outputs of models that are trained using the CTC criterion, while maintaining the transcription
+abilities of the model. We add an additional loss term, LAWP , that expresses a more subtle differ-
+entiation between alignment, so that the final loss becomes L=LCTC +αLAWP . Specifically,
+for a given property, we design a function fprop that receives an alignment as an input, and outputs
+an improved alignment, with respect to the property. Then, we sample Nalignments based on the
+output probabilities of the pre-trained CTC model, apply fprop on the sampled alignments, to create
+Npairs of alignments. Finally, we calculate the LAWP using hinge loss over the Npairs, thus
+encouraging the model to increase the probability mass of the preferable alignments, as described
+in Figure 1. Our work can be seen as an extension of BRIO to the CTC case, in which we aim to
+control properties unrelated to the diversity of the target distribution.
+The controllability goal for hard alignment criteria (such as CTC) was suggested in prior work,
+where many of these solutions involve intervention in the forward-backward algorithm (Tian et al.,
+2023a; Yu et al., 2021; Shinohara & Watanabe, 2022; Yao et al., 2023; Laptev et al., 2023). As a
+consequence, these methods do not allow to address the imperfect alignments, unlike AWP which
+supports it naturally. Additionally, this intervention requires good engineering and consumes a
+considerable amount of development time and optimization. Other methods that do address the
+imperfect alignments such as (Prabhavalkar et al., 2018; Graves & Jaitly, 2014) still suffer from the
+latter, unlike AWP which can be implemented using few lines of code.
+To summarize, our main contributions are:
+1. Align With Purpose - a simple and general Plug-and-Play framework to enhance a general
+property in the outputs of a CTC model.
+2. We show promising results in two properties that are independent of each other: we report
+an improvement of up to 570ms in latency optimization, and a relative improvement of
+4.5% WER over the baseline models for the minimum WER optimization.
+3. We show the generality of our framework in terms of property selection, scale of training
+dataset, and architectural choice. To the best of our knowledge, these applications have
+never been demonstrated to work on a scale of data as large as ours.
+4. The framework enables prioritization between perfect alignment, as well as between im-
+perfect alignments.
+We apply our approach to the ASR domain, specifically to models that are trained with CTC crite-
+rion. However, this method can be extended to other alignment-free objectives, as well as to other
+domains besides ASR.
+3Preprint. Under review.
+2 CTC AND ALIGN WITHPURPOSE
+The outline of this section is as follows: We will start with a description of the CTC loss in sub-
+section 2.1, followed by a detailed explanation of the proposed ”Align With Purpose” method in
+subsection 2.2, and finally we will showcase two applications: low latency in subsection 2.3 and
+mWER in subsection 2.4.
+2.1 CTC
+The Connectionist Temporal Classification criterion (Graves et al., 2006) is a very common choice
+for training seq2seq models, as it does not require input segmentation, i.e., frame-level alignment
+between transcript and audio pairs. To relax the requirement of segmentation, an extra blank token
+∅that represents a null emission is added to the vocabulary V, so that V′=V∪ {∅} .
+Given a T length input sequence x= [x1, ...x T](e.g. audio), the model outputs Tvectors vt∈
+R|V′|, each of which is normalized using the softmax function, where vk
+tcan be interpreted as the
+probability of emitting the token kat time t. An alignment ais aTlength sequence of tokens taken
+from V′, and P(a|x)is defined by the product of its elements:
+P(a|x) =TY
+t=1p(at|x). (1)
+The probability of a given target sequence y(e.g. text) of length U,y= [y1, ..., y U]where U≤T,
+is the sum over the alignments that yield y:
+P(y|x) =X
+a:a∈B−1(y)p(a|x), (2)
+where Bis the collapse operator that first removes repetition of tokens and then removes blank
+symbols.
+The CTC objective function is to minimize the negative log-likelihood of the alignments that yield
+y, as seen in Eq. 3
+LCTC(x) =−logP(y|x). (3)
+Therefore, by definition, the CTC criterion only takes into account perfect alignments, meaning that
+all imperfect alignments are equally bad as stated in Graves & Jaitly (2014). In addition, the CTC
+criterion does not prioritize between perfect alignments, as they are equally good as stated in Tian
+et al. (2023a).
+2.2 A LIGN WITH PURPOSE
+In this section, we present Align With Purpose (AWP), a method that aims to overcome the lack of
+controllability by the CTC criterion. AWP complements the CTC loss with an additional loss term
+that enables more subtle differentiation between alignments. Importantly, AWP is a general Plug-
+and-Play framework for enhancing a desired property in models trained with the CTC criterion,
+while maintaining the seq2seq capabilities of the model.
+Specifically, given a desired property to enhance, one needs to design a property-specific function
+fprop, that takes an alignment aand improves it to obtain ¯a, which is considered better w.r.t the
+property. During training, we sample random alignments according to the distribution induced by
+the output of the seq2seq model. Then we apply fpropon the random alignments, to obtain ¯a. Finally
+we prioritize ¯aoveraby applying hinge loss on their probabilities. See Fig. 1 for illustration of the
+proposed framework. As pointed out in previous works (Graves & Jaitly, 2014; Prabhavalkar et al.,
+2018), sampling from a randomly initialized model is less effective, as the outputs are completely
+random. Therefore, we train the model to some extent with a CTC loss as in Eq. 3, and proceed
+training with the proposed method.
+4Preprint. Under review.
+Formally, we define the property-specific function that takes as input an alignment and returns an
+alignment with the same length: fprop :V′T→V′T. Then, at each training step we sample
+Nrandom alignments according to the distribution induced by the output of the seq2seq model,
+such that ai
+t∼vtfort∈[1..T]andi∈[1..N]. We then apply ¯ai=fprop(ai)to obtain better
+alignments. This creates Npairs of alignments (ai,¯ai), such that aiis the least favored in each
+pair. Finally, to enhance the desired property we encourage the model to increase the probability
+mass of ¯ai, by applying hinge loss on the alignment pairs:
+LAWP (x) =1
+NNX
+i=1max{P(ai|x)−P(¯ai|x) +λ,0}, (4)
+where λis the margin determined on a validation set.
+To enable differentiation during the sampling process, we utilize Gumbel-Softmax sampling, as
+proposed by Jang et al. (2017).
+Putting it all together, the training loss then becomes:
+L(x) =LCTC(x) +αLAWP (x), (5)
+where αis a tunable hyper-parameter that controls the trade-off between the desired property and
+the CTC loss.
+2.3 A PPLICATIONS : LOWLATENCY
+Streaming ASR systems with low latency is an active research field, as it serves as a key component
+in many real world applications such as personal assistants, smart homes, real-time transcription of
+meetings, etc. (Song et al., 2023). To measure the overall latency of a system, three elements should
+be taken into account: data collection latency ( DCL ) which is the future context of the model, drift
+latency ( DL), and computational latency ( CL), as defined by Tian et al. (2023a). We leave the
+CL component out of the scope of this work, as it sensitive to architectural choice, hardware, and
+implementation. Thus, we denote by TL=DCL+DL the total latency of the system.
+Several techniques were suggested to reduce the TL: input manipulation (Song et al., 2023), loss
+modification (Tian et al., 2023a), loss regularization (Yu et al., 2021; Yao et al., 2023; Shinohara &
+Watanabe, 2022; Tian et al., 2023b), and architectural choice (Pratap et al., 2020). These methods
+were specific to the low latency settings, or required intervention in the forward-backward algorithm,
+unlike AWP which is a general plug-and-play method.
+Figure 3: Drift in emission time in CTC model. Bottom purple text: An offline stacked resnet model
+with symmetric padding, and future (and past) context of 3.2 seconds. Top green text: An online
+stacked resnet with assymetric padding, with 430ms future context and 5.97 seconds past context. It
+can be seen that the output of the online model has a drift of more that 200 ms.
+One way to reduce the DCL, is by limiting the future context of the model. In attention based models
+it can be achieved by left context attention layers (Yu et al., 2021), and in convolutional NN it can be
+achieved using assymetrical padding (Pratap et al., 2020). However, Pratap et al. (2020) have shown
+that training with limited future context results in a drift (delay) in the emission time of tokens (DL),
+as can be seen in Fig. 3. The cause of the drift was explained by Wang et al. (2020), who made the
+5Preprint. Under review.
+Figure 4: Defining flowlatency . To obtain ¯a, we shift the sampled alignment aone token to the left,
+starting from a random position (second char in this example) within the alignment, and pad ¯awith
+a trailing blank symbol, marked by a black rectangle
+observation that less future context deteriorates performance. Therefore, by delaying the emission
+time, the model effectively gains more context, which in turn improves the performance.
+To apply AWP for mitigating the drift effect (DL), given an alignment a, we sample a random
+position within it, and shift aone token to the left from that position, to obtain ¯aas seen in Fig. 4.
+Clearly, tokens emission time of ¯ais one time step faster than a, from the random position and on.
+By limiting the initial shift position to correspond to tokens that are repetitions, we ensure that the
+collapsed text of ¯aremains the same as a. To make ¯aaTlength alignment, we pad it with a trailing
+blank symbol.
+Formally, we define the function flowlatency . Given an alignment a, define the subset of indices
+[j1, .., j T′]⊆[2..T]as all the indices such that ajk=ajk−1, meaning that ajkis a repetition of the
+previous token. Then we sample a random position jfrom [j1, .., j T′], and obtain ¯ain Eq. 6:
+¯at=
+
+at ift < j−1
+at+1 ifj−1≤t < T
+∅ ift==T(6)
+2.4 A PPLICATIONS : M INIMUM WORD ERROR RATE
+The most common metric to asses an ASR system is the word error rate (WER). As pointed out by
+Graves & Jaitly (2014), there’s a gap between the training and testing criteria, as the CTC objective
+function does not prioritize between imperfect alignments. Therefore, it could improve the system’s
+performance to add such prioritization w.r.t their WER. Prior work addressed this issue. Graves &
+Jaitly (2014) suggested to approach it by minimizing the expected WER, and Prabhavalkar et al.
+(2018) suggested a similar objective for training with the cross entropy (CE) loss.
+Figure 5: Defining fmWER . Given a target transcription ’the cat’, the (upper) sampled alignment
+yields the text ’tha cet’, which has 100% WER. Substituting the occurrences of the token ’e’ with
+the token ’a’ produces the text ’tha cat’, which has 50% WER.
+As illustrated in Figure 5, to apply AWP for minimum WER (mWER) training, we define fmWER .
+Given a sampled imperfect alignment aand a ground truth transcription y, to obtain ¯a, we select
+the word in the collapsed text B(a)which requires the minimum number of substitutions to correct.
+Then we fix the alignment of this word according to the ground truth, so that the number of word
+errors in B(¯a)is smaller by 1.
+3 E XPERIMENTAL SETUP
+Our proposed framework is evaluated on two end-tasks: low latency and mWER, by conducting
+experiments using multiple architectures and different scales of datasets. General settings are de-
+6Preprint. Under review.
+tailed in Sec. 3.1, Sec. 3.2 describes the low latency experiment, and Sec. 3.3 describes the mWER
+experiment.
+3.1 G ENERAL SETTINGS
+Datasets . To examine our framework on different scales of data, we train on small, medium, and
+large scale datasets.
+For the small scale, we train models on the LibriSpeech dataset (Panayotov et al., 2015), which
+consists of 960 training hours (LS-960). For the medium scale, we train models on a 35K hours
+curated subset of LibriV ox2(LV-35K), where samples with low confidence of a reference model
+were filtered out. For the large scale, we train models on an internal dataset of 280K hours of audio-
+transcript pairs (Internal-280K), which is, to the best of our knowledge, the largest dataset that was
+used to train either a low-latency model, or a model aiming directly to reduce the WER. We test our
+framework on the test splits of LibriSpeech. Audio is sampled at 16KHz, 16 bits/sample.
+Architecture. We trained Stacked ResNet and Wav2Vec2 models (Baevski et al., 2020b).
+We used a pretrained version of the base Wav2Vec2 model (90M parameters) available on Hugging-
+Face3. The model was pre-trained for 30 epochs on the 100K hours from V oxPopuli dataset (Wang
+et al., 2021). The model recieves the raw audio as an input, and outputs 29 English lower-case
+characters, including apostrophe, space, and blank tokens.
+Regarding the Stacked ResNet model, we extracted 80-channel Mel filter-banks features computed
+from a 32ms window with a stride of 16ms. For each frame, we stacked the filter banks with a
+first and second derivatives, resulting in a 240 dimensional input vector. We down-sample the audio
+input from 16ms to 32ms by applying MaxPool layer within the first layer of the first Stacked ResNet
+block, then stacked 20 ResNet blocks (He et al., 2016) with kernel size of 5. Skip connections are
+added every 4 ResNet blocks. The head of the model results in 29 English lower-case characters,
+including apostrophe, space, and blank tokens. The model consists of 66M parameters in total.
+This architecture induces a 6.4 seconds of context in total. Results shown are using an exponential
+moving average (EMA) model, which is aggregated alongside the model.
+Decoding . Models were decoded using an in-house implementation of a beam search decoder de-
+scribed in (Graves & Jaitly, 2014), using a beam size of 100, and two language models: an open-
+source 5-gram language model4(WordLM) trained on the Librispeech LM corpus, and a character-
+level language model (CharLM) that we trained on the same corpus. The beam search picks tran-
+scriptions ywhich maximize the quantity L(y)defined by:
+L(y) =Pacoustic (y|x) +βPCharLM (y) +γPWordLM (y) (7)
+where β= 0.8andγ= 0.8are the CharLM and WordLM weights, respectively.
+Text Normalization . We used an in-house implementation of text normalization to remain in a
+vocabulary of 29 English characters.
+Sampling Method . To make the sampling process differentiable, we applied Gumbel-Softmax
+(Jang et al., 2017) during the sampling of alignments. Empirically, the Gumbel-softmax had no
+effect on results.
+Training . To test the effectiveness of AWP, we train the models for several steps, and then apply
+our framework, namely adding the AWP loss to the CTC loss as stated in Eq. 5. The epoch in which
+we start to apply our framework is denoted as ’start epoch’ in tables 2, 3. We repeated this process
+several times, each time with a different ’start epoch’.
+3.2 L OWLATENCY
+Architecture . All experiments (online and offline models) detailed in this section are conducted
+with a Stacked ResNet architecture mentioned in Sec. 3.1. This architecture can be implemented in
+2http://www.openslr.org/94/
+3https://huggingface.co/facebook/wav2vec2-base-100k-voxpopuli
+4https://www.openslr.org/11/
+7Preprint. Under review.
+a streaming manner and can be highly optimized for edge devices. Therefore, it’s a natural choice
+for a system that works in an online fashion in a low resources environment.
+The offline model has 6.4 seconds of context in total, divided equally between past and future con-
+texts. Although the model can be implemented in a streaming fashion, it would have a very large
+(3.2s) latency, due to its generous future context. The online model has a similar architecture and
+total context, but only 430 ms of the context relates to the future, which can be achieved by asym-
+metric padding as suggested in (Pratap et al., 2020). The small future context of the model makes it
+feasible to deploy as a streaming online ASR system.
+Measuring DL . Measuring the DL of the online models is relative to the offline model. To measure
+the DL, we force-align the target (GT) transcript of the offline and online models independently and
+compare the first appearance of each token in the two force-aligned texts. Then, we take the average
+difference between the occurrences.
+Training . When training AWP on LS-960, LV-35K, and Internal-280K, the hyper-parameters αand
+λwere set to 0.001, 0.001, 0.0005 and 0.01, 0, 0, respectively.
+RAdam optimizer (Liu et al., 2020) with α= 0.9,β= 0.999, and weight decay of 0.0001 was used.
+We set the LR to 0.001, with a ReduceLROnPlateau scheduler5. Models were trained for 20 epochs
+on LS-960 (small scale), 3 epochs on LV-35K (medium scale), and 1 epochs on Internal-280K (large
+scale).
+3.3 M INIMUM WORD ERROR RATE
+Architecture . In this setting, to verify that our framework is not architecture-specific, we trained
+Stacked ResNet model, as well as a Wav2Vec2 model as described in Sec. 3.1. The Stacked Resnet
+model that was used for enhanceing mWER property is the same as the offline model described in
+subsection 3.2.
+Training . The baseline Stacked Resnet model was pre-trained on the Internal-280K dataset. Then
+we continue its training solely on LS-960 for 4.3 epochs before we apply AWP. The AWP hyper-
+parameters were α= 0.1,λ= 0. The baseline and the model with AWP were trained for 4.2
+additional epochs, reaching 8.5 epochs in total. We used the RAdam optimizer (Liu et al., 2020)
+with the same hyper parameters as in Sec. 3.2.
+The Wav2Vec2 baseline model was finetuned with SpecAugment (Park et al., 2019) (with p=0.05
+for time masking and p=0.0016 for channel masking) solely on LS-960 for 2.3 epochs before we
+applied AWP, and both the baseline and the AWP models were trained for another 27.5 epochs. We
+used the Adam optimizer (Kingma & Ba, 2015) for this training, as well as a flat learning rate (LR)
+scheduler Baevski et al. (2020a). AWP hyper-parameters were set to α= 0.05,λ= 0.
+While training all models with AWP, we used a softmax temperature of 0.5 for the sampling of the
+Nalignments.
+4 R ESULTS
+In this section we present the results achieved by training using Align With Purpose framework on
+the low latency and mWER applications mentioned earlier.
+4.1 L OWLATENCY
+Table 2 shows the results when training on small, medium and large scales of data. We can see a
+clear trend across all scales where the AWP training successfully decreases the DL. More than that,
+it even manage to achieve a negative DL, thus decreasing the TL below the maximal TL expected by
+the architectural choice. In most cases, achieving such low TL solely by reducing the architectural
+future context using another padding optimization would not have been possible.
+5https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.
+ReduceLROnPlateau.html
+8Preprint. Under review.
+In almost all the experiments, the WER increases with the latency reduction. This is a known trade-
+off between latency and accuracy as reported in prior work (Pratap et al., 2020). The choice of
+the operating point in terms of the balance between latency and accuracy can be determined by the
+weight of the AWP loss, α, and the scheduling of when we add the AWP loss (’start epoch’).
+We can also see that as the scale of the data increases, the WER decreases. This statement holds
+independently for the offline models and for the online models, and remains valid also after adding
+the AWP loss. This shows that AWP does not affect the ability of the model to improve its basic
+transcription capabilities using larger scales of data, which aligns with previous observations on
+large scale training Baevski et al., 2020a; Radford et al., 2022.
+Table 2: Low Latency model training w/ & w/o AWP on different scales of data. results on Libri
+Test-Clean. Offline and online models have 3.2Kms and 430ms DCL, respectively. ’Start Epoch’
+denotes the step that we added AWP
+Model Training Data Start Epoch DL (ms) TL (ms) WER
+Offline LS-960 - 0 3.2K 3.55
+Online LS-960 - 221 651 4.06
++AWP LS-960 9 -82 348 4.1
++AWP LS-960 3.6 -104 326 4.13
+Offline LV-35K - 0 3.2K 2.54
+Online LV-35K - 345 775 2.91
++AWP LV-35K 2.2 -130 300 3.43
++AWP LV-35K 0.1 -225 205 3.51
+Offline Internal-280K - 0 3.2K 2.34
+Online Internal-280K - 200 540 2.89
++AWP6Internal-280K 5.7 60 400 2.62
+4.2 M INIMUM WORD ERROR RATE
+Table 3 shows a significant relative improvement of 4-4.5% in Word Error Rate (WER) when using
+AWP. This enhancement demonstrates the effectiveness of AWP in enhancing ASR performance.
+Moreover, we observe that the degree of improvement is influenced by the difficulty level of the
+benchmark. As the benchmark becomes more challenging, the gain achieved by our method be-
+comes more pronounced.
+Furthermore, our proposed framework proves to be versatile, as it successfully operates on both
+streaming (Stacked ResNet) and offline (Wav2Vec2) architectures. The ability of our approach to
+adapt to different architectures highlights its applicability across various ASR systems.
+Table 3: minimum WER model training w/ & w/o AWP. ’Start Epoch’ denotes the step that we
+added AWP
+Model Start Epoch % WER Libri Test-Clean % WER Libri Test-Other
+(% Relative improvement) (% Relative improvement)
+Stacked ResNet - 2.63 7.46
++AWP 4.3 2.57 (2.2) 7.16 (4)
+Wav2Vec - 2.3 5.7
++AWP 2.3 2.25 (2.2) 5.44 (4.5)
+6model is still training
+9Preprint. Under review.
+5 D ISCUSSION & F UTURE WORK
+The results obtained from our study provide valuable insights regarding the potential for improve-
+ment in ASR models trained with CTC criterion. Although not tested, this framework could be easily
+applied to other hard-alignment criteria such as Transducer (Graves, 2012). Furthermore, by adapt-
+ing and extending the concepts from our framework, it may be possible to enhance soft-alignment
+methods, even in domains beyond ASR.
+In addition, an intriguing aspect for future research is the formalization of the properties that can
+be enhanced using Align With Purpose. By establishing a formal framework, researchers can sys-
+tematically identify, define, and prioritize the properties to be enhanced. This can lead to targeted
+improvements and a deeper understanding of the impact of different properties on ASR perfor-
+mance. Finally, our study showcases the capability of enhancing a single property at a time. In some
+applications, multiple properties should be enhanced simultaneously, potentially leading to better
+performance.
+6 L IMITATION & B ROADER IMPACT
+Although the AWP framework is relatively easy to use, its main limitation is that one needs to think
+carefully about the property function fprop. When done in an elegant fashion, the implementation is
+straight forward.
+The proposed AWP framework enables one to enhance a desired property of an ASR model trained
+with CTC. As mentioned in 5, this method can be applied or adapted to domains other than ASR.
+On the choice of the property to enhance, especially in generative AI, one should be thoughtful not
+to increase bias, malicious or racist content of models.
+7 C ONCLUSIONS
+The binary differentiation of CTC between perfect and imperfect alignments highlights its limitation
+in capturing additional alignment properties, which is a key-requirement in many real-world appli-
+cations. To overcome this limitation, we introduce Align With Purpose, a general Plug-and-Play
+framework designed to enhance specific properties in models trained using the CTC criterion. Our
+experimental results demonstrate promising outcomes in two key aspects: latency and minimum
+Word Error Rate (WER) optimization. Importantly, these optimizations are independent of each
+other, highlighting the versatility of our framework. The reduced latency achieved by our approach
+indicates faster transcription while maintaining transcription quality even with significantly reduced
+drift. Furthermore, using minimum WER (mWER) training emphasizes the importance of incor-
+porating imperfect alignments, further enhancing the transcription quality of CTC systems. One of
+the strengths of our framework lies in its generality. It offers flexibility in selecting specific align-
+ment properties, applies to large-scale training datasets, and is versatile to architectural choice. Our
+method does not require modifications to the CTC loss function and can be implemented using only
+a few lines of code.

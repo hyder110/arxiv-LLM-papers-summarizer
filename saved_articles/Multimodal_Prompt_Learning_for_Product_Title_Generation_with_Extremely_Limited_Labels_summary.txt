@@ -1,0 +1,15 @@
+Summary:
+
+The paper proposes a Multimodal Prompt Learning (MPL) framework to generate titles for novel products with limited labeled data. The framework consists of two components: Unimodal Prompt Training (UPT) and Multimodal Prompt Training (MPT). UPT uses visual prompts, attribute prompts, and language prompts to learn the domain characteristics and writing styles of novel products. MPT uses a cycle alignment network to highlight and capture important characteristics from multiple prompts to generate accurate titles.
+
+The proposed MPL framework achieves competitive results with fully-supervised methods trained on 100% of the data, even with only 1% of the labeled data.
+
+Experiments conducted on a dataset of novel products from various categories demonstrate the effectiveness of the proposed approach.
+
+Keywords:
+
+- Multimodal Prompt Learning
+- Novel product title generation
+- Limited labeled data
+- Unimodal Prompt Training
+- Multimodal Prompt Training

@@ -1,0 +1,596 @@
+Focused Transformer: Contrastive Training for
+Context Scaling
+Szymon Tworkowski1,3∗Konrad Staniszewski1,3∗Mikołaj Pacek1,3∗Yuhuai Wu†
+Henryk Michalewski3,4Piotr Miło ´s1,2
+1IDEAS NCBR
+2Polish Academy of Sciences
+3University of Warsaw
+4Google DeepMind
+Abstract
+Large language models have an exceptional capability to incorporate new infor-
+mation in a contextual manner. However, the full potential of such an approach is
+often restrained due to a limitation in the effective context length. One solution
+to this issue is to endow an attention layer with access to an external memory,
+which comprises of (key, value) pairs. Yet, as the number of documents increases,
+the proportion of relevant keys to irrelevant ones decreases, leading the model to
+focus more on the irrelevant keys. We identify a significant challenge, dubbed
+thedistraction issue , where keys linked to different semantic values might over-
+lap, making them hard to distinguish. To tackle this problem, we introduce the
+Focused Transformer (FOT), a technique that employs a training process inspired
+by contrastive learning. This novel approach enhances the structure of the (key,
+value) space, enabling an extension of the context length. Our method allows for
+fine-tuning pre-existing, large-scale models to lengthen their effective context. This
+is demonstrated by our fine-tuning of 3Band7BOpenLLaMA checkpoints. The
+resulting models, which we name LONG LLAMA2, exhibit advancements in tasks
+requiring a long context. We further illustrate that our LONG LLAMA models
+adeptly manage a 256kcontext length for passkey retrieval.
+1 Introduction
+Language models have served as a catalyst for substantial advancements in several areas, including
+natural language processing [Radford et al., 2019, Brown et al., 2020], code generation [Chen et al.,
+2021, Li et al., 2022], quantitative reasoning [Lewkowycz et al., 2022] and theorem proving [Polu
+and Sutskever, 2020, Jiang et al., 2022, Mikuła et al., 2023]. One of the central challenges with
+language models is the effective incorporation of extensive new knowledge. The common practice
+of fine-tuning the model is not only resource-intensive and complex to manage, but it also does not
+always clearly indicate how to incorporate new knowledge. For example, fine-tuning on a text such as
+“Alice in Wonderland” does not equip the model to answer questions about the story itself, but rather
+it trains the model to predict the next token or complete masked sentences. A promising alternative
+– integrating the new knowledge within the context – doesn’t require training but is considerably
+∗Equal contribution†Work done while at Google Research.
+2We release the checkpoints and the source code of L ONG LLAMA
+ , see also our colab.arXiv:2307.03170v1  [cs.CL]  6 Jul 20232k 8k 16k 100k 256k020406080100LongLLaMA 3B
+OpenLLaMA 3B
+Prompt length (#tokens)Accuracy (%)
+LongLLaMA training contextOpenLLaMA training context
+Figure 1: Accuracy of LONG LLAMA 3Bon passkey retrieval compared to the original OpenLLaMA model.
+Our method extrapolates beyond the training length, achieving 94.5%accuracy at a context length of 100kand
+73% at256ktokens, while the baseline is unable to handle context longer than its training length ( 2k).
+restricted by the model’s effective context length. For this method to work with large knowledge
+databases, the model needs to manage a context length extending to millions of tokens.
+In this research, we highlight one of the primary obstacles in augmenting the context length: as the
+number of documents increases, the ratio of pertinent to irrelevant tokens diminishes. The standard
+training procedure frequently results in overlaps between keys connected with irrelevant values and
+those related to relevant ones, exacerbating the model’s task of differentiating between them. We
+term this challenge the distraction issue .
+We propose the Focused Transformer (FOT), an innovative technique developed explicitly to address
+this issue. The Focused Transformer permits a subset of attention layers to access an external memory
+of (key, value) pairs through the k-nearest neighbors (kNN) algorithm, akin to the method used
+in [Wu et al., 2022]. This mechanism effectively extends the total context length. The distinctive
+aspect of the Focused Transformer is its training procedure, drawing from contrastive learning.
+This method addresses the distraction issue and facilitates larger memory capacities. Specifically,
+during the training phase, we deliberately expose the memory attention layers to both relevant and
+irrelevant keys (like negative samples from unrelated documents). This strategy incentives the model
+to differentiate keys connected with semantically diverse values, thereby enhancing their structure.
+We introduce and make available LONGLLAMAs (
+ ), fine-tuned OpenLLaMA models with FOT,
+demonstrating that our method does not require long context during training and can be applied to
+existing models. Notably, LONG LLAMAs show significant improvements on tasks necessitating
+long-context modeling. In particular, they can manage a 256kcontext length on the passkey retrieval
+task [Mohtashami and Jaggi, 2023].
+Our research contributions are the following:
+1.We pinpoint the distraction issue as a significant challenge and a primary obstacle to scaling up the
+context length in Transformer models, particularly in multi-document scenarios.
+2.We develop the Focused Transformer ( FOT), designed to alleviate the distraction issue. FOT
+includes a unique training objective that improves the (key, value) structure, enabling the use of
+extensive external memory and k-nearest neighbors lookup to scale the context length.
+3.Our method is simple to implement, and it provides the benefit of augmenting existing models
+with memory without modifying their architecture, facilitated by cost-effective fine-tuning. We
+demonstrate this on the 3Band7BOpenLLaMA checkpoints. The resulting models, named
+LONGLLAMAs, display enhancements on tasks that benefit from increasing the number of few-shot
+demonstrations in the extended context, such as TREC [Li and Roth, 2002, Hovy et al., 2001] and
+WebQS [Berant et al., 2013]. We also prove that for passkey retrieval Mohtashami and Jaggi [2023],
+our L ONG LLAMA models successfully handle a 256kcontext length.
+24.We further scrutinize FOT’s capabilities across various datasets and model sizes. We show that a
+FOTtrained with a total context of 512tokens can extrapolate to 16million tokens in a benchmark
+dictionary lookup task. We also assess FOTon long-context language modeling tasks such as
+books (PG-19), mathematics (arXiv), code (GitHub), and formal proofs (Isabelle), where it exhibits
+improvements in perplexity over baselines.
+2 Related work
+Long-context transformer architectures A multitude of approaches have been developed to
+increase the context length of transformers, mostly focusing on alleviating the quadratic complexity
+of the attention computation. For instance, Transformer-XL [Dai et al., 2019] caches the previous
+context and enables the linear extension of context with the number of layers. Longformer [Beltagy
+et al., 2020] employs an attention mechanism that allows tokens to attend to distant tokens sparsely,
+reducing the computational complexity. BigBird [Zaheer et al., 2020], LongT5 [Guo et al., 2021], and
+[Dao et al., 2022] also use sparse attention to handle long sequences. Hourglass [Nawrot et al., 2021]
+downsamples activations in intermediate layers to reduce computation and enable longer contexts.
+COLT5 [Ainslie et al., 2023] proposes conditional computation to save memory and enable larger
+contexts. Memorizing Transformer [Wu et al., 2022] uses kNN lookup to pick up the most relevant
+tokens, which might also be seen as a way to reduce the computational complexity of attention. Our
+work adheres to this approach and aims to train a key space that handles longer attention context
+length (e.g., by mitigating the distraction issue) and, thus, has better long-context capabilities.
+Fine-tuning LLMs for longer context Prior works such as RETRO [Borgeaud et al., 2022]
+(RETROfitting) and Memorizing Transformer [Wu et al., 2022] have demonstrated a promising path
+for fine-tuning existing LMs to add new capabilities without the need to retrain the entire model. More
+recently, a number of works have explored fine-tuning LLaMA to extend its context length. Landmark
+attention [Mohtashami and Jaggi, 2023] proposes a compression scheme of LLM’s context into
+landmarks, increasing the context length of LLaMA-7B to 32K. Position Interpolation (PI, [Chen
+et al., 2023] and [kaiokendev, 2023]) introduces a modification to the rotary positional encoding
+scheme that enables fine-tuning for 32Kcontext. In contrast to this work, our method does not
+rely on positional encodings, following the findings from [Haviv et al., 2022]. Removing positional
+encoding in memory allows us to extrapolate to 256ktokens, although the model was only trained on
+sequences up to 8K, yielding theoretically unbounded context length.
+Contrastive learning Contrastive learning aims to learn good representations by comparing positive
+and negative examples. CLIP [Radford et al., 2021] and SimCLR [Chen et al., 2020] are two popular
+contrastive learning methods that have achieved state-of-the-art performance in the image domain.
+During contrastive pre-training, negative examples are kept in the same batch to learn to distinguish
+them from positive examples. Scaling the batch size in contrastive learning has been demonstrated
+to enhance the quality of representations, as shown in [Gao et al., 2021b]. It has been suggested
+[Gao et al., 2019] that the embedding space in language modeling suffers from degeneracy, where
+embeddings are tightly packed in a narrow cone, making it difficult to distinguish between them.
+TRIME [Zhong et al., 2022] proposes a training approach designed for training LMs with memory
+augmentation, which uses in-batch negatives to improve the quality of representations. The main
+difference between this and our approach is that we incorporate negatives into the memory attention
+layer instead of interpolating in the output layer.
+3 F OT: Focused Transformer
+Our method, the Focused Transformer ( FOT), is a simple plug-and-play extension of transformer
+models and can be used both to train new models or fine-tune existing, possibly large, models with
+longer context. To this end, FOTuses memory attention layers and the crossbatch training procedure.
+Memory attention layers enable the model to retrieve information from the external memory at
+inference time, effectively extending the context. The crossbatch training procedure biases the model
+to learn (key, value )representations, which are easy to use by a memory attention layer. See Figure 2
+for an overview of the F OT architecture and Appendix F for pseudocode.
+3Layers
+batch size = 4d = 2Document D
+Document C
+Document B
+Document ADocument D
+Document C
+Document B
+Document A
+Cprev Ccurr
+Att
+External
+MemoryRetrieve
+with KNN
+Store Keys
+and V aluesK NeighborsAtt + ∇T rain CrossBatch
+Att + ∇
+InferenceCprev Ccurr
+CcurrFigure 2: The Focused Transformer overview. During infer-
+ence, a memory attention layer (green) uses external memory
+of(key, value )pairs via kNN lookup, which effectively ex-
+tends its context length. This layer is trained using crossbatch .
+Namely, the tokens from the current context Ccurr attend in a
+differentiable way (Att + ∇) to the previous context Cprev of
+the same document and, importantly, d−1contexts of other
+documents. The latter serve as ’negative’ examples intended to
+better shape the (key, value )space.
+3.1 Memory attention layers
+Memory attention layers Lare endowed with access to an external memory database during inference.
+Namely, each query in ℓ∈ L attends to preceding keys from the local context and the top kmost
+matching keys from memory. The memory keys are ranked by the inner product with the query and
+retrieved using the kNN search algorithm. We use the exact kNN search implemented in FAISS
+[Johnson et al., 2017]. The memory is populated incrementally with (key, value )pairs processed by
+ℓbeforehand. Our memory attention layer design is closely related to [Wu et al., 2022], we follow
+most of its design choices, except for the gating, which we replace with a simpler mechanism, which
+turns out to be more effective in our applications. See details in Section 5.6.3 and Appendix B.2. We
+remove positional encodings in memory layers in all our models except LONGLLAMAs. This allows
+LONG LLAMA checkpoints to be a drop-in replacement for LLaMA checkpoints.
+3.2 Crossbatch training procedure
+Our training procedure is a novel way of training (or fine-tuning) transformer-based architectures
+in order to improve the structure of the (key, value )space. The main motivation is to shape this
+space so that a memory attention layer ℓ∈ L can easily focus on relevant information. The key
+idea, inspired by contrastive learning, is to expose ℓto(key, value )pairs from the current and
+previous local context of the given document (positives) and d−1contexts from unrelated documents
+(negatives). Importantly, this is done in a differentiable way.
+To achieve this, we use a data pipeline in which each element of the batch corresponds to a different
+document. We embed the previous ( Cprev) and the current ( Ccurr) local context for each of the
+processed documents. The overview of our procedure can be found in Figure 2. Specifically for
+each document δinCcurrwe create a set {pδ
+i}i={1,...,d}consisting of the (key, value )pairs from
+the previous local context of δ(positives), along with pairs from d−1other contexts coming from
+Cprev(negatives). We also experiment with varying the number of previous contexts and negatives
+for different batch elements.
+We do not use external memory during training. This has two important consequences. One, the
+operation is fully differentiable, and thus, we improve all the (key, value )pairs in pδ. Two, the
+procedure is easy to implement; it does not require any additional loss (i.e., uses the standard
+transformer training objective) and is done on the level of the data loading pipeline and a minor
+self-attention change. The only new hyperparameter is d, which prescribes the ratio of positive to
+negative samples. Typically, we find it beneficial to start with small d≤8(otherwise, the model tends
+to ignore the previous local context) and later switch to bigger values, say d≥64. Appendix B.3
+provides more details about the method.
+4148 16 32 6400.20.40.60.81FoT d=2->64
+FoT d=8
+FoT d=1
+Transformer
+1/d
+Number of DocumentsPositive Attention MassFigure 3: Distraction issue. We compare FOTtrained with different values of parameter dto the standard
+Transformer baseline. During the evaluation, both models see the previous local context and some contexts from
+other documents in the chosen layer (as in crossbatch training procedure). For a document δwe measure the
+distribution of attention mass on pδ. Scale x: the number of contexts from documents that the model can see.
+Scale y: avg attention mass to the previous local context of the current document.
+3.3 The distraction issue
+In this section, we conceptualize what we call the distraction issue and hypothesize it is one of the
+key problems in using large memory databases. Namely, during the standard training, the model is
+not incentivized to distinguish the keys from different documents. We measure that the attention
+mass is evenly spread on the related and unrelated documents; see Figure 3. More precisely, for a
+document δ, letwijbe the softmax weights related to pδ
+ijconstructed as described in Section 3.2.
+We define the positive attention mass as rd:=P
+jw1j/Pd
+i=1P
+jwij. We observe that rd≈1/d,
+which can be interpreted as the fact that the attention is equally distracted by the positive (coming
+from the current document at i= 1) and negative keys. This is an undesirable property since when
+scaling the memory, the attention becomes increasingly distracted. We show that the crossbatch
+mostly alleviates the distraction issue, resulting in a focused attention. More information can be
+found in Appendix B.4. In Section 5.4, we also show that the distraction issue has a harmful effect on
+metrics like perplexity.
+4 L ONG LLAMA
+ : extending LLaMA’s context length with F OT
+One of the promises of our work is that FOTcan be used to fine-tune already existing
+large models to extend their context length. In this section, we show that this is indeed the
+case. We use OpenLLaMA-3B and OpenLLaMA-7B models trained for 1Ttokens as start-
+ing points and fine-tune them with FOT. We show that the resulting models, which we call
+LONG LLAMAs, are capable of extrapolating beyond their training context length (even up to
+256K) and retain the performance on short-context tasks. We release the inference code on
+GitHub: https://github.com/CStanKonrad/long_llama and the LONG LLAMA-3B check-
+point on Hugging Face: https://huggingface.co/syzymon/long_llama_3b . We note that our
+checkpoint is backward compatible, i.e. can be used with any existing LLaMA inference code (both
+in Hugging Face and other implementations), albeit without long-context capabilities.
+4.1 Experimental setup
+The architecture of the models is the same as OpenLLaMAs, see Geng and Liu [2023] and Ap-
+pendix A.1. We use L={6,12,18}(resp.L={8,16,24}) as the memory layers for 3B(resp. 7B)
+LONG LLAMA model. We fine-tune the models on 10B(resp. 3B) tokens using FOT,8kcontext
+length and our dataset mixture based on RedPajama [TogetherComputer, 2023], see Appendix A.3.
+There are three minor differences from the standard FOTprocedure. First, we retain the positional
+encodings in the local context of the memory layers (this is not necessary for FOT, but makes our
+checkpoints fully compatible with any existing LLaMA inference codebase). To be more precise,
+queries and keys from the local context (up to 2Ktokens) receive the standard LLaMA rotary
+positional encoding, whereas memory keys are encoded as if they had position 0 in the local context
+window. Second, we use dense attention instead of the kNN retrieval, as we found only marginal
+5performance differences, and it is simpler to implement. Third, we modify the crossbatch training
+procedure to have more fine-grained control over the number of additional contexts and the ratio
+of positive to negative samples. All these differences are detailed in Appendix A.2.
+4.2 Context length extrapolation on the passkey retrieval task
+There is an important info hidden inside a lot of
+irrelevant text. Find it and memorize them. I will
+quiz you about the important information there.
+<prefix filler by continuously repeating: The grass is
+green. The sky is blue. The sun is yellow. Here we go.
+There and back again.>
+The pass key is <PASS KEY>. Remember it. <PASS KEY> is
+the pass key.
+<suffix filler>
+What is the pass key? The pass key is
+Prompt Format used in the passkey retrieval task, copied from [Mohtashami
+and Jaggi, 2023].We first measure the ef-
+fective context length of
+LONG LLAMA, namely the
+distance for which tokens can
+effectively attend each other.
+We use passkey retrieval in-
+troduced in [Mohtashami and
+Jaggi, 2023], a synthetic task
+designed to measure this prop-
+erty. In this task, the model
+has to retrieve a passkey
+placed randomly in a long
+prompt. Results are shown in
+Figure 1 - importantly, our 3Bmodel is capable of solving this task much beyond its training context
+length 8K, achieving 94.5%accuracy for prompts of length 100kand73% for256k.
+4.3 Improving few-shot learning accuracy with longer context
+We measure long-context capabilities of these models on two downstream tasks, TREC question clas-
+sification [Li and Roth, 2002, Hovy et al., 2001] and WebQS question answering [Berant et al., 2013].
+We follow the experimental setup of [Hao et al., 2022]. Namely, we few-shot prompt the models with
+as many demonstration examples as possible up to the given context length. We do not use structured
+prompting like in [Hao et al., 2022] - instead, we directly provide all demonstrations in context.
+We observe significant accuracy gains from longer contexts on TREC and some improvements on
+WebQS (see Table 1). The TREC dataset consists of 50classes. A model is tasked to predict the
+class label given in-context examples. Only 100examples fit the standard context length ( 2K); it
+is not unusual that no class example is present for a given question, making the task impossible.
+Increasing the context length and the number of examples mitigates this risk. Moreover, having more
+demonstrations of the given class is also likely to be beneficial.
+Table 1: Few-shot in-context learning performance of LONGLLAMA; accuracy on TREC and WebQS. We see
+significant gains from the additional context on the TREC dataset. To calculate the results, we average over 20
+trials for sampling in-context demonstrations from the train set; the resulting confidence intervals for TREC and
+WebQS are smaller than 1%and0.1%, respectively.
+Dataset TREC WebQS
+Context L ONG LLAMA 3B L ONG LLAMA 7B LONG LLAMA 3B L ONG LLAMA 7B
+2K 67.0 63.2 21.2 25.5
+4K 71.6 72.7 21.4 26.4
+6K 72.9 74.9 22.2 27.2
+8K 73.3 75.9 22.4 27.7
+4.4 Comparison to standard long-context fine-tuning
+In this section, we compare FOTto standard long-context fine-tuning, showing that it already achieves
+better performance for the context length used for fine-tuning and, importantly, that it can extrapolate
+beyond this context length, which is not the case for the baseline.
+For comparisons, we fine-tune two models, one trained with FOTand another one (baseline) with
+standard fine-tuning (done similarly to [MosaicML, 2023, Nijkamp et al., 2023]). In both cases, we
+use3Bmodels fine-tuned on 1Btokens using the 4Kcontext length. We evaluate both models on a
+number of few-shot downstream tasks in the setting described in Section 4.3.
+6In most cases, see Table 2, we observe accuracy improvements when more few-shot demonstrations
+are provided in the extended context (from 2Kused by OpenLLaMA to 4Kused in our fine-tuning).
+On TREC, the gains from additional context are significant for both models, while on WebQS, the
+standard fine-tuning baseline does not provide any improvement from extended context. Notably,
+the model fine-tuned with FOTenjoys further accuracy gains when evaluated with context lengths
+beyond its training length ( 6Kand8K). This shows extrapolation capabilities of FOT, which are not
+present in the baseline (see e.g. Figure 1).
+Table 2: Few-shot in-context learning performance comparison between standard fine-tuning on 4Kcontext
+(baseline) and FoT fine-tuning on the same context length for 1Btokens. On TREC, FOTis able to utilize
+additional examples beyond its training context length to achieve higher accuracy at 8Kcontext length, which is
+not possible for the baseline since its context is bounded to 4K.
+Dataset TREC WebQS
+Context baseline FoT (ours) baseline FoT (ours)
+2K 52.8 55.6 20.7 20.8
+4K 57.2 60.9 18.7 21.0
+6K – 61.7 – 21.2
+8K – 62.5 – 20.7
+4.5 Performance on short-context tasks
+Fine-tuning for longer contexts could hurt performance on the original context length ( 2K), as the
+training data distribution changes. We show that this is not the case for the LONGLLAMA models by
+evaluating them using the LM Evaluation Harness library [Gao et al., 2021a]. On most tasks, the
+performance is kept intact; see Appendix A.4 for details, and Table 3 for the average scores. This
+also confirms that LONGLLAMAs could be used as a drop-in replacement of LLaMA models as they
+are compatible with the original LLaMA inference code.
+Table 3: Comparsion with OpenLLaMA models on the original context length of 2K. We provide
+the average score calculated on Language Model Evaluation Harness [Gao et al., 2021a]. Detailed
+results can be found in Table 7 in Appendix A.4.
+lm-eval OpenLLaMA 3B L ONG LLAMA 3B OpenLLaMA 7B L ONG LLAMA 7B
+Avg score 0.53 0.53 0.55 0.55
+5 Analysis of F OT
+In this section, we perform extensive experiments on smaller models to analyze and further validate
+our approach. In particular, we answer the following questions: (1) How does FOTperform when
+scaling the context length at inference time? (2) Can FOTbe used to extend the context length of
+an existing, pre-trained model? (3) How effectively can it handle distractions, and how does this
+capability translate to enhanced performance in long-context language modeling tasks? Moreover,
+we provide ablation studies of our method and additional analysis.
+5.1 Experimental setup
+Architecture For experiments described in this section we use decoder-only Transformer [Vaswani
+et al., 2017] models with 12layers and 184Mparameters (unless stated otherwise, e.g., in fine-tuning
+experiments in Section 5.3 we scale to 1.2B). Following Wu et al. [2022]; we pick ℓ= 8 as the
+memory attention layer. We tune k= 128 , the number of top keys retrieved by kNN. In most
+experiments, we start training with a small crossbatch dimension d≤8and switch to d≥64after
+some training. For more details about the architecture and hyperparameters, see Appendix B and
+Appendix C.
+Evaluation We distinguish two evaluation settings: single-document (abbreviated to single-doc) and
+multi-document (abbreviated to multi-doc). The single-doc setting is typically used for evaluating
+7models that process long contexts. Here, we clear the memory for each new document, ensuring that
+only the current document is available in the context. The multi-doc setting retains memory across
+multiple documents without resets. This scenario is akin to a long-context retrieval task where the
+model must focus on tokens from useful documents without getting distracted by irrelevant ones.
+Datasets We evaluate on the following long-context language modeling datasets: PG-19 (English
+books), arXiv (mathematical papers), GitHub (code), and Isabelle (formal proofs). PG-19 [Rae
+et al., 2019] is a large dataset of English-language books published prior to 1919, sourced from the
+Project Gutenberg archive. This dataset is a well-established benchmark for evaluating long-context
+language models [Sun et al., 2021]. The arXiv dataset contains L ATEX source of papers labeled as
+"Mathematics" that were obtained by downloading articles through the arXiv Bulk Data Access. The
+token count per paper in this dataset is comparable to that of a book in PG19. For details on the
+remaining datasets, refer to Appendix G.
+5.2 Scaling of the context length to 16M
+We use a synthetic dictionary lookup task to check whether the model trained with our method can
+utilize a large memory to extend its context length. In this task, the model is first provided with
+ki:vimappings and then asked what value is associated with a particular key. We train models
+using documents of length 512. The first half of each document defines keys and values associated
+with them, whereas the second consists of questions about values associated with keys defined in
+the first half. Details about the task can be found in Appendix D. For this task, we use smaller 37M
+parameter models.
+ForFOT, we use a local context of 256, thus the model needs to use the memory attention layer to
+answer the questions correctly. We start with d= 1and increase to d= 128 as soon as the model
+is able to reach 98% training accuracy. During the inference, we use k= 32 (the number of keys
+retrieved by kNN). Figure 4 shows that FOT, after 5k steps of training, can effectively utilize memory
+consisting of 16M tokens achieving accuracy above 92%.
+As a baseline, we use a standard transformer model trained with the context length of 512. In
+evaluation, we test different local context lengths, which quickly leads to very poor results.
+256 1024 4K 16K 64K 256K 1M 4M 16M00.20.40.60.81
+FoT
+T ransformer
+T okensAccuracy
+Figure 4: Accuracy vs number of dictionary tokens in a dictionary look-up task. The task format is as follows:
+<k>k1<v>v1<k>k2<v>v2...<k>kn<v>vn<q>ki<v>vi..., where a dictionary is provided, followed by queries
+on randomly selected keys. Accuracy is determined by measuring the predicted values viafter <q>tokens.
+Models were trained on examples containing 512tokens and evaluated with an extended context length. FOT
+demonstrates high accuracy even when the memory size is large. The baseline transformer fails already for 16K
+tokens. Error bars represent the minimum and maximum on 10seeds.
+5.3 F OT fine-tuning and context length extrapolation
+FOTis a minimal modification to the standard transformer architecture; therefore, it is possible to
+fine-tune existing models to endow them with a longer context length via the memory attention layer,
+as we already demonstrated in Section 4. In this section, we deepen this analysis (on a smaller model)
+by studying perplexity improvements on various datasets.
+As a base model, we use a standard transformer model pre-trained for 100ksteps with context of 1K
+tokens using the standard objective and fine-tune with the FOTobjective (i.e. crossbatch). The data
+8used for both fine-tuning and pre-training is the C4 dataset Raffel et al. [2019a] (we omit documents
+shorter than 2Ktokens). The fine-tuning phase takes 10ksteps. We use the crossbatch dimension
+d= 128 and local context of 1Ktokens (context is 2Kduring training). We evaluate models in a
+zero-shot way on 4language modeling datasets, which require long context: arXiv, PG-19, GitHub
+and Isabelle, see Section 5.1 and Appendix C for details.
+Table 4: Perplexity for different context lengths after fine-tuning a standard transformer model. The model
+is fine-tuned using the FOTobjective (i.e., crossbatch) on C4 and evaluated zero-shot varying the context size.
+Transformer-XL [Dai et al., 2019] and Memorizing Transformer [Wu et al., 2022] fine-tuned in the same setting
+are used as baselines.
+Method Context Length GitHub Isabelle arXiv PG-19
+FOT2K 6.72 5.63 8.17 23.74
+4K 5.88 4.93 7.44 23.25
+16K 5.43 4.51 6.94 22.85
+64K 5.32 4.44 6.81 22.65
+Transformer-XL 2K 6.85 5.76 8.21 23.57
+Memorizing Transformer2K 8.10 7.34 9.39 24.03
+4K 7.55 6.93 8.95 23.62
+16K 7.27 6.66 8.66 23.32
+64K 7.26 6.64 8.60 23.24
+In Table 4, we observe that FOTenjoys steady perplexity gains up to 64Ktokens, although it was
+fine-tuned only with the 2Ktotal differentiable context length. We compare the model perplexity to
+the following baselines: Memorizing Transformer (MT) [Wu et al., 2022] fine-tuned with the local
+context of 1Kand memory size of 16K, and Transformer-XL [Dai et al., 2019] fine-tuned with both
+local context and window length of 1K. To ensure a fair comparison, all three models are fine-tuned
+from the same base checkpoint. When evaluated with a context of 2K, our method achieves results on
+par with the Transformer-XL baseline, which has access to the previous context in all layers, unlike
+MT and FOT. Compared to the MT baseline, we achieve better scaling when evaluated with 64K
+context length and significantly better perplexity values. Unlike MT, our method does not require
+training on long sequences, which is reflected by the lower perplexities of FOTwhen evaluated in the
+zero-shot setting. For more details, see Appendix E.
+5.4 Handling distractions in language modeling tasks
+In this section, we measure how handling distractions in the multi-document setting helps in language
+modeling.
+We pick the PG-19 dataset [Rae et al., 2019] and measure the perplexity of the next token prediction
+(language modeling task) when varying the size of multi-doc memory (in this case consisting of
+books). Intuitively, the memory tokens corresponding to the current book might be beneficial (which
+is also confirmed in [Wu et al., 2022]), while the ones from the other books are unlikely to be useful
+and thus are distractions.
+We observe, see Figure 5, that higher values of the crossbatch dimension dlead to better perplexity.
+This aligns with the observations in Section 3.3, indicating that by mitigating the distraction issue,
+we experience benefits in language modeling.
+Moreover, all versions of FOTare able to utilize memory and achieve much better perplexity than the
+standard Transformer (no memory). Unsurprisingly, perplexity increases with memory size, but we
+stress that this happens gracefully. In the standard variant of FOT(bold line), the perplexity increases
+only by 0.18when scaling to >500ktokens. Importantly, the perplexity of FOTis close to this of
+Memorizing Transformer with the single-doc memory, which we treat as a soft lower bound since it
+is not exposed to distractions from unrelated books.
+90 100k 200k 300k 400k 500k1414.51515.516
+Single-doc MT
+FoT d=2
+FoT d=4
+FoT d=8
+FoT d=2->64
+Tokens in ContextMulti-doc Perplexity on PG19Transformer (no mem)    
+Single-doc MT (Single-doc eval)    Figure 5: Perplexity in multi-doc setting. FOTwas trained with local context of size 512and different d.FOT
+2->64was initially trained with d= 2and then switched to d= 64 . Single-doc MT was trained with a memory
+size of 16K. As we increase the memory size, the number of distractions (irrelevant keys) increases, making
+the task harder. Single-doc MT evaluated in single-doc setting is a soft lower bound since it is not exposed to
+distractions.
+5.5 Context length extrapolation in single-doc
+The primary motivation behind FOTis to improve the multi-doc setting performance by handling
+distractions. Interestingly, our method also helps to extrapolate to longer contexts, even when
+evaluated in the single-doc setting.
+To study this, we perform FoT fine-tuning (as in Section 5.3) and evaluate the perplexity of the
+resulting model on the PG-19 dataset with different context lengths in the zero-shot fashion. To
+deepen the analysis, we introduce an additional parameter w(the number of previous contexts used
+in cross batch training procedure). We provide results for w= 1(the standard setting for FOT, that
+corresponds to the total differentiable context being 2·1024 ) and w= 2(corresponding to the total
+differentiable context 3·1024 ).
+We observe, see Figure 6, improvements when context grows, even far beyond the training context
+length, which reaffirms the hypothesis that FOThelps with extrapolation to longer contexts. Moreover,
+d= 2is significantly better than d= 1. When comparing d= 1andw= 2tod= 2andw= 1, we
+observe that the former is slightly better. This is natural, as the former has longer training context.
+0 10k 20k 30k 40k 50k 60k22.422.622.82323.223.423.623.8      
+d=2, w=2
+d=2, w=1
+d=1, w=2
+d=1, w=1
+Tokens in ContextSingle-doc Perplexity on PG19
+Figure 6: Zero-shot performance on PG19 of FOTpretrained on C4. Model fine-tuned with the crossbatch
+dimension d= 2 outperforms the one with d= 1. Using the double ( w= 2) training context of 2048 is
+beneficial.
+5.6 Ablations and design choices
+In this section, we focus on two key properties of crossbatch training procedure: differentiability
+and the inclusion of negatives. We also discuss the relation to Memorizing Transformer in terms
+100 100k 200k 300k 400k 500k14.214.414.614.81515.215.4
+Multi-doc MT
+FoT d=8
+Tokens in ContextMulti-doc Perplexity on PG19Figure 7: Perplexity on PG-19 in the multi-
+doc setting. Both FOTand Multi-doc MT were
+trained with local context of size 512. During train-
+ing, Multi-doc MT utilized memory of size 4096
+shared across 8documents. Differentiability of
+keys and values results in better perplexity.
+0 100k 200k 300k 400k 500k1414.51515.51616.51717.518
+Single-doc MT
+FoT d=1
+FoT d=2->64
+Tokens in ContextMulti-doc Perplexity on PG19Transformer (no mem)    
+Single-doc MT (Single-doc eval)    Figure 8: Importance of negatives in the multi-
+document setting. We compare FOTtrained with
+d= 1to the one that started with d= 2and later
+switched to d= 64 . For additional comparison,
+we show the performance of MT trained with the
+memory of size 16K.
+of the training protocol and memory integration. We refer to Appendix B.5 for a detailed technical
+description of differences between F OT and Memorizing Transformer.
+5.6.1 Impact of differentiable keys and values
+Table 5: Perplexity on PG-19 in the single-doc setting
+for various local context lengths during training. In
+these experiments, we used the same context length both
+during training and evaluation.
+Context Length F OT d=1 MT
+512 14.18 14.68
+1024 14.17 14.46
+2048 14.11 14.43We compare FOTto Memorizing Transformer,
+which uses a non-differentiable memory of keys
+and values during training. In the multi-doc
+experiment presented in Figure 7, both MT and
+FOTare trained with local context of 512. We
+observe that FOTis significantly better when
+the context is expanded during inference, which
+confirms that differentiable keys and values are
+beneficial.
+We also check whether differentiable keys and
+values can improve the performance in the
+single-doc setting. For this, we compare FoT with d= 1 to MT with memory consisting of
+the previous local context. Table 5 confirms that differentiable keys and values can also help in this
+scenario.
+5.6.2 Importance of negatives
+We reaffirm the importance of negatives in a multi-document setting. In previous experiments in
+Figure 3, we already observed that increasing the number of negatives (i.e., increasing d) results in
+more attention mass being dedicated to relevant tokens. In Figure 8, we additionally show that the
+lack of negatives in training ( d= 1) results in a significant deterioration in model perplexity when
+the context length grows. This confirms that both using negatives and differentiability are important
+for F OT to work well.
+5.6.3 Relation to Memorizing Transformer
+Memorizing Transformer Wu et al. [2022] is closely related to our method. The two key differences
+are 1) the training protocol and 2) how the memory is integrated into the model. In this section, we
+provide additional insights into these differences.
+Training protocol In the previous sections, we have discussed the benefits of the cross-
+batch training, namely using the contrastive-inspired objective and backpropagating through
+the previous context. A potential advantage of the MT approach is that it is exposed
+to the whole memory during training (instead of just the previous context). We per-
+formed a proof-of-concept experiment combining the two approaches to explore this further.
+110 10k 20k 30k 40k 50k 60k1414.214.414.614.81515.2
+Single-doc MT 16k
+Single-doc MT 65k
+FoT d=2 fine-tuned on 65k
+Tokens in ContextSingle-doc Perplexity on PG19Figure 9: Single-doc eval of FOTfinetuned for 1k
+steps on non differentiable memory. It achieves lower
+perplexity than MT, which has access to this memory
+for the whole training ( 500k steps).Namely, we trained the model for 499k steps us-
+ing crossbatch and fine-tuned it with the MT ob-
+jective for 1k steps. Interestingly, we observed
+a significant improvement compared to the MT
+training with the same step budget, see Figure
+9. We believe there is further room to explore
+various training protocols combining the best of
+both worlds.
+Memory integration FOTuses a simple mem-
+ory integration approach where the (key, value )
+pairs retrieved by kNN lookup are treated the
+same way as the local context. In contrast, MT
+uses a gating mechanism, a weighted average
+of the memory, and local values; see details in
+Appendix B.2. We evaluated both approaches
+and found no difference in performance between
+these two memory integration methods. How-
+ever, we decided to use our approach because it does not require any architectural changes (and thus
+makes fine-tuning existing models easy). For these reasons, we recommend using it. We speculate
+that the reason why the gating is not needed in FOTis another benefit of the fact that the crossbatch
+training backpropagates through the (key, value )pairs from the previous context Cprev in contrast
+to MT that cannot backpropagate there and needs to rely on local context when computing gradients
+for keys and values. Another reason might be the fact that Cprev is embedded for each batch, and
+thus staleness (see [Wu et al., 2022, Section 3.2]) is avoided.
+6 Limitations and future work
+Our research opens a few avenues for future work. We list them as well as challenges and limitations.
+Scaling up memory This is by far the most important future research direction. The challenges
+start from purely engineering, storing more than 16M(key, value )pairs will require a distributed
+multi-node system. In our experiments, we use the exact kNN search, which is not scalable to large
+memory. Using approximate kNN search will require a lot of engineering effort, as well as careful
+evaluation of the impact of the approximation on the model performance.
+Scaling up crossbatch We observed that increasing dis beneficial. In our experiments, we used
+d= 64 ord= 128 , which is the maximum value that fits into the memory of a single TPUv3/TPUv2
+machine, see also Appendix H. In future work, we want to further increase das well as test on devices
+with bigger memory or utilize multi-node training.
+Exploring contrastive learning TheFOTtraining is inspired by rather basic contrastive learning
+(CL) techniques. We show that this improves the key structure so that the distraction issue is mitigated.
+We expect that other CL methods could be beneficial, for example, hard negative mining to utilize a
+larger memory during training (see [Lindgren et al., 2021]). We leave this for future work.
+Combining with other methods Developing long-context methods is an active research field, see
+Section 2. We believe that some of these methods could be combined with FOT, resulting in mutually
+beneficial interactions.
+Acknowledgments and Disclosure of Funding
+We gratefully acknowledge the TPU Research Cloud program, which was instrumental to our
+research by providing significant computational resources. Parts of the project were realized using
+the resources of Pozna ´nskie Centrum Superkomputerowo - Sieciowe. We would also like to thank
+Markus Rabe for reviewing the initial manuscript and Christian Szegedy, Charles Staats, and DeLesley
+Hutchins for helpful discussions. We are also grateful to Xinyang Geng and Hao Liu for releasing
+OpenLLaMA checkpoints and the EasyLM library [Geng, 2023], allowing for training these models,
+which significantly accelerated our research. Piotr Milos was supported by the Polish National
+Science Centre grant 2019/35/O/ST6/03464. Henryk Michalewski was supported by the Polish
+National Science Center grant UMO-2018/29/B/ST6/02959.
+12

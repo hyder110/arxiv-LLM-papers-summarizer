@@ -1,0 +1,29 @@
+Summary:
+
+This study compared the performance of a large language model (ChatGPT) and a regular expression (RegexT) in identifying overweight body condition scores (BCS) in veterinary clinical narratives. The precision of RegexT was higher than ChatGPT, but ChatGPT had a higher recall. Prompt engineering is needed to improve ChatGPT output. Large language models like ChatGPT have potential in automated data extraction but require careful implementation to avoid errors.
+
+Bullet Points:
+
+1. The study compared the ability of ChatGPT and RegexT to identify overweight body condition scores (BCS) in veterinary clinical narratives.
+2. RegexT had higher precision than ChatGPT, but ChatGPT had higher recall.
+3. Subtle prompt engineering is needed to improve ChatGPT output.
+4. Large language models like ChatGPT present opportunities for automated data extraction in veterinary health informatics.
+5. Obesity is a common and significant medical condition in companion animals.
+6. The Small Animal Veterinary Surveillance Network (SAVSNET) collects electronic health records (EHRs) from veterinary practices.
+7. Regular expressions have been used to detect fixed word-patterns in veterinary clinical narratives.
+8. Large language models like ChatGPT, trained on vast datasets, can generate human-like responses to complex prompts.
+9. ChatGPT accurately identified most overweight BCSs in the study, but occasionally produced false positives and failed to return appropriate answers.
+10. Further research on prompt engineering and system optimization is needed to improve the precision and reliability of large language models in text mining of clinical records.
+
+Keywords:
+
+1. obesity
+2. veterinary health informatics
+3. text-mining
+4. Artificial Intelligence
+5. ChatGPT
+6. regular expression
+7. body condition score
+8. electronic health records
+9. large language models
+10. precision and recall

@@ -1,0 +1,18 @@
+Summary:
+
+The paper proposes a novel memory-efficient optimizer called CAME (Confidence-guided Adaptive Memory Efficient Optimization) for training large language models. It addresses the challenge of maintaining memory overheads associated with adaptive gradient methods, such as Adam and LAMB, while achieving fast convergence and low memory usage. CAME incorporates a confidence-guided strategy that reduces the instability of memory-efficient optimizers like Adafactor. Experimental results on tasks like BERT and GPT-2 training demonstrate the training stability and superior performance of CAME, attaining faster convergence and higher accuracy compared to Adam.
+
+Bullet points:
+
+1. The paper proposes CAME, a memory-efficient optimizer for training large language models.
+2. CAME incorporates a confidence-guided strategy to reduce the instability of memory-efficient optimizers.
+3. Experimental results show that CAME achieves faster convergence and higher accuracy compared to Adam.
+4. CAME saves memory overheads associated with adaptive gradient methods.
+5. The proposed optimizer is publicly available.
+6. CAME shows promising performance on tasks like BERT and GPT-2 training.
+7. Large-batch training with CAME achieves comparable accuracy with lower memory usage.
+8. CAME allows for faster convergence compared to Adafactor.
+9. CAME exhibits similar convergence rates to Adam and LAMB while reducing memory usage.
+10. Further experiments and theoretical analysis are needed to improve the understanding of CAME.
+
+Keywords: CAME, memory-efficient optimizer, large language models, adaptive gradient methods, convergence, memory usage

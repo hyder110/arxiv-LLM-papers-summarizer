@@ -1,0 +1,26 @@
+Summary:
+This paper introduces the GRDD dataset, which is a dataset for the computational study of Modern Greek dialects. The dataset consists of raw text data from four dialects of Modern Greek: Cretan, Pontic, Northern Greek, and Cypriot Greek. The dataset is of considerable size but is imbalanced. The authors then use the dataset to perform dialect identification, experimenting with traditional machine learning algorithms and simple deep learning architectures. The results show good performance on the task, indicating that the dialects have distinct characteristics. Error analysis reveals that some errors are due to insufficient dataset cleaning. The authors conclude by emphasizing the importance of this dataset as a basis for further research on Greek dialectal natural language processing (NLP).
+
+Bullet Points:
+1. GRDD is a dataset for studying Modern Greek dialects.
+2. The dataset includes raw text data from four dialects: Cretan, Pontic, Northern Greek, and Cypriot Greek.
+3. The dataset is large but imbalanced.
+4. The authors perform dialect identification using traditional machine learning algorithms and simple deep learning architectures.
+5. The results show good performance on the task, suggesting distinct characteristics of the dialects.
+6. Error analysis reveals that some errors are due to insufficient dataset cleaning.
+7. This dataset is the first of its kind and can be used as a basis for further research on Greek dialectal NLP.
+8. The authors emphasize the importance of fine-grained datasets to address the limitations of the coarse-grained dataset.
+9. The dataset can be extended and modified for various dialectal NLP tasks.
+10. The authors express gratitude to individuals who assisted with the project.
+
+Keywords:
+- GRDD dataset
+- Modern Greek dialects
+- Cretan Greek
+- Pontic Greek
+- Northern Greek
+- Cypriot Greek
+- Dialect identification
+- Machine learning algorithms
+- Deep learning architectures
+- Dataset cleaning

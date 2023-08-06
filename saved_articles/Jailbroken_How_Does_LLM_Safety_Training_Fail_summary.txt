@@ -1,0 +1,31 @@
+Summary:
+- Large language models trained for safety and harmlessness are vulnerable to "jailbreak" attacks that elicit undesired behavior.
+- The paper investigates two failure modes of safety training: competing objectives and mismatched generalization.
+- Competing objectives occur when a model's capabilities and safety goals conflict, while mismatched generalization occurs when safety training fails to generalize to a domain for which capabilities exist.
+- The failure modes are used to guide jailbreak design and evaluate state-of-the-art models, finding that vulnerabilities persist despite safety-training efforts.
+- New attacks utilizing the failure modes succeed on every prompt in a collection of unsafe requests and outperform existing ad hoc jailbreaks.
+- The analysis emphasizes the need for safety-capability parity and argues against the idea that scaling alone can resolve safety failure modes.
+
+Bullet points:
+1. Large language models like ChatGPT are vulnerable to "jailbreak" attacks that elicit undesired behavior.
+2. The paper investigates two failure modes of safety training: competing objectives and mismatched generalization.
+3. Competing objectives occur when a model's capabilities and safety goals conflict.
+4. Mismatched generalization occurs when safety training fails to generalize to a domain for which capabilities exist.
+5. New attacks utilizing these failure modes succeed on every prompt in a collection of unsafe requests.
+6. The vulnerabilities persist despite extensive safety-training efforts.
+7. Safety-capability parity is emphasized as a solution to address these vulnerabilities.
+8. Scaling alone cannot resolve safety failure modes.
+9. State-of-the-art models, including GPT-4 and Claude v1.3, are evaluated against existing and new jailbreak attacks.
+10. Safety mechanisms should be as sophisticated as the underlying model to detect cutting-edge capabilities.
+
+Keywords:
+1. Large language models
+2. Jailbreak attacks
+3. Safety training
+4. Competing objectives
+5. Mismatched generalization
+6. Vulnerabilities
+7. Safety-capability parity
+8. Scaling
+9. GPT-4
+10. Claude v1.3

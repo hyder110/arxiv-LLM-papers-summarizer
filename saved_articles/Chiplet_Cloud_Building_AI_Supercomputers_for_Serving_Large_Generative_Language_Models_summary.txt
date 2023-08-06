@@ -1,0 +1,13 @@
+Summary:
+This paper presents Chiplet Cloud, a chiplet-based ASIC AI supercomputer architecture that optimizes total cost of ownership (TCO) per generated token for serving large generative language models. The architecture fits all model parameters inside on-chip SRAMs to eliminate bandwidth limitations and moderates the die size to improve system cost. The paper also proposes a comprehensive design methodology that explores the software-hardware co-design space and performs software mapping-aware Chiplet Cloud optimizations. Chiplet Cloud achieves up to 94× and 15× improvement in TCO/Token compared to A100 GPU clouds and TPUv4 clouds, respectively. The methodology is applied to four popular LLMs on the market, showing promising results. 
+
+Bullet Points:
+- Chiplet Cloud is a chiplet-based ASIC AI supercomputer architecture that optimizes TCO per generated token for serving large generative language models
+- The architecture fits all model parameters inside on-chip SRAMs to eliminate bandwidth limitations
+- The chiplets moderate the die size to improve system cost while leveraging software mappings to exploit parallelism and overcome data communication overhead
+- The design methodology explores the software-hardware co-design space and performs software mapping-aware Chiplet Cloud optimizations
+- Chiplet Cloud achieves up to 94× and 15× improvement in TCO/Token compared to A100 GPU clouds and TPUv4 clouds, respectively
+- The methodology is applied to four popular LLMs on the market, showing promising results
+
+Keywords:
+Chiplet Cloud, ASIC, AI supercomputer, generative language models, TCO, on-chip SRAMs, bandwidth limitations, die size, software-hardware co-design, optimization

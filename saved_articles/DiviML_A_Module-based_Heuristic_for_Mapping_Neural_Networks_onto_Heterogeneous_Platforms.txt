@@ -1,0 +1,879 @@
+DiviML: A Module-based Heuristic for Mapping
+Neural Networks onto Heterogeneous Platforms
+Yassine Ghannane
+Electrical and Computer Engineering
+Cornell University, New York, U.S.A
+yg496@cornell.eduMohamed S. Abdelfattah
+Electrical and Computer Engineering
+Cornell University, New York, U.S.A
+mohamed@cornell.edu
+Abstract —Datacenters are increasingly becoming heteroge-
+neous, and are starting to include specialized hardware for
+networking, video processing, and especially deep learning. To
+leverage the heterogeneous compute capability of modern data-
+centers, we develop an approach for compiler-level partitioning
+of deep neural networks (DNNs) onto multiple interconnected
+hardware devices. We present a general framework for het-
+erogeneous DNN compilation, offering automatic partitioning
+and device mapping. Our scheduler integrates both an exact
+solver, through a mixed integer linear programming (MILP)
+formulation, and a modularity-based heuristic for scalability.
+Furthermore, we propose a theoretical lower bound formula for
+the optimal solution, which enables the assessment of the heuristic
+solutions’ quality. We evaluate our scheduler in optimizing both
+conventional DNNs and randomly-wired neural networks, subject
+to latency and throughput constraints, on a heterogeneous system
+comprised of a CPU and two distinct GPUs. Compared to na ¨ıvely
+running DNNs on the fastest GPU, he proposed framework can
+achieve more than 3 ×times lower latency and up to 2.9 ×
+higher throughput by automatically leveraging both data and
+model parallelism to deploy DNNs on our sample heterogeneous
+server node. Moreover, our modularity-based “splitting” heuristic
+improves the solution runtime up to 395 ×without noticeably
+sacrificing solution quality compared to an exact MILP solution,
+and outperforms all other heuristics by 30–60% solution quality.
+Finally, our case study shows how we can extend our framework
+to schedule large language models across multiple heterogeneous
+servers by exploiting symmetry in the hardware setup. Our code
+can be easily plugged in to existing frameworks, and is available
+at https://github.com/abdelfattah-lab/diviml.
+I. I NTRODUCTION
+Deep neural networks (DNNs) have emerged as an im-
+portant computing paradigm making significant breakthroughs
+in many fields. However, DNNs are both computationally-
+intensive and memory-hungry, leading to a major hardware
+restructuring of modern datacenters to keep up with this in-
+satiable compute demand. GPUs are becoming commonplace,
+FPGAs have been included by companies like Microsoft [1],
+and custom DNN accelerators such as Google’s TPU [2] are
+continuously being developed. DNNs themselves are com-
+posed of a growing list of diverse building blocks such as
+convolutions, matrix-multiplications, element-wise operations,
+non-linear functions and shape transformations. Each of those
+primitives exhibits different vectorization patterns, sparsity and
+Thanks to TATA Consultancy Services (TCS) for funding support, and Dr.
+Rekha Singal for insightful discussion and feedback.quantization tolerance and so may be suitable for implemen-
+tation on different hardware accelerators [3, 4].
+In addition to hardware heterogeneity, DNN topologies are
+becoming evermore irregular and complex thanks to their au-
+tomated design through neural architecture search (NAS) [5].
+NAS has demonstrated considerable success in creating DNN
+architectures that are highly efficient in terms of computational
+resource usage [6–8]. However, the irregular topologies it
+generates can be challenging to efficiently schedule on hetero-
+geneous systems. In fact, in its most simple form, with no re-
+source usage constraints or batching, the problem of mapping
+and scheduling a set of tasks with dependence is a classical
+NP-Hard problem [9]. Finding scalable and efficient methods
+for mapping such complex DNN computational graphs on
+heterogeneous systems is becoming more and more important
+to meet latency and throughput requirements imposed by
+modern DNNs and hardware platforms during inference.
+Even though this scheduling problem has been previously
+explored in the context of traditional computing [10, 11],
+few works investigate the challenges associated with neural
+network models. In this paper, we investigate the scheduling of
+irregular DNN topologies onto heterogeneous hardware plat-
+forms with different latency and throughput requirements, un-
+der different batching conditions, and leveraging the module-
+based nature of DNNs to significantly improve the speed
+and quality of our automatic scheduler. Many have used
+randomly-wired neural networks (RWNNs) [12] to represent
+NAS-designed DNNs in the context of scheduling [13], and we
+follow suit. Our scheduler operates on a coarse-grained com-
+putational graph of DNNs that is available through domain-
+specific frameworks such as PyTorch [14] or TVM [15].
+Our goal is to create a fast heterogeneous scheduling plugin
+that can be easily integrated into these DNN frameworks to
+leverage heterogeneous computing platforms.
+To achieve this goal, we curate a set of DNNs from
+the vision domain, both manually-designed ones such as
+ResNet [16], and NAS-found DNNs represented by an as-
+sortment of RWNNs. We investigate the scheduling of these
+DNNs on a sample heterogeneous computing platform with
+two GPUs and a CPU, and we demonstrate a considerable
+improvement compared to many past heuristic baselines. Our
+key algorithmic contribution is a fast DNN splitting heuristic,
+MILP-SPLIT, that detects and schedules each DNN modulearXiv:2308.00127v2  [cs.LG]  2 Aug 2023separately then combines the schedules in either an optimal
+or quasi-optimal fashion depending on the nature of the
+connection between modules. MILP-SPLIT also comes with a
+theoretical lower bound for the optimal solution, which facili-
+tates the evaluation of the scheduling quality. Our contributions
+are enumerated below:
+1) We formalize the problem of partitioning and scheduling
+a DNN onto interconnected hardware devices in a het-
+erogeneous computing system. We leverage both model
+and data parallelism to handle two core optimization
+objectives; latency and throughput.
+2) We propose a novel linear mathematical programming
+model which is the first, up to our knowledge, scheduling
+problem formulation capable of handling both model
+and data parallelism for batched DNN execution.
+3) We introduce MILP-SPLIT: A splitting heuristic to
+schedule complex modular DNNs. Alongside, we per-
+form a rigorous theoretical analysis on the implica-
+tions of modularity and inter-module communication
+channels, on the performance of our heuristic, via the
+proposal of a lower bound formula.
+4) We evaluate our algorithms on computer-vision DNN
+benchmarks, on both mainstream DNNs and randomly
+wired neural networks. Compared to a single device, we
+achieve more than 3×lower latency and 2.9×higher
+throughput. Compared to heursitics from prior work, we
+achieve 30–60% better solution quality, and up to 395 ×
+speedup compared to an exact solution.
+II. R ELATED WORK
+On the topic of general software partitioning, there ex-
+ists previous work regarding heterogeneous compilation [10].
+In particular, Polly-Acc offers an automatic heterogeneous
+compute compiler targeting CPU-GPU systems where at the
+compiler IR level, interesting compute kernels are detected,
+extracted, and modeled, and whose execution strategy is
+described as a schedule tree [11]. AMAP is an online adaptive
+decision algorithm to determine if the improvement from
+running a function in hardware outweighs the overhead of
+transferring the parameters [17], whereas [18] proposes a
+dynamic program scheduling approach based on the sampled
+energy-delay product during tentative runs. Our approach, in
+contrast, is performed statically during compilation, is specif-
+ically tailored for deep learning architectures, and leverages
+coarse graph-level descriptions of DNNs.
+Under the scope of DNN based partitioning, many existing
+research endeavors focus solely on training [19, 20]. Alpa
+automates the search for pipeline-parallel schedules for DNN
+training on homogeneous multi-node GPU clusters. ParDNN
+introduces a graph slicing heuristic which forms primary
+clusters, the first iterative critical paths of the graph, and
+secondary clusters, the single nodes or remaining paths, and
+optimizes for load balancing during training [21]. Chen at
+al. [22] propose heuristic methods to optimize latency based on
+Heterogeneous-Earliest-Finish-Time (HEFT) and Critical-Path
+for mapping and scheduling DNNs on accelerators consisting
+2
+3DNN Mapping  Backend
+CompilersSystem
+Description
+1
+3
+5
+62
+41
+3
+421
+3
+42
+7BinariesGPU  
+(T4) CPUGPU  
+(A100)
+1
+2
+34 CPU
+GPU
+TPUClusteringCPU GPUTPU
+(a) (b)Fig. 1: Our heterogeneous scheduling framework.
+of function units such as matrix multiplication or lookup
+tables. Unlike these approaches that were specific to DNN
+training, our scheduling algorithm is geared towards low-
+latency and high-throughput inference.
+Liu et al. [23] restrict their scope to the DenseNet ar-
+chitecture and gives an exact and efficient algorithm for its
+scheduling on a heterogeneous system. However, this approach
+is tailored for the particular topology of the DenseNet graph
+and is consequently difficult to generalize to broader model
+architectures. We propose a more general cut-based heuristic,
+which also takes advantage of the dynamic programming
+paradigm and can significantly speed up the mixed integer
+linear programming (MILP) solving. Additionally, Mirhosein
+et al. [24] propose a reinforcement learning approach to DNN
+mapping for both training and inference latency optimization.
+This suffers however from a lack of generalization with a need
+to set manually load specific parameters and with training time
+ranging between 12 to 27 hours. In comparison, our approach
+focuses on inference, handles batched inputs and strives for
+efficiency by leveraging modularity while maintaining some
+optimality guarantees. Finally, SERENITY achieves memory-
+aware scheduling of irregularly wired neural networks on a
+single device by resorting to graph rewriting and divide-and-
+conquer approaches [25]. We focus instead on latency and
+throughput optimization on multiple heterogeneous devices,
+taking into account each device’s memory constraints.
+III. P ROBLEM STATEMENT AND SYSTEM DESCRIPTION
+Our approach is based on a coarse-grained representation of
+computational graphs that is commonly used in deep learning
+compilers. We present a compile-time mapping and scheduling
+framework for DNNs on heterogeneous hardware systems. The
+scheduler’s modeling is general and agnostic to back-ends, its
+only limitation being what is supported by different compilers’
+back-ends. Figure 1 illustrates how the partitioner is integrated
+in a DNN compilation pipeline. It is capable of reading an
+input consisting of a hardware system configuration and any
+intermediate representation (IR) of a DNN, and outputs theappropriate mapping on the system via existing compilation
+backends, and its corresponding schedule. An optional clus-
+tering step prepares the DNN graph for mapping by reducing
+the number of task inputs to the mapping algorithms. A prime
+example is the fusion of convolution, batch normalization, and
+the ReLU activation function.
+A. Problem Formulation
+We represent DNNs as a weighted directed acyclic graph
+(DAG), with the edges denoting data dependencies and nodes
+representing a DNN task (e.g. a convolutional or linear op-
+eration). If two tasks with data dependencies are mapped
+onto the same processor, the communication between them is
+implemented through data sharing in device memory and no
+communication cost is incurred. Each processor may execute
+several tasks, but each task has to be assigned to exactly one
+processor, in which it is entirely executed without preemption.
+Formally, let G= (V,E)be the DAG where Vdenotes the set
+of tasks and Erepresents the set of edges. Each edge (i, j)∈ E
+defines a precedence relation between the tasks i, j∈ V, and
+is weighted by the size of the source task’s output. A task
+cannot be executed unless all of its predecessors (parents)
+have been processed and all relevant data is available. Each
+taski∈ V is assigned the following constants: (wmi)the data
+size allocated for the DNN task weights, (imi)the input tensor
+size and (omi)the output tensor’s size. As for our hardware
+system on which we map the DNN, we model it as a tuple
+of sets H= (K,M, β).Kdenotes the set of devices in our
+system. The two remaining sets are descriptors of the hardware
+system. M:K →R+is the memory capacity for each single
+processor and β:K2→R+the communication bandwidth
+between linked chips—it is null if there is no link. If tasks i
+andjare executed on different compute nodes h, k ;h̸=k,
+and(i, j)∈ E, a communication time omi/βh,kis incurred.
+The objective of this task scheduling problem is to allocate
+and schedule the tasks onto the compute nodes such that the
+overall completion time (latency) is minimized. We link the
+dataflow graph and the hardware via a map t: (V,K)→R+,
+which assigns to each task and device pair its corresponding
+latency. We finally add to our formulation the possibility of
+batching and throughput optimization. Hence we augment our
+problem description with a map B:K → 2Nthat assigns
+to each device the subset of batch sizes supported. tnow de-
+scribes the latency of each possible batch of similar tasks i∈ V
+for each device and is redefined as t:V × K × B (K)→R+.
+The objective is now to find for a set of Lgraph inputs the
+optimal mapping and scheduling of the tasks into different
+batches, while respecting the dependency within a single graph
+and the underlying resource constraints. Finally, we define the
+notion of a schedule. Let S:V ×[1, . . . ,L]→ K × R+
+be a map which assigns each task to a device and a starting
+time.Sis a schedule if and only if Srespects precedence and
+no overlap (no two distinct batches can overlap on the same
+device) criteria, i.e. for every (i, j)∈ E,l∈[1, . . . ,L]:
+S(i, l)2+ 1S(i,l)1̸=S(j,l)1·mi/βh,k≤ S(j, l)2The problem statement becomes:
+Mapping and Scheduling problem
+Input Objective function (latency/throughput) f,
+G= (V,E),S= (K,M, β),t,B,L.
+Output A schedule S:V ×[1, . . . ,L]→ K × R+
+which optimizes f
+IV. A LGORITHMIC APPROACHES
+In this section, we demonstrate our exact scheduling ap-
+proach based on solving an MILP problem. Linear program-
+ming has been effective in solving communication constrained
+DAG scheduling problems for tractable instances [26]. Our
+contributions for the exact MILP formulation are twofold:
+First, we incorporate memory and batching constraints into
+our formulation, which are commonly encountered in deep
+learning workloads, and we integrate our scheduler into a
+graph partitioning routine that we rigorously analyze to ensure
+the quality of its results. However, the problem of scheduling
+DNNs is NP-Hard, making it intractable to find exact solutions
+for large graph sizes. Our second contribution addresses this
+issue. We take advantage of the inherent modularity in most
+DNNs to create fast solving schemes that are either optimal
+or provide strong approximation guarantees.
+A. MILP Problem Representation
+We introduce a novel formulation of the problem as an
+MILP model that explicitly considers the option of batching,
+where a device can process multiple inputs simultaneously.
+By incorporating batching, our formulation is better suited to
+capture the characteristics of modern deep learning workloads,
+which often involve a large numbers of inputs that can be
+efficiently processed in batches. Our approach enables us to
+find optimal solutions that balance the trade-offs between com-
+putation and communication costs while respecting batching
+and memory constraints. We add to the notation introduced
+earlier the following binary decision variables: xi,j,l which
+encodes if the DNN task icorresponding to the l-th input is
+mapped to a device j. Meanwhile, bi,j,ldescribes if tasks of
+kindirunning on jform a batch of size l, and di1,i2,l1,l2= 1
+iff task i1from input l1is scheduled before i2from input
+l2. We also consider the continuous variables: si,jthe starting
+time for processing the batch of itasks on j, and Cthe total
+latency. The objective function fis equal to Cin the latency
+optimization scenario or L/Cwhen optimizing for throughput.
+Now, we can write the mixed integer linear program, with
+objective minimize C , and whose constraints are as follows:
+Condition 1 asserts that each task is assigned to a single
+machine:
+X
+u∈Kxi,u,l= 1; i∈ V, l= 1, . . . ,L (1)
+Condition 2 ensures that each task finishes within the reported
+latency :
+si,u+X
+l∈Bubi,u,l·ti,u,l≤C;i∈ V, u∈ K (2)Condition 3 is the condition expressing the dependency and
+communication constraint:
+si,u+X
+p∈Bubi,u,p·ti,u,p+ (omi/βu,v)·(xj,v,l+xi,u,l−1)
+≤sj,v;j∈ V, i∈par(i), u, v ∈ K, l= 1, . . . ,L
+(3)
+Condition 4 ensures that the batch decomposition adds up
+correctly to the total number of items in the batch:
+X
+u∈KX
+l∈Bul·bi,u,l=L;i∈ V (4)
+The following condition 5 ensures that only supported batch
+sizes are chosen:
+bi,u,l= 1 iffX
+l′∈[1...L]xi,u,l′=l;
+i∈ V, u∈ K, l= 1, . . . ,L(5)
+In its form above, it is not a linear equation but we can
+linearize it via the BIGMMETHOD [27].
+Condition 6 holds the memory constraint under the suppo-
+sition that all data should be preemptively moved:
+X
+i∈V((imi+omi)X
+l∈[1...L]xi,u,l+wmiX
+l∈Bubi,u,l)
+≤ M u;u∈ K(6)
+Conditions 7 ensures no overlap of device usage between
+different batches. We linearize it similarly to condition 5:
+
+
+si,u+P
+p∈Bubi,u,p·ti,u,p−sj,u≤0
+or
+sj,u+P
+p∈Bubi,u,p·ti,u,p−si,u≤0(7)
+ifxi,u,l 1=xj,v,l 2= 1;
+i, j∈ V, u∈ K, i̸=j, l1, l2= 1, . . . ,L
+An optimization of the formulation of the MILP is to restrict
+constraint 7 to pairs of tasks (i, l1) and (j, l2) which do not
+belong to the same batch graph or are not part of a path in
+the DAG. The system remains equivalent to the original as
+the other constraints from 7 are enforced by the dependency
+constraint 3. Eliminating these redundant constraints is done
+by computing the transitive closure of the graph and which
+can be obtained efficiently with Purdom’s algorithm [28].
+B. MILP-SPLIT: Leveraging Graph Modularity
+1) Single-channel modularity: The presence of highly con-
+nected clusters is a prevalent feature in many DNN graph
+structures. An example is shown in Figure 2a This charac-
+teristic can be leveraged by the scheduler to partition the
+global problem into independent sub-problems consisting of
+weakly communicating modules. This approach is particularly
+useful when dealing with graphs that consist of modules
+linked to one another, such as ResNets [16], Inception [29], or
+especially RWNNs [12] that are composed of several instances
+of sequentially linked random graph modules.A straightforward method to identify these modules involves
+detecting articulation points or bridges in the graph, which
+correspond to vertices or edges whose removal disconnects
+the undirected graph, grouping tasks between them into the
+same module, and solving each subproblem independently.
+However, this approach can lead to suboptimal solutions as
+it does not account for communication costs through bridges
+and may result in inconsistent assignments of articulation
+points across modules. Fortunately, a dynamic programming
+solution exists to address these issues. To obtain an optimal
+global solution for the whole graph, we compute the optimal
+schedule for each module for every possible input-device and
+output-device pairings, and we combine the resulting building
+blocks into the best configuration. As a preprocessing step, we
+transform articulation points that are not endpoints of bridges
+into bridge edges by introducing a dummy node and a zero-
+cost edge between them. We also add an additional constraint
+that mandates the mapping of these two vertices to the same
+device in the global solution as is illustrated in Figure 2b. From
+now on, we refer to bridges as “communication channels”.
+Formally, Let G(V,E)be a DAG with single input and
+output. We denote by I(Q,F)the graph obtained by reducing
+every module into a single vertex, where Qis a partition of V
+into a set of disjoint modules and F:={(u, v)∈ Q2| ∃x∈
+u∃y∈v(x, y)∈ E} . In particular, if Qis defined as the set
+of vertex modules, then Iis a path, and we can enumerate
+Qas the set [1, . . . ,|Q|], and through this ordering we can
+obtain a dynamic programming problem formulation. For a
+given module Mt∈ Q and a pair of devices u, v∈ K onto
+which the input and output of Mtare mapped, and if we denote
+byoptthe solution of a module subproblem, the recursion can
+be written as:
+dp(Mt, u, v) =minu′,v′∈K
+dp(Mt−1, u′, v′)
++com(t, v′, u)
++OPT (Mt, u, v)
+The effectiveness of the proposed splitting method is in-
+fluenced by the number and size balance of the extracted
+modules. The complexity of the approach can be expressed as
+O(|K|2|Q|T), where Trepresents a runtime bound for each
+module. This complexity analysis assumes a specific cutting
+strategy, but can be generalized to arbitrary cuts, where I
+becomes a multigraph.
+2) Multi-channel modularity: Modularity is an important
+property of graphs that enables exact solving for the schedul-
+ing problem on large graphs using a divide-and-conquer ap-
+proach. However, many graphs can not be split into distinct
+modules of comparable size that communicate through a single
+input-output channel. In such cases, it may still be possible
+to decompose the graph into balanced modules that commu-
+nicate through multiple edges, and solve for each subgraph
+independently. Figure 2a shows an example with 1 and 2
+channels. Identifying the modules boils down to computing
+thek−edge connected components [30] where k−1is the
+number of channels. Although this approach may result in a
+loss of optimality, it can significantly improve runtime withoutModules(a) Partitioning scheme on modular graph
+Articulation
+Point
+Bridge
+(b) Articulation point and bridge between
+Inception modules.
+O1
+O2
+I2I1(c) Example of 2-
+channel Erdos-Renyi
+sdep module
+O1
+O2I1
+I2
+pre(O2 )dep(I1 )
+(d) Dependency and predecessor subgraphs
+on channel endpoints
+O1
+O2I1
+I2(e) Example of 2-
+channel Erdos-Renyi
+wdep module
+Fig. 2: Modularity in DNN graphs. sdep : all paths within
+a module stem from (converge toward) at least one input
+(output). wdep : module inputs and outputs are randomly
+sampled for their dependencies.
+a significant reduction in quality. In the case of partitioning
+a large graph into multichannel communicating modules, it is
+desirable to compute a lower bound on the optimal solution to
+evaluate the quality of the MILP-SPLIT (or other) heuristic,
+especially when solving for the entire graph is not tractable.
+In order to express the lower bound for a DAG G(V,E)
+that can be split into multichannel communicating modules, we
+first define for a fixed T⊆ V and for every node uinGthe set
+of nodes dep(u)T={v∈T|there is a path from utov},
+which we will refer to as the dependency set of u, and the set
+of nodes pre(u)T={v∈T|there is a path from vtou},
+and which we will refer to as the predecessor set of u(as
+shown in Figure 2d). Let M1, . . . , M |Q|be a decomposition of
+Ginto such modules, whereS
+1≤t≤|Q|Mt=V. We denote by
+Gs=S
+s≤t≤|Q|Mt. Our approach is to proceed inductively by
+computing the lower bound in a recursive manner, and using
+the following remark:
+Remark. Letcdenote the number of channels, and (It)1≤t≤c
+and(Ot)1≤t≤cdenote respectively the set of vertices in the
+communication channels between M1andG2for which the
+edges are in-going and out-going, i.e., the inputs of G2and the
+outputs of M1. For any valid scheduling of the whole graph,
+there exists a t′such that the subgraph induced on dep(It′)G2
+is completely scheduled after M1, and there exists a t”such
+thatpre(Ot”)M1is completely scheduled before G2.Hence, if we denote by OPT the function mapping sub-
+graphs of Gonto their optimal schedule, then we obtain the
+pair of inequalities:
+OPT (V)≥OPT (M1) +min u∈inputs(OPT (dep(Iu)G2))
+and
+OPT (V)≥OPT (G2) +min v∈outputs(OPT (pre(Ov)M1))
+The lower bound of the problem is obtained as the maximum
+value among the right-hand sides of the inequalities. This
+lower bound can be immediately extended to the batched
+throughput scenario by observing that the partial ordering
+defined earlier for dependency, predecessor, and module sub-
+graphs applies to scheduling the minimal batch size that can be
+executed on each device. Specifically, it is necessary to sched-
+ule a minimum portion of the input to maintain the specified
+constraints via the communication channels outlined in the
+remark. However, we can do better; let M1anddep(It′)G2be
+defined as in the remark; then if Lis the total input batch to be
+processed and bany batch size supported on every device, then
+there is at least a batch of L−b+1that needs to be processed
+through dep(It′)G2after scheduling a load bofM1. The
+same reasoning holds between OPT (pre(Ov)M1)andG2, and
+recursively throughout the graph. These bound computations
+can be accomplished efficiently using the presented recursive
+formula, which lends itself well to parallelization due to the
+independent nature of the subproblems considered.
+V. E VALUATION
+We evaluate our mapping and scheduling framework on
+mainstream DNN models, a set of computer vision neural
+networks popular in the field of image classification, from
+theTorchvision model library, and on randomly wired neu-
+ral networks (RWNNs) also performing image classification
+tasks [12]. We focus more on the latter because the topological
+irregularity of RWNNs makes it more difficult to have a good
+intuition on what a good mapping and scheduling should
+look like thus necessitating automated algorithms. We choose
+representatives from three random graph models (Erdos-Renyi,
+Watts-Strogatz and Barbasi-Albert), with parameters chosen
+corresponding to the seeds which achieved the best accuracy
+in prior work [12]: we sample 6 models generated with
+parameters WS(4, 0.75), ER(0.2) and BA(5), and with module
+sizeN∈ {10,32}. We consider systems comprised of a CPU
+(Intel Xeon (skylake) CPU 2.00GHz) and two different GPUs
+(Nvidia Tesla T4 and A100 GPUs) connected by a 16 lanes
+PCIe 4.0 link to represent a typical heterogeneous system—
+relative speeds are shown in Table II. The complete pipeline
+of our scheduler’s evaluation setup for the aforementioned
+networks starts with a Pytorch model. To convert it into
+a coarse grain DAG, we use the torch.fx [31] symbolic
+tracer and in particular the Interpreter class. This class is
+responsible for executing an FX graph, which represents the
+dataflow graph of DNN inference on a node-by-node basis. By
+overriding the node run method, we can individually measure
+the performance of executing each computational node ondifferent backends by invoking the appropriate routine on the
+respective node, thus creating our DAG while simultaneously
+benchmarking each operation on every device.
+Our experiments perform a thorough comparison of our
+exact MILP solution, our modularity-based splitting heuristic
+(MILP-SPLIT), and a large number of established baselines
+from prior work, introduced in Section V-A. We present our
+findings when optimizing solely for latency (Section V-B)
+using model parallelism, and when optimizing for throughput
+(Section V-C) using both data and model parallelism. In
+both cases, we evaluate the solution quality and cost for
+Torchvision models, for single-module RWNNs, and for multi-
+module RWNNs. Our findings demonstrate the superiority and
+practicality of MILP-SPLIT compared to existing baseline
+algorithms, and the fidelity of our estimated lower bound.
+A. Baselines and Heuristics
+We compare our MILP solver and MILP-SPLIT against
+popular scheduling algorithms and general purpose optimiza-
+tion heuristics which have shown success in DAG scheduling
+contexts or graph problems more generally.
+•MET: the Minimum Execution Time algorithm is a list-
+based scheduling algorithm that schedules tasks based on
+their minimum execution time to minimize the latency of
+a DAG. We extend the MET algorithm to the batched
+throughput optimization by selecting the best batch-
+device combination for each task.
+•Greedy: is a greedy heuristic that considers the overall
+latency for scheduled tasks so far when scheduling the
+current task.
+•HEFT: the Heterogeneous Earliest Finish Time [32] al-
+gorithm is an effective approach for scheduling tasks in
+a heterogeneous computing environment. It assigns tasks
+to processing nodes with different processing speeds to
+minimize overall execution time, using two phases to
+prioritize tasks based on estimated finish times.
+•Simulated Annealing (SA) [33]: is a stochastic opti-
+mization heuristic algorithm that draws inspiration from
+statistical mechanics concepts and has been widely used
+in various optimization problems, including scheduling,
+for example, to minimize latency [34–36].
+•Biased (1+1) EA: We implement a biased version of the
+(1+1) EA [37] as an additional approximation heuristic.
+Also known as the random hill climbing algorithm, it
+is one of the most basic evolutionary algorithms but has
+been surprisingly efficient in practice [38, 39]. We qualify
+as biased the (1+1) EA when the initialisation is not
+randomly sampled but chosen in a greedy manner, by
+assigning each task to the device on which it runs fastest.
+Fitness function : Here we give a succinct formulation
+of our problem as an objective function and an integer-
+string search space, which are adopted by two of our search
+heuristics: (1+1) EA and SA. We encode the mapping solution
+as a string of integers, wherein each integer in the string
+signifies a distinct identifier of the device to which a nodeTABLE II: Relative speed in milliseconds (ms) on experiment
+devices, averaged over our evaluated DNNs.
+CPU GPU (T4) GPU (A100)
+Torchvision 223.10 (29 ×) 12.16 (1.6 ×) 7.80 (1 ×)
+RWNNs 183.39 (7.10 ×) 32.58 (1.26 ×) 25.84 (1 ×)
+TABLE III: Speedup of the splitting heuristic for the latency
+optimization of RWNN models with [5, 10, 20] modules.
+sdep wdep
+Modules MILP SPLIT factor MILP SPLIT factor
+5 82.69s 2.26s 37x 129.08s 2.45s 53x
+10 232.24s 4.83s 48x 271.66s 5.00s 54x
+20 1907.12s 13.49s 141x 5850.37s 14.81s 395x
+is mapped. The position of each integer in the string corre-
+sponds to the layers of the DNN, arranged in a breadth-first
+topological ordering. Finally, the fitness function adopted for
+the latency (throughput) optimization problem corresponds to
+the latency (throughput) of a sampled mapping with a breadth-
+first topological ordering.
+B. Latency Optimization
+Figure 3 evaluates our scheduler to optimize latency for
+mainstream Torchvision models. There are no real improve-
+ments for DNNs with little to no parallelism, such as AlexNet
+or ResNet or VGG, the optimal schedule is usually the one
+where all tasks are mapped to the best performing device
+(A100 GPU). However, for models with higher parallelism,
+the improvement from MILP and MILP-SPLIT are signifi-
+cantly higher—more than 100% and 150% for Inception v3
+and GoogLeNet respectively. Both MILP and MILP-SPLIT
+converge to the optimal solution for all Torchvision models
+without a substantial increase in runtime, thanks to the sim-
+plicity and regularity of these DNNs.
+Next, we evaluate RWNNs which we expect to be a signif-
+icantly more challenging workload. In our first experiment in
+Figure 4, we schedule a single module on our heterogeneous
+system, optimized for latency. Compared to simply running
+the RWNN module on the best device, there is a major ∼2×
+improvement in overall latency from fully-utilizing our hetero-
+geneous system with a CPU and 2 GPUs. When comparing
+across different scheduling algorithms, MILP converges to
+the optimal solution and is 22%-26% better than the best
+available heuristic on equivalent runtimes. However, with
+RWNNs featuring multiple modules, ten in our experiment,
+solving MILP on the whole model is more difficult for the
+solver and is exponentially slower. This motivates the use of
+MILP-SPLIT for those more realistic multi-module RWNNs
+that are representative of DNNs created by NAS.
+To evaluate MILP-SPLIT, we stack multiple RWNN mod-
+ules to represent realistic NAS-discovered models. In this case,
+each module is generated using the ER(0.2) model and may
+include multiple communication channels to connect to the
+next module. As indicated by our lower bounds formulationLatency Optimization
+alexnetresnet18vgg11 vgg13 vgg16 vgg19
+squeezenetgooglenet
+inception_v3resnext0102030Latency (ms)best device
+MET
+Greedy
+HEFTSA
+(1+1) EA biased
+MILP
+MILP-SPLIT
+Fig. 3: Inference latency for Torchvision DNNs deployed
+on a heterogeneous platform with different schedulers.
+gmean-ws gmean-er gmean-bagmean05101520Latency (ms)best device
+MET
+Greedy
+HEFTSA
+(1+1) EA biased
+MILPFig. 4: Inference latency for single RWNN modules on a
+heterogeneous platform with different schedulers.
+TABLE I: Latency of RWNNs consisting of 10 modules. Results reported in milliseconds (ms).
+Best and second best results are highlighted in red (bold) and blue respectively.
+model best device MET Greedy HEFT (1+1) EA biased SA MILP MILP-SPLIT LBound
+1-chan 211.7 209.9 104.4 99.9 97.5 98.9 80.1 80.1 80.1
+sdep, 2-chan 234.9 219.3 111.8 109.3 103.8 106.2 78.9 79.1 73.7
+sdep, 3-chan 236.5 235.4 114.2 108.5 104.7 106.1 79.9 80.3 68.1
+sdep, 4-chan 250.5 249.1 116.3 111.3 107.6 109.5 79.1 79.4 61.3
+wdep, 2-chan 225.2 223.8 103.7 101.7 97.3 98.1 74.3 77.6 73.3
+wdep, 3-chan 229.9 229.3 107.4 104.3 100.9 103.1 76.6 78.7 71.8
+wdep, 4-chan 242.9 240.7 106.8 104.4 102.0 103.6 71.6 77.0 62.1
+(Section IV-B1), the density of nodes and edges that are
+accessible from the endpoints of communication edges can
+significantly impact the quality of the splitting heuristic and
+the accuracy of the corresponding lower bound. Therefore, we
+evaluate our splitting heuristic using two different scenarios for
+the topology of communication edges. In the first scenario,
+module inputs and outputs are randomly sampled for their
+dependencies, while in the second scenario, all paths within a
+module stem from (converge toward) at least one input (out-
+put). We refer to these scenarios as the “weakly dependent”
+scenario ( wdep ) and the “strongly dependent” scenario ( sdep ),
+respectively, and examples are shown in Figures 2e and 2c.
+Based on the results presented in Table I, it can be
+observed that our splitting heuristic (MILP-SPLIT) exhibits
+a solution that is in close proximity to the optimal solution.
+Additionally, this heuristic outperforms all other scheduling
+methods considered in this study by a significant margin, as
+it is∼30% better compared to the best heuristic baseline.
+Table III highlights that the MILP-SPLIT heuristic provides
+a substantial improvement (37 ×–395×) in runtime compared
+to MILP when both scheduling algorithms reach their best
+solution. Also shown in Table I is our lower bound (LBound),
+which offers a convenient means of obtaining a quick perfor-
+mance guarantee for the splitting heuristic. Our observations
+indicate that for the wdep models, the LBound is closer to
+the true optimum than for the sdep models, where it tendsto be more pessimistic. This difference is attributed to the
+lower bound computation which considers complete overlap
+in scheduling separate paths originating from each module
+output. This is more likely to hold in an optimal schedule
+for the wdep scenario, where the distribution of these paths is
+more evenly spread compared to the sdep scenario, where a
+specific endpoint’s emanating paths cover all the predecessor
+or dependency subgraphs—this phenomenon is also the reason
+why MILP-SPLIT is closer to the optimum on sdep graphs.
+Our results show that MILP-SPLIT is a viable and high-quality
+heuristic that offers lower-bound guarantees on quality.
+C. Throughput Optimization
+We consider throughput optimization in the low-latency
+inference regime, where we batch B inputs (e.g. 128) and
+we find the fastest way to run that batch using the available
+devices. Successive inputs are queued together in groups of
+B before going to the hardware system for execution. This
+realistically mimics how inference is done in datacenters where
+low latency is critical to respond to user requests promptly.
+Figures 5, 6, and Table IV show our throughput opti-
+mization results attained with our framework via batching.
+bMET, bGreedy and bHEFT are the batched equivalent of
+the corresponding heuristics. In this case, we have a batch of
+inputs B queued for processing, and our scheduler can further
+decompose this batch intoB/4,B/2, and3B/4when allocatingThroughput Optimization
+(2 hours timeout for MILP and 600 seconds timeout for MILP-SPLIT.)
+googlenetinception_v3
+T orchvision-other0100020003000400050006000Throughtput (img/s)best device
+bMET
+bGreedy
+bHEFTSA
+(1+1) EA biased
+MILP
+MILP-SPLIT
+Fig. 5: Inference throughput for a batch (B=128) inputs on
+Torchvision models on a heterogeneous platform.
+gmean-ws gmean-er gmean-bagmean020040060080010001200Throughtput (img/s)best device
+bMET
+bGreedy
+bHEFTSA
+(1+1) EA biased
+MILPFig. 6: Inference throughput for a batch (B=16) inputs on
+single RWNN modules on a heterogeneous platform.
+TABLE IV: Throughput for RWNNs consisting of 10 modules. Results reported in images-per-second (imgs/s).
+Best and second best results are highlighted in red (bold) and blue respectively.
+Model BD bMET bGreedy bHEFT (1+1) EA biased SA MILP MILP-SPLIT UBound
+1-chan 54 56 74 75 84 87 114 135 164
+sdep, 2-chan 48 50 67 66 75 78 95 119 180
+sdep, 3-chan 49 51 68 70 78 81 116 129 196
+sdep, 4-chan 47 48 65 67 76 79 73 126 209
+wdep, 2-chan 51 53 76 75 86 87 89 137 182
+wdep, 3-chan 49 52 73 73 82 85 72 137 181
+wdep, 4-chan 47 50 72 74 82 84 65 138 207
+10 300 600 900 12000255075100125wdep 2-channel
+MILP-SPLIT
+(1+1) EA biased
+SA
+MILP
+10 300 600 900 1200wdep 3-channel
+10 300 600 900 1200wdep 4-channel
+10 300 600 900 12000255075100125sdep 2-channel
+10 300 600 900 1200
+time (s)sdep 3-channel
+10 300 600 900 1200sdep 4-channelThroughput (img/s)
+Fig. 7: Solution quality (throughput) over time for MILP,
+MILP-SPLIT and heuristics on 10 modules RWNNs.
+inputs to different devices. This enables our scheduler to
+leverage both model and data parallelism when mapping the
+DNN workload onto the hardware system. Unlike the latency
+objective, the MILP solving on the whole graph does not
+terminate within a 2 hours deadline, even for single RWNN
+modules or for regular networks with high model parallelism
+CPU
+GPU
+(A100)GPU
+(A100)GPU
+(T4)GPU
+(T4)CPU
+GPU
+(A100)GPU
+(A100)GPU
+(T4)GPU
+(T4)CPU
+GPU
+(A100)GPU
+(A100)GPU
+(T4)GPU
+(T4)...ToR Switch
+6XFig. 8: Multi-node heterogeneous system for GPT-3 inference.
+such as inception-based DNNs. Consequently, MILP-SPLIT
+outperforms na ¨ıve MILP solving both in terms of scheduling
+quality and runtime. It is worth noting that since MILP cannot
+reach the optimum solution for a single RWNN module,
+MILP-SPLIT provides only an approximate solution for each
+of its module schedules. However, our splitting heuristic
+achieves up to ∼60% better performance than the best-
+performing heuristic baseline with equivalent running times.
+Results reported in Table IV are based on 600s deadlines for
+MILP-SPLIT and for other search heuristics, EA and SA.
+Moreover, Figure 7 provides a more detailed view of the
+solution quality over time, illustrating the challenge of solving
+the scheduling problem on the entire graph using MILP with
+numerous communication channels.VI. C ASE STUDY : GPT-3 I NFERENCE ON DISTRIBUTED
+HETEROGENEOUS COMPUTE NODES
+As DNN models continue to grow in size, it has become
+necessary to extend our focus beyond single-node servers
+to extend our formulation to more complex setups. In this
+case study, we investigate the use of our scheduler for a
+large language model (LLM), GPT-3 [40], on a distributed
+heterogeneous platform as shown in Figure 8. This model
+belongs to a category of deep neural networks that exhibits
+notable modularity, as it is predominantly constructed by
+stacking transformer modules [41]. In contrast to our earlier
+analysis of RWNNs, GPT-3 modules exhibit high regularity
+but the complexity of the problem stems from the larger search
+space of hardware device options. To counterbalance that, a
+key aspect of our analysis revolves around the exploitation
+ofsymmetry in the hardware platform to restrict the search
+space size without sacrificing solution quality. Our preliminary
+results LLM scheduling only consider a single decoding step
+as a test workload.
+As reported in Table V we consider two ways to schedule
+our GPT-3 graph. “Single node” utilizes our MILP solvers
+to schedule one-sixth of the GPT-3 graph on a single node,
+then replicates that schedule for the rest of GPT-3 on the
+remaining 5 nodes. We consider this a competitive baseline
+because it automates the common practice of manually par-
+titioning LLM inference to fit a single compute node then
+scaling up the number nodes. “Multi node” exposes the entire
+compute system (all 6 nodes) to our MILP-SPLIT solver,
+but we employ symmetry-breaking techniques to compress
+the solution space of the explored schedules, allowing us to
+find a high-quality schedule in reasonable time. Symmetries
+arise from the fact that each schedule Srepresents a set
+of equivalent solutions ES, where any element within this
+set can be derived from Sby permuting device mappings
+while maintaining the same overall latency. In our approach,
+we introduce additional constraints to our MILP formulation,
+enforcing a partial ordering of certain variables (e.g. #batches,
+#tasks, time utilization) between identical devices within a
+node or between nodes. For example, we can ensure that the
+number of tasks assigned to node iis always less than or equal
+node jfor0≤i < j < 6in our example system (Fig. 8). This
+retains all non-isomorphic solutions in our search space whilst
+compressing it by ∼466! = 2 .9×106, where the 6!and46
+factors represent inter- and intra-node symmetry respectively.
+Furthermore, our experimental results demonstrate that the
+choice of symmetry-breaking criterion can significantly impact
+the quality of the solution. This can be attributed to the
+phenomenon of premature convergence. If the symmetry-
+breaking constraints overly restrict the problem or generates
+a compressed space whose topology is not regular enough,
+the solver may settle for a locally optimal solution instead
+of exploring other potentially superior regions of the solution
+space either located outside of the compressed space or harder
+to access with the solver’s intrinsic optimization heuristics
+due to the irregularity of the new space. We hypothesizeTABLE V: GPT-3 throughput (inputs/s) on our distributed
+system. We use a 600s timeout and each input is 20 tokens.
+Heuristic Throughput
+Single node - MILP (baseline) 4.8
+Single node - MILP-SPLIT 5.7
+Multi node - MILP-SPLIT no symmetries 5.0
+Multi node - MILP-SPLIT all symmetries – batch 5.6
+Multi node - MILP-SPLIT all symmetries – task 6.3
+Multi node - MILP-SPLIT all symmetries – time 6.3
+UBound 9.9
+that utilizing #batches as the symmetry-breaking criterion
+tends to be overly restrictive, discouraging the solver from
+performing batch rearrangements that would contradict the
+ordering constraints, thus resulting in relatively smaller im-
+provements over MILP-SPLIT without symmetries. On the
+other hand, despite the discrete nature of task variables and the
+continuous nature of utilization time variables, both variables
+are coarser grain than #batches thus yielding comparable
+performance and surpassing the baseline schedule by ∼31%
+and the single node MILP-SPLIT by ∼10%. Our results lay
+the foundations towards multi-node heterogeneous scheduling
+leveraging MILP-SPLIT, and we aim to further explore this
+topic in future work.
+VII. C ONCLUSION
+We presented a general framework that leverages both data
+and model parallelism to schedule DNNs on heterogeneous
+hardware systems. Our algorithmic approaches focused on an
+exact MILP solution, and a splitting heuristic, MILP-SPLIT,
+to utilize modularity within both conventional and randomly-
+wired DNNs. Our results on both throughput and latency
+optimization demonstrated more than 30–60% improvement
+compared to the best, and most widely-used heursitics, and
+MILP-SPLIT was up to ∼395×faster than a full MILP solu-
+tion. Finally, we extended our scheduler to larger multi-node
+heterogeneous server deployments by showcasing improved
+scheduling of GPT-3 by exploiting symmetries in the hardware
+system. In the future, we aim to expand our framework to
+explore more efficient methods for scheduling large DNNs on
+distributed systems, to handle DNN training, and to include
+pre- and post-processing portions of a deep learning workload.

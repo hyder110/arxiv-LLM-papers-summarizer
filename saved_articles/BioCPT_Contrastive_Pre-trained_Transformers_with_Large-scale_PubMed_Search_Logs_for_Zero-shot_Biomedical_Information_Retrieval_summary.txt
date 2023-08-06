@@ -1,0 +1,17 @@
+Summary:
+The paper presents BioCPT, a contrastively pre-trained transformer model for zero-shot biomedical information retrieval. The model is trained using an unprecedented scale of 255 million user click logs from PubMed. BioCPT outperforms various baselines, including larger models such as GPT-3-sized cpt-text-XL, on five biomedical information retrieval tasks. It also generates better biomedical article and sentence representations for semantic evaluations.
+
+Bullet points:
+1. BioCPT is a contrastively pre-trained transformer model for zero-shot biomedical information retrieval.
+2. The model is trained using 255 million user click logs from PubMed.
+3. BioCPT sets new state-of-the-art performance on five biomedical information retrieval tasks.
+4. It outperforms larger models such as GPT-3-sized cpt-text-XL.
+5. BioCPT generates better biomedical article and sentence representations for semantic evaluations.
+6. The model can be readily applied to various real-world biomedical information retrieval tasks.
+7. BioCPT improves retrieval performance compared to keyword-based search engines.
+8. It can enhance ranking algorithms for biomedical literature search.
+9. BioCPT is useful for similar article recommendation algorithms and sentence-level literature search.
+10. The model can provide retrieval augmentation for large language models.
+
+Keywords:
+BioCPT, biomedical information retrieval, transformer model, zero-shot learning, PubMed, user click logs, state-of-the-art performance, biomedical article representation, biomedical sentence representation, retrieval augmentation.

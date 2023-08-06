@@ -1,0 +1,377 @@
+TensorGPT: Efficient Compression of
+the Embedding Layer in LLMs based on
+the Tensor-Train Decomposition
+Mingxue Xu
+Department of Electrical and Electronic Engineering
+Imperial College London
+London, United Kingdom
+m.xu21@imperial.ac.uk
+Yao Lei Xu
+Department of Electrical and Electronic Engineering
+Imperial College London
+London, United Kingdom
+yao.xu15@imperial.ac.uk
+Danilo P. Mandic
+Department of Electrical and Electronic Engineering
+Imperial College London
+London, United Kingdom
+d.mandic@imperial.ac.uk
+Abstract
+High-dimensional token embeddings underpin Large Language Models (LLMs),
+as they can capture subtle semantic information and significantly enhance the
+modelling of complex language patterns. However, the associated high dimen-
+sionality also introduces considerable model parameters, and a prohibitively high
+model storage. To address this issue, this work proposes an approach based on the
+Tensor-Train Decomposition (TTD), where each token embedding is treated as a
+Matrix Product State (MPS) that can be efficiently computed in a distributed man-
+ner. The experimental results on GPT-2 demonstrate that, through our approach,
+the embedding layer can be compressed by a factor of up to 38.40 times, and when
+the compression factor is 3.31 times, even produced a better performance than the
+original GPT-2 model.
+1 Introduction
+Storage efficiency is currently prohibitive to unlocking the full potential of lightweight applications
+of Large Language Models (LLMs). For example, a well-known LLM, the Generative Pre-trained
+Transformer 2 (GPT-2) [2] has 1.5 billion parameters and requires significant disk space, making
+it prohibitive to be deployed on lower-end devices. One solution to improve storage efficiency,
+one solution is compressing the embedding layer, which often accounts for a large portion of the
+parameters. As shown in Figure 1, in GPT-2, the embedding layer takes up 31.02% of the parameters
+of the whole model; therefore, the compression of the embedding layer would substantially reduce
+the space complexity of LLMs and make them available in edge devices.
+Preprint. Under review.arXiv:2307.00526v1  [cs.CL]  2 Jul 2023Figure 1: The number of parameters of the layers in GPT-2.
+To this end, we propose to compress the embedding layer of LLMs through Tensor-Train Decom-
+position (TTD) [8] in order to store large embeddings in a low-rank tensor format, with much fewer
+parameters. This low-rank tensor format is also called TT-format or Matrix Product State (MPS) [9].
+Given the fact that in many applications the token vocabulary is ever-changing, we consider each
+individual token embedding (i.e. each row of the token embedding matrix) rather than taking the
+token embedding matrix as a whole. Benefiting from the super-compression properties of Tensor
+Networks (TNs), we tensorize and decompose each token embedding, and then construct a highly
+efficient format of embedding that can be computed efficiently through distributed computing.
+The proposed approach is evaluated on the GPT-2 model. The experiment results show that, using
+our approach, the embedding layers can indeed be compressed with a compression rate of up to
+38.40 times, and with a compression rate of 3.31 didn’t sacrifice model performance. As, due to the
+approximations involved, for the model performance change after compression, we considered the
+performance of our TensorGPT on the text reconstruction task, a basic text generation task where
+the GPT series models excel. We found that with the reconstructed embedding layer from the stored
+MPS, the overall performance of the GPT-2 even improved under certain TT rank settings, this is
+likely due to the over-parameterization of the original model.
+Our contributions are summarized as follows:
+• To our best knowledge, we are the first to utilize the Tensor-Train Decomposition (TTD)
+and Matrix Product State (MPS) to compress GPT series models.
+• A novel approach that treats each token embedding as a Matrix Product State is proposed,
+which is shown to be very flexible when the token embeddings are inserted or deleted, and
+also has the potential to be computed in a distributed manner.
+• A set of rigorous evaluation metrics is adopted to evaluate our approach. The experimental
+results show that our compression approach has satisfactory performance, while reducing
+the number of parameters by a factor of 2.31.
+2 Related Work
+Among the recent research on the compression of the embedding layers within LLMs tensor with
+decompositions, the closest to our approach is the work by [13], applied TTD to the embedding layer
+to reduce the space complexity of large language models. This was achieved by reshaping the em-
+bedding matrix into an order- 2Ntensor which was then decomposed and stored as a Matrix Product
+Operator. While this approach reduced the number of parameters significantly, the decomposition
+procedure had to be repeated on the entire embedding matrix every time a new token is added to the
+dictionary. To solve this issue, instead of decomposing and storing the embedding matrix directly,
+we propose an approach that decomposes and stores each row of the embedding matrix separately.
+This reduces the computation costs significantly, as the decomposition can be performed locally on
+every new token.
+Recent progress also includes the compression of the embedding table of a recommendation system
+in the work by [5], where the tensorized neural network is trained from scratch, yet our proposed
+approach operates on a pre-trained neural network without an extra training process. In another
+work [4], Block-Wise Low-Rank Approximation is used to compress very large scale ( „800k vo-
+cabulary) embeddings, where the embedding matrices are split into blocks according to the tokens,
+2and then each block is decomposed by SVD. Except for the difference in decomposition methods
+with our proposed approach, deciding how to reasonably bind certain tokens into blocks for a spe-
+cific vocabulary requires additional effort.
+3 Preliminaries
+This section gives brief mathematical preliminaries of tensor algebra, and basic knowledge in LLMs
+to facilitate the understanding of our proposed methodology in Section 4.
+3.1 Tensor and Tensor Operations
+Order-N Tensor. An order- Nreal-valued tensor is a multi-dimensional array, denoted by a cal-
+ligraphic font, e.g., APRI1ˆ¨¨¨ˆ IN, where Nis the order of the tensor (i.e., number of modes),
+andIn(1ďnďN) is the size (i.e., the dimension) of its n-th mode. Matrices (denoted by bold
+capital letters, e.g., APRI1ˆI2) can be seen as order- 2tensors ( N“2), vectors (denoted by bold
+lower-case letters, e.g., aPRI) can be seen as order-1 tensors ( N“1), and scalars (denoted by
+lower-case letters, e.g., aPR) are order- 0tensors ( N“0).
+Tensor Entries. Thepi1, . . . , i Nq-th entry of an order- Ntensor is denoted by ai1,¨¨¨,iNPR,
+where in“1, . . . , I nforn“1, . . . , N . A tensor fiber is a vector of tensor entries obtained
+by fixing all but one index of the original tensor (e.g., a:,i2,i3,...,iNPRI1). Similarly, a tensor
+slice is a matrix of tensor entries obtained by fixing all but two indices of the original tensor (e.g.,
+A:,:,i3,i4,...,iNPRI1ˆI2).
+Tensorization. A vector, aPRI1I2¨¨¨IN, can be tensorized (or folded) into an order- Ntensor,
+APRI1ˆI2ˆ¨¨¨ˆ IN, with the relation between their entries defined by
+Ari1, i2, . . . , i Ns“ai (1)
+for all 1ďinďIn, where i“1`řN
+n“1pin´1qśn´1
+k“1Ik.
+Matricization (Mode-n unfolding). Mode- nmatricization of a tensor, matpA, nq “AtnuP
+RInˆpI1¨¨¨In´1In`1¨¨¨INq, is a procedure of mapping the elements from a multidimensional array to a
+two-dimensional array (matrix). Conventionally, such procedure is associated with stacking mode- n
+fibers (modal vectors) as column vectors of the resulting matrix. For instance, the mode- 1unfolding
+ofAPRI1ˆI2ˆ¨¨¨ˆ INis represented as matpA,1q “At1uPRI1ˆpI2¨¨¨INq, where the subscript,
+t1u, denotes the mode of matricization, and is given by
+Ap1q„
+i1,i2i3. . . iNȷ
+“Ari1, i2, . . . , i Ns (2)
+Note that the overlined subscripts refer to to linear indexing (or Little-Endian) [10], given by:
+i1i2. . . iN“1`Nÿ
+n“1«
+pin´1qn´1ź
+n1“1In1ff
+“1`i1`pi2´1qI1`¨¨¨`p in´1qI1. . . I N´1(3)
+Vectorization. Given an order- Ntensor,APRI1ˆ¨¨¨ˆ IN, itsvectorization reshapes the multidi-
+mensional array into a large vector, vecpAq“¯ aPRI1¨¨¨IN.
+Tensor contraction. The contraction of an order- Ntensor,APRI1ˆ¨¨¨ˆ IN, and an order- M
+tensorBPRJ1ˆ¨¨¨ˆ JM, over the nthandmthmodes respectively, where In“Jm, results in CP
+RI1ˆ¨¨¨ˆ In´1ˆIn`1ˆ¨¨¨ˆ INˆJ1ˆ¨¨¨ˆ Jm´1ˆJm`1ˆJM, with entries
+ci1,...,in´1,in`1,...,iN,j1,...,jm´1,jm`1,...,jM“Inÿ
+in“1ai1,...,in´1,in,in`1,...,iNbj1,...,jm´1,in,jm`1,...,jM
+(4)
+3Ap2,1q-tensor contraction between two order- 2tensors, APRI1ˆI2andBPRJ1ˆJ2, where
+I2“J1, is equivalent to a standard matrix multiplication, C“Aˆ1
+2B“ABPRI1ˆJ2. Similarly,
+ap2,1q-tensor contraction between an order- 2tensor, APRI1ˆI2, and an order- 1tensor, bPRJ1,
+where I2“J1, is equivalent to a standard matrix-by-vector multiplication, c“Aˆ1
+2b“AbPRI1.
+3.2 Token, Token Embeddings and Embedding Layer in LLMs
+Token and Tokenization. In natural language processing (NLP), a token is a meaningful unit of
+text, such as a word, punctuation mark, or other element that contributes to the structure and meaning
+of a sentence or document. Tokens are produced through a process known as tokenization, which
+involves breaking down a piece of text into individual units. The GPT series models employ a widely
+used tokenization method named Byte Pair Encoding (BPE) [7]. The BPE breaks down text into
+varying-length subword units, and is particularly useful for languages with complex morphology or
+when dealing with out-of-vocabulary words.
+Token Embedding and Embedding Layer in LLMs. In the context of LLMs, “embedding”
+refers to converting discrete input tokens into continuous vector representations. These representa-
+tions are commonly known as word embeddings or token embeddings. In LLMs, the embedding
+layer is responsible for output token embeddings according to the sequential input tokens. This
+layer maps each input token to a high-dimensional vector that captures the semantic and syntactic
+information about the meaning and context of a token. Normally, an embedding layer considers a
+set of tokenstvuof size V(also known as “vocabulary”), where vrepresents a considered token.
+For each token v, a token embedding xvof dimension Dis assigned by the embedding layer, that
+is,xvPRD. The weights of the embedding layer are represented as an embedding weight matrix
+W, where WPRVˆD. In practice, if the token embedding dimension Dis excessively large, there
+would be excessive parameter complexity, resulting in high storage costs for the embedding layer,
+and thereafter high storage costs for the whole language model.
+Remark 1. The embedding weight matrix Wcan be seen as a lookup table. A basic embedding gen-
+eration finds the token embeddings corresponding to all the input tokens and stacks them according
+to the input order. It should be noted that in the current LLMs, such as GPT-like and BERT-like
+models, the position and mask information of the tokens are also encoded into the embeddings. In
+these cases, a token embedding xvis not merely generated via a lookup process.
+4 Methodology
+This section gives a brief introduction to the technical cornerstones that our approach relies on, and
+a detailed description of our proposed approach.
+4.1 Tensor-Train Decomposition (TTD) and Matrix Product State (MPS)
+Tensor-Train Decomposition [14, 8] was introduced to help mitigate the computational bottlenecks
+that arise from the curse of dimensionality, as tensor algorithms can become intractable for high-
+order tensors. The most common form of TT is the Matrix Product State (MPS or TT-MPS), in-
+troduced in the quantum physics community [11], which applies the Tensor-Train Singular Value
+Decomposition (TT-SVD) algorithm described in Algorithm 1 [12] to decomposes a large order- N
+tensor,XPRI1ˆI2ˆ¨¨¨ˆ IN, into Nsmaller 2-nd or 3-rd order core tensors, GpnqPRRn´1ˆInˆRn
+forn“1, . . . , N , such that
+X«Gp1qˆ1
+2Gp2qˆ1
+3Gp3qˆ1
+3¨¨¨ˆ1
+3GpNq(5)
+The tensors Gp1q, . . . ,GpNqare referred to as the core tensors, while the set tR0, . . . , R Nu, where
+R0“RN“1, represents the TT-rank of the TT decomposition. By defining Gpnq
+:,in,:,in“1, . . . , I N
+as the in-th horizontal slice of tensor Gpnq, the MPS assumes the element-wise form as
+xi1,i2,...,iN“Gp1q
+:,i1,:¨¨¨GpNq
+:,iN,: (6)
+4Algorithm 1: Tensor-Train Singular Value Decomposition (TT-SVD)
+Input : Data tensor, XPRI1ˆI2ˆ¨¨¨ˆ IN, and approximation accuracy, ϵ
+Output: Core tensors, Gp1q, . . . ,GpNq, approximating XPRI1ˆI2ˆ¨¨¨ˆ IN
+Initialize cores, Gp1q, . . . ,GpNq, and R0“1
+Compute truncation parameter δ“ϵ?N´1||X||F
+ZÐX, andZÐZp1q
+forn“1toN´1do
+Compute δ-truncated SVD: Z“USV`E,s.t.||E||Fďδ;UPRRpn´1qInˆRn
+GpnqÐreshape`
+U,rRpn´1q, In, Rns˘
+ZÐreshape´
+SVT,rRnIpn`1q, Ipn`2qIpn`3q. . . I Nsq¯
+GpNqÐZ
+return Gp1q,Gp2q, . . . ,GpNq
+4.2 MPS formatted Token Embedding
+As mentioned in Section 1 and Section 2, when the vocabulary changes, the tensor decomposition
+should be re-executed from scratch if the decomposition object is the whole embedding weight ma-
+trix. On the other hand, loading the whole embedding weight matrix into the memory and then de-
+composing also requires massive memory and computation resources. Using the notions in Section 3
+and Algorithm 1, decomposing a 2-order Wrequires roughly the computation cost of OpV D2q.
+Rather than decomposing the whole embedding weight matrix, we propose to decompose each token
+embedding. In this way, each token embedding is reshaped into an order- Ntensor, tenpxvq “
+XPRI1ˆ¨¨¨ˆ INsuch that D“śN
+k“1Ik, which is then decomposed and stored in Matrix Product
+State (MPS) form as X«Gp1qˆ1
+3¨¨¨ˆ1
+3GpNq. In other words, instead of storing the entire
+token embedding xPRD, we store the corresponding MPS cores, GpnqPRRn´1ˆInˆRn, for
+n“1, . . . , N .
+This approach has two advantages:
+1.Lower storage cost : The space complexity reduces from an original O`
+IN˘
+(exponential
+inN) toO`
+NR2I˘
+(linear in N), where Rn“RandIn“Ifor all n“1, . . . , N for
+simplicity;
+2.Affordable computation cost of TTD on resource-constrained nodes . Since token
+embeddings are decomposed individually, the decomposition of an individual token em-
+bedding or a small number of token embeddings can be offloaded to a single resource-
+constrained node (thread, process or device). On a single node , the computation cost is
+reduced from OpV D2qtoOpDq. Also considering the ever-changing vocabulary, this ap-
+proach has the potential to be deployed in a dynamic distributed system.
+Remark 2. The considered tensor embedding procedure is highly effective for a small rank tensor,
+R, small MPS dimension, I, and large tensor order N. In practice, the original vector embedding
+dimension can be chosen to be a power of 2in order to maximize the compression as D“IN“2N.
+Remark 3. In practice, the MPS is a low-rank approximation of the original embedding. However,
+the approximation error will tend to zero as the rank Rincreases. Therefore, the choice of the rank
+Rwill have to balance the trade-off between the compression power and the approximation ability.
+Remark 4. Without considering the position and mask information mentioned in Remark 1, the
+MPS token embedding approach can be directly used to accelerate the token embedding mapping
+and compress the stored embeddings. However, since the language models we discuss in this paper
+are typical LLMs containing position and mask encoding, we shall not consider the above two.
+5Table 1: Compression rate ηof the embedding layer, distortion error (MAE or norm-MAE) and
+the compatibility (Generation Loss) of the reconstructed embedding layer. All the results were
+implemented with the Tensor-Train Decomposition on the GPT-2 model and GLUE/MRPC dataset.
+For the text reconstruction task, the generation loss of the original model is 13.71, and regarding this,
+any setting where the generation loss is lower than 13.71 has better text generation performance than
+the original model. Decomposing embedding weight matrix Wdirectly with two cores achieves a
+higher compression rate than our approach; without a decline of generation loss, the compression
+rate can be up to 23.64 ˆ. However, our approach has advantages mentioned in Section 4.2, and
+achieves the best text reconstruction performance with the lowest generation loss of 9.01 among all
+the settings, when the compression rate is 3.31 ˆ.
+Methods TT cores’ ranksCompression
+Rate ηMAE of Layer
+ReconstructionEmbeddings
+norm-MAE
+(ˆ10´3)Generation
+Loss
+Original —- 13.71
+TTD
+weight
+matrix
+with
+2 cores
+(SVD)1,2,1 378.22ˆ 0.1209 2.115 20.17
+1,4,1 189.11ˆ 0.1079 2.260 22.00
+1,8,1 94.56ˆ 0.1014 2.401 16.70
+1,16,1 47.28ˆ 0.0989 2.481 14.70
+1,32,1 23.64ˆ 0.0917 2.311 10.14
+1,641,1 11.82ˆ 0.0848 2.113 10.13
+1,128,1 5.91ˆ 0.0794 1.848 10.65
+1,256,1 2.95ˆ 0.0690 1.500 12.74
+1,512,1 1.48ˆ 0.0458 1.012 9.82
+TTD
+for
+each
+token
+tenpxvq1,1,1,1,1,1,1,1,1,1,1 38.40ˆ 0.1120 2.573 20.77
+1,1,1,1,1,2,1,1,1,1,1 32.00ˆ 0.1119 3.063 20.88
+1,1,1,1,2,2,2,1,1,1,1 21.33ˆ 0.1115 2.957 27.81
+1,1,1,1,2,4,2,1,1,1,1 14.77ˆ 0.1113 2.864 28.60
+1,2,2,2,2,2,2,2,2,2,1 10.67ˆ 0.1090 2.695 19.40
+1,1,2,4,4,4,4,4,4,1,1 4.00ˆ 0.1054 2.628 22.63
+1,2,4,4,4,4,4,4,4,2,1 3.31ˆ 0.0995 2.574 9.01
+1,2,2,4,8,8,8,4,2,2,1 2.33ˆ 0.0965 2.549 51.24
+1,2,4,8,8,8,8,8,4,2,1 1.13ˆ 0.0744 0.883 39.88
+5 Experiment
+5.1 Dataset, Tokenization and Language Model
+The text dataset used for the experiments was a mixed version of General Language Understand-
+ing Evaluation (GLUE) [1] and Microsoft Research Paraphrase Corpus (MRPC) [3], with 11,602
+English sentences in total. For the tokenization, we chose the BPE mentioned in Section 3.2, since
+it is popular in GPT series models. The language model we used was the HuggingFace version of
+GPT-21, with an embedding weight matrix WPR50257ˆ768, where the vocabulary size Vis 50,257
+and the token embedding dimension Dis 768.
+5.2 Implementation
+The 2.12.0 version of TensorFlow was used for the GPT-2 model, while Tensorly [6], a Python
+package for tensor learning, was used to decompose the token embeddings and the embedding layer.
+According to Remark 2 and also to take advantage of the hierarchical structure and multiway inter-
+actions expressiveness of Tensor-Train Decomposition, we reshaped each token embedding xvinto
+a power of 2 format for tensorization, that is, ten2pxvq “XPR2ˆ2ˆ¨¨¨ˆ 2. The current token
+embedding dimension Dis 768, which cannot be factored into a power of 2. Therefore, we padded
+each token embedding with zeros to reach a length of 1024, which is the nearest power of 2 to 768
+and is a feasible dimension for ten2p¨q. Note that when Tensor-Train Decomposition is applied to
+decompose xv, and then to reconstruct xvback, the values of each token embedding xvfrom index
+768 to 1,024 are almost zeros.
+1https://huggingface.co/gpt2
+65.3 Evaluation Metrics
+Compression Rate. We used the embedding layer compression ratio to describe the degree of size
+reduction and efficiency in embedding layer storage. More mathematically, the compression rate η
+is the ratio of the original embedding layer size to the sum of the size of the compressed token.
+η“VˆD
+řV
+j“1řN
+k“1|Gpkq
+j|(7)
+whereGpkq
+jdenotes the kth tensor core of the jth token after decomposing each token embedding
+xjin the embedding layer weight matrix W.
+Distortion Error. The distortion metrics were used to describe the compression fidelity, that is,
+the similarity between the original embedding layer weights and reconstructed embedding layer
+weights, or the original reconstructed token embeddings and reconstructed token embeddings. Con-
+sidering the inference process of the embedding layer, the distortion metrics were first calculated
+sentence by sentence and then derived from the average. There are two kinds of distortion measure-
+ments of the embedding weight matrix and token embeddings:
+•Mean absolute error (MAE) for the embedding weight matrix reconstruction : We used
+MAE to measure the difference between the original embedding layer weight matrix and
+the reconstructed embedding layer weight matrix. A lower MAE suggests that the com-
+pressed embedding layer weights closely resemble the original embedding layer weights,
+indicating a higher level of fidelity in the compression process.
+•Normalized mean absolute error (norm-MAE) for the token embeddings : The token em-
+bedding values vary from minus several hundred to several hundred, and to align them for
+easier comparison like embedding weight matrix, we used the normalized mean absolute
+error. The norm-MAE is the ratio of mean absolute error and the difference between the
+maximum and minimum values of original embeddings. Similar to MAE for the embed-
+ding weight matrix, a lower norm-MAE indicates a higher compression fidelity.
+Compatibility with the subsequent GPT-2 network blocks. The primary function of GPT-like
+models is natural language generation. We here conducted a text reconstruction task to verify if
+the reconstructed embedding layer can collaborate effectively with the subsequent GPT-2 network
+blocks for natural language generation. The purpose of this task was to reconstruct the original
+input data from the encoded representation in the embedding layer and the subsequent network
+blocks, similar to an autoencoder. This part serves as a sanity check for the stored information in the
+reconstructed embedding layer, and causes evaluation via text generation loss of the GPT-2 model.
+5.4 Experiment Results
+All the evaluation metrics described in Section 5.3 on the dataset GLUE/MRPC are shown in Table 1.
+There are two approaches tested for a comprehensive analysis - our proposed approach introduced
+in Section 4, and the approach of directly decomposing the embedding weight matrix Winto two
+TT cores. The latter is actually equivalent to performing tensor SVD.
+As the ranks of TT cores increase, both approaches exhibit a decrease in compression rate, fidelity of
+embedding layer reconstruction (MAE), and fidelity of reproduced token embeddings (norm-MAE).
+There is no apparent decline or increase in the text generation loss, possibly because this metric is
+highly dependent on the dataset itself. In all settings, the lowest text generation loss was 9.01, which
+was achieved by our approach when the TT ranks were 1,2,4,4,4,4,4,4,1,1.
+5.5 Discussion
+We visualized the MAE for the reconstruction of embedding weight matrix Win Figure 2. For
+better visualization, we folded the dimension that represents the vocabulary index into a reasonable
+matrix shape. In Figure 2, the lighter colour indicates a lower MAE, and the darker colour indicates
+a higher MAE.
+7Figure 2: Visualization of the reconstruction distortion error (MAE) for the GPT-2 embedding
+weight matrix W. In each heatmap, a point with location index pj, pqwith lighter colors than other
+points indicates a more accurate reconstruction at this point than the other points, while with darker
+colour means less accurate reconstruction, where j“1, . . . , V andp“1, . . . , D . For better visu-
+alization, we reshaped Wfrom the shape of 50257ˆ768to25128ˆ1536 , with a sacrifice of one
+token embedding to enable reshaping.
+From the visualization, since the change of colour shading is not stable, it can be inferred that the
+decrease in compression fidelity does not decrease smoothly as the TT ranks increase, even for SVD.
+As for the decomposition of each token embedding, we can identify specific areas where the light
+(lower MAE) lines consistently appear, suggesting that some dimensions of the token embeddings
+are more precise in reconstruction. These dimensions may have the potential for further compres-
+sion.
+6 Conclusion and Future Work
+In the context of Large Language Models (LLMs), this study has suggested a compression approach
+for the embedding layer. The approach has constructed a power-2 tensor Matrix Product State (MPS)
+format for each token embedding in the embedding weight matrix, followed by the further applica-
+tion of the Tensor-Train Decomposition (TTD). This approach has demonstrated the advantages of
+adaptability to the ever-changing vocabulary and in a distributed manner, together with the compres-
+sion of GPT-2 and has achieved a 3.31 ˆcompression rate with an improved model performance in
+the text reconstruction task.
+The superiority of Matrix Product State has not been not fully explored in our current implemen-
+tation. An unsolved problem is the integration of MPS into the computation process of token em-
+beddings within other encoded information (e.g. position or mask encodings) in LLMs, so that the
+LLMs can run faster, and be able to be deployed on lower-end devices. Furthermore, if the generated
+token embeddings are also formatted by MPS, the embedding generation process might be lighter
+and easier to store as well.
+8

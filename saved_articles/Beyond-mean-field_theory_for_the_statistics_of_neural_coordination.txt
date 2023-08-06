@@ -1,0 +1,2204 @@
+Beyond-mean-field theory for the statistics of neuronal coordination
+Moritz Layer,1, 2Moritz Helias,1, 3and David Dahmen1,∗
+1Institute of Neuroscience and Medicine (INM-6) and Institute for Advanced Simulation (IAS-6) and
+JARA-Institute Brain Structure-Function Relationships (INM-10), Jülich Research Centre, Jülich, Germany
+2RWTH Aachen University, Aachen, Germany
+3Department of Physics, Faculty 1, RWTH Aachen University, Aachen, Germany
+(Dated: August 2, 2023)
+Understanding the coordination structure of neurons in neuronal networks is essential for unravel-
+ing the distributed information processing mechanisms in brain networks. Recent advancements in
+measurement techniques have resulted in an increasing amount of data on neural activities recorded
+in parallel, revealing largely heterogeneous correlation patterns across neurons. Yet, the mechanis-
+tic origin of this heterogeneity is largely unknown because existing theoretical approaches linking
+structure and dynamics in neural circuits are mostly restricted to average connection patterns.
+Here we present a systematic inclusion of variability in network connectivity via tools from statisti-
+cal physics of disordered systems. We study networks of spiking leaky integrate-and-fire neurons and
+employ mean-field and linear-response methods to map the spiking networks to linear rate models
+with an equivalent neuron-resolved correlation structure. The latter models can be formulated in
+a field-theoretic language that allows using disorder-average and replica techniques to systemati-
+cally derive quantitatively matching beyond-mean-field predictions for the mean and variance of
+cross-covariances as functions of the average and variability of connection patterns. We show that
+heterogeneity in covariances is not a result of variability in single-neuron firing statistics but stems
+from the sparse realization and variable strength of connections, as ubiquitously observed in brain
+networks. Average correlations between neurons are found to be insensitive to the level of hetero-
+geneity, which in contrast modulates the variability of covariances across many orders of magnitude,
+giving rise to an efficient tuning of the complexity of coordination patterns in neuronal circuits.
+I. INTRODUCTION
+Neuronal networks in the brain display largely hetero-
+geneousactivity: commonobservablessuchasfiringrates
+[1–3], coefficients of variation (CVs) [4], and pair-wise
+correlations [5–8] are widely distributed across neurons.
+This has important implications for coding and infor-
+mation processing in the brain, as the coordinated ac-
+tivity across the enormous number of units in neuronal
+circuits is thought to underlie all complex functions [9–
+11]. The causes of heterogeneity in neuronal dynamics
+are diverse: intrinsic neuronal properties, external in-
+puts, and the network connectivity itself are all sources
+of variability. While these structural and dynamic het-
+erogeneities can be readily observed with modern exper-
+imental techniques, understanding their mechanistic re-
+lations requires theoretical tools that are currently still
+lacking.
+In this study, we focus on the effects of connectivity
+and investigate the influence of heterogeneity in connec-
+tions on the activity of networks of identical neurons re-
+ceiving homogeneous external input. Previous work [12]
+has shown that a considerable fraction of the variance, in
+the distribution of firing rates across neurons and in the
+coefficient of variation (CV) of individual neurons’ spike
+trains, in such networks can already be explained by the
+distributed number of inputs the neurons in a network
+receive. In this study, we go beyond single neuron activ-
+ities and focus on the statistics of pair-wise correlations
+and the related covariances, which measure how stronglythe activities of pairs of neurons co-fluctuate. Such co-
+ordination builds the basis for collective network activity
+and function.
+With the exception of small organisms such as C. el-
+egans [13], the microconnectome of most biological neu-
+ronal networks is unknown. However, overall connectiv-
+ity properties and statistics, like the connection probabil-
+itiesbetweendifferentcorticalareas[14,15]andcelltypes
+[16], the distance-dependence of connections [16, 17], or
+the statistics of synaptic strengths [16, 18–23] are avail-
+able nowadays. Hence, rather than a one-to-one relation
+between microconnectome and pair-wise covariances [24–
+29], a relation between connectivity and covariance on a
+statistical level would readily allow the inclusion of this
+knowledge. To derive such a relation, common popu-
+lation level theories [24, 30–34] cannot be used because
+they can only describe population averaged observables
+and, in particular, do not capture heterogeneity in co-
+variances within populations. Here, we instead employ
+mean-field theory on the single neuron level [27], which
+we systematically compare to network simulations, and
+we go beyond mean-field theory by including non-trivial
+fluctuation terms to obtain the statistics of covariances
+between individual neuron pairs.
+The main difficulty of a single-neuron level approach is
+that the predictions of the theory for individual neurons
+stronglydependonthespecificdetailsoftheconnectivity.
+Togetadescriptiononthelevelofconnectivitystatistics,
+we perform a disorder average, a technique originally de-
+veloped for spin-glass systems [35, 36] that allows retain-arXiv:2308.00421v1  [cond-mat.dis-nn]  1 Aug 20232
+1.00 1.25 1.50 1.75 2.00
+time (s)0
+10
+20neuron id(a) spikes
+22 24 26 28
+rate (Hz)0.00.20.4density(b)
+I
+E
+1.16 1.18 1.20 1.22
+CV02040(c)
+I
+E
+30.0 32.5 35.0 37.5 40.0
+variance (Hz2)0.00.10.20.3density(d)
+I
+E
+2
+ 0 2
+covariance (Hz2)0.000.250.500.75(e)
+II
+EI
+EE
+0.10
+ 0.05
+ 0.00 0.05
+correlation0102030(f)
+II
+EI
+EE
+Figure 1. Simulation of excitatory-inhibitory (E-I) network of leaky integrate-and-fire (LIF) neurons. (a) Spike trains of a
+sample of 20 excitatory (E, blue) and 5 inhibitory (I, red) neurons. (b) Distributions of firing rates. (c) Distributions of
+coefficients of variation (CVs). (d) Distributions of variances of spike counts measured in time bins of 1s(cf. Eq. (7)). (e)
+Distributions of spike-count covariances for different pairings of neurons. (f) Distributions of spike-count correlation coefficients
+for different pairings of neurons. For model details and simulation parameters see Appendix A for spectral radius r=0.49.
+ing information about the connectivity statistics while
+averaging over the realization randomness. As our main
+results, we show how to systematically calculate higher
+moments of neuronal activity averaged over the disorder
+in the connectivity using replica and beyond-mean-field
+theory, and we use this technique to derive a relation
+between the mean and variance of covariances and the
+mean and variance of the network connectivity. First re-
+sults based on a similar but reduced theoretical approach
+have already been successfully applied in the neurosci-
+entific context to infer the dynamical regime of cortical
+networks [7] and to explain spatial properties of coordi-
+nation structures [8] and dimensionality [37].
+Tosummarize, weinvestigatetheoriginofneuronalco-
+ordination structures, as experimentally observed across
+various species and cortical areas, by analyzing covari-
+ances in a prototypical network model of cortical dy-
+namics [38], namely sparsely connected excitatory and
+inhibitoryneuronsthatoperateinthebalancedstate[31].
+In this model, all neurons have identical parameters and
+receive homogeneous, uncorrelated external input. As in
+biologicalcorticalnetworks, thesparsityintheconnectiv-
+ity between neurons [16], as well as the wide distribution
+in synaptic amplitudes [16, 18–23] constitute the source
+of variability in connections and thereby the dynamics:
+Rates, CVs, variances, covariances, and hence correlation
+coefficients are all described by distributions with sizablevariance (see Fig. 1).
+The following sections investigate the sources of the
+variance in these quantities. Section II introduces mean-
+field theory on the single neuron level. In Section III,
+we derive the main results on how to compute disorder-
+averaged moments of neuronal activity, and we calculate
+explicit expressions for the mean and variance of covari-
+ances. In Section IV, we discuss our findings and their
+limitations in the context of the existing literature.
+II. BACKGROUND: LINEAR-RESPONSE
+THEORY OF SPIKING NEURONAL NETWORKS
+ON A SINGLE-NEURON LEVEL
+To understand the origin of the distribution of covari-
+ances, we start with analyzing a simulated network on a
+single-neuron level. The network comprises 8000excita-
+tory (E) and 2000inhibitory (I) leaky integrate-and-fire
+(LIF) neurons with instantaneous synapses [39, 40] and
+with random sparse connectivity J(without self connec-
+tions and prohibiting multiple connections between the
+same pair of neurons), with 10 %realized connections
+(fixed indegree per neuron) and normally distributed
+synaptic weights jE∝N(j,0.2⋅j),jI∝N(gj,0.2⋅j),
+with g=−6(detailed parameters in Appendix A).
+Working point Given the parameters of the simulated
+network of leaky integrate-and-fire neurons, especially3
+the specific realization of the connectivity matrix J, we
+determine the stationary working point , comprising the
+input statistics (µ,σ)and the firing rates ν, as done by
+Brunel and Hakim [41] and Brunel [38]. To this end,
+we first neglect correlations between the neurons and ap-
+proximate the neurons’ inputs as independent Gaussian
+white noise processes. In this diffusion approximation ,
+the mean input µiand input variance σ2
+iof neuron iare
+given by
+µi=τm⎛
+⎝∑
+jJijνj+jνext,E+gjνext,I+Iext
+C⎞
+⎠,(1)
+σ2
+i=τm⎛
+⎝∑
+jJ2
+ijνj+j2νext,E+g2j2νext,I⎞
+⎠,(2)
+withmembranetimeconstant τm, membranecapacitance
+C, constant input current Iext, and excitatory and in-
+hibitoryexternalPoissonnoisewithrates νext,Eandνext,I
+which are fed into the system via weights jandgj, re-
+spectively. The firing rates are given by the Siegert func-
+tion [42]
+νi={τr+τm√π∫yth,i
+yr,ids f(s)}−1
+,(3)
+f(s)=es2[1+erf(s)],
+with refractory period τr, and rescaled reset and thresh-
+old voltages
+yr,i=Vr−µi
+σi, y th,i=Vth−µi
+σi.
+These equations can be solved iteratively in a self-
+consistent manner. Given the working point, we can de-
+termine the coefficients of variation using [38, Appendix
+A.1, note that they use different units]
+CV2
+i=2π(τmνi)2∫yth,i
+yr,idxex2
+∫x
+−∞dzez2[1+erf(z)]2.
+(4)
+Linearization The full dynamics of LIF neurons
+are non-linear. However, as covariances measure co-
+fluctuations of neurons around their working points, we
+can study covariances by analyzing linearized dynamics
+as long as the fluctuations are sufficiently small. Gryt-
+skyyet al.[28, Section 5] show that a network of LIF
+neurons can be mapped to a linear rate model with out-
+put noise
+xi(t)=∫t
+−∞h(t−t′)∑
+jWij[xj(t′−d)+ξj(t′−d)]dt′,
+(5)
+with neuronal activity xi(t), normalized linear response
+kernel h(t), synaptic delay d, and uncorrelated Gaussian
+white noise ξi(t),⟨ξi⟩=0,⟨ξi(s)ξj(t)⟩=Dijδ(s−t),
+with diagonal noise strength matrix Dij=δijDii. Thematrix W, referred to as effective connectivity , combines
+the connectivity matrix Jwith the sensitivity of neurons
+to small fluctuations in their input. It is formally given
+by the derivative of the stationary firing rate of neuron i
+Eq. (3) with respect to the firing rate of neuron jevalu-
+ated at the stationary working point [43, Appendix A]
+Wij=∂νi
+∂νj=αiJij+βiJ2
+ij, (6)
+with
+αi=√π(τmνi)21
+σi[f(yth,i)−f(yr,i)],
+βi=√π(τmνi)21
+2σ2
+i[f(yth,i)yth,i−f(yr,i)yr,i].
+Spike-count covariances In this study we are inter-
+ested in spike-count covariances in spiking networks
+Cij=1
+T(⟨ninj⟩−⟨ni⟩⟨nj⟩), (7)
+with spike counts nioccurring within bins of size T,
+where the average is taken across all bins. As shown
+in Dahmen et al.[7, Materials and Methods], for station-
+ary processes and large bin sizes spike-count covariances
+Cijcan be mapped to the time-lag integrated covariances
+cij(τ)between spike trains of neurons iandj(see also
+44, 45, for more details on definitions of covariances see
+Appendix B)
+CijT→∞→∫∞
+−∞cij(τ)dτ .
+In the following the term covariance always refers to Cij.
+Making use of the Wiener-Khinchin theorem (C) allows
+expressing the time-lag integrated covariances in terms
+of the neuronal activities’ Fourier components Xi(ω)at
+frequency zero
+Cij=⟨Xi(0)Xj(0)⟩, (8)
+which can be evaluated by Fourier transforming Eq. (5),
+yielding
+C=(1−W)−1D(1−W)−T. (9)
+For calculating the covariances, we therefore only need
+the effective connectivity Wand the noise strength D.
+The correlation coefficients follow as
+κij=Cij√
+CiiCjj.
+To estimate the noise strength D, we assume that the
+spike trains are described sufficiently well as renewal pro-
+cesses for which the variances are given by [46]
+Cii=CV2
+iνi. (10)4
+Using that Dis diagonal, we can solve Eq. (9) for D,
+which results in
+Dii=∑
+j(B−1)ijCV2
+jνj, (11)
+with
+Bij=[(1−W)−1]2
+ij. (12)
+The above expressions can be combined to compute
+theoretical estimates of the quantities measured in the
+simulation. To solve the self-consistency equations for
+the firing rates and to compute the covariances, we make
+use of the python package NNMT [47], which includes
+optimized implementations of the equations introduced
+above. A comparison of theoretical and simulation re-
+sults is shown in Fig. 2. For the chosen parameters, sim-
+ulation and theory correlate strongly, and the theory ap-
+pears to capture the primary sources of heterogeneity in
+the rates, covariances, and correlation coefficients. Note
+that such a good match between theory and simulation
+can not be observed in all parameter regimes of the spik-
+ing network; the validity of the assumptions made and
+the resulting theoretical estimates depend on the net-
+work state (see Appendix D for further discussion on
+valid parameter regimes). Fig. 2 also reveals some unex-
+plained variance, particularly pronounced in the covari-
+ances and correlations. This variance is the result of the
+finite simulation time and the associated uncertainty in
+the estimated covariances. As we show in Appendix K,
+the covariance estimate bias can be significant and it can
+only be corrected for on a statistical level rather than
+for individual covariances. Focusing on the statistics of
+covariances, however, has further advantages: For realis-
+tic network sizes, Eq. (9) is a high-dimensional equation
+that depends on each and every connection in the net-
+work. Understanding general mechanisms relating net-
+work structure and dynamics is therefore difficult. The
+covariance statistics instead summarize the most impor-
+tant aspects of covariances and, for large neuron popu-
+lations, can be assumed to be self-averaging [36, 48, 49],
+whichmakesthemlessdependentonconnectivitydetails.
+Second, Eq. (9) cannot be used for inference based on
+experimentally measured parameters because as of yet it
+is neither possible to determine the effective connectivity
+norcovariancesofallneuronsinanetwork. Andlastly, as
+stated above, we will demonstrate that covariance statis-
+tics are more robust measures than single-neuron covari-
+ances, both with respect to finite measurements as well
+as to the assumptions made in the derivation above.
+III. STATISTICAL DESCRIPTION OF
+COVARIANCES
+The expression (9) reveals that the statistics of the
+covariances C, in particular their heterogeneity, is deter-mined by the statistics and heterogeneity of the effective
+connectivity matrix Wand the external noise strength
+D. Our aim here is to derive a description of the cross-
+covariance statistics in terms of the statistics of Wand
+D. To this end, we derive analytical expressions for the
+mean and the variance of the time-lag integrated cross-
+covariances averaged over the heterogeneities of the sys-
+tem.
+To do this, simply averaging Eq. (9) is not feasible
+due to Wappearing in the inverse matrix (1−W)−1.
+Performing an average over a random connectivity is,
+however, a well known problem in the theory of disor-
+dered systems [36, 48, 50, 51], where it is handled on the
+level of generating functions. To proceed analogously,
+we start with Eq. (8), which expresses the covariances in
+terms of the moments of the dynamic variables’ Fourier
+components at frequency zero. This allows us to write
+the covariances in terms of the moment-generating func-
+tionZ(J)of the zero-frequency Fourier components Xi
+of the dynamical equation (5) (see Appendix E for more
+details):
+Cij=⟨XiXj⟩=∂
+∂Ji∂
+∂JjZ(J)∣
+J=0,
+with
+Z(J)=̃Z(J)
+̃Z(0)(13)
+=∣det(1−W)∣∫DX∫D̃X
+×exp[̃XT(1−W)X+1
+2̃XTD̃X+JTX],
+and̃Z(0)−1=∣det(1−W)∣. Here, ̃Xare auxiliary vari-
+ables that can be used to calculate the response function
+⟨XĩXj⟩of neuron ito a perturbation of neuron jby in-
+troducing additional sources ̃Jin the moment-generating
+function (see Appendix E). Equation (13) shows that
+calculating the disorder-average of the covariances boils
+down to calculating the disorder-average of the moment-
+generating function. In the following two sections, we
+use this approach to calculate the mean of the cross-
+covariances ⟨C⟩W,Dandsubsequentlythevarianceofthe
+cross-covariances ⟨δC2⟩W,D.
+A. Mean of cross-covariances
+Disorder average We begin with the mean cross-
+covariances, focusing first on the average over the en-
+semble of connectivities. In the moment generating
+function Eq. (13), Woccurs linearly in the exponent
+of̃Z(J), which is advantageous for performing the
+disorder-average. However, the averaging procedure is
+complicated by two aspects: 1) Wcontributes to the5
+20 25 30
+simulation20222426283032theory
+=0.98
+(a)rate
+E
+I
+4
+ 2
+ 0 2
+simulation4
+2
+02
+=0.69
+(b)covariance
+EE
+EI
+II
+0.1
+ 0.0
+simulation0.10
+0.05
+0.000.05
+=0.69
+(c)correlation
+EE
+EI
+II
+Figure 2. Simulation results and theoretical estimates for E-I network of LIF neurons. Here ρdenotes the Pearson correlation
+coefficient. (a) Firing rates ν. (b) Covariances C. (c) Correlation coefficients κ. For model details and simulation parameters
+see A for spectral radius r=0.49.
+noise strength Dthrough the variance-rescaling matrix
+B−1, and 2) the normalization ̃Z(0)depends on W.
+However, as illustrated in Fig. 3, in practice the first
+point does not appear to be a problem: Panel a indi-
+cates that the specifics of Dare largely determined by
+the details of the variances CV2ν, because a different re-
+alization of Wessentially yields a similar D, and Panel
+b suggests that the effect of the disorder-average on D
+is minimal. For these reasons, we treat Das though
+it was independent of the explicit realization of W. To
+address the second point, an alternative approach based
+on the moment-generating functional for the full time-
+dependent dynamics (see Appendix E) could be utilized.
+This moment-generating functional has a unit determi-
+nantnormalizationindependentof W[52]. Thedisorder-
+average of its frequency space complement, however, in-
+troduces cross-frequency couplings that complicate the
+further analysis. Here, instead, we follow Dahmen et al.
+[7], and separate the averages over ̃Z(J)and̃Z(0)
+⟨Z(J)⟩W=⟨̃Z(J)
+̃Z(0)⟩
+W≈⟨̃Z(J)⟩W
+⟨̃Z(0)⟩W,(14)
+as we find that this factorization approach does yield ac-
+curate results. This leaves us with the task of calculating
+⟨̃Z(J)⟩W.
+The disorder-average only affects the coupling term
+and can be expressed using the moment-generating func-
+tions ϕijofWij
+⟨exp(−̃XTWX)⟩
+W=⟨∏
+i,jexp(−Wij̃XiXj)⟩
+W
+=∏
+i,jϕij(−̃XiXj),
+assuming independently drawn weights Wij∼pij(Wij).
+The moment-generating function can be written in termsofacumulantexpansion ϕij(X)=exp(∑∞
+k=1κk,ijXk/k!),
+with k-th cumulants κk,ij. For fixed connection proba-
+bility, the number of inputs to a neuron scales with the
+network size N. To keep the input and its fluctuations fi-
+nitewhenincreasingthenetworksize,werequiresynaptic
+weights to scale with 1/√
+N[31, 53], such that the cumu-
+lant expansion is an expansion in 1/√
+N. A truncation
+at the second cumulant ( ∝N−1) maps Wto a Gaussian
+connectivity with distribution N(M,∆/N), such that
+⟨̃Z(J)⟩W=∫DX∫D̃X (15)
+×exp[S0(X,̃X)+JTX]
+×exp⎡⎢⎢⎢⎣1
+2N∑
+i,j∆ij̃XĩXiXjXj⎤⎥⎥⎥⎦,(16)
+with
+S0(X,̃X)=̃XT(1−M)X+1
+2̃XTD̃X,
+and mean connection weights Mij=O(1/√
+N)as well as
+variances ∆ij=O(1).
+Auxiliary field formulation To deal with the four-
+point coupling term in Eq. (15), we define auxiliary vari-
+ables Qi∶=1
+N∑j∆ijXjXj, which we formally introduce
+by inserting an identity in the form of a Fourier trans-
+formed delta distribution
+1=∏
+i∫dQiδ⎛
+⎝1
+N∑
+j∆ijXjXj−Qi⎞
+⎠
+=∏
+iN∫∞
+−∞dQi∫i∞
+−i∞d̃Qi
+2πi
+×exp⎡⎢⎢⎢⎢⎣̃Qi⎛
+⎝∑
+j∆ijXjXj−NQi⎞
+⎠⎤⎥⎥⎥⎥⎦.6
+25 30 35 40
+D=B1(W)CV2
+25303540(a)
+CV2
+B1(Wnew)CV2
+25 30 35 40
+D=B1(W)CV2
+25303540(b)
+CV2
+B1(W)WCV2
+Figure 3. Effect of averaging noise strength over disorder in
+Wandeffectofapplying B−1onvariances. (a)Noisestrength
+computedusingtheproceduredescribedabove( noise strength
+in the following) vs. noise strength computed using a new
+realization of W(dark gray), and noise strength vs. variances
+(light gray). (b) Noise strength vs. noise strength computed
+using an average over 100realizations of W(dark gray) and
+noise strength vs. variances (light gray). Spectral radius r=
+0.49.
+The auxiliary variables ̃Qihave been introduced to ex-
+press the delta distribution as an integral. This leadsto
+⟨̃Z(J)⟩W=∫DQ∫D̃Qexp(−NQT̃Q) (17)
+×∫DX∫D̃Xexp[SQ,̃Q(X,̃X)+JTX]
+⌟⟨⟨⟪rl⟫l⟩⟩⟪⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟨⟨⟪rl⟫m⟩⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟨⟨⟪rl⟫r⟩⟩⟩⟪
+=∶̃ZQ,̃Q(J),
+SQ,̃Q(X,̃X)=̃XT(1−M)X
++1
+2̃XT[D+diag(Q)]̃X
++XTdiag(̃QT∆)X. (18)
+Here diag(Q)ijrefers to a diagonal matrix with diagonal
+elements Qi. As the action SQ,̃Q(X,̃X)at fixed auxil-
+iary variables describes an auxiliary free theory, Eq. (17)
+describes the activity of linear rate neurons in a net-
+work with disorder-averaged connectivity Mthat inter-
+act with fluctuating external variables Qand̃Q. Insert-
+ing Eq. (17) into Eq. (14) yields
+⟨Z(J)⟩W=∫DQ∫D̃Q̃ZQ,̃Q(J)
+̃ZQ,̃Q(0)
+×exp(−NQT̃Q)̃ZQ,̃Q(0)
+∫DP∫D̃Pexp(−NPT̃P)̃ZP,̃P(0)
+=∶∫DQ∫D̃Qp(Q,̃Q)ZQ,̃Q(J),
+with joint probability distribution
+p(Q,̃Q)=exp(−S(Q,̃Q))
+∫DP∫D̃Pexp(−S(P,̃P)),
+S(Q,̃Q)=NQT̃Q−ln[̃ZQ,̃Q(0)], (19)
+and properly normalized moment generating function
+ZQ,̃Q(J)=̃ZQ,̃Q(J)/̃ZQ,̃Q(0). These equations im-
+ply that the disorder-average of arbitrary moments
+⟨Xi1. . . X ik⟩can be calculated by determining the corre-
+sponding moments ⟨Xi1. . . X ik⟩Q,̃Qwith respect to the
+auxiliary free theory and averaging them over the auxil-
+iary variables
+⟨⟨Xi1. . . X ik⟩⟩W=∫DQ∫D̃Q (20)
+×p(Q,˜Q)⟨Xi1. . . X ik⟩Q,̃Q,
+⟨Xi1. . . X ik⟩Q,̃Q=∂
+∂Ji1. . .∂
+∂JikZQ,̃Q(J)∣
+J=0.
+Saddle-point approximation Due to the prefactor N
+in Eq. (19) and the scalar products in ̃ZQ,̃Q(0)with
+Ncontributions, we expect p(Q,̃Q)to peak sharply
+forN→∞, such that we can perform a saddle-point
+approximation. To lowest order, we expect p(Q,̃Q)≈7
+δ(Q−Q∗)δ(̃Q−̃Q∗), with the saddle-point Q∗,̃Q∗de-
+termined by
+∂
+∂̃QiS(Q,̃Q)∣
+Q∗,̃Q∗=0,∂
+∂QiS(Q,̃Q)∣
+Q∗,̃Q∗=0,
+which yields
+Q∗
+i=1
+N∑
+j∆ij⟨XjXj⟩Q∗,̃Q∗, (21)
+̃Q∗
+i=1
+2N⟨̃XĩXi⟩Q∗,̃Q∗,
+with second moments evaluated at the saddle-point.
+The moments can be calculated explicitly by solving
+the Gaussian integrals (see Appendix F). Using the
+shorthand R∶=(1−M)−1, we find ⟨XiXj⟩Q∗,̃Q∗=
+{R[D+diag(Q∗)]RT}ijand⟨̃XĩXi⟩Q∗,̃Q∗=0, and
+solving for the saddle point yields
+Q∗
+i=1
+N∑
+j,k,l,m(1−1
+N∆⋅(R⊙R))−1
+ij∆jkRklDlmRkm,
+̃Q∗
+i=0,
+with⊙denoting the element-wise (Hadamard) product.
+Finally, making use of the Wiener-Khinchin theorem
+Eq. (38) and inserting the solution of the saddle-point
+equations into Eq. (20) yields the mean covariances av-
+eraged across the disorder of the connectivity
+⟨C⟩W=⟨XXT⟩Q∗,̃Q∗
+=(1−M)−1[D+diag(Q∗)](1−M)−T.
+Averaging over the disorder in Dthen yields
+⟨C⟩W,D (22)
+=(1−M)−1{D+diag[Q∗(D=D)]}(1−M)−T.
+HereDdenotes the disorder-averaged noise strength (cf.
+Fig. 3b and discussion after Eq. (31)). Note that the
+saddle point Q∗(D=D)together with Dyields an ef-
+fective noise strength which shifts average variances and
+covariances. Importantly, it is only the heterogeneity
+in the connectivity Wthat causes this shift. Average
+covariances are insensitive to heterogeneity in the noise
+strengths D; they only depend on the average D.
+B. Variance of cross-covariances
+Replica method Calculating the variances of covari-
+ances across the ensemble of possible network connectiv-
+ities
+⟨δC2⟩W=⟨C⊙C⟩W−⟨C⟩W⊙⟨C⟩W(23)requires making use of the replica method [36, 54]
+and deriving an expression for the disorder-averaged
+moment-generating function of the replicated system
+⟨Z(J)Z(K)⟩W, as this allows calculating disorder av-
+erages of arbitrary squared moments ⟨⟨Xi1. . . X ik⟩2⟩
+W,
+which occur in the first term in Eq. (23). The proce-
+dure is completely analogous to the previous section’s
+derivations. However, the disorder-average now affects
+the term
+⟨exp(̃XTWX+̃YTWY)⟩
+W
+=∏
+i,jexp⎡⎢⎢⎢⎢⎣∞
+∑
+k=1κk,ij
+k!(̃XiXj+̃YiYj)k⎤⎥⎥⎥⎥⎦,
+where XandYrefer to the activity in the first and
+second replicon, respectively. A cumulant expansion up
+to second order introduces — along four-point couplings
+separately in XandYsimilar to the one in Eq. (15) —
+a replica coupling term
+exp⎛
+⎝1
+N∑
+ij∆ij̃XĩYiXjYj⎞
+⎠.
+To deal with the four-point couplings, we again introduce
+auxiliary variables
+QXX,i=1
+N∑
+j∆ijXjXj,
+QY Y,i=1
+N∑
+j∆ijYjYj,
+QXY,i=1
+N∑
+j∆ijXjYj,
+and obtain a relation similar to Eq. (20),
+⟨⟨Xi1. . . X ik⟩2⟩
+W=∫DQ∫D̃Q (24)
+×p(Q,̃Q)⟨Xi1. . . X ikYi1. . . Y ik⟩Q,̃Q,
+⟨Xi1. . . X ikYi1. . . Y ik⟩Q,̃Q
+=∂
+∂Ji1. . .∂
+∂Jik∂
+∂Ki1. . .∂
+∂KikZQ,̃Q(J,K)∣
+J,K=0,8
+but with
+p(Q,̃Q)=exp(−S(Q,̃Q))
+∫DP∫D̃Pexp(−S(P,̃P)),
+S(Q,̃Q)=NQT
+XX̃QXX+NQT
+XỸQXY (25)
++NQT
+Y ỸQY Y−lñZQ,̃Q(0,0),
+̃ZQ,̃Q(J,K)=∫DX∫D̃X∫DY∫D̃Y
+×exp[SQXX,̃QXX(X,̃X)+SQY Y,̃QY Y(Y,̃Y)
++̃XTdiag(QXY)̃Y+XTdiag(̃QT
+XY∆)Y
++JTX+KTY],
+ZQ,̃Q(J,K)=̃ZQ,̃Q(J,K)/̃ZQ,̃Q(0,0),
+where Qand̃Qare shorthand notations denoting
+all auxiliary variables, and SQXX,̃QXX(X,̃X)and
+SQY Y,̃QY Y(Y,̃Y)are given by Eq. (18).
+Saddle-point approximation As in Section IIIA, we
+approximate p(Q,̃Q)as a delta function at the saddle-
+point Q∗,̃Q∗(for details see Appendix F), and with
+Eq. (24) to lowest order we get
+⟨C2
+ij⟩W=⟨⟨XiXj⟩2⟩
+W
+=∫DQ∫D̃Qp(Q,̃Q)⟨XiXjYiYj⟩Q,̃Q
+=∫DQ∫D̃Qp(Q,̃Q) (26)
+×(⟨XiXj⟩Q,̃Q⟨YiYj⟩Q,̃Q
++⟨XiYi⟩Q,̃Q⟨XjYj⟩Q,̃Q
++⟨XiYj⟩Q,̃Q⟨XjYi⟩Q,̃Q)
+≈⟨XiXj⟩Q∗,̃Q∗⟨YiYj⟩Q∗,̃Q∗
++⟨XiYi⟩Q∗,̃Q∗⟨XjYj⟩Q∗,̃Q∗
++⟨XiYj⟩Q∗,̃Q∗⟨XjYi⟩Q∗,̃Q∗
+=⟨XiXj⟩Q∗,̃Q∗⟨YiYj⟩Q∗,̃Q∗
+≈⟨⟨XiXj⟩⟩2
+W
+=⟨Cij⟩2
+W, (27)
+where we used Wick’s theorem, which is allowed by the
+fact that, for Qand̃Qgiven and fixed, ̃ZQ,̃Q(J,K)
+describes a Gaussian theory, and the fact that all cross-
+replicacorrelators ⟨XiYj⟩Q∗,̃Q∗vanishatthesaddlepoint
+(see Appendix F).
+Fluctuations around the saddle-point Eq.(27)implies
+thatthevarianceofcovariancesiszerointhesaddle-point
+approximation, and we need to account for Gaussian
+fluctuations of the auxiliary fields around their saddle-
+points by making a Gaussian approximation of p(Q,̃Q).
+The crucial fluctuations are the ones of QXYand̃QXY,
+as they can potentially preserve the replica couplingand thus lead to non-vanishing variance contributions
+of cross-replica correlators ⟨XiYi⟩Q∗,̃Q∗. Away from the
+saddle-points, the correlators in Eq. (26) depend on Q
+and̃Qin a complicated manner. To render the integrals
+in Eq. (26) solvable in the Gaussian approximation, we
+perform a Taylor expansion of the correlators around the
+saddle points Q∗,̃Q∗, which effectively is an expansion
+of̃ZQ,̃Q(J,K)(see Appendix G for more details). In
+the first term of Eq. (26), leading order fluctuations in
+QXYand̃QXYdepend on correlators with an odd num-
+ber of variables of each replicon. Therefore, this term
+cannot yield a contribution to the variance due to fluc-
+tuations of QXYand̃QXY. The major replica coupling
+arises from the second and third term in Eq. (26). We
+note that the third term contains off-diagonal elements
+of correlators which are suppressed by a factor 1/Nwith
+respect to the diagonal ones. Therefore, we can neglect
+this term for cross-covariances as well and only keep the
+second term in Eq. (26) as the leading order contribu-
+tion. For autocovariances the second and third term in
+Eq. (26) are the same, yielding an additional factor 2.
+Introducing δQ=Q−Q∗and defining δ̃Qequivalently,
+we obtain
+⟨XiYi⟩Q,̃Q=∑
+k⟨XiYĩXk̃Yk⟩Q∗,̃Q∗δQXY,k
++∑
+k,l∆kl⟨XiYiXlYl⟩Q∗,̃Q∗δ̃QXY,k+O(∣δQ∣2,∣δ̃Q∣2)
+=∑
+k⟨XĩXk⟩2
+Q∗,̃Q∗δQXY,k
++∑
+k,l∆kl⟨XiXl⟩2
+Q∗,̃Q∗δ̃QXY,k+O(∣δQ∣2,∣δ̃Q∣2),
+(28)
+where we used that cross-replica correlators vanish at the
+saddle point. Inserting the above fluctuation expansion
+result around Q∗
+XYand̃Q∗
+XYinto Eq. (26) leads to
+∫DQ∫D̃Qp(Q,̃Q)⟨XiYi⟩Q,̃Q⟨XjYj⟩Q,̃Q
+=∑
+k,l⟨XĩXk⟩2
+Q∗,̃Q∗⟨Xj̃Xl⟩2
+Q∗,̃Q∗⟨δQXY,kδQXY,l⟩Q,̃Q
++∑
+k,l,m⟨XĩXk⟩2
+Q∗,̃Q∗∆lm⟨XjXm⟩2
+Q∗,̃Q∗⟨δQXY,kδ̃QXY,l⟩Q,̃Q
++∑
+k,l,m⟨Xj̃Xk⟩2
+Q∗,̃Q∗∆lm⟨XiXm⟩2
+Q∗,̃Q∗⟨δQXY,kδ̃QXY,l⟩Q,̃Q
++∑
+k,l,m,n⟨XiXm⟩2
+Q∗,̃Q∗⟨XjXn⟩2
+Q∗,̃Q∗∆km∆ln
+×⟨δ̃QXY,kδ̃QXY,l⟩Q,̃Q. (29)
+Next, we consider the Gaussian approximation of
+p(Q,̃Q)with
+S(Q,̃Q)=S(Q∗,̃Q∗)+1
+2(δQXY, δ̃QXY)S(2)(δQXY
+δ̃QXY),9
+where S(2)contains the second derivatives with respect
+to the auxiliary fields
+S(2)=⎛
+⎜⎜⎜
+⎝∂S(Q,̃Q)
+∂QXY∂QXY∣
+Q∗,̃Q∗∂S(Q,̃Q)
+∂QXY∂̃QXY∣
+Q∗,̃Q∗
+∂S(Q,̃Q)
+∂̃QXY∂QXY∣
+Q∗,̃Q∗∂S(Q,̃Q)
+∂̃QXY∂̃QXY∣
+Q∗,̃Q∗⎞
+⎟⎟⎟
+⎠,
+which allows evaluating the correlators of the auxiliary
+fields in Eq. (29) (see Appendix H for details). Inserting
+the results, to leading order we find (see Appendix I for
+details)
+⟨C2
+ij⟩W=(1+δij)[(1−1
+NRT⊙RT∆)−1
+⟨XXT⟩Q∗,̃Q∗
+⊙⟨XXT⟩Q∗,̃Q∗(1−1
+NRT⊙RT∆)−T
+]
+ij
+−δij⟨Cij⟩2
+W. (30)
+To get the variances rather than the second moments,
+we subtract the squared mean covariances ⟨Cij⟩2
+W. How-
+ever, for the setup that we study here the squared mean
+cross-covariances are of the order O(1/N2)and therefore
+negligible. Taking into account that R=(1−M)−1≈1,
+which holds as long as the network is inhibition domi-
+nated, we find the following expression for the disorder-
+averaged variance of cross-covariances (see Appendix I
+for full expression)
+⟨δC2⟩W=(1−S)−1{D+diag[Q∗(D)]}(31)
+⊙{D+diag[Q∗(D)]}(1−S)−T,
+where we wrote S=∆/N.
+However, if the noise strength Dhas to be estimated
+using Eq. (11), this expression is still dependent on the
+specific realization of W, both implicitly through the es-
+timates of the single-neuron rates and CVs described in
+SectionIIandexplicitlythroughthematrix B(Eq.(12)).
+SincetherighthandsideofEq.(31)dependsnon-linearly
+onD, averaging over the statistics of Dintroduces terms
+depending on the heterogeneity of D. However, Fig. A5
+in the Appendix shows that heterogeneity in D— both
+via the explicit dependence on Wand via the implicit
+dependencethroughdistributedfiringratesandCVs—is
+negligible for the statistics of cross-covariances. This can
+be understood by considering the structure of Eq. (31):
+The matrices (1−S)−1are multiplied with D, such that
+any heterogeneity in Dis averaged out. An E-I network
+is an illustrative example, with (1−S)−1=1+Uwith
+a2×2block matrix Uwhose entries are homogeneous
+in each population block, such that the matrix product
+effectively is an average over D.
+To obtain an average Dthat is not depending on a
+specific realization of W, we follow Eq. (11) and set
+Dii=∑
+j(1−S)ij⋅CV2
+jνj, (32)which inserted into the disorder-averaged expression for
+the autocovariances (Eq. (22)) yields the correct autoco-
+variances:
+Cii=[(1−M)−1{D+diag[Q∗(D)]}(1−M)−T]
+ii
+≈{D+diag[(1−S)−1S⋅diag(D)]}
+ii
+=∑
+j(1−S)−1
+ijDjj
+=CV2
+iνi.
+Here we used (1−M)−1≈1andQ∗≈(1−S)−1S⋅
+diag(D). The realization-independent estimates νiand
+CV2
+iof the rates and CVs, respectively, can be obtained
+using standard population-resolved mean-field theory
+[38, 41], which only requires knowing the statistics of W.
+AproceduresimilartotheonedescribedinSectionIIcan
+be used: In the population view, however, the indices i, j
+no longer denote single neurons but rather populations
+of equal neurons. In Eq. (1) Jijis replaced by KijJijand
+J2
+ijin Eq. (2) is replaced by KijJ2
+ij, where Kijis the in-
+degree from population jto population i, and Jijthen is
+interpreted as the mean synaptic weight from population
+jto population i.
+Replacing Din Eq. (31) by Eq. (32) yields a fully
+realization-independent disorder-averaged estimate of
+the variance of cross-covariances.
+C. Singularities
+Next, we discuss the interpretation of the derived for-
+mulae. Thereto, we need to have a closer look at the
+effective noise strength D+diag[Q∗(D)], which occurs
+in both the mean (Eq. (22)) and the variances (Eq. (31))
+of covariances. Using Eq. (32), we find that the impact
+of heterogeneity on the effective noise cancels:
+diag(D)+Q∗(D)≈diag(D)+(1−S)−1S⋅diag(D)
+=(1−S)−1⋅diag(D) (33)
+=(1−S)−1(1−S)⋅a
+≈a,
+where ai=CV2
+iνiis the vector of estimated autocovari-
+ances. This is because we specifically chose the noise
+strength Dsuch that autocovariances match those from
+the spiking networks: As heterogeneity is increased, ex-
+ternal fluctuations get amplified by the factor (1−S)−1
+in Eq. (33). To achieve that autocovariances do not di-
+verge, external inputs need to be scaled down accord-
+ing to Eq. (32). Hence, the mean and variance of cross-10
+covariances are given by
+⟨C⟩W,D≈(1−M)−1diag(a)(1−M)−T(34)
+⟨δC2⟩W,D≈(1−S)−1diag(a)⊙diag(a)(1−S)−T.
+(35)
+Note that any inverse matrix can be written as A−1=
+det(A)−1adj(A), where adj(A)denotes the adjugate
+matrix. As a result, the elements of an inverse matrix
+A−1diverge if the determinant of the matrix Avanishes,
+which occurs when at least one eigenvalue of Ais zero.
+Therefore, the divergence behavior of the mean and vari-
+ance of covariances is determined by the eigenvalues of
+MandSwith real parts close to 1.
+Eq. (34) reveals that mean cross-covariances are de-
+termined by the mean connectivity M. By choosing
+Dto match the autocovariances of the spiking model,
+they are, in particular, unaffected by network hetero-
+geneity, represented by S. A range of important net-
+work properties, such as population structure determin-
+ing E-I balance [31, 33, 34, 43, 55], spatial structure like
+distance-dependentconnectionprobabilities[8,56–61],or
+low-rank structures [62], can be encoded in M. Diver-
+gences in mean covariances, caused by eigenvalues of M
+closeto 1, canthusbeindicativeofphenomenalikelossof
+E-I balance with excessive excitation (cf. 55, Fig. 8D) or
+instability of the homogeneously active state in spatially
+organized networks [63].
+Variances of cross-covariances are determined by net-
+work heterogeneity (Eq. (35)), encoded in the connectiv-
+ity variance Sand are to leading order independent of
+the mean connectivity M. Note that sub-leading terms
+nevertheless can become sizable if eigenvalues of Mare
+close to the instability line at 1. As demonstrated by
+Aljadeffet al.[64], if Sis a block structured matrix, its
+eigenvalue spectrum is circular, with a spectral radius r
+that is determined by the square root of the maximum
+eigenvalue of S. For the simple E-I network with target-
+agnostic connectivity studied here, the spectral radius is
+given by [65]
+r2=NEσ2
+E+NIσ2
+I.
+The spectral radius, a measure of network heterogeneity,
+increases when the variance of synaptic strength grows,
+which is controlled by an interplay between the connec-
+tion probabilities of different populations and the vari-
+ances of the associated synaptic weights. Intuitively,
+as explained in Dahmen et al.[8], multi-synaptic signal
+transmission is very efficient in a network with a large
+spectral radius, such that pairs of neurons influence each
+other via a large number of neuronal pathways, possibly
+including differing numbers of excitatory and inhibitory
+neurons. The effects of these various pathways add up,
+and the large variety of potential pathways results in a
+broad distribution of covariances.We see that the effects of MandSare mostly inde-
+pendent of one another, allowing the mean and variance
+of covariances to vary separately. This, however, only
+applies to synaptic weights that are identically and in-
+dependently distributed (i.i.d.). If the weights are cor-
+related, such as through chain structures in the connec-
+tivity, the respective eigenvalues cannot be changed in-
+dependently. A more detailed analysis of this behavior is
+to be published elsewhere. As a final remark, it is worth
+noting that the independence of the mean covariances of
+Sconfirms that previously employed population models
+[28, 33, 34, 43, 55], which neglect the variance of connec-
+tivity, are valid for computing mean covariances.
+To illustrate how the mean and variance of covariances
+change as functions of the network heterogeneity, we plot
+Eq. (22) and Eq. (31) with Eq. (32) for spectral radii
+between 0and1in Fig. 4 (predicted linear). We kept the
+working point roughly constant for the different spectral
+radii by maintaining the mean µand variance σ2of the
+total input to each neuron while modifying the synaptic
+efficacy. To compensate for the increased intrinsic input
+and fluctuations at larger spectral radii, we reduced the
+mean and fluctuations of the external input.
+Confirming the discussion of Eq. (34) and Eq. (35),
+when the spectral radius is modified, the variances of co-
+variances vary by several orders of magnitude, whereas
+mean covariances remain in the same order of magni-
+tude. A range of prior research [28, 34, 55] has shown
+that a divergence of mean covariances would be observed
+as a function of E-I balance, e.g. by altering g. Here
+we focus on network scenarios away from the excitatory
+instability (fixed g=−6) and therefore do not see a di-
+vergence of mean covariances. Nevertheless, we observe a
+change of mean covariances when changing the spectral
+radius. This is because in the sparse random network
+chosen here, the variance of the synaptic weights is not
+independent from the mean of the weights. Adjusting the
+spectral radius requires modifying the weights, resulting
+in the residual change in the mean covariances visible
+in Fig. 4a, b, and c. Note that by keeping the work-
+ing point of the network constant across spectral radii,
+we also keep the noise strength factor in Eq. (22) and
+Eq. (31) constant (cf. Eq. (34) and Eq. (35)). If the ex-
+ternal noise strength was instead determined by a fixed
+external process, i.e Dindependent of W, then mean co-
+variances would also diverge as a function of the spectral
+radius due to the factor (1−S)−1, which enters the noise
+strength term via Q∗.
+D. Comparison of prediction and measurement of
+covariance statistics
+To check how closely the predictions match the out-
+comes of spiking network simulations, we ran 10 simu-
+lations for different spectral radii similarly to the one11
+0.2 0.4 0.6 0.80.000.050.100.150.200.250.30mean covariance(a)EE
+predicted linear
+empirical linear
+simulated spiking
+0.2 0.4 0.6 0.80.000.050.100.150.200.25(b)EI
+0.2 0.4 0.6 0.80.02
+0.000.020.040.060.08(c)II
+0.2 0.4 0.6 0.8
+spectral radius103
+102
+101
+100101variance of covariances(d)
+0.2 0.4 0.6 0.8
+spectral radius102
+101
+100101(e)
+0.2 0.4 0.6 0.8
+spectral radius102
+101
+100101(f)
+Figure 4. Covariance statistics for EE, EI, and II connections at different spectral radii. Dots show the population resolved
+mean (Panels a, b, c) or variance (Panels d, e, f) of the spike count cross-covariances (Eq. (7)) measured in spiking network
+simulations. Solid lines show the theoretical predictions of the mean (Eq. (22)) and variance (Eq. (31)) of cross-covariances,
+respectively, using the noise strength estimate Eq. (32). The dashed lines show the population resolved empirical mean and
+variance of cross-covariances from Eq. (9) averaged over 20 realizations of W, and the shaded area depicts a two standard
+deviation range around the mean. The variances computed from the simulation results have been corrected for bias due to
+finite simulation time (see Appendix K).
+shown in Fig. 1 using the parameters specified in A. We
+ensured that the spiking networks have roughly similar
+working points for the different spectral radii in the same
+way we calculated the theoretical values (see Appendix
+Fig. A2a, b). We computed the mean and variance of
+the measured covariances and corrected the variances for
+bias due to finite simulation time (see Appendix K for
+details). The results are displayed in Fig. 4.
+We observe that the order of magnitude of mean and
+variance are well predicted by Eq. (22) and Eq. (31),
+which is especially evident for the variances (Panels
+d,e,f), which span several orders of magnitude. However,
+there is some quantitative discrepancy between the pre-
+dictions of the presented linear theory and the results of
+the simulated spiking network, which is visible in Panels
+a, b, and c, indicating that a linear theory cannot fullycapture the non-linear spiking dynamics at high spectral
+radii, where potential non-renewal effects of spiking arise
+[66]. To verify that the discrepancy originates mostly
+from the linear-response approximation rather than our
+disorder-average approximations, we plotted the predic-
+tions of the linear theory Eq. (9) for 20 different net-
+work realizations: At small spectral radii, the predicted
+disorder-average based mean is equal to the empirical
+mean of the linear networks, and for large spectral radii,
+the predicted mean appears to be within the range of two
+standard deviations around the empirical mean. This
+shows that the deviations to the spiking network re-
+sults mostly stem from the linear-response approxima-
+tion. Theremainingdifferencebetweenthepredictedand
+the empirical mean in linear networks could be explained
+by the fact that for high spectral radii, the effective con-12
+nectivity matrix contributes much more strongly to the
+noise strength, such that we can no longer disregard its
+contribution to the noise strength (cf. Fig. 3) and aver-
+aging over WandDseparately is no longer feasible.
+IV. DISCUSSION
+In this study, we introduce theoretical tools based on
+statisticalphysicsofdisorderedsystemstoinvestigatethe
+roleofheterogeneousnetworkconnectivityinshapingthe
+coordinationstructureinneuralnetworks. Whilethepre-
+sented methods are applicable to arbitrary independent
+connectivitystatistics, forillustrationwefocusouranaly-
+sisontheprototypicalnetworkmodelforcorticaldynam-
+icsbyBrunel[38], whichisaspikingnetworkofrandomly
+connected excitatory and inhibitory leaky integrate-and-
+fire neurons receiving uncorrelated external Poisson in-
+put. This model has been extensively studied before
+using mean-field and linear response methods to under-
+stand neuronal spiking statistics such as average firing
+ratesandCVs[27,67]aswellasaveragecross-covariances
+between populations of neurons [24, 34, 43, 55, 56]. In
+this study, we go beyond the population level and in-
+troduce tools from field theory of disordered systems to
+study the heterogeneity of activity across individual neu-
+rons. Weshowhowtoturnalinear-responseresultonthe
+link between covariances and connectivity [24–28] into
+a field-theoretic problem using moment-generating func-
+tions. Then we apply disorder averages, replica theory
+and beyond-mean-field approximations to obtain quan-
+titative predictions for the mean and variance of cross-
+covariances that take into account the statistics of con-
+nectivity, but are independent of individual network re-
+alizations. We show that this theory can faithfully pre-
+dict the statistics of cross-covariances of spiking leaky
+integrate-and-fire networks across the whole linearly sta-
+ble regime. In doing this, we fixed the statistics of in-
+dividual neurons according to their theoretical predic-
+tion and showed that this one working point, defined
+by the firing rates of all neurons in the network, can
+correspond to very distinct correlations structures. Fur-
+thermore, we demonstrate that while the heterogeneity
+in single-neuron activities directly impacts the statistics
+of neuronal autocovariances, it does not have a sizable
+impact on the heterogeneity in cross-covariances. The
+latter heterogeneity is determined by the heterogeneity
+in neuronal couplings, quantified by the spectral radius
+of effective connectivity bulk eigenvalues.
+Technically, by employing linear response theory, we
+study two systems: the spiking leaky integrate-and-fire
+network and a network of linear rate neurons. We derive
+a procedure to set the external input noise of the linear
+model in such a way that the covariance statistics of the
+spiking network and the linear network match quantita-
+tively. This way, the autocovariances are fixed to valuesdetermined by single-neuron firing rates and CVs, as pre-
+dicted by renewal theory for spike trains. Consequently,
+autocovariances remain finite in the matched rate net-
+work even when approaching the point of linear instabil-
+ity. This is achieved by reducing external input fluctua-
+tions to account for the increased intrinsically generated
+fluctuationswhenincreasingtheheterogeneityinnetwork
+connectivity. As a result, also neuronal cross-covariances
+remain finite close to linear instability. The variance
+of cross-covariances nevertheless displays a residual di-
+vergence, which is why, within the linear regime, mean
+cross-covariances only vary mildly, while the variance of
+cross-covariances spans many orders of magnitude when
+changing the spectral radius of bulk connectivity eigen-
+values.
+The methods presented here are restricted to the lin-
+early stable network regime, usually referred to as the
+asynchronous irregular state of the Brunel model [38].
+We show that, while mean covariances are low in this
+state [5, 31, 33], individual cross-covariances between
+pairs of neurons can still be large, reflected by the large
+variance of cross-covariances in strongly heterogeneous
+network settings. Linear stability can for example be re-
+alized in excitatory-inhibitory networks if the overall re-
+current feedback in the network is inhibition dominated
+or only marginally positive [34] and if synaptic ampli-
+tudes are not too strong. Previous work [66, 68] has
+shownthatthehereconsideredmodeltransitionstoadif-
+ferent asynchronous activity state if synaptic amplitudes
+become larger. This state, however, is not well described
+by linear response theory, as slow network fluctuations
+and nontrivial spike-train autocorrelations emerge, caus-
+ing deviations from the renewal assumptions on spike
+trains used here. Note that such slow network fluctu-
+ations have not been observed in previous studies on
+spontaneous activity in macaque motor cortex [7, 8] and
+mouse visual cortex [37] that employed first results of the
+more general theoretical approach presented here to ex-
+plain experimentally observed features, such as the large
+dispersion of covariances, long range neuronal coordina-
+tion, a rich repertoire of time scales and low dimensional
+activity. These studies relied on Wick’s theorem to cal-
+culate the variance of covariances, which is, however, re-
+stricted to linear systems. Here we instead employ a
+more general replica approach that can be straightfor-
+wardly applied to nonlinear rate models [50], as exten-
+sively studied in the recent theoretical neuroscience lit-
+erature [64, 69–75]. Importantly, the replica theory re-
+veals in a systematic manner that the variance of covari-
+ances is an observable that is O(1/N)in the network
+size and requires beyond-mean-field methods to be com-
+puted. In mean-field or saddle-point approximation, the
+replica coupling term that yields the nontrivial variance
+of covariances vanishes. We here calculate the next-to-
+leading order Gaussian fluctuations around saddle points
+that yield good quantitative results across the whole lin-13
+ear regime. The fact that the linear rate model captures
+the covariance statistics of the spiking leaky integrate-
+and-fire model further shows that the presented results
+on the link between connectivity and covariances do not
+depend on model details and are generally valid in the
+linear regime, which enables applications to experimen-
+tal data [7, 8, 37].
+Inthispaper, wefocusonintrinsicmechanismsforhet-
+erogeneity and study the first and second order statistics
+of network connectivity. The formalism can be applied
+to any network topology, as arbitrary connectivity struc-
+tures can be encoded in the mean and variance matri-
+ces that are the central objects of the theory. Notably,
+we assumed that connection weights are independently
+drawn from an arbitrarily complex probability distribu-
+tion. The focus on mean and variance of this distribu-
+tion is justified as long as connection weights scale at
+least as O(1/√
+N), because effects of higher order con-
+nectivity cumulants are then suppressed by the typically
+large network size. Generalization of dynamic mean-field
+methodstoheavy-tailedconnectivityhavebeenproposed
+for studying single-neuron activity statistics [76, 77]. A
+similar approach could be combined with the methods
+presented here to investigate cross-covariances. Further-
+more, extensions to correlated connection weights, re-
+flecting an over- or under-representation of reciprocal,
+convergent, divergent and chain motifs, have been pro-
+posed in [37].
+In addition to network connectivity, external inputs
+can be correlated and heterogeneous and thereby cause
+heterogeneity in covariances of local circuits. Previous
+works have shown that external inputs can have a strong
+impact on local covariances, especially in the limit of infi-
+nite network size [33, 56, 78, 79]. For biologically realistic
+network sizes of local circuits, the predominant contribu-
+tion to covariances instead is typically generated intrin-
+sically [7, 55] and thereby explainable with the presented
+methods. Nevertheless, more research is required to deci-
+pher the precise interplay between intrinsic heterogeneity
+andexternalinputstoarriveatacompletepictureforthe
+mechanisticoriginofheterogeneouscovariancestructures
+in local circuits.
+Acknowledgments
+This work was partially supported by European
+Union’s Horizon 2020 research and innovation pro-
+gram under Grant agreement No. 945539 (Human
+Brain Project SGA3) and by the Deutsche Forschungs-
+gemeinschaft (DFG, German Research Foundation) -
+368482240/GRK2416. Open access publication funded
+by the Deutsche Forschungsgemeinschaft (DFG, German
+Research Foundation) – 491111487. We are grateful to
+our colleagues in the NEST developer community for
+continuous collaboration. All network simulations werecarried out with NEST (http://www.nest-simulator.org)
+[80, commit dd5b61342]. We thank Hannah Bos for the
+initial numerical implementation of the CVs.14
+APPENDIX
+A. Nest simulation
+We simulate networks of leaky integrate-and-fire neuron models, where the subthreshold dynamics of the membrane
+potential Viof neuron iis given by
+τmdVi(t)
+dt=−Vi(t)+RIi(t), (36)
+with total input current Ii(t)that consists of recurrent input via connections with strength Jijand delay das well as
+external input:
+RIi(t)=τm⎛
+⎝∑
+jJijsj(t−d)+jsext,E(t)+gjsext,I(t)+Iext
+C⎞
+⎠. (37)
+The external input is decomposed into a constant current Iextand Poisson spike trains sext,E(t)of rate νext,Eand
+sext,I(t)of rate νext,Ithat affect neurons with excitatory weight jand inhibitory weight gj, respectively. RandC
+denote the membrane resistance and capacitance, respectively. More information on the model parameters and their
+values can be found in Table A1 and Table A2.
+Network Parameters
+Neuron type iaf_psc_delta
+Synapse type static_synapse
+Connection rule fixed_indegree
+autapses True Connections of a neuron to itself
+multapses False Multiple connections between a pair of neurons
+NE 8000 Number of excitatory neurons
+NI 2000 Number of inhibitory neurons
+KE 800 Number of excitatory inputs
+KI 200 Number of inhibitory inputs
+C 1 pF Membrane capacitance
+τm 20 ms Membrane time constant
+τr 2 ms Refractory period
+Vth 15 mV Relative threshold voltage
+d 1 ms Synaptic delay
+j [0.04,0.38]mV Excitatory synaptic weight
+g −6 Ratio of inhibitory to excitatory weight
+σj 20 %ofjE Std of Gaussian distribution of E and I weights
+Iext [5,125]pA External DC current
+νext,E [800.73,315049 .84]HzRate of external excitatory Poisson noise
+νext,I [640.42,572214 .84]HzRate of external inhibitory Poisson noise
+Simulation Parameters
+dt 0.1 ms Simulation step size
+tsim 10,000,000 ms Simulation time
+Analysis Parameters
+T 1000 ms Bin width for calculating spike-count correlations
+Tinit 1000 ms Initialization time
+Table A1. Parameters used for NEST simulations and subsequent analysis.15
+r 0.10 0.20 0.29 0.39 0.49 0.60 0.70 0.79 0.86 0.90
+j(mV) 0.04 0.08 0.12 0.16 0.2 0.25 0.29 0.33 0.36 0.38
+Iext(pA) 125.0 65.0 40.0 25.0 20.0 15.0 10.0 8.0 6.0 5.0
+νext,E(Hz) 315049 .8435406 .9827510 .1632862 .3413335 .564292.706393.052149.081593.05800.73
+νext,I(Hz) 572214 .84139878 .5358597 .1229923 .1717262 .469063.655147.042722.541360.93640.42
+Table A2. Parameters adjusted for setting different spectral radii.
+B. Time-lag integrated covariances
+The cross-covariance function of two stochastic zero-mean processes xi(t)andxj(t)is defined as
+Cij(s, t)=⟨xi(s)xj(t)⟩,
+where the average is over the ensemble of realizations of the processes. If the stochastic processes are stationary, the
+cross-covariance function solely depends on the time-lag τ=t−s
+Cij(τ)=⟨xi(s)xj(s+τ)⟩.
+Here we are considering the time-lag integrated covariances, as they can be linked to the experimentally accessible
+spike-count covariances [6, 7],
+Cij∶=∫∞
+−∞Cij(τ)dτ
+=lim
+T→∞1
+T(⟨ninj⟩−⟨ni⟩⟨nj⟩),
+which can be interpreted as a zero-frequency Fourier transform. The Wiener–Khinchin theorem (C) allows expressing
+the time-lag integrated covariances in terms of the time series’s Fourier components Xi(ω)at frequency zero
+Cij=⟨Xi(0)Xj(0)⟩. (38)
+C. Wiener–Khinchin theorem
+Here in parts we follow the book by Gardiner [81]. Let x(t)andy(t)be stochastic, stationary processes. Stationary
+means that for any n-tuple(t1, t2, . . . , t n)of time points and any real number uthe samples x(t1), . . . , x(tn)follow
+the same distribution as the samples x(t1+u), . . . , x(tn+u)[82]. Consequently we may define a raw correlation
+function as
+c(τ)=⟨x(t)y(t+τ)⟩,
+which, due to the assumption of stationarity, does not depend on the time t. The average is over the ensemble of
+realizations of the processes. If the Fourier transforms of xandyexist, we may calculate the ensemble average over
+X(ω)andY(ω)as
+⟨X(ω)Y(ω′)⟩=∫dt e−iωt∫dt′e−iω′t′⟨x(t)y(t′)⟩
+subst. t′=t+τ=∫dt e−iωt∫dτ e−iω′(t+τ)⟨x(t)y(t+τ)⟩
+=∫dt e−i(ω+ω′)t∫dτ e−iω′τ⟨x(t)y(t+τ)⟩
+= 2πδ(ω+ω′)∫dτ e−iω′τc(τ)
+= 2πδ(ω+ω′)C(ω′), (39)
+where we used the identity ∫dt e−iωt=2πδ(ω)which follows from1
+2π∫dω eiωt2πδ(ω)=1, so that 2πδ(ω)is the Fourier
+transform of the constant function and vice versa. Eq. (39) states that the cross spectrum between two stationary
+processes vanishes except at those frequencies ω=−ω′, where it is proportional to a δ-distribution times the Fourier
+transform of the autocorrelation function.16
+0.000.050.100.15
+(a)Simulated rates(b)Simulated CVs
+0.10
+ 0.05
+ 0.00 0.05 0.10
+0.000.050.100.15
+(c)Relative error rates
+0.10
+ 0.05
+ 0.00 0.05 0.10
+(d)Relative error CVs
+050100150200
+0.51.01.52.0
+0.00.20.40.60.81.0
+0.00.20.40.60.81.0
+Figure A1. Validity of firing rate and CV prediction for single LIF neuron with instantaneous synapses provided with two
+independent Poisson inputs. (a) Simulated rates and (b) simulated CVs at given mean input µand input variance σ2. (c)
+Relative error ϵ=∣νsim−νthy∣/νsimof rate and (d) relative error of CV prediction using Eq. (3) and Eq. (4). Black pixels denote
+error values larger than 1.00.
+D. Validity of theoretical predictions
+In this section, we discuss the conditions under which the theory and simulation described in this paper yield the
+same results. There are several factors to consider: the limits of the theory we built upon, the limitations of the newly
+presented theory, and the simulation’s constraints.
+The estimation of covariances presented in this paper relies on the proper estimation of firing rates and CVs, for
+which we employ Eq. (3) and Eq. (4) [38]. However, these formulae have their own limitations, and they do not yield
+good estimates in all parameter regimes, as shown in Fig. A1 and Fig. A2a and b. Because the estimates for firing
+rates and CVs are used to calculate the effective connectivity matrix and noise strength, a poor estimate has a direct
+impact on the covariance estimation. Furthermore, the quality of the rate estimates affects how closely the simulated
+network matches its analytical counterpart due to the way we set the parameters for the simulation: We fix mean
+and variance of the single neuron input, and therefore their firing rates νset, and adjust the external input to set the
+spectral radius r, which we estimate using the result of Rajan and Abbott [65] for random Bernoulli E-I networks
+rset=√
+w2
+eff,E(vset)p(1−p)NE+w2
+eff,I(vset)p(1−p)NI,
+with connection probability p. The effective weights weff,E(ν),weff,I(ν)are computed using Eq. (6). Once we
+simulated the network, we can measure the firing rates, extract the connectivity matrix, and compute the effective
+connectivitymatrixrealizedinthesimulation. Itslargesteigenvaluedeterminesthespectralradius rsim. Acomparison
+ofrsetandrsimisshowninFig.A2c. Theydonotcoincideperfectly, whichisadirectresultoftheunreliableestimation
+of the firing rates, which are slightly overestimated by the theory (see Fig. 2a, Fig. A2a, and Fig. A4a, d, and g).17
+0.2 0.4 0.6 0.8
+rset010203040Mean firing rate (Hz)(a)
+sim
+thy
+0.2 0.4 0.6 0.8
+rset0.00.51.01.52.0Mean CV(b)
+sim
+thy
+0.0 0.5 1.0
+rset0.000.250.500.751.00rsim(c)
+Figure A2. Prediction accuracy of spiking network simulation properties. Predicted and measured (a) mean firing rates and
+(b) mean CVs at different spectral radii. (c) Set spectral radius rsetvs. measured spectral radius rsim.
+(a)
+1000
+ 500
+ 0 500 1000
+covs from Dfull1000
+500
+05001000covs from Ddiag(b)
+0510152025
+Figure A3. Noise strength properties. (a) First 100 entries of Dfullcomputed from simulated covariances. (b) Comparison of
+covariances computed using Dfulland using Ddiag=diag(Dfull).
+To make sure the simulated network is always in a linearly stable regime, we restrict our analysis to spectral radii
+rset≤0.90, for which rsim≤0.94.
+We estimate the noise strength Dby computing the variances using Eq. (10), assuming that Dis diagonal, and
+inverting Eq. (9) which yields Eq. (11). First of all, the equation for the variances Eq. (10) relies on the assumption
+that the spike trains are well described by renewal processes [46]. Therefore, the noise strength estimate is reliable
+only if the spike trains are not too bursty. However, even for networks with CV≈1we observed that for large
+spectral radii this approach of estimating the noise strength can yield negative values for D, which has no physical
+interpretation. Measuring the covariances in a simulation and inverting Eq. (9) without restricting Dto be diagonal,
+yields a matrix that seems to be almost diagonal, shown in Fig. A3a. Setting the off-diagonal elements to zero and
+using the result to compute the covariances via Eq. (9), however, reveals that the off-diagonal contribution cannot be
+neglected (Fig. A3b), which means that the external noise sources do have to be correlated to explain the observed
+covariance. In cases in which the lowest eigenvalue of Dfullis negative, we conclude that it is not possible to find a
+physical linear system (positive definite D) that explains the individual pair-wise covariances observed in the spiking
+network simulation with a large spectral radius. Our theoretical predictions for the mean and variance of cross-
+covariances, Eq. (22) and Eq. (31), based on Dcomputed with Eq. (11) and its averaged analog Eq. (32), nevertheless
+yield quantitatively matching results with respect to the spiking network simulations also in this regime (Fig. 4),18
+1020304050theory
+=0.9
+(a)rate
+E
+I
+=0.12
+(b)covariance
+EE
+EI
+II
+=0.12
+(c)correlation
+EE
+EI
+II
+1020304050theory
+=0.98
+(d)
+=0.69
+(e)
+=0.69
+(f)
+10 20 30 40 50
+simulation1020304050theory
+=0.94
+(g)
+20
+ 0 20
+simulation=0.96
+(h)
+0.5
+ 0.0 0.5
+simulation=0.95
+(i)
+Figure A4. Simulation results vs. theoretical estimates for E-I networks with three different spectral radii r=0.10(a, b, c),
+r=0.49(d, e, f), r=0.90(g, h, i). ρdenotes the Pearson correlation coefficient. (a, d, g) Firing rates. (b, e, h) Covariances.
+(c, f, i) Correlation coefficients. The insets show a closer look at the data points.
+because, as we show in Fig. A5, the results only depend on the average of D. The theory based on the statistics of
+connections is therefore found to be more robust than the theory based on individual connectivity realizations.
+Finally, simulations have one major limitation: their finite simulation time, which results in a biased estimation
+of the covariances at the single neuron level. As seen in Fig. A4b, c, e, f, h, and i, there is some variance in the
+simulations that is not explained by the theory. This variance is caused by the finite simulation time and vanishes
+for longer simulations. The relative unexplained variance is larger for small spectral radii, since the firing rates of the
+neurons are slightly smaller in these networks leading to poorer estimation of covariances, and overall the covariances
+are smaller for small spectral radii.19
+E. Derivation of moment generating function
+As discussed in Section II, in absence of correlated external input and in the regime of low average covariances,
+covariances can be understood in linear response theory [28], where the dynamical equation of LIF neurons describes a
+model network of Ornstein-Uhlenbeck processes Eq. (5). Grytskyy et al.[28] further showed that the relation Eq. (9)
+between time-lag integrated covariances and effective connections is independent of the particular filter kernel h(t)
+and whether noise is injected in the input or output of neurons. Therefore, we here for simplicity choose Gaussian
+white noise in the input and h(t)to be an exponential kernel with unit time constant. The stochastic differential
+equation becomes
+dx(t)=−x(t)dt+Wx(t)dt+dξ(t), (40)
+with generating functional [7]
+Z(j)=∫Dx∫D̃xexp[̃xT(∂t+1−W)x+D
+2̃xT̃x+jTx].
+The latter can easily be interpreted in Fourier domain due to the linearity of Eq. (40) and the invariance of scalar
+products under unitary transforms
+Z(J)=∫DX∫D̃Xexp[̃XT(iω+1−W)X+D
+2̃XT̃X+JTX],
+with Fourier transformed variables denoted by capital letters. The scalar product in frequency domain reads ̃XT̃X=
+∑j∫dω̃Xj(−ω)Xj(ω). The generating functional factorizes into generating functions for each frequency ω. As we
+use Eq. (8) to calculate the time-lag integrated covariances, we only require the zero frequency components X(0). In
+the following, we will therefore only discuss zero frequency and omit the frequency argument, i.e. we write X≡X(0)
+and correspondingly for sources J. After integrating over all non-zero frequencies, we obtain the generating function
+for zero frequency
+Z(J)=λ∫DX∫D̃Xexp[̃XT(1−W)X+D
+2̃XT̃X+JTX], (41)
+with the single-frequency scalar product defined as ̃XT̃X=∑j̃Xj̃Xj, integration measures ∫DX=∏j∫∞
+−∞dXjand
+∫D̃X=∏j1
+2πi∫i∞
+−i∞d̃Xj, and normalization prefactor λ. We introduce another source variable ̃Jso that later we can
+also compute correlators that include ̃X
+Z(J,̃J)=λ∫DX∫D̃Xexp[̃XT(1−W)X+D
+2̃XT̃X+JTX+̃JT̃X].
+The Gaussian integrals are solved as follows20
+Z(J,̃J)=λ∏
+i∫∞
+−∞dXi∏
+j1
+2πi∫i∞
+−i∞d̃Xjexp[̃XT(1−W)X+D
+2̃XT̃X+JTX+̃JT̃X]
+=λ∏
+i∫∞
+−∞dXi∏
+j1
+2π∫∞
+−∞d̃Xjexp[ĩXT(1−W)X−D
+2̃XT̃X+JTX+ĩJT̃X]
+=λ(1
+2π)N
+∏
+i∫∞
+−∞dXi∏
+j∫∞
+−∞d̃Xjexp[−1
+2(XT,̃XT)(0−i(1−WT)
+−i(1−W) D)(X
+̃X)+(JT,ĩJT)(X
+̃X)]
+=λ(1
+2π)N⌟roo⟪⟪op
+⌟roo⟪mo⟨⌟roo⟪mo⟨⌟roo⟪mo⟨⌟roo⟪mo⟨⌟roo⟪mo⟨⌟roo⟪⟨o⟪(2π)2N
+det(0−i(1−WT)
+−i(1−W) D)exp⎡⎢⎢⎢⎢⎣1
+2(JT,ĩJT)(0−i(1−WT)
+−i(1−W) D)−1
+(J
+ĩJ)⎤⎥⎥⎥⎥⎦
+=λ⌟roo⟪⟪op
+⌟roo⟪mo⟨⌟roo⟪mo⟨⌟roo⟪⟨o⟪det(0−i(1−WT)
+−i(1−W) D)exp⎡⎢⎢⎢⎢⎣1
+2(JT,ĩJT)⎛
+⎝(1−W)−1D(1−WT)−1i(1−W)−1
+i(1−WT)−10⎞
+⎠(J
+ĩJ)⎤⎥⎥⎥⎥⎦
+=λ⌟roo⟪⟪op
+⌟roo⟪mo⟨⌟roo⟪mo⟨⌟roo⟪⟨o⟪det(0−i(1−WT)
+−i(1−W) D)exp⎡⎢⎢⎢⎢⎣1
+2(JT,̃JT)⎛
+⎝(1−W)−1D(1−WT)−1−(1−W)−1
+−(1−WT)−10⎞
+⎠(J
+̃J)⎤⎥⎥⎥⎥⎦.
+The identity matrix and the matrix of ones commute, therefore we can use det(A B
+C D)=det(AD−BC), and we get
+det(0−i(1−WT)
+−i(1−W) D)=det[−i2(1−WT)(1−W)]
+=[det(1−W)]2.
+The normalization condition Z(J=0)=1yields λ=∣det(1−W)∣, and the generating function becomes
+Z(J,̃J)=exp⎡⎢⎢⎢⎢⎣1
+2(JT,̃JT)⎛
+⎝(1−W)−1D(1−WT)−1−(1−W)−1
+−(1−W)−T0⎞
+⎠(J
+̃J)⎤⎥⎥⎥⎥⎦,
+or
+Z(J,̃J=0)=∣det(1−W)∣∫DX∫D̃Xexp[̃XT(1−W)X+D
+2̃XT̃X+JTX] (42)
+=exp(1
+2JT(1−W)−1D(1−W)−TJ),
+respectively. We obtain the time-lag integrated covariances
+Cij=⟨XiXj⟩
+=∂
+∂Ji∂
+∂JjZ(J,̃J)∣
+J,̃J=0
+=[(1−W)−1D(1−W)−T]
+ij.
+F. Saddle points and correlators of activity fields
+The saddle points Q∗,̃Q∗are given by∂
+∂QiS(Q,̃Q)∣
+Q∗,̃Q∗=0and∂
+∂̃QiS(Q,̃Q)∣
+Q∗,̃Q∗=0, which yield21
+Q∗
+i=1
+N∑
+j∆ij⟨XjXj⟩Q∗,̃Q∗,
+̃Q∗
+i=1
+2N⟨̃XĩXi⟩Q∗,̃Q∗,
+including correlators evaluated at the saddle point Q∗,̃Q∗. To evaluate them, we need to solve the Gaussian integral
+in Eq. (17)
+̃Z(J,̃J)=∫DX∫D̃Xexp[̃XT(1−M)X+1
+2̃XT[D+diag(Q)]̃X+XTdiag(̃QT∆)X+JTX+̃JT̃X],
+where we added the additional source term ̃JT̃Xto allow for the calculation of correlators including ̃X. We can
+rewrite the equation as
+̃Z(J)=∫DZexp[−1
+2ZTAZ+BTZ]
+=(2π)−N⌟roo⟪⟪op
+⌟roo⟪mo⟨⌟roo⟪mo⟨⌟roo⟪⟨o⟪(2π)2n
+detAexp(1
+2BTA−1B)
+=1√
+detAexp(1
+2BTA−1B),
+using
+Z=(X
+̃X),B=(J
+ĩJ),
+A=⎛
+⎝−2diag(̃QT∆)−i(1−M)T
+−i(1−M) [D+diag(Q)]⎞
+⎠,
+where the prefactor (2π)−Ncame from the integration measure D̃X, such that
+A−1
+11={−2diag(̃QT∆)+(1−M)T[D+diag(Q)]−1(1−M)}−1
+,
+A−1
+12=i{−2diag(̃QT∆)+(1−M)T[D+diag(Q)]−1(1−M)}−1
+(1−M)T[D+diag(Q)]−1,
+A−1
+21=i[D+diag(Q)]−1(1−M){−2diag(̃QT∆)+(1−M)T[D+diag(Q)]−1(1−M)}−1
+,
+A−1
+22=[D+diag(Q)]−1
+−[D+diag(Q)]−1(1−M){−2diag(̃QT∆)+(1−M)T[D+diag(Q)]−1(1−M)}−1
+(1−M)T[D+diag(Q)]−1.
+Deriving the normalized moment generating function Z(J,̃J)=̃Z(J,̃J)/̃Z(0,0)twice with respect to ̃Jyields
+̃Q∗=1
+2N⟨̃X̃XT⟩
+Q∗,̃Q∗
+=1
+2NA−1
+22
+=1
+2N([D+diag(Q)]−1
+−[D+diag(Q)]−1(1−M){−2diag(̃QT∆)+(1−M)T[D+diag(Q)]−1(1−M)}−1
+(1−M)T[D+diag(Q)]−1),
+which is solved by ̃Q∗=0. Inserting this results, we find
+⟨XXT⟩Q∗,̃Q∗=(1−M)−1[D+diag(Q)](1−M)−T,
+⟨̃XXT⟩Q∗,̃Q∗=−(1−M)−T,
+⟨̃X̃XT⟩
+Q∗,̃Q∗=0.22
+Inserting the correlators into the saddle-point equations and solving for Q∗yields
+Q∗
+i=1
+N∑
+j,k,l,m(1−1
+N∆⋅R⊙R)−1
+ij∆jkRklDlmRkm, (43)
+̃Q∗
+i=0.
+withR=(1−M)−1.
+The saddle point of the auxiliary fields QXX,QXY,QY Yin the replica-theory are determined by finding the zeros
+of the first derivative of the action Eq. (25). This yields
+Q∗
+XX,i=1
+N∑
+j∆ij⟨XjXj⟩Q∗,̃Q∗=Q∗
+i,
+Q∗
+Y Y,i=1
+N∑
+j∆ij⟨YjYj⟩Q∗,̃Q∗=Q∗
+i,
+Q∗
+XY,i=1
+N∑
+j∆ij⟨XjYj⟩Q∗,̃Q∗,
+̃Q∗
+XX,i=1
+2N⟨̃XĩXi⟩Q∗,̃Q∗=0,
+̃Q∗
+Y Y,i=1
+2N⟨̃YĩYi⟩Q∗,̃Q∗=0,
+̃Q∗
+XY,i=1
+N⟨̃XĩYi⟩Q∗,̃Q∗=0,
+and in an analogous fashion to the derivation above, we find
+⟨XYT⟩Q∗,̃Q∗=(1−M)−1diag(Q∗
+XY)(1−M)−T.
+Inserting the latter solution into the saddle point equations again yields a linear self-consistency equation for Q∗
+XY
+with the solution
+Q∗
+XY,i=0,
+such that
+⟨XYT⟩Q∗,̃Q∗=0.
+G. Fluctuations around saddle-points
+Here we showcase how to perform a fluctuation expansion of the correlator ⟨XiYi⟩Q,̃Qaround Q∗
+XYand̃Q∗
+XY.
+Other correlators follow analogously. Following the definition in Eq. (24), the correlator is given by
+⟨XiYi⟩Q,̃Q=∂
+∂Ji∂
+∂KiZQ,̃Q(J,K)∣
+J,K=0.
+Now, we expand ZQ,̃Qaround the saddle points
+ZQ,̃Q(J,K)≈ZQ∗,̃Q∗(J,K)
++∑
+k∂
+∂QXY,kZQ,̃Q(J,K)∣
+Q∗,̃Q∗(QXY,k−Q∗
+XY,k)
++∑
+k∂
+∂̃QXY,kZQ,̃Q(J,K)∣
+Q∗,̃Q∗(̃QXY,k−̃Q∗
+XY,k),
+and use ZQ,̃Q(J,K)=̃ZQ,̃Q(J,K)/̃ZQ,̃Q(0,0)to obtain
+∂
+∂QXY,kZQ,̃Q(J,K)=1
+̃ZQ,̃Q(0,0)∂
+∂QXY,k̃ZQ,̃Q(J,K)−̃ZQ,̃Q(J,K)
+̃ZQ,̃Q(0,0)2∂
+∂QXY,k̃ZQ,̃Q(0,0). (44)23
+Using the definition of ̃ZQ,̃Q(J,K)in Eq. (25), its derivative is given by
+∂
+∂QXY,k̃ZQ,̃Q(J,K)=∫DX∫D̃X∫DY∫D̃ỸXk̃Yk
+×exp[SQXX,̃QXX(X,̃X)+SQY Y,̃QY Y(Y,̃Y)+̃XTdiag(QXY)̃Y+XTdiag(̃QT
+XY∆)Y+JTX+KTY],
+such that normalizing and evaluating at the saddle point and for zero sources yields
+∂
+∂Ji∂
+∂Ki∂
+∂QXY,k̃ZQ,̃Q(J,K)∣
+J,K=0
+̃ZQ,̃Q(0,0)⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪Q∗,̃Q∗=⟨XiYĩXk̃Yk⟩Q∗,̃Q∗.
+The second term on the right hand side of Eq. (44) vanishes at the saddle point and for J=K=0
+∂
+∂Ji∂
+∂KĩZQ,̃Q(J,K)
+̃ZQ,̃Q(0,0)2∂
+∂QXY,k̃ZQ,̃Q(0,0)⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪J,K=0⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪⌟⟨rro⟪⟪⟩r⟪Q∗,̃Q∗=⟨XiYi⟩Q∗,̃Q∗⟨̃Xk̃Yk⟩Q∗,̃Q∗=0.
+The derivative with respect to ̃QXY,kcan be computed analogously, with ̃Xk̃Ykreplaced by ∑l∆klXlYl. Therefore,
+the first order expansion in the replica coupling term reads
+⟨XiYi⟩Q,̃Q=⟨XiYi⟩Q∗,̃Q∗
+⌟⟨⟨⟪rl⟫l⟩⟩⟪⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟨⟨⟪rl⟫m⟩⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟪⟨⟨⟪rl⟫mo⟨⌟⟨⟨⟪rl⟫r⟩⟩⟩⟪
+=0+∑
+k⟨XiYĩXk̃Yk⟩Q∗,̃Q∗(QXY,k−Q∗
+XY,k)+∑
+k,l∆kl⟨XiYiXlYl⟩Q∗,̃Q∗(̃QXY,k−̃Q∗
+XY,k),(45)
+which we use in Eq. (28).
+H. Correlators of auxiliary fields
+We consider the Gaussian approximation of p(Q,̃Q)with
+S(Q,̃Q)=S(Q∗,̃Q∗)+1
+2(δQXY, δ̃QXY)S(2)(δQXY
+δ̃QXY),
+where S(2)contains the second derivatives with respect to the auxiliary fields
+S(2)=⎛
+⎜⎜⎜
+⎝∂S(Q,̃Q)
+∂QXY∂QXY∣
+Q∗,̃Q∗∂S(Q,̃Q)
+∂QXY∂̃QXY∣
+Q∗,̃Q∗
+∂S(Q,̃Q)
+∂̃QXY∂QXY∣
+Q∗,̃Q∗∂S(Q,̃Q)
+∂̃QXY∂̃QXY∣
+Q∗,̃Q∗⎞
+⎟⎟⎟
+⎠,
+with
+S(2)
+11,ij=0
+S(2)
+12,ij=Nδij−∑
+k∆jk⟨̃XĩYiXkYk⟩Q∗,̃Q∗=Nδij−∑
+k∆jkR2
+ki
+S(2)
+21,ij=Nδij−∑
+k∆ik⟨̃Xj̃YjXkYk⟩Q∗,̃Q∗=Nδij−∑
+k∆ikR2
+kj
+S(2)
+22,ij=−∑
+k,l∆ik∆jl⟨XkYkXlYl⟩Q∗,̃Q∗=−∑
+k,l∆ik∆jl⟨XkXl⟩Q∗,̃Q∗⟨YkYl⟩Q∗,̃Q∗.
+Using
+S(2)=(0S(2)T
+21
+S(2)
+21S(2)
+22),(S(2))−1
+=(−S(2)−1
+21S(2)
+22S(2)−T
+21 S(2)−1
+21
+S(2)−T
+21 0),24
+we find
+⟨δQXYδQT
+XY⟩=−S(2)−1
+21S(2)
+22S(2)−T
+21
+=1
+N2[1−1
+N∆⋅(R⊙R)]−1
+∆⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩Q∗,̃Q∗∆T[1−1
+N∆⋅(R⊙R)]−T
+⟨δQXYδ̃QT
+XY⟩=S(2)−1
+21=1
+N[1−1
+N∆⋅(R⊙R)]−1
+⟨δ̃QXYδ̃QT
+XY⟩=0.
+I. Disorder-averaged variance of covariances
+Starting with Eq. (26), we find
+⟨C2
+ij⟩W=⟨⟨XiXj⟩2⟩
+W
+=∫DQ∫D̃Qp(Q,̃Q)⟨XiXjYiYj⟩Q,̃Q
+=∫DQ∫D̃Qp(Q,̃Q)(⟨XiXj⟩Q,̃Q⟨YiYj⟩Q,̃Q+⟨XiYi⟩Q,̃Q⟨XjYj⟩Q,̃Q+⟨XiYj⟩Q,̃Q⟨XjYi⟩Q,̃Q)
+≈⟨⟨XiXj⟩⟩2
+W+(1+δij)∫DQ∫D̃Qp(Q,̃Q)⟨XiYi⟩Q,̃Q⟨XjYj⟩Q,̃Q
+=⟨Cij⟩2
+W+(1+δij)∫DQ∫D̃Qp(Q,̃Q)⟨XiYi⟩Q,̃Q⟨XjYj⟩Q,̃Q.25
+Inserting the derived expressions for the correlators into Eq. (29) yields
+∫DQ∫D̃Qp(Q,̃Q)⟨XiYi⟩Q,̃Q⟨XjYj⟩Q,̃Q
+=∑
+k,l⟨XĩXk⟩2
+Q∗,̃Q∗⟨Xj̃Xl⟩2
+Q∗,̃Q∗⟨δQXY,kδQXY,l⟩Q,̃Q
++∑
+k,l,m⟨XĩXk⟩2
+Q∗,̃Q∗∆lm⟨XjXm⟩2
+Q∗,̃Q∗⟨δQXY,kδ̃QXY,l⟩Q,̃Q
++∑
+k,l,m⟨Xj̃Xk⟩2
+Q∗,̃Q∗∆lm⟨XiXm⟩2
+Q∗,̃Q∗⟨δQXY,kδ̃QXY,l⟩Q,̃Q
++∑
+k,l,m,n⟨XiXm⟩2
+Q∗,̃Q∗⟨XjXn⟩2
+Q∗,̃Q∗∆km∆ln⟨δ̃QXY,kδ̃QXY,l⟩Q,̃Q
+=∑
+k,lR2
+ik{1
+N2[1−1
+N∆⋅(R⊙R)]−1
+∆⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩Q∗,̃Q∗∆T[1−1
+N∆⋅(R⊙R)]−T
+}
+klR2
+jl
++∑
+k,l,mR2
+ik∆lm⟨XjXm⟩2
+Q∗,̃Q∗{1
+N[1−1
+N∆⋅(R⊙R)]−1
+}
+kl
++∑
+k,l,mR2
+jk∆lm⟨XiXm⟩2
+Q∗,̃Q∗{1
+N[1−1
+N∆⋅(R⊙R)]−1
+}
+kl
+={(R⊙R)1
+N2[1−1
+N∆⋅(R⊙R)]−1
+∆⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩Q∗,̃Q∗∆T[1−1
+N∆⋅(R⊙R)]−T
+(R⊙R)T}
+ij
++{(R⊙R)1
+N[1−1
+N∆⋅(R⊙R)]−1
+∆⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩T
+Q∗,̃Q∗}
+ij
++{⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩Q∗,̃Q∗∆T1
+N[1−1
+N∆⋅(R⊙R)]−T
+(R⊙R)T}
+ij
+={(R⊙R)∆1
+N2[1−1
+N(R⊙R)⋅∆]−1
+⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩Q∗,̃Q∗∆T[1−1
+N∆⋅(R⊙R)]−T
+(R⊙R)T}
+ij
++ +{(R⊙R)∆1
+N[1−1
+N(R⊙R)⋅∆]−1
+⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩T
+Q∗,̃Q∗}
+ij
++{⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩Q∗,̃Q∗1
+N[1−1
+N(R⊙R)⋅∆]−T
+∆T(R⊙R)T}
+ij
+=⎧⎪⎪⎨⎪⎪⎩(1+1
+N(R⊙R)∆[1−1
+N(R⊙R)⋅∆]−1
+)⟨XXT⟩Q∗,̃Q∗
+⊙⟨XXT⟩Q∗,̃Q∗(1+[1−1
+N(R⊙R)⋅∆]−T1
+N∆T(R⊙R)T)⎫⎪⎪⎬⎪⎪⎭ij
+−[⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩Q∗,̃Q∗]
+ij
+={[1−1
+N(R⊙R)⋅∆]−1
+⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩Q∗,̃Q∗[1−1
+N(R⊙R)⋅∆]−T
+}
+ij
+−[⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩Q∗,̃Q∗]
+ij
+={[1−1
+N(R⊙R)⋅∆]−1
+⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩Q∗,̃Q∗[1−1
+N(R⊙R)⋅∆]−T
+}
+ij
+−⟨Cij⟩2
+W26
+where we used
+(R⊙R)[1−1
+N∆(R⊙R)]−1
+∆=(R⊙R)∑
+k[1
+N∆(R⊙R)]k
+∆
+=(R⊙R)[1+1
+N∆(R⊙R)+1
+N2∆(R⊙R)∆(R⊙R)+...]∆
+=(R⊙R)∆[1+1
+N(R⊙R)∆+1
+N2(R⊙R)∆(R⊙R)∆+...]
+=(R⊙R)∆[1−1
+N(R⊙R)∆]−1
+.
+Finally, we obtain the second moment to leading order
+⟨C2
+ij⟩W=(1+δij){[1−1
+N(R⊙R)⋅∆]−1
+⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩Q∗,̃Q∗[1−1
+N(R⊙R)⋅∆]−T
+}
+ij−δij⟨Cij⟩2
+W,
+and for the covariance we find
+⟨δC2
+ij⟩W=⟨C2
+ij⟩W−⟨Cij⟩2
+W
+=(1+δij){[1−1
+N(R⊙R)⋅∆]−1
+⟨XXT⟩Q∗,̃Q∗⊙⟨XXT⟩Q∗,̃Q∗[1−1
+N(R⊙R)⋅∆]−T
+}
+ij−(1+δij)⟨Cij⟩2
+W
+≈(1+δij)[(1−S)−1[D+diag(Q)](1−S)−T]
+ij−(1+δij)⟨Cij⟩2
+W.27
+J. Dependence of population-resolved covariance statistics on heterogeneity in noise strength D
+0.2 0.4 0.6 0.80.0250.0500.0750.1000.1250.1500.175mean covariance(a)EE
+thy w. Dpop
+thy w. dist. CV2
+thy w. fully dist. D
+0.2 0.4 0.6 0.80.000.020.040.060.080.100.12(b)EI
+0.2 0.4 0.6 0.80.02
+0.000.020.04(c)II
+0.2 0.4 0.6 0.8
+spectral radius103
+102
+101
+100101variance of covariances(d)
+0.2 0.4 0.6 0.8
+spectral radius102
+101
+100101(e)
+0.2 0.4 0.6 0.8
+spectral radius102
+101
+100101(f)
+Figure A5. Dependence of population-resolved covariance statistics (Fig. A5 and Eq. (31) ) on heterogeneity in noise strength
+D. The continuous lines show the results using the realization independent estimate of DEq. (32). For the dashed lines,
+Eq. (32) with the single-neuron resolved estimates of CV2
+iνiintroduced in Section II was used, whereas the dotted lines show
+the results using the full single-neuron resolved estimate of D(Eq. (11)). (a, b, c) Mean cross-covariances. (d, e, f) Variance
+of cross-covariances.
+K. Bias correction of variance of covariances
+We utilize Eq. (4) in the supplementary information of Dahmen et al.[7] to correct for the bias in the estimation
+of the variances of covariances due to the finite simulation time. The analogous correction for two populations a, bis
+given by
+δC2
+ab=δˆC2
+ab−⟨Aa⟩⟨Ab⟩−⟨Cab⟩2
+N+1, (46)
+with the biased estimator of the variance of cross-covariances δˆC2
+ab, mean autocovariance ⟨Aa⟩, mean cross-covariance
+⟨Cab⟩, andthenumberofbinsthespiketrainsaredividedinto N=Tsim/Tbin. Fig.A6illustratesthatafterasimulation
+time of 10000 s, the corrected estimator converges to a fixed value while the biased estimator does not, especially for
+smaller spectral radii. In contrast, the mean covariance estimator converges much faster for all spectral radii, as
+shown in Fig. A7.28
+103
+101
+Var(cov)(a) EE (b) EI (c) II
+101
+100Var(cov)(d) (e) (f)
+2000 4000 6000 8000 10000
+simtime [s]101Var(cov)(g)
+2000 4000 6000 8000 10000
+simtime [s](h)
+2000 4000 6000 8000 10000
+simtime [s](i)
+Biased estimator
+Corrected estimator
+Figure A6. Bias correction of variance of covariance estimation for different simulation lengths at three different spectral radii
+r. The light color depicts the biased estimator, the dark color the corrected estimator Eq. (46). (a, b, c) r=0.10; (d, e, f)
+r=0.49; (g, h, i) r=0.90.
+L. Numerical implementation of CVs
+For computing the theoretical prediction of the CVs, we make use the equation found in Appendix A.1 in Brunel
+[38], which in our units reads
+CV2=2π(τmν)2∫yth
+yrdxex2
+∫x
+−∞dses2[1+erf(s)]2. (47)
+However, a naive implementation of Eq. (47) is numerically unstable due to the diverging integrals. To proceed, we
+rewrite Eq. (47) using the following steps:
+CV2=2π(τmν)2∫yth
+yrdxex2
+∫x
+−∞dses2(1+erf(s))2
+=2π(τmν)2∫yth
+yrdxex2
+∫x
+−∞dses2(2√π∫s
+−∞e−w2dw)2
+=8(τmν)2∫yth
+yrdx∫x
+−∞ds∫s
+−∞dv∫s
+−∞dwex2+s2−v2−w2.
+We make a change of variables v′=s−v,w′=s−w, where we immediately drop the prime, yielding
+CV2=8(τmν)2∫yth
+yrdx∫∞
+0dv∫∞
+0dw∫x
+−∞dsex2−s2−v2−w2+2(v+w)s.29
+0.01
+0.000.01Mean(cov)(a) EE (b) EI (c) II
+0.050.10Mean(cov)(d) (e) (f)
+2000 4000 6000 8000 10000
+simtime (s)0.10.20.3Mean(cov)(g)
+2000 4000 6000 8000 10000
+simtime (s)(h)
+2000 4000 6000 8000 10000
+simtime (s)(i)
+Figure A7. Mean of covariance estimation for different simulation lengths at three different spectral radii r. (a, b, c) r=0.10;
+(d, e, f) r=0.49; (g, h, i) r=0.90.
+Another change of variables s′=x+v+w−sgives
+CV2=8(τmν)2∫yth
+yrdx∫∞
+0dv∫∞
+0dw∫∞
+v+wdse−s2+2vw+2sx.
+We switch the order of integration using ∫∞
+0dv∫∞
+0dw∫∞
+v+wds=∫∞
+0ds∫s
+0dv∫s−v
+0dw, which yields the form we used
+for the numerical implementation
+CV2=8(τmν)2∫∞
+0ds∫s
+0dv∫s−v
+0dw∫yth
+yrdxe−s2+2vw+2sx
+=8(τmν)2∫∞
+0ds∫s
+0dve−s2
+∫s−v
+0dwe2vw∫yth
+yrdxe2sx
+=2(τmν)2∫∞
+0ds∫s
+0dve−s21
+v[e2v(s−v)−1]1
+s[e2syth−e2syr]
+=2(τmν)2∫∞
+0ds1
+s[e2syth−e2syr]∫s
+0dv1
+v[e−s2−2v2+2sv−e−s2].
+∗d.dahmen@fz-juelich.de
+[1] J. S. Griffith and G. Horn, An analysis of spontaneous impulse activity of units in the striate cortex of unrestrained cats,
+J. Physiol. 186, 516 (1966).
+[2] K. W. Koch and J. M. Fuster, Unit activity in monkey parietal cortex related to haptic perception and temporary memory,
+Exp. Brain Res. 76, 292 (1989).30
+[3] P. A. Dąbrowska, N. Voges, M. von Papen, J. Ito, D. Dahmen, A. Riehle, T. Brochier, and S. Grün, On the Complexity
+of Resting State Spiking Activity in Monkey Motor Cortex, Cereb. Cortex Commun. 2, 10.1093/texcom/tgab033 (2021),
+tgab033.
+[4] S. Shinomoto, K. Shima, and J. Tanji, Differences in spiking patterns among cortical neurons, Neural Comput. 15, 2823
+(2003).
+[5] A.S.Ecker, P.Berens, G.A.Keliris, M.Bethge,andN.K.Logothetis,Decorrelatedneuronalfiringincorticalmicrocircuits,
+Science327, 584 (2010).
+[6] M. R. Cohen and A. Kohn, Measuring and interpreting neuronal correlations, Nat. Rev. Neurosci. 14, 811 (2011).
+[7] D. Dahmen, S. Grün, M. Diesmann, and M. Helias, Second type of criticality in the brain uncovers rich multiple-neuron
+dynamics, Proc. Natl. Acad. Sci. USA 116, 13051 (2019).
+[8] D. Dahmen, M. Layer, L. Deutz, P. A. Dąbrowska, N. Voges, M. von Papen, T. Brochier, A. Riehle, M. Diesmann, S. Grün,
+et al., Global organization of neuronal activity only requires unstructured local connectivity, eLife 11, e68422 (2022).
+[9] R. A. da Silveira and M. J. Berry, High-fidelity coding with correlated neurons, ArXiv (2013).
+[10] R. Moreno-Bote, J. Beck, I. Kanitscheider, X. Pitkow, P. Latham, and A. Pouget, Information-limiting correlations, Nat.
+Neurosci. 17, 1410 (2014).
+[11] S. Vyas, M. D. Golub, D. Sussillo, and K. V. Shenoy, Computation Through Neural Population Dynamics, Annu. Rev.
+Neurosci. 43, 249 (2020).
+[12] A. Roxin, N. Brunel, D. Hansel, G. Mongillo, and C. van Vreeswijk, On the distribution of firing rates in networks of
+cortical neurons, J. Neurosci. 31, 16217 (2011).
+[13] J.G.White, E.Southgate, J.N.Thomson,andS.Brenner,Thestructureofthenervoussystemofthenematodecaenorhab-
+ditis elegans, Philos. Trans. R. Soc. B 314, 1 (1986).
+[14] N. T. Markov, M. M. Ercsey-Ravasz, A. R. Ribeiro Gomes, C. Lamy, L. Magrou, J. Vezoli, P. Misery, A. Falchier,
+R. Quilodran, M. A. Gariel, J. Sallet, R. Gamanut, C. Huissoud, S. Clavagnier, P. Giroud, D. Sappey-Marinier, P. Barone,
+C. Dehay, Z. Toroczkai, K. Knoblauch, D. C. Van Essen, and H. Kennedy, A weighted and directed interareal connectivity
+matrix for macaque cerebral cortex, Cereb. Cortex 24, 17 (2014).
+[15] S. J. van Albada, A. Morales-Gregorio, T. Dickscheid, A. Goulas, R. Bakker, S. Bludau, G. Palm, C.-C. Hilgetag, and
+M. Diesmann, Bringing anatomical information into neuronal network models, in Computational Modelling of the Brain:
+Modelling Approaches to Cells, Circuits and Networks , edited by M. Giugliano, M. Negrello, and D. Linaro (Springer
+International Publishing, Cham, 2022) pp. 201–234.
+[16] L. Campagnola, S. C. Seeman, T. Chartrand, L. Kim, A. Hoggarth, C. Gamlin, S. Ito, J. Trinh, P. Davoudian, C. Radaelli,
+et al., Local connectivity and synaptic dynamics in mouse and human neocortex, Science 375, eabj5861 (2022).
+[17] P. Schnepel, A. Kumar, M. Zohar, A. Aertsen, and C. Boucsein, Physiology and impact of horizontal connections in rat
+neocortex, Cereb. Cortex 25, 3818 (2015).
+[18] R. Sayer, M. Friedlander, and S. Redman, The time course and amplitude of epsps evoked at synapses between pairs of
+ca3/ca1 neurons in the hippocampal slice, J. Neurosci. 10, 826 (1990).
+[19] D. Feldmeyer, V. Egger, J. Lübke, and B. Sakmann, Reliable synaptic connections between pairs of excitatory layer 4
+neurones within a single "barrel" of developing rat somatosensory cortex, J. Physiol. 521, 169 (1999).
+[20] S. Song, P. Sjöström, M. Reigl, S. Nelson, and D. Chklovskii, Highly nonrandom features of synaptic connectivity in local
+cortical circuits, PLOS Biol. 3, e68 (2005).
+[21] S. Lefort, C. Tomm, J.-C. F. Sarria, and C. C. H. Petersen, The excitatory neuronal network of the C2 barrel column in
+mouse primary somatosensory cortex, Neuron 61, 301 (2009).
+[22] Y. Ikegaya, T. Sasaki, D. Ishikawa, N. Honma, K. Tao, N. Takahashi, G. Minamisawa, S. Ujita, and N. Matsuki, Inter-
+pyramid spike transmission stabilizes the sparseness of recurrent network activity, Cereb. Cortex 23, 293 (2013).
+[23] Y. Loewenstein, A. Kuras, and S. Rumpel, Multiplicative dynamics underlie the emergence of the log-normal distribution
+of spine sizes in the neocortex in vivo, J. Neurosci. 31, 9481 (2011).
+[24] B. Lindner, B. Doiron, and A. Longtin, Theory of oscillatory firing induced by spatially correlated noise and delayed
+inhibitory feedback, Phys. Rev. E 72, 061919 (2005).
+[25] V. Pernice, B. Staude, S. Cardanobile, and S. Rotter, How structure determines correlations in neuronal networks, PLOS
+Comput. Biol. 7, e1002059 (2011).
+[26] V. Pernice, B. Staude, S. Cardanobile, and S. Rotter, Recurrent interactions in spiking networks with arbitrary topology,
+Phys. Rev. E 85, 031916 (2012).
+[27] J. Trousdale, Y. Hu, E. Shea-Brown, and K. Josic, Impact of network structure and cellular response on spike time
+correlations., PLOS Comput. Biol. 8, e1002408 (2012).
+[28] D. Grytskyy, T. Tetzlaff, M. Diesmann, and M. Helias, A unified view on weakly correlated recurrent networks, Front.
+Comput. Neurosci. 7, 131 (2013).
+[29] D. Dahmen, H. Bos, and M. Helias, Correlated fluctuations in strongly coupled binary networks beyond equilibrium, Phys.
+Rev. X6, 031024 (2016).
+[30] I. Ginzburg and H. Sompolinsky, Theory of correlations in stochastic neural networks, Phys. Rev. E 50, 3171 (1994).
+[31] C. van Vreeswijk and H. Sompolinsky, Chaos in neuronal networks with balanced excitatory and inhibitory activity, Science
+274, 1724 (1996).
+[32] M. A. Buice, J. D. Cowan, and C. C. Chow, Systematic fluctuation expansion for neural network activity equations, Neural
+Comput.22, 377 (2010).
+[33] A. Renart, J. De La Rocha, P. Bartho, L. Hollender, N. Parga, A. Reyes, and K. D. Harris, The asynchronous state in
+cortical circuits, Science 327, 587 (2010).31
+[34] T. Tetzlaff, M. Helias, G. T. Einevoll, and M. Diesmann, Decorrelation of neural-network activity by inhibitory feedback,
+PLOS Comput. Biol. 8, e1002596 (2012).
+[35] H. Sompolinsky and A. Zippelius, Relaxational dynamics of the edwards-anderson model and the mean-field theory of
+spin-glasses, Phys. Rev. B 25, 6860 (1982).
+[36] M. Helias and D. Dahmen, Statistical Field Theory for Neural Networks (Springer International Publishing, 2020) p. 203.
+[37] D. Dahmen, S. Recanatesi, X. Jia, G. K. Ocker, L. Campagnola, T. Jarsky, S. Seeman, M. Helias, and E. Shea-Brown,
+Strong and localized recurrence controls dimensionality of neural activity across brain areas, BioRxiv (2022).
+[38] N. Brunel, Dynamics of sparsely connected networks of excitatory and inhibitory spiking neurons, J. Comput. Neurosci.
+8, 183 (2000).
+[39] R. B. Stein, Some models of neuronal variability, Biomed. Pharmacol. J. 7, 37 (1967).
+[40] H. C. Tuckwell, Introduction to Theoretical Neurobiology , Vol. 1 (Cambridge University Press, Cambridge, 1988).
+[41] N. Brunel and V. Hakim, Fast global oscillations in networks of integrate-and-fire neurons with low firing rates, Neural
+Comput.11, 1621 (1999).
+[42] A. J. Siegert, On the first passage time probability problem, Phys. Rev. 81, 617 (1951).
+[43] M. Helias, T. Tetzlaff, and M. Diesmann, Echoes in correlated neural systems, New. J. Phys. 15, 023002 (2013).
+[44] T. Tetzlaff, S. Rotter, E. Stark, M. Abeles, A. Aertsen, and M. Diesmann, Dependence of neuronal correlations on filter
+characteristics and marginal spike-train statistics (2007), in press.
+[45] E. Shea-Brown, K. c. v. Josić, J. de la Rocha, and B. Doiron, Correlation and synchrony transfer in integrate-and-fire
+neurons: Basic properties and consequences for coding, Phys. Rev. Lett. 100, 108102 (2008).
+[46] D. R. Cox and P. A. W. Lewis, The Statistical Analysis of Series of Events , Methuen’s Monographs on Applied Probability
+and Statistics (Methuen, London, 1966).
+[47] M. Layer, J. Senk, S. Essink, A. van Meegen, H. Bos, and M. Helias, NNMT: Mean-field based analysis tools for neuronal
+network models, Front. Neuroinform. 16, 835657 (2022).
+[48] K. Fischer and J. Hertz, Spin glasses (Cambridge University Press, 1991).
+[49] J. A. Hertz, Y. Roudi, and P. Sollich, Path integral methods for the dynamics of stochastic and disordered systems, J.
+Phys. A50, 033001 (2017).
+[50] H. Sompolinsky, A. Crisanti, and H. J. Sommers, Chaos in random neural networks, Phys. Rev. Lett. 61, 259 (1988).
+[51] H. Sommers, A. Crisanti, H. Sompolinsky, and Y. Stein, Spectrum of large random asymmetric matrices, Phys. Rev. Lett.
+60, 1895 (1988).
+[52] C. De Dominicis, Dynamics as a substitute for replicas in systems with quenched random impurities, Phys. Rev. B 18,
+4913 (1978).
+[53] C. van Vreeswijk and H. Sompolinsky, Chaotic balanced state in a model of cortical circuits, Neural Comput. 10, 1321
+(1998).
+[54] J. Zinn-Justin, Quantum field theory and critical phenomena (Clarendon Press, Oxford, 1996).
+[55] M. Helias, T. Tetzlaff, and M. Diesmann, The correlation structure of local cortical networks intrinsically results from
+recurrent dynamics, PLOS Comput. Biol. 10, e1003428 (2014).
+[56] R. Rosenbaum and B. Doiron, Balanced networks of spiking neurons with spatially dependent recurrent connections, Phys.
+Rev. X4, 021039 (2014).
+[57] R. Pyle and R. Rosenbaum, Spatiotemporal dynamics and reliable computations in recurrent spiking neural networks,
+Phys. Rev. Lett. 118, 018103 (2017).
+[58] R. Pyle and R. Rosenbaum, Spatiotemporal dynamics and reliable computations in recurrent spiking neural networks,
+Phys. Rev. Lett. 118, 10.1103/physrevlett.118.018103 (2017).
+[59] R. Darshan, C. van Vreeswijk, and D. Hansel, Strength of correlations in strongly recurrent neuronal networks, Phys. Rev.
+X8, 031072 (2018).
+[60] G. B. Smith, B. Hein, D. E. Whitney, D. Fitzpatrick, and M. Kaschube, Distributed network interactions and their
+emergence in developing neocortex, Nat. Neurosci. 21, 1600 (2018).
+[61] C. Huang, D. A. Ruff, R. Pyle, R. Rosenbaum, M. R. Cohen, and B. Doiron, Circuit models of low-dimensional shared
+variability in cortical networks, Neuron 101, 337 (2019).
+[62] F.MastrogiuseppeandS.Ostojic,Linkingconnectivity, dynamics, andcomputationsinlow-rankrecurrentneuralnetworks,
+Neuron99, 609 (2018).
+[63] B. Kriener, M. Helias, S. Rotter, M. Diesmann, and G. T. Einevoll, How pattern formation in ring networks of excitatory
+and inhibitory spiking neurons depends on the input current regime, Front. Comput. Neurosci. 7, 1 (2014).
+[64] J. Aljadeff, D. Renfrew, M. Vegué, and T. O. Sharpee, Low-dimensional dynamics of structured random networks, Phys.
+Rev. E93, 022302 (2016).
+[65] K. Rajan and L. F. Abbott, Eigenvalue spectra of random matrices for neural networks, Phys. Rev. Lett. 97, 188104
+(2006).
+[66] S. Ostojic, Two types of asynchronous activity in networks of excitatory and inhibitory spiking neurons, Nat. Neurosci.
+17, 594 (2014).
+[67] D. J. Amit and N. Brunel, Model of global spontaneous activity and local structured activity during delay periods in the
+cerebral cortex, Cereb. Cortex 7, 237 (1997).
+[68] B. Kriener, H. Enger, T. Tetzlaff, H. E. Plesser, M.-O. Gewaltig, and G. T. Einevoll, Dynamics of self-sustained
+asynchronous-irregular activity in random networks of spiking neurons with strong synapses., Front. Comput. Neurosci. 8,
+136 (2014).32
+[69] M. Stern, H. Sompolinsky, and L. F. Abbott, Dynamics of random neural networks with bistable units, Phys. Rev. E 90,
+062710 (2014).
+[70] J. Aljadeff, M. Stern, and T. Sharpee, Transition to chaos in random networks with cell-type-specific connectivity, Phys.
+Rev. Lett. 114, 088101 (2015).
+[71] D. Martí, N. Brunel, and S. Ostojic, Correlations between synapses in pairs of neurons slow down dynamics in randomly
+connected neural networks, Phys. Rev. E 97, 062314 (2018).
+[72] J. Schuecker, S. Goedeke, and M. Helias, Optimal sequence memory in driven random networks, Phys. Rev. X 8, 041029
+(2018).
+[73] A. Crisanti and H. Sompolinsky, Path integral approach to random neural networks, Phys. Rev. E 98, 062120 (2018).
+[74] S. P. Muscinelli, W. Gerstner, and T. Schwalger, How single neuron properties shape chaotic dynamics and signal trans-
+mission in random neural networks, PLOS Comput. Biol. 15, e1007122 (2019).
+[75] M. Beiran and S. Ostojic, Contrasting the effects of adaptation and synaptic filtering on the timescales of dynamics in
+recurrent networks, PLOS Comput. Biol. 15, e1006893 (2019).
+[76] L. Kuśmierz, S. Ogawa, and T. Toyoizumi, Edge of chaos and avalanches in neural networks with heavy-tailed synaptic
+weight distribution, Phys. Rev. Lett. 125, 028101 (2020).
+[77] A. Wardak and P. Gong, Extended anderson criticality in heavy-tailed neural networks, Phys. Rev. Lett. 129, 048103
+(2022).
+[78] R. Rosenbaum, M. A. Smith, A. Kohn, J. E. Rubin, and B. Doiron, The spatial structure of correlated neuronal variability,
+Nat. Neurosci. 20, 107 (2017).
+[79] C. Baker, C. Ebsch, I. Lampl, and R. Rosenbaum, Correlated states in balanced neuronal networks, Phys. Rev. E 99,
+052414 (2019).
+[80] M.-O. Gewaltig and M. Diesmann, NEST (NEural Simulation Tool), Scholarpedia J. 2, 1430 (2007).
+[81] C. W. Gardiner, Handbook of Stochastic Methods for Physics, Chemistry and the Natural Sciences , 2nd ed., Springer Series
+in Synergetics No. 13 (Springer-Verlag, Berlin, 1985).
+[82] A. Khintchine, Korrelationstheorie der stationaeren stochastischen prozesse, Math. Ann. , 604 (1934).

@@ -1,0 +1,351 @@
+LONGNET: Scaling Transformers to
+1,000,000,000 Tokens
+Jiayu Ding∗Shuming Ma∗Li Dong Xingxing Zhang Shaohan Huang Wenhui Wang Furu Wei†
+Microsoft Research
+https://aka.ms/GeneralAI
+Abstract
+Scaling sequence length has become a critical demand in the era of large language
+models. However, existing methods struggle with either computational complexity
+or model expressivity, rendering the maximum sequence length restricted. In this
+work, we introduce LONG NET, a Transformer variant that can scale sequence
+length to more than 1 billion tokens, without sacrificing the performance on shorter
+sequences. Specifically, we propose dilated attention, which expands the attentive
+field exponentially as the distance grows. LONGNEThas significant advantages: 1)
+it has a linear computation complexity and a logarithm dependency between tokens;
+2) it can be served as a distributed trainer for extremely long sequences; 3) its dilated
+attention is a drop-in replacement for standard attention, which can be seamlessly
+integrated with the existing Transformer-based optimization. Experiments results
+demonstrate that LONG NETyields strong performance on both long-sequence
+modeling and general language tasks. Our work opens up new possibilities for
+modeling very long sequences, e.g., treating a whole corpus or even the entire
+Internet as a sequence. Code is available at https://aka.ms/LongNet .
+GPT (512)Sparse Transformer 
+(12K)Reformer (64K)Memorizing 
+Transformers (262K)RMT (1M)LongNet (1B)
+02004006008001000
+2017 2018 2019 2020 2021 2022 2023 2024Length Millions
+Figure 1: Trend of Transformer sequence lengths over time.
+∗Equal contribution. †Corresponding author.arXiv:2307.02486v1  [cs.CL]  5 Jul 20231 Introduction
+Recent years have witnessed a trend toward scaling neural networks [ BMR+20,KMH+20,ZKHB22 ,
+CND+22,DDM+23]. The depth is primarily scaled up for exponential expressivity, producing
+many powerful deep networks [ HZRS16 ,HCB+19,WMD+22]. Then, the sparse MoE mod-
+els [LLX+21,FZS21 ,ZBK+22] and model parallelism approaches [ SPP+19,KCL+22] efficiently
+enlarge the hidden dimension. Sequence length, as the last atomic dimension of the neural net-
+work, is desirable to be unlimited . Breaking the limitation of sequence length introduces significant
+advantages. First, it provides large memory and receptive field for models, which is practical for them
+to interact with human and the world. Second, a longer context contains more complex causality
+and reasoning paths that models can exploit in training data. In contrast, short dependency has more
+spurious correlations, which is harmful to generalization. Third, it enables to explore the limits of
+in-context learning, which has the potential to be a paradigm shift for many-shot learning, as an
+extremely long context may help the models alleviate catastrophic forgetting.
+The major challenge of scaling up sequence length is striking the right balance between the
+computational complexity and the model expressivity. RNN-style models are primarily imple-
+mented to increase the length. However, its sequential nature limits the parallelization dur-
+ing training, which is essential in long-sequence modeling. More recently, state space mod-
+els [GGR22 ,SWL23 ,FDS+23,PMN+23] are appealing to sequence modeling. It can operate
+as a CNN during training, and transform to an efficient RNN at test time. While they perform
+well at long-range benchmarks [ TDA+21], their performance on regular lengths is not as good as
+Transformers, limited mainly by the model expressivity [FPB+23].
+Another strand of scaling the sequence length is to decrease the complexity of Transformers, i.e., the
+quadratic complexity of self-attention. Implementing sliding windows or convolution modules over
+the attention is a straightforward way to make the complexity nearly linear. Nevertheless, this sacri-
+fices the ability to recall the early tokens, forgetting the prompts at the very beginning of the sequence.
+Sparse attention reduces the computation by sparsifying the attention matrix, preserving the possibility
+of recalling long-distant information. For example, [ CGRS19 ] obtains O(N√
+Nd)time complexity
+with a fixed sparse pattern. Besides the heuristic patterns [ ZGD+20,BPC20 ], the learnable patterns
+prove to be useful for sparse attention [ KKL20 ,ALdJ+23]. There are also some other efficient
+Transformer-based variants, including low-rank attention [ WLK+20,WCL+20], kernel-based meth-
+ods [ KVPF20 ,CLD+21,QHS+22], downsampling approaches [ LLK+19,JGB+21,MKW+21],
+recurrent models [ DYY+19,BKB23 ], and retrieval-based methods [ WRHS22 ,WDC+23]. Yet, none
+has been scaled to 1 billion tokens (see Figure 1).
+Method Computation Complexity
+Recurrent O(Nd2)
+Vanilla Attention O(N2d)
+Sparse Attention O(N√
+Nd)
+Dilated Attention (This Work) O(Nd)
+Table 1: Comparison of computation complexity among different methods. Nis the sequence length
+anddis the hidden dimension.
+In this work, we successfully scale the sequence length to 1 billion tokens . Our solution is
+LONG NET, which replaces the attention of vanilla Transformers with a novel component named
+dilated attention. The general design principle is - attention allocation decreases exponentially as
+the distance between tokens grows . We prove that it obtains a linear computation complexity and a
+logarithm dependency between tokens. This deals with the contradiction between limited attention
+resources and the accessibility to every token. In the implementation, LONGNETcan be transformed
+into a dense Transformer, which seamlessly supports the off-the-shelf optimization for Transformers
+(e.g., kernel fusion, quantization, and distributed training). Taking advantage of the linear complexity,
+LONGNETcan parallelize the training across nodes, breaking the constraint of both computation and
+memory with a distributed algorithm. This allows us to efficiently scale up the sequence length to 1B
+tokens with nearly constant runtime (see Figure 5), while vanilla Transformer suffers from quadratic
+complexity.
+22 L ONGNET
+2.1 Preliminary
+The core of Transformers [ VSP+17] is self-attention, which maps a query and a set of keys and
+values to output. Given the inputs Q, K, V ∈RN×d, it computes the outputs Owith
+O=softmax (QKT)V (1)
+Self-attention struggles with long sequences, due to its quadratic dependency on the sequence length.
+One query would attend to all keys and values, leading to computational inefficiencies.
+Sparse attention alleviates this issue by restricting the query’s access to a subset of keys and values.
+The key of sparse attention is the sparse attention pattern S∈ {0,1}N×N, which determines specific
+keys and values that the query Qcan attend to.
+O=softmax (QKT⊙ 1S)V (2)
+For example, the fixed pattern of sparse Transformer [ CGRS19 ] is composed of a local pattern and a
+strided pattern. The sequence is divided into blocks of length l. The local pattern allows one query to
+attend to tokens within the same block, while strided pattern allows one query to attend to the last c
+tokens of each block. Formally, the local pattern S(1)
+i={j| ⌊j/l⌋=⌊i/l⌋}, and the strided pattern
+S(2)
+i={j|jmodl∈ {t, t+ 1, ..., l}}.
+2.2 Dilated Attention
+Figure 2 illustrates the overview of dilated attention. Dilated attention splits the input ( Q,K,V) into
+segments {(eQi,eKi,eVi)}N
+wequally with a segment length w. Each segment is then sparsified along
+the sequence dimension by selecting the rows with an interval r. The computation can be written as:
+eQi= [Qiw, Qiw+r, Qiw+2r, ..., Q (i+1)w−1] (3)
+eKi= [Kiw, Kiw+r, Kiw+2r, ..., K (i+1)w−1] (4)
+eVi= [Viw, Viw+r, Viw+2r, ..., V (i+1)w−1] (5)
+The sparsified segments {(eQi,eKi,eVi)}N
+ware fed into the attention in parallel, after which are
+scattered and concatenated as the output O:
+eOi=softmax (eQieKT
+i)eVi (6)
+ˆOi={eOi,j|jmodr= 0; 0|jmodr̸= 0} (7)
+O= [ˆO0,ˆO1, ...,ˆON
+w−1] (8)
+In the implementation, the dilated attention can be transformed into dense attention between a
+gathering operation over the input (Q, K, V )and a scattering operation over the output eOi, so it
+can directly reuse any optimization for vanilla attention (e.g., flash attention [ DFE+22]). Dilated
+attention can significantly reduce the computation cost by a factor ofN
+wr2over the vanilla attention.
+In practice, the segment size wtrades the globality of attention for efficiency, while the dilation
+with a size rreduces the computation cost by approximating the attention matrix. To capture both
+long-range and short-range information efficiently, we implement a mixture of dilated attentions with
+different segment sizes and dilation rates {ri, wi}k:
+3Segment Length: 4
+Dilated Rate: 1Segment Length: 16
+Dilated Rate: 4Segment Length: 8 
+Dilated Rate: 2Figure 2: Building blocks of dilated attention used in LONG NET. It consists of a series of attention
+patterns for modeling both short-range and long-range dependency. The number of attention patterns
+can be extended according to the sequence length.
+O=kX
+i=1αiO|ri,wi (9)
+αi=siP
+jsj(10)
+where sidenotes the denominator of the attention softmax for O|ri,wi. Note that the computations
+for{O|ri,wi}kare in parallel because there is no computation dependency among them. Experiments
+show that dynamic weights calculated by the denominator of the attention softmax are better than
+learnable fixed weights. For a query attends to keys in different dilated attentions, our method to mix
+dilated attentions is equivalent to gather keys in different parts and calculate softmax together.
+Intuitively, the local attention should be precisely computed, while the global attention can be
+approximate. Therefore, we set a larger wiwith a bigger ri. Moreover, we gradually increase the wi
+for each attention until it reaches the maximum length Nor the number of attention patterns k:
+w={w0, w1, w2, ..., N}k(wi< w i+1< N) (11)
+r={1, r1, r2, ..., r k}k(1< ri< ri+1) (12)
+In practice, we set wandrto geometric sequences for an exponential attentive field.
+4Segment Length: 8
+Dilated Rate: 2
+Heads: 41st head 2nd head 3rd head 4th headFigure 3: Dilated attention with multiple heads. The attention patterns differ among heads by shifting
+the position successively.
+2.3 Multi-Head Dilated Attention
+As shown in Figure 3, we differ in the computation among different heads by sparsifying different
+parts of the query-key-value pairs. Specifically, for the j-th head, we have an offset sj=jmodr
+when selecting the (Q, K, V ):
+eQi= [Qiw+sj, Qiw+sj+r, Qiw+sj+2r, ..., Q (i+1)w+sj−1] (13)
+eKi= [Kiw+sj, Kiw+sj+r, Kiw+sj+2r, ..., K (i+1)w+sj−1] (14)
+eVi= [Viw+sj, Viw+sj+r, Viw+sj+2r, ..., V (i+1)w+sj−1] (15)
+Following the vanilla multi-head attention, the outputs of different heads are concatenated into a final
+output. The rest of the computation remains the same as the single-head counterpart in Section 2.2.
+2.4 Computational Complexity and Token Dependency
+Given dilated attention with a segment size and dilation rate of (r, w), each query-key-value pair is
+sparsified from (Q, K, V )∈RN×dto(Q, K, V )∈Rw
+r×d, so the flops of the attention computation
+are estimated as:
+FLOPs =2N
+w(w
+r)2d=2Nwd
+r2(16)
+We further extend it to dilated attention with multiple segment sizes and dilation rates. The flops can
+be written as:
+FLOPs = 2NdkX
+i=1wi
+r2
+i(17)
+With the segment sizes and dilation rates in Equation (11) and Equation (12), the flops are given by
+FLOPs = 2w0Ndk−1X
+i=01
+αi≤2α
+α−1w0Nd (α >1) (18)
+where w0is a predefined constant and αis the common ratio for geometric sequences wandr.
+Therefore, the computation complexity of dilated attention is approximate to O(Nd).
+Moreover, the information of each tokens can be propagated to a maximum distance of D:
+D=l−1X
+i=0wi=w0l−1X
+i=0αi≈w0
+α−1αl(19)
+5𝑋𝑋1 𝑋2𝑄1 𝐾1 𝑉1 𝐾2 𝑉2 𝑄2෨𝑄1෩𝐾1෨𝑉1෩𝐾2෨𝑉2෨𝑄2෩𝐾 ෨𝑉
+SplitProjectSparsifyAll gather𝑂1 𝑂2GPU 1 GPU 2Figure 4: Distributed training of LONG NETon two GPU devices. It parallelizes the training by
+partitioning the sequence dimension. The computation and communication costs are nearly constant
+as the number of devices grows.
+where lis the length of the propagated path. Therefore, the maximum path length of a sequence with
+Ntokens can be estimated as:
+L≈logαN(α−1)
+w0(α >1) (20)
+This proves that the token dependency is approximate to O(logN).
+3 L ONGNETas a Distributed Trainer: Scaling up to 1B Tokens
+Although the computation complexity of dilated attention has been greatly reduced to O(Nd), it
+is infeasible to scale the sequence length to the million level on a single GPU device due to the
+computation and memory constraints. There are some distributed training algorithms for large-scale
+model training, such as model parallelism [ SPP+19], sequence parallelism [ LXLY21 ,KCL+22], and
+pipeline parallelism [ HCB+19]. However, they are insufficient for LONG NETespecially when the
+sequence dimension is extremely large.
+3.1 Distributed Algorithm
+We take advantage of the linear computation complexity of LONGNETfor the distributed training of
+sequence dimension. Without loss of generality, Figure 4 presents our distributed algorithm on two
+GPUs, which can be further scaled to an arbitrary number of devices. We start by splitting the input
+sequence along the sequence dimension. Each sequence is put on one device separately:
+X= [X1, X2] (21)
+Then, they are projected into queries, keys, and values on the two devices:
+[Q1, K1, V1] = [WQ, WK, WV]X1,[Q2, K2, V2] = [WQ, WK, WV]X2 (22)
+For the segment length wi≤l(where lis the sequence length on the local device), we compute the
+attention locally with Equation (3) to Equation (8). For the segment length wi> l, the keys and values
+68K16K 32K 64K128K 512K 2M 8M 32M 128M 1B
+Sequence Length10002000300040005000Runtime (ms)Dilated attention w/ FlashAttention
+Vanilla attention w/ FlashAttentionFigure 5: Runtime of our dilated attention and vanilla attention. Both are equipped with FlashAtten-
+tion [DFE+22].
+are distributed across different devices. Therefore, we collect the key-value pairs before computing
+the attention. We use Equation (3) to Equation (5) to sparsify the {Q, K, V }into{eQ,eK,eV}. An
+all-gather operation is implemented to collect the key-value pairs:
+eK= [fK1,fK2],eV= [fV1,fV2] (23)
+Note that the all-gather operation in the backward becomes a reduce-scatter operation. Different
+from vanilla attention, both sizes of fKiandeViare independent of the sequence length N, making the
+communication cost constant.
+Finally, we compute the cross-attention with the local queries fQiand the global key-value pairs
+{eK,eV}. The formulation is written as:
+fO1=softmax (fQ1eKT)eV ,fO2=softmax (fQ2eKT)eV (24)
+The concatenation of the outputs across different devices becomes the final attention output:
+eO= [fO1,fO2] (25)
+The distributed algorithm described above is orthogonal to other parallelisms, including data paral-
+lelism which partitions the batch dimension, model parallelism which partitions the hidden dimension,
+and pipeline parallelism which partitions the layers.
+3.2 Scaling up to 1B Tokens
+We verify the feasibility of scaling to 1B tokens with the modern distributed systems. Starting from
+8K, we gradually scale the sequence length until the limit of GPU memory. We reduce the batch size
+accordingly to keep the number of tokens per batch at 1 billion. Each model of different sequence
+lengths has up to 3 segment lengths, which are 2,048, the number of tokens per device, and the
+sequence length. We compute the average speed in the forward propagation for 10 different runs.
+Figure 5 reports the runtime of vanilla attention and our dilated attention. Both of them are imple-
+mented with FlashAttention Kernel for saving memory and improving speed. It shows that dilated
+7Model Length BatchGithub
+2K 8K 32K
+Transformer [VSP+17] 2K 256 4.24 5.07 11.29
+Sparse Transformer [CGRS19]8K 644.39 3.35 8.79
+LONGNET(ours) 4.23 3.24 3.36
+Sparse Transformer [CGRS19]16K 324.85 3.73 19.77
+LONGNET(ours) 4.27 3.26 3.31
+Sparse Transformer [CGRS19]32K 165.15 4.00 3.64
+LONGNET(ours) 4.37 3.33 3.01
+Table 2: Perplexity of language models for L ONG NETand the baselines.
+attention can successfully scale up the sequence length with almost constant latency. By partitioning
+the sequence dimension, it can leverage the distributed systems to scale the sequence length to 1
+billion tokens. In contrast, vanilla attention suffers from the quadratic dependency on the sequence
+length. Its latency dramatically increases as the length grows. Moreover, there is no distributed
+algorithm for vanilla attention to break sequence length limitation. This proves the advantage of the
+linear complexity as well as the distributed algorithm for L ONG NET.
+4 Experiments on Language Modeling
+4.1 Setup
+We implement LONG NETon language modeling. The backbone architecture is MAG-
+NETO [WMH+22] with XPOS[SDP+22] relative position encoding, except that we replace the
+standard attention with our dilated attention. We use the base-size configuration of MAGNETO , which
+has a hidden dimension of 768, 12 attention heads, and 12 decoder layers. We pre-train the model
+with The Stack dataset [ KLA+22], a source code collection in over 300 programming languages.
+The data is preprocessed with the tiktoken tokenizer2with cl100k_base encoding. The models are
+trained with a batch size of 0.5M tokens for 300K steps. More details regarding the hyperparameters
+can be found in the appendix. All experiments are conducted based on the torchscale [MWH+22]
+codebase.
+4.2 Results
+We compare LONG NETwith both vanilla Transformer and sparse Transformers. The differ-
+ences among the architectures are the attention layers, while the others remain the same. We
+scale the sequence length of these models from 2K to 32K, while reducing the batch size to
+keep the number of tokens per batch constant. For LONG NET, we use segment lengths of
+w={2048,4096,8192,16384 ,32768}, and the dilated ratios are r={1,2,4,6,12}. We im-
+plement the fixed pattern for sparse attention as in [ CGRS19 ] with multiple heads attending to distinct
+subblocks. The block size is set to 2048. We adjust their sparse ratios to match the computation flops
+with LONGNETso that the comparison is fair. The attention layers in vanilla Transformers are dense
+and fully connected, so the computation cost is much higher. Due to the computation constraints, we
+only scale it up to 32K sequence length. All of our implementations of attention variants are based
+on FlashAttention3for training efficiency. We customize the flash attention kernels for both sparse
+attention and dilated attention.
+Table 2 summarizes the results of these models on the Stack dataset. We use perplexity as the
+evaluation metric. The models are tested with different sequence lengths, ranging from 2K to 32K.
+When the input is longer than the maximum length that the models support, we implement block-
+wise causal attention (BCA) [ SDP+22], a state-of-the-art extrapolation method for language model
+inference. Besides, we remove the absolute position encoding. Primarily, the results demonstrate that
+2https://github.com/openai/tiktoken
+3https://github.com/HazyResearch/flash-attention/tree/main
+81017 4×10166×1016
+FLOPs46810T est PPL
+2K
+8K16K2K
+8K16K32KTransformer
+LongNetFigure 6: Test perplexity of LONGNETand dense Transformers using different sequence lengths dur-
+ing training. LONG NEToutperforms dense Transformers with a lower perplexity and a significantly
+smaller amount of computation.
+increasing the sequence length during training generally leads to a better language model. Secondly,
+the extrapolation of sequence length in inference does not apply to the case when the length is much
+larger than the model supports. Finally, LONG NETconsistently outperforms the baseline models,
+proving its effectiveness in language modeling.
+4.3 Scaling Curves of Sequence Length
+Previous work [ KMH+20] has shown that language models follow some scaling laws by increasing
+parameters or training tokens. We are interested in the performance of language models when
+the context length is scaled up during training. We test the losses with inputs of a mixture of
+different lengths, from 1K to 32K. We use blockwise causal attention during inference to improve the
+generalization of sequence lengths.
+Figure 6 plots the scaling curves of sequence length for both vanilla Transformers and LONG NET.
+We estimate the amount of compute by calculating the total flops of matrix multiplication. The
+results show that both vanilla Transformers and LONGNETbenefit from a larger context length during
+training. However, LONGNETcan scale up the context length more efficiently, achieving a lower test
+loss with a smaller amount of computing. This demonstrates the advantage of longer training input
+over extrapolation. In conclusion, our experiments show that LONG NETis a more efficient way to
+scale up the context length in language models. This is because LONG NETcan learn longer-range
+dependencies more effectively.
+4.4 Scaling up Model Size
+An important property of large language models is that the loss scales as a power law with compute.
+To verify whether LONG NETstill follows the similar scaling law, we train a series of models with
+different model sizes, from 125 million to 2.7 billion parameters. The 2.7B model is trained with
+300B tokens, while the rest digest about 40B tokens. Figure 7(a) plots the scaling curve of LONGNET
+regarding the compute. We compute the perplexity on the same test set. The amount of compute
+is estimated by calculating the total flops of matrix multiplication during training. It proves that
+LONGNETcan still follow the power law. This implies that the dense Transformer is not a prerequisite
+9101610171018
+FLOPs1.21.41.61.82.02.22.42.6T est Loss125M
+350M
+760M
+2.7BLongNet(a)
+1K 2K 4K 8K 16K 32K
+Context Window1.61.71.81.92.02.12.2T est LossLongNet (b)
+Figure 7: Left: Test loss of LONG NETwith an increasing model size. The scaling curve follows
+a similar law to the vanilla Transformers. Right: Test loss of LONG NETusing different context
+windows. A longer context window yields better language modeling.
+for scaling the language models. Additionally, the scalability and the efficiency are both obtained by
+LONG NET.
+4.5 Long Context Prompting
+Prompting is an essential method to guide and provide additional information to the language models.
+We conduct experiments to verify whether LONG NETcan benefit from a longer context window for
+prompting. Specifically, we reserve a piece of prefixes as the prompt and test the perplexity of its
+suffixes. We gradually scale the length of the prompt from 2K to 32K. For a fair comparison, we
+keep the suffixes the same, while increasing the length of the prefixes to the maximum lengths of
+the models. Figure 7(b) reports the results on the test set. It shows that the test loss of LONG NET
+gradually decreases as the context window grows. This demonstrates the superiority of LONGNETin
+fully leveraging the long context to improve the language model.
+5 Conclusion and Future Work
+We present LONGNET, a Transformer variant that can scale the sequence length to 1 billion tokens and
+beyond, with no loss in shorter sequences. The core of LONGNETis dilated attention, which reduces
+the computation complexity from quadratic to linear. LONGNETcan be served as a distributed trainer
+that parallelizes the training of a sequence across multiple GPU devices. Experiments show that
+LONG NEThas superior performance over the strong baselines on modeling both long and short
+sequences. In the future, we will extend LONG NETto support more tasks, e.g., multimodal large
+language modeling [ HDW+23,PWD+23], BEiT pretraining [ BDPW22 ,PDB+22,WBD+23], and
+genomic data modeling.
+Acknowledgement We would like to acknowledge Yuqing Xia and Jilong Xue for the early
+exploration of the flash attention kernel.

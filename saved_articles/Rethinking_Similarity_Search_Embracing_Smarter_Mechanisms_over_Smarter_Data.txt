@@ -1,0 +1,437 @@
+Rethinking Similarity Search: Embracing Smarter Mechanisms
+over Smarter Data
+Renzhi Wu, Jingfan Meng, Jie Jeff Xu, Huayi Wang, Kexin Rong
+Georgia Institute of Technology
+ABSTRACT
+In this vision paper, we propose a shift in perspective for improv-
+ing the effectiveness of similarity search. Rather than focusing
+solely on enhancing the data quality, particularly machine learning-
+generated embeddings, we advocate for a more comprehensive
+approach that also enhances the underpinning search mechanisms.
+We highlight three novel avenues that call for a redefinition of
+the similarity search problem: exploiting implicit data structures
+and distributions, engaging users in an iterative feedback loop, and
+moving beyond a single query vector. These novel pathways have
+gained relevance in emerging applications such as large-scale lan-
+guage models, video clip retrieval, and data labeling. We discuss
+the corresponding research challenges posed by these new problem
+areas and share insights from our preliminary discoveries.
+ACM Reference Format:
+Renzhi Wu, Jingfan Meng, Jie Jeff Xu, Huayi Wang, Kexin Rong. 2023.
+Rethinking Similarity Search: Embracing Smarter Mechanisms over Smarter
+Data. In Proceedings of ACM Conference (Conference’17). ACM, New York,
+NY, USA, 6 pages. https://doi.org/10.1145/nnnnnnn.nnnnnnn
+1 INTRODUCTION
+Similarity search studies the problem of finding the most pertinent
+data points in a database when compared to a specific query point. A
+naïve approach to this problem involves exhaustive search through
+the database for each query, which poses computational challenges
+for large datasets. To overcome these challenges, researchers have
+developed efficient indexing techniques, including methods like
+locality sensitive hashing [ 3,12], nearest neighbor graphs [ 4,13],
+and product quantization [ 5,9], that improve computational effi-
+ciency by intelligently reducing the search space to a small subset
+of the dataset. These techniques have become vital to the practical
+application of similarity search in large datasets.
+Further, machine learning (ML) algorithms have greatly expanded
+the scope of similarity search. Modern ML models can transform
+various forms of structured and unstructured data, such as text,
+image, and time series, into embeddings. These high dimensional
+vectors are trained such that more similar inputs cluster closer
+together. This transformation allows users to search for abstract or
+semantic entities, such as searching for visually similar artworks,
+Permission to make digital or hard copies of all or part of this work for personal or
+classroom use is granted without fee provided that copies are not made or distributed
+for profit or commercial advantage and that copies bear this notice and the full citation
+on the first page. Copyrights for components of this work owned by others than ACM
+must be honored. Abstracting with credit is permitted. To copy otherwise, or republish,
+to post on servers or to redistribute to lists, requires prior specific permission and/or a
+fee. Request permissions from permissions@acm.org.
+Conference’17, July 2017, Washington, DC, USA
+©2023 Association for Computing Machinery.
+ACM ISBN 978-x-xxxx-xxxx-x/YY/MM. . . $15.00
+https://doi.org/10.1145/nnnnnnn.nnnnnnnusing distances in the vector embedding space as a proxy for sim-
+ilarity. By quantifying these formerly abstract concepts, ML has
+opened up a plethora of new applications for similarity search.
+Despite these leaps forward, we have observed a surprising stag-
+nation in the development of the similarity search problem formula-
+tion itself. Much of the progress seems to be driven by the machine
+learning community’s endeavors to create superior machine mod-
+els that offer optimal data representation or embeddings. While
+vector databases have begun to explore advance features such as
+metadata filtering, which adds constraints on non-vector data to
+the vector search, the focus of most current research remains on
+the “basic” similarity search problem. Our view is that improving
+data quality should not be the only method to enhance the sim-
+ilarity search effectiveness; an equally promising approach is to
+leverage smarter search mechanisms. We believe that the database
+community has much to contribute by exploring advanced query
+processing techniques beyond the basic similarity search problem.
+In this paper, we highlight several opportunities that could serve
+as potential avenues for future research.
+Opportunity 1: Leveraging Implicit Structures in Data. Embed-
+dings are not arbitrary high-dimensional vectors; they are trained
+to encapsulate semantic meanings. Therefore, these vectors often
+contain implicit structure. For instance, embeddings associated with
+artworks may encapsulate diverse artistic styles, so that artworks of
+similar styles cluster together in the high-dimensional vector space.
+While these structures may not be explicitly encoded in metadata,
+leveraging them during similarity searches could help enhance the
+search quality. For instance, the search could be adjusted to ensure
+that the nearest neighbor is not only close to the query in terms
+of distance but also belongs to the same class or cluster. The ques-
+tion remains in how we can effectively incorporate such implicit
+structure into the search objectives.
+Opportunity 2: Engaging Users in the Loop. User feedback is
+a critical resource for improving the accuracy of similarity search
+results. While it is possible to retrain the machine learning model to
+improve the quality of embeddings based on additional labels pro-
+vided by the user, doing so incurs significant computation overhead.
+Users may also have domain-specific knowledge, such as in the
+form of user-defined functions, which could improve the efficiency
+and accuracy of the similarity search. However, this knowledge is
+not currently captured in the pre-trained embedding space. Ideally,
+we would like to dynamically adapt the similarity search results
+according to user feedback for a specific query or question domain
+without updating the entire database.
+Opportunity 3: Searching under Multi-object Constraints.
+Traditional similarity searches focus on identifying data points
+similar to a single query point. Increasingly, applications require
+measuring similarity between setsof objects rather than individualarXiv:2308.00909v1  [cs.DB]  2 Aug 2023Conference’17, July 2017, Washington, DC, USA Renzhi Wu, Jingfan Meng, Jie Jeff Xu, Huayi Wang, Kexin Rong
+ones. Simply retrieving the top- 𝑘match for each object can lead
+to low recall for applications that contain complex semantic and
+spatial relationships between objects. For example, we might want
+to retrieve images with visual concepts of the people and traffic
+lights where the person is standing below the traffic light. We need
+to revisit indexing and search algorithms to effectively handle these
+inter-object constraints.
+These opportunities arise from emerging applications such as
+conversational chatbots, video clip retrieval, and data labeling. In
+the subsequent sections of this paper, we delve into the specific
+applications that give rise to these novel problem formulations in
+similarity search. We also discuss the research challenges associated
+with these new problems and share our initial findings.
+2 BACKGROUND
+Vector databases are designed to store, manage, and perform simi-
+larity searches on high-dimensional vectors. Apart from the basic
+similarity search, these databases have begun to develop more ad-
+vanced search features. We discuss two such features below.
+Metadata filtering. Similarity search queries on vector data are
+often used along with additional filters on non-vector metadata [ 16,
+21]. For example, customers of an e-commerce platform might want
+to search for items that are visually similar to a given image (vector
+data) and contain specific keywords in the product name (non-
+vector data). There are different plans for executing these hybrid
+queries: for example, the system can first filter based on metadata
+and then retrieve top- 𝑘similarity search results, or it can first
+retrieve the top- 𝛼·𝑘(𝛼>1)results and then apply the metadata
+filters. The optimal physical plan vary depending on selectivity of
+the vector and non-vector conditions [22].
+Multi-vector Query. In certain applications, the similarity is
+computed based on not one but a set of vectors. Consider a video
+surveillance system that represents each person 𝑋captured on
+camera using several vectors: 𝑣0represents front face features, 𝑣1
+represents side face and 𝑣2represents posture. The similarity be-
+tween two people is computed by the weighted sum ( 𝑔) of the inner
+product (𝑓) between each pair of corresponding feature vectors:
+𝑔(𝑓(𝑋.𝑣 0,𝑌.𝑣 0),𝑓(𝑋.𝑣 1,𝑌.𝑣 1),𝑓(𝑋.𝑣 2,𝑌.𝑣 2)). A straightforward ap-
+proach to support this query is to independently retrieve the top- 𝑘
+results for each feature vector, but this can lead to low recall. Prior
+work has begun to explore alternative strategies like merging mul-
+tiple vectors into one for decomposable similarity functions 𝑓, or
+iteratively conducting a top- 𝑘′query and incrementing 𝑘′[15]. Nev-
+ertheless, efficiently and accurately handling multi-vector queries
+remains an open research question.
+3 DISTRIBUTION-AWARE SEARCH
+In this section, we explore the potential of using the inherent struc-
+ture within vector data to enhance the quality of similarity searches.
+This involves leveraging both the local distribution surrounding
+the query (§ 3.2) and the global distribution of the dataset (§ 3.3).
+3.1 Application Scenarios
+Time-series Subsequence Retrieval. A common task in time
+series applications is to identify and retrieve subsequences that arefrom the same class as the given query subsequences. Consider a
+dataset containing users’ desktop activities logged as time-stamped
+mouse click events. Suppose we have a sequence of these click
+events associated with the task of sending an email and we want
+to retrieve other subsequences that represent the same activity.
+The typical similarity-based approach would only retrieve sub-
+sequences with the smallest distances to the query. However, this
+approach does not ensure that the retrieved subsequences belong
+to the same class and can be enhanced by leveraging local data
+distribution. We expect subsequences from the same class to likely
+locate in the same cluster. Therefore, a more effective method would
+not only retrieve subsequences that have a small distance to the
+query but also belong to the same local cluster.
+Custom Q&A System. A generic, pre-trained Large Language
+Model (LLM) can be adapted to reflect an individual organization’s
+specific internal knowledge via fine-tuning. A more cost-effective
+approach is to utilize vector databases as external memory for
+retrieving relevant context and improving LLM prompting.
+We describe a typical workflow for users interested in building a
+Q&A system on custom datasets. During the pre-processing phase,
+all proprietary documents are indexed by generating an embedding
+for each one and storing them in a vector database. During the
+querying phase, we generate embedding for the user query and
+perform a similarity search on the vector database to retrieve the
+top-𝑘most relevant documents with respect to the query. These
+documents, alongside the original query, are then used as context
+in the LLM to produce a response.
+Empirical findings from industry practitioners show that lever-
+aging the global data distribution can help improve retrieval perfor-
+mance [ 10,11,18], which in turn improves the quality of the custom
+Q&A system. Essentially, by examining the query’s position within
+the global distribution, we can pinpoint its unique characteristics
+within the dataset. This allows us to retrieve context that is both
+more relevant and personalized to the query.
+3.2 Leveraging Local Distribution
+We propose to incorporate constraints on local clustering struc-
+tures into the objective function of similarity search. The idea is
+to perform the similarity search in an iterative manner, gradually
+expanding the query set by adding the newly identified nearest
+neighbor at each iteration. As such, it requires each nearest neigh-
+bor to be close not only to the original query vector but also to
+all previously identified nearest neighbors. This encourages the
+retrieval of nearest neighbors that are tightly clustered.
+Figure 1 (1) illustrates the effect of our proposed approach. In this
+example, data points form two skewed clusters, indicated by the +
+and−signs. When we conduct a similarity search for the query (+
+in the figure), the traditional approach (green dotted circle) retrieves
+many data points from the opposing cluster, while our proposed
+method (purple solid circle) primarily retrieves data points from
+the same cluster as the query.
+The search procedure proceeds as follows:
+•For each data item in the dataset, calculate the sum of distances
+to all queries in the current query set. Select the data item with
+the smallest sum as the nearest neighbor.
+•Update the query set with the newly identified near neighbor.
+•Repeat until a predefined stopping criterion is met.Rethinking Similarity Search: Embracing Smarter Mechanisms over Smarter Data Conference’17, July 2017, Washington, DC, USA
+Preliminary Results. We evaluated our approach on a private
+desktop activity dataset comprising interaction logs (e.g., mouse
+clicks) from 5 users over two days. Given one template log sequence
+representing a certain task, e.g., sending an email, we aim to retrieve
+subsequences of the same task. There are 3 tasks of interest with 72
+instances of the tasks in total. The similarity function between two
+sequences𝑆1and𝑆2(i.e.𝑓sim(𝑆1,𝑆2)) is provided by a domain expert.
+We consider sliding window similarity search with window size
+being the size of the query. Each of the 72 instances was used as the
+query for a similarity search, and we reported the average results
+from these experiments. Since the retrieved subsequences may be
+overlapping, we kept the subsequence with the highest similarity
+score and dropped any subsequences with an overlapping ratio
+of >10%. For each query, we perform top- 𝑘search and set 𝑘to be
+the number of ground-truth instances of the task in the dataset, so
+that precision, recall and F1 scores are equal. We use F1 score and
+overlap ratio (to the ground-truth subsequences) as performance
+metrics. Table 1 shows that, compared to the traditional similarity
+search which retrieves the top- 𝑘subsequences with the smallest
+distance, our proposed procedure clearly improves the retrieval
+accuracy.
+Method F1 Score Overlap Ratio
+Traditional Approach 78.1 73.5%
+Proposed Approach 82.3 75.2%
+Table 1: Subsequence retrieval accuracy in desktop activity log.
+Research directions. We discuss two research challenges for
+leveraging local distribution.
+•Objective function design. The objective function for traditional
+top-𝑘search is to maximize 𝐿=Í𝑘
+𝑖=1𝑓sim(query,dp𝑖)where
+dp𝑖denotes one data point. However, when incorporating
+local distribution, we need an objective function that strikes
+a balance between instance similarity and local distribution.
+We provide one example objective function inspired by our
+proposed approach:
+𝐿′(𝑘)=𝑘∑︁
+𝑖=1
+𝑓sim(query,dp𝑖)+𝑖−1∑︁
+𝑗=1𝜆𝑗𝑓sim(dp𝑗,dp𝑖)
+. (1)
+Here, dp𝑗are examples in the extended query set; 𝜆∈[0,1]
+acts as a decay factor to reflect the belief that we trust the orig-
+inal query more than the extended query and that we trust the
+earlier extended queries more than later ones. 𝜆therefore pro-
+vides a knob to balance between instance similarity and local
+distribution. Our proposed approach can be viewed as a greedy
+method of optimizing the objective function: we sequentially
+maximize𝐿′(1),...,𝐿′(𝑘), i.e., we keep dp1,..., dp𝑖−1fixed
+when maximizing 𝐿′(𝑖)..
+•Improving search efficiency. The proposed search can be resource-
+intensive as it requires multiple iterations over the dataset for
+each query, each time with a slightly altered objective. To en-
+hance search efficiency, we could perform the search in small
+batches, adding multiple near neighbors during each iteration.
+This strategy would speed up the process, though it might lead
+to a slight decrease in accuracy. Another way is to adapt exist-
+ing indexing techniques to consider local distribution signal.
+Figure 1: Traditional similarity search retrieves points in green dot-
+ted circle in both figures. (1) The red plus + is the query. Our proposed
+approach retrieves points in the purple solid circle. (2) Leveraging
+global distribution. The red dot ·is the query. An SVM-based ap-
+proach retrieves points on the top right of the purple solid curve.
+For example, we could construct a separate index for density-
+based clustering. This index could then be cross-referenced
+with indices designed for classic approximate nearest neighbor
+searches to factor in both the local density of data points and
+their proximity to the query during the search.
+3.3 Leveraging Global Distribution
+In addition to leveraging local distribution near the query to retrieve
+tightly clustered nearest neighbors, we can also utilize the global
+distribution. Practitioners have already begun exploring retrieval
+solutions that consider the global structure of the dataset [ 10,11].
+We discuss a SVM-based example below [11].
+The main idea is to train a SVM classifier on the entire dataset,
+wherein the query vector is labeled as the positive example and all
+other vectors are labeled as negative examples. If multiple positive
+examples exist, they can be easily incorporated into the training
+process. During the similarity search, data vectors are ranked based
+on their distances to the separating hyperplane, and the top- 𝑘
+closest one are returned. Vectors on the same side of the hyperplane
+as the query have negative distances and will be retrieved first.
+While the traditional similarity search does not consider the global
+distribution and treats each dimension equally, the SVM classifier
+aims to identify a hyperplane that effectively separates the positive
+examples from the negatives. In doing so, the SVM identifies the
+unique attributes of the positive example within the dataset and
+uses these distinct features for ranking.
+To illustrate, consider Figure 1 (2) representing the distribution of
+people in terms of age (X-axis) and wealth (Y-axis), with the query
+indicated as the top-right red dot. Traditional similarity search
+retrieves data points in the query’s vicinity (e.g., green dotted circle).
+In contrast, the SVM-based approach recognizes the query’s distinct
+position in the top right of the global distribution and returns
+points from the top-right area of the purple curve, suggesting a
+search for older, wealthy individuals. In applications with high
+dimensional semantic space, the SVM-based approach can be much
+more effective in identifying the distinct attributes of the query,
+thereby facilitating the retrieval of highly relevant and personalized
+content for the users.
+One downside of this approach is the substantial computational
+cost, as a new classifier needs to be trained on the entire dataset
+for each query. Potential solutions to mitigate this include:Conference’17, July 2017, Washington, DC, USA Renzhi Wu, Jingfan Meng, Jie Jeff Xu, Huayi Wang, Kexin Rong
+•Coreset-based solution. A coreset [ 19] is a small reprensentative
+sample of the full dataset such that a classifier trained on
+a coreset mirrors one trained on the full dataset. Therefore,
+building a coreset reduces the computational effort for training
+a new classifier for each query. A related research question
+is how to pre-build the coreset for negative examples when
+positive examples (the query) are unknown.
+•Index-based solution. For some classifiers, it might be possible to
+build a model parameter index using the negative data points.
+Specifically, when a new query (positive data point) arrives,
+learning the parameters of the new model reduces to looking
+up the parameters in the index using the query.
+•Symbolic model training. For some classifiers with closed form
+solution (e.g., logistic regression), it might be possible to train
+the model using the negative examples and one symbolic posi-
+tive example. When the query comes (the values for the posi-
+tive example is available), we substitute the symbols with the
+provided values.
+While we have discussed leveraging local distribution (§ 3.2)
+and global distribution (§ 3.3) individually, we expect that each is
+best suited to different applications. Determining the proper usage
+scenarios for each strategy is also an interesting research question.
+4 HUMAN-IN-THE-LOOP SEARCH
+In this section, we discuss opportunities to leverage human insights
+to improve the accuracy and efficiency of similarity search results.
+We consider two forms of user feedback: direct labels on the sim-
+ilarity search results (§ 4.2) and user-defined functions that filter
+similarity search results (§ 4.3).
+4.1 Application Scenarios
+Query-by-sketch Video Retrieval. Motion queries are an impor-
+tant class of video analytics queries that focus on the movement
+patterns and interactions of objects over a sequence of video frames.
+We are developing a visual query language, VidQL , for exploratory
+motion queries in videos, which allows users to define exploratory
+motion queries in video analytics by sketching events of interest
+on a canvas. In the backend, these user-drawn sketches are trans-
+formed into similarity search queries, identifying pertinent video
+clips without requiring users to specify low-level details such as
+time duration, distance threshold, or object relationships.
+A key challenge in VidQL is the inherent ambiguity in human-
+drawn sketches. For example, a sketch of a car turning left might
+leave it unclear if the user is seeking clips where a car initially
+heads upwards (on screen) before the left turn or simply all left
+turns, regardless of the car’s initial direction.
+Therefore, a core component is human-in-the-loop (HITL) sim-
+ilarity search, as shown in Figure 2. Specifically, when the initial
+similarity search results are presented to the user, they provide
+feedback on these found examples by labeling them as positive
+or negative. Based on this feedback, we adapt similarity search
+parameters (e.g., weights of different embeddings or embedding
+feature dimensions), and the similarity search results are updated.
+This process can be repeated multiple times as needed.
+Data Labeling. Labeling large image or video datasets is a challeng-
+ing task due to the significant manual effort involved. A promising
+Figure 2: Query-by-sketch powered by HITL similarity search.
+approach to generate labels efficiently is the use of label propaga-
+tion based on similarity search [ 8]. In this workflow, a user labels a
+few initial examples for a particular class. Subsequently, similarity
+search retrieves similar examples, which are tentatively labeled as
+belonging to the same class. Given the potential for false positives,
+the user reviews the retrieved examples, providing feedback to
+refine the similarity search and retrieve more accurate matches.
+Conversational Information Retrieval. Large Language Mod-
+els (LLMs) facilitate a conversational style of information access.
+For example, in order to retrieve a specific image from a large col-
+lection, a user could engage in a multi-round conversation with
+the LLM. In each round, the LLM retrieves an image based on the
+user’s description. The user then provides feedback, refining the
+description if the retrieved image isn’t what they were looking for.
+The LLM then uses this feedback to retrieve a different image. This
+process naturally forms a HITL similarity search problem.
+4.2 Incorporating User-Provided Labels
+In similarity search, we compare a query 𝑥𝑞against a large set
+of data points 𝑥1,...,𝑥𝑛. Suppose the similarity search retrieves
+the top 5 data points, ranked in descending order of similarity:
+𝑥1,𝑥2,𝑥3,𝑥4,𝑥5. User feedback indicates that 𝑥1,𝑥4,𝑥5are positive
+results, and 𝑥2,𝑥3are negative.
+The user feedback suggests that 𝑠𝑖𝑚(𝑥𝑞,𝑥4)and𝑠𝑖𝑚(𝑥𝑞,𝑥5)
+should be larger than 𝑠𝑖𝑚(𝑥𝑞,𝑥2)and𝑠𝑖𝑚(𝑥𝑞,𝑥3). There are three
+ways of incorporating this feedback: (1) adapting the embedding
+of the query; (2) adapting the embedding of the data; (3) adapting
+the similarity function 𝑠𝑖𝑚. In some cases, it could help to apply a
+combination or even all methods. We discuss these options below.
+Adapting query embedding. This approach is simple and effi-
+cient as it requires minimal changes to similarity search. It is also
+implicitly adopted in conversational information retrieval, as the
+user’s feedback naturally updates the query embedding for subse-
+quent responses. However, it may not always be possible to adjust
+the query embedding to satisfy user feedback. For example, if em-
+beddings are one-dimensional and 𝑥2=𝑥3=2,𝑥4=1,𝑥5=3,
+with absolute distance as the similarity function, there is no 𝑥𝑞
+where𝑠𝑖𝑚(𝑥𝑞,𝑥4)and𝑠𝑖𝑚(𝑥𝑞,𝑥5)are larger than 𝑠𝑖𝑚(𝑥𝑞,𝑥2)and
+𝑠𝑖𝑚(𝑥𝑞,𝑥3). Therefore, this approach works best when only minor
+adaptations are needed. An interesting area for future research
+would be to formally analyze the scenarios suitable for this method.
+Adapting data embedding. This approach is preferable when
+larger adaptations are required, such as when conducting a series
+of queries with continuous user feedback. Yet, modifying the em-
+bedding of all data points is computationally intensive. We propose
+two more practical solutions:Rethinking Similarity Search: Embracing Smarter Mechanisms over Smarter Data Conference’17, July 2017, Washington, DC, USA
+•Parameterized embedding. The embedding of each data point
+𝑥𝑖is a weighted sum of several high-dimensional embeddings:
+𝑥𝑖=𝑤1𝑥′
+1+...+𝑤𝑚𝑥′𝑚. There is no need to instantiate each
+𝑥𝑖as we only need store each component 𝑥′
+𝑖and the weights.
+These weights, 𝑤1,...,𝑤𝑚, can be adjusted to account for
+user feedback. Existing work in this direction [ 2,6] could be
+expanded upon to explore different methods of constructing
+parameterized embedding.
+•Partial and lazy update. If we have a million data points and
+the user provides feedback on just two examples, updating
+the embedding for all data points is wasteful. Ideally, we want
+to update only the data points that would affect future query
+results. One approach is to update only those data points rel-
+evant to the query where user feedback is provided (partial
+update). Another approach is to only materialize the updates
+when a query arrives for which the updated data embeddings
+could change top- 𝑘search results (lazy update).
+Adapting similarity function. The last option is to have a param-
+eterized similarity function. This is generally not preferred as many
+methods for accelerating similarity search assume a limited form of
+the similarity function, such as cosine similarity or L1/L2 distances.
+Furthermore, the benefits of adapting the similarity function can
+be largely achieved by adapting the query/data embedding.
+4.3 Incorporating User-Defined Functions
+Users can enhance similarity search results by adding direct labels
+or encoding their expertise and p

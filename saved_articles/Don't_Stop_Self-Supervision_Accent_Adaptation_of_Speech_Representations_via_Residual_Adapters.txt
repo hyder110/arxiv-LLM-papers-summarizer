@@ -1,0 +1,431 @@
+Don’t Stop Self-Supervision: Accent Adaptation of Speech Representations via
+Residual Adapters
+Anshu Bhatia∗1†Sanchit Sinha∗2‡Saket Dingliwal1Karthik Gopalakrishnan1
+Sravan Bodapati1Katrin Kirchhoff1
+1AWS AI Labs2University of Virginia
+2ss7mu@virginia.edu
+1{anshubha, skdin, karthgop, sravanb, katrinki }@amazon.com
+Abstract
+Speech representations learned in a self-supervised fashion
+from massive unlabeled speech corpora have been adapted suc-
+cessfully toward several downstream tasks. However, such rep-
+resentations may be skewed toward canonical data character-
+istics of such corpora and perform poorly on atypical, non-
+native accented speaker populations. With the state-of-the-art
+HuBERT model as a baseline, we propose and investigate self-
+supervised adaptation of speech representations to such popu-
+lations in a parameter-efficient way via training accent-specific
+residual adapters. We experiment with 4 accents and choose
+automatic speech recognition (ASR) as the downstream task of
+interest. We obtain strong word error rate reductions (WERR)
+over HuBERT-large for all 4 accents, with a mean WERR of
+22.7% with accent-specific adapters and a mean WERR of
+25.1% if the entire encoder is accent-adapted. While our ex-
+periments utilize HuBERT and ASR as the downstream task,
+our proposed approach is both model and task-agnostic.
+Index Terms : speech recognition, residual adapters, accents,
+self-supervision, fairness
+1. Introduction
+Self-supervised learning has been a dominant paradigm in natu-
+ral language processing (NLP) [1] and in recent years, it has also
+been adopted by the speech community to learn high-fidelity
+representations [2, 3, 4, 5] that capture various non-lexical as-
+pects of speech and audio such as lip-smacking, laughter, hesi-
+tation, etc. In this paradigm, the targets to learn are derived from
+the input signal itself, making the learned representations more
+powerful in principle compared to those learned using textual
+labels and annotations of any kind. These powerful base rep-
+resentations have been successfully adopted for several down-
+stream tasks [6], some of which include: ASR, speaker identi-
+fication and speech translation. Pre-training models with a very
+large number of parameters on proportionally large datasets has
+been a central theme in self-supervised learning. However,
+these datasets may understandably fall short in terms of suf-
+ficiently capturing non-canonical and diverse speech and audio
+characteristics such as rare non-native accents, stammering, etc.
+This leads to great disparity in downstream task performance
+across well-represented and underrepresented speaker popula-
+tions. This data problem has also existed with supervised mod-
+els for specific tasks such as ASR and in such scenarios, the typ-
+ical path has been to patch task performance by collecting task-
+specific labeled datasets with non-canonical characteristics and
+*Equal contribution
+†Corresponding author
+‡Work done as an intern at AWS AI Labsfine-tuning for the task [7]. This unfortunately entangles speech
+and audio characteristics with the task itself, which can limit
+effective learning of such characteristics in task-specific repre-
+sentations as well as limiting their re-usability across tasks.
+In this paper, we consequently posit that continued self-
+supervised learning of speech and audio representations on
+task-agnostic unlabeled datasets is an effective strategy to adapt
+to non-canonical speech characteristics. The specific charac-
+teristic we choose to study is accents but the methodology
+holds for any characteristic. We propose learning different
+high-dimensional spaces for different accents via independently
+adding residual adapters for each target accent to the model
+and continuing pre-training on accent-specific datasets. Since
+residual adapters are parameter-wise much smaller than the base
+model, this serves as a parameter-efficient way for personalized
+adaptation without over-fitting and saves on storage costs for in-
+ference since only a single copy of the base model needs to be
+stored. We conduct our experiments with HuBERT-large [2] as
+the base model and ASR as the downstream task but posit that
+our proposed approach is both model and task agnostic. Our
+chosen base model is a state-of-the-art model with low word
+error rates on canonical datasets such as LibriSpeech. By de-
+sign, we pick 4 non-native English accents where the HuBERT-
+large model has high word error rates (WER), in the range 24-
+50% and show strong results on all 4 accents with over 22%
+WERR over the baseline. Previous work has shown improve-
+ments in WER on such accents by supervised training using
+labeled datasets [7]. In contrast, we achieve our WER improve-
+ments by continuing to self-supervise models using unlabeled
+data alone. We show that the gains from adapting to an ac-
+cent using a particular dataset translate to other evaluation sets
+with the same accent as well, indicating that the effectiveness of
+our approach is due to adaptation to the accents’ acoustic char-
+acteristics and not other confounding factors. Finally, we also
+explore the degree of parameter-efficiency possible when adapt-
+ing to target accents, finding that we can achieve strong WERR
+over the baseline while updating only 16% of the total model
+parameters.
+2. Methodology
+In this work, we propose a model-agnostic as well as a task-
+agnostic method to adapt audio representations for speakers of
+a particular group. It can be leveraged to improve the perfor-
+mance of any Transformer-based speech model in the literature
+[2, 3, 8] on any downstream speech task. We showcase the ef-
+ficacy of our approach on the widely used HuBERT model [2]
+with state-of-the-art performance on different speech tasks [6]
+at the time of our experiments. We evaluate our accent-specific
+audio representations on one of the important tasks, i.e., ASR.arXiv:2307.00453v1  [cs.CL]  2 Jul 2023Updated parametersFinetuning
+Fixed parametersAdaptationAcoustic Unit Discovery
+Projection Layer
+BERT Encoder
+Transformer BlockAdapter
+x24
+Pre-trainingConvolution W aveform EncoderDecoder
+BERT Encoder
+Transformer BlockAdapter
+x24
+Convolution W aveform EncoderAcoustic Unit Discovery
+BERT Encoder
+Transformer Block
+x24
+Convolution W aveform Encoder AdapterLayerNormDown
+ProjectionReLUUp
+ProjectionTranscriptions
+Projection LayerFigure 1: Accent-Adaptive Continual Self-Supervision: Three training stages to improve the performance of any Transformer-based
+speech foundation model on any downstream task for a speaker group.
+2.1. Background
+The HuBERT model consists of a convolutional waveform en-
+coder [3], a BERT encoder [1] and a projection layer. The
+convolutional waveform encoder (parameterized by θf), takes
+audio as an input to generate a feature sequence at a 20ms
+duration. The BERT encoder consists of Nidentical Trans-
+former blocks (with parameters θT), stacked one after the other.
+It takes the input from the waveform encoder and passes the
+output feature sequence (768 dimensional vector sequence) to
+the projection layer. The projection layer with parameters θA,
+maps the feature sequence to the target sequence. These frame-
+level targets are provided by an independent clustering model
+like k-means and is called acoustic unit discovery module. Let
+X= [x1···xT]denote a speech utterance of Tframes. The dis-
+covered hidden units are denoted with h(X) =Z= [z1···zT],
+where zt∈[C]is aC-class categorical variable and his a
+clustering model. As defined in [2], the probability of pre-
+dicting cthcluster center at time step tby the HuBERT model
+(Θ ={θf, θT, θA}) is denoted by pΘ(c|X, t).
+The HuBERT model is trained in two stages where the first
+stage is self-supervision with unlabeled audio sequences while
+the second stage involves fine-tuning on a downstream task us-
+ing labeled data. During the pre-training of the model, a subset
+of indices ( M⊂[T]) are masked to create ˜X=r(X, M )de-
+noting a corrupted version of Xwhere xtis replaced with a
+mask embedding ˜xift∈M. The self-supervision loss ( LSSL)
+is defined as the cross-entropy loss in predicting the targets for
+the masked time-steps of an audio sequence.
+LSSL(X, r, Θ, h, M ) =X
+t∈MlogpΘ(zt|˜X, t) (1)
+After pre-training, the projection layer is removed and a
+light-weight decoder is used to map the audio representations
+from the BERT encoder to the output of the downstream task at
+hand. For ASR, it is used to predict targets from a pre-defined
+vocabulary (26 English characters, a space token, an apostro-
+phe, and a special CTC blank symbol). Our decoder architec-
+ture is similar to [6], where the output vector sequence from
+each of the NTransformer blocks in the BERT encoder is mul-
+tiplied with scalar weights ( W= [w1· ·wN]), added and thenpassed through a vanilla 2-layer 1024-unit bidirectional LSTM
+[9] (with parameters θLSTM), which is used to predict the output
+sequence. Let Y= [y1· ·yT′]denote the ground truth labels.
+The parameters of the decoder ( θd={W, θ LSTM}) are learned
+by minimizing the connectionist temporal classification (CTC)
+[10] loss LCTC(X, Y, Θ, θd) = log pΘ,θd(Y|X)between the
+predicted sequence and the ground truth. During this stage, all
+the parameters ( Θ) in the HuBERT model are frozen. As shown
+by [6], this helps us save compute and storage costs with little
+to no degradation in downstream task performance as it allows
+for using a common encoder model for different tasks.
+2.2. Accent-Adaptive Continual Self-Supervision
+Our approach for generating accent-specific audio representa-
+tions is simple and effective. It can be used to improve per-
+formance of any downstream speech task. We simply intro-
+duce an additional training stage where we use unlabeled audio
+from our atypical target accent for continuing self-supervised
+pre-training. As shown in Fig. 1, we train our model for a task
+in three stages. Let Xsrc,Xtarrepresents the unlabeled audio
+sequences from the generic data and the target accent respec-
+tively. We will denote the generic labeled data for a particular
+task like ASR with {X′
+src, Y′
+src}which may or may not overlap
+withXsrc. The first stage is same as defined in the previous sub-
+section, where we use generic unlabeled data Xsrcto minimize
+SSL loss defined in Eq. 1. In the second stage, we continue
+to minimize the same loss but with Xtar. Finally in the third
+stage, we learn the task-specific decoder parameters ( θd) by
+minimizing LCTC({X′
+src, Y′
+src},Θ, θd). This additional self-
+supervision helps to modify the generic audio representations to
+capture the acoustic features relevant to the target accent. These
+accent-specific representations can improve performance of the
+model on any downstream task for the speaker group with a
+particular target accent.
+Although continued self-supervision improves perfor-
+mance, it comes at the computational and memory costs of
+training, storing and deploying separate BERT encoder models
+for different accents. To overcome these additional costs, we
+introduce parameter-efficiency using residual adapters [11, 12].
+Adapters were first introduced for Transformer-based languagemodels to adapt these large models to different tasks. With a
+handful of additional parameters per task, adapters have been
+shown to influence the output from the Transformer and hence
+make them task-specific [11, 13]. In our work, we extend the
+application of adapters to speech where they are used for adapt-
+ing audio representations for different accents. We introduce
+an adapter sandwiched between every Transformer block of the
+BERT encoder of the HuBERT model. Each adapter module
+consists of a layer normalization, a feed-forward network to
+project the vector sequence from the Transformer block to a
+new bottle-neck dimension Bada, ReLU activation and finally
+another feed-forward network to project back the vector se-
+quence to the original dimension. The output from the adapter
+is added back to the original vector sequence and fed to the next
+Transformer block. We collectively denote parameters of all
+the adapters in our model by θada. In our accent-adaptive self-
+supervision stage, rather than updating all the parameters of the
+HuBERT model ( Θ), we only update θadakeeping Θconstant.
+This ensures that we can still obtain accent-specific audio rep-
+resentations while storing a much smaller set of accent-specific
+parameters relative to HuBERT for each target accent.
+Prior work [7, 14] introduced accent-specific adapters in
+speech models by learning accent information from labeled data
+for downstream tasks. However, in sharp contrast, we hypothe-
+size that the accent information can be efficiently captured with-
+out using any labels from the downstream task. Accent of a
+speaker is a speech characteristic and the self-supervised objec-
+tive of predicting the masked audio sequence targets is suitable
+to capture accent-specific information. Our learned audio repre-
+sentations for a target accent are more general and efficient than
+the prior work as they can used for any downstream speech task
+and they do not require any additional labels per accent.
+3. Experimental Setup
+3.1. Datasets
+For our experiments, we use the publicly available version of
+60K hours of LibriLight [15] as the generic unlabeled data
+(Xsrc) in the pre-training stage. Similarly, we use 960 hours
+of paired speech-text data from LibriSpeech [16] for the fine-
+tuning stage. This is representative of the standard data setting
+used by many SSL models [2, 3, 4]. We verify the claims of our
+methodology by adapting our models on four different target ac-
+cents. The unlabeled data ( Xtar) for two of these four accents,
+i.e., Indian ( in) and Scottish ( sc), is taken from Mozilla Com-
+mon V oice Corpus v6.1 (MCV) [17] dataset, while we collect
+the audio sequences for the other two accents, German ( de)
+and Chinese ( cn) in-house. These audio sequences are con-
+versational in nature and are collected by making diverse set of
+speakers of a particular accent read dialogues. The details of the
+number of utterances and hours of recordings used for training,
+validation and evaluation are shown in Table 1. For three of the
+four accents, we use 30 hours of unlabeled audio while we only
+use 6.6 hours of scaccent. This is significantly smaller than
+60K hours of audio used for pre-training in the first stage. Note
+that the ground truth labels of any of the accent-specific train-
+ing and validation datasets are never used in our experiments.
+To test generalization of our accent-adapted models in different
+settings, we use additional evaluation datasets. We separately
+collect 10.1 hours of paired Conversational (Conv.) audio and
+text from speakers with Indian accents. We also use 2 hours of
+Indian speaker-specific audio and text from publicly available
+V oxForge [18] dataset for evaluation.Table 1: Data distribution (utterance count and total hours) for
+target accents used in our experiments. We use Indian ( in),
+Scottish ( sc), German ( de) and Chinese ( cn) as target accents.
+Datain sc de cn
+Utt Hrs Utt Hrs Utt Hrs Utt Hrs
+train 19699 31.4 3709 6.6 15854 30.2 16731 29.3
+valid 6567 10.5 1237 2.2 5365 10.16 5783 10.56
+test 6517 10.5 1237 2.2 5216 9.67 4000 9.83
+3.2. Model settings
+As defined in Section 2, we use HuBERT-large model with
+N= 24 Transformer blocks. For the first stage of generic pre-
+training, the HuBERT model parameters ( Θ), the acoustic unit
+discovery module ( h), the mask indices ( M) and the masking
+function ( r) are obtained from their open-sourced versions by
+fairseq [19]. This model is referred to as baseline in our tables.
+They use 60K hours of unlabeled LibriLight data [15] and min-
+imizeLSSLto obtain the model parameters. Further, their clus-
+tering model ( h) is a k-means model where cluster centers are
+identified using the output feature sequence from the 9thBERT
+encoder layer of the pre-trained HuBERT-base model. For the
+next stage of accent-adaptive self-supervision, we use the same
+clustering model hto obtain targets for accented-speech i.e.
+Ztar=h(Xtar). In this stage, we train the model with and
+without the adapters i.e., Accent-Adapters andAccent-HuBERT
+respectively. For the model without the adapters, we update all
+the parameters of the HuBERT model ( Θ) with a learning rate of
+2e−5and linear warmup phase of 20k updates. The maximum
+number of tokens in each batch is set to 300k and the model
+is trained for 150k steps and finally the best model is chosen
+using the self-supervision loss value on the unlabeled accent-
+specific validation dataset. When using adapters, all settings
+are the same except that we freeze Θand only update θadaus-
+ing a learning rate scheduler with peak learning rate of 1e−3,
+a linear warmup phase of 75k steps, followed by polynomial
+decay till 0. For our final stage of task-specific fine-tuning, we
+use the same experimental settings as s3prl [6] for ASR. For
+all three models, we train the decoder parameters ( θd) with 16
+batch size and 5.0e−5learning rate till the decrease in the
+training loss between subsequent epochs is less than a certain
+threshold. Similar to [6], we use the LibriSpeech official 4-
+gram language model powered by KenLM [20] and flashlight
+toolkit [21] fused together with our models during decoding.
+4. Results
+For our experiments, the baseline is the state-of-the-art Hu-
+BERT model [2] that achieves a WER of 2.3 and 4.6 on test-
+clean andtest-other subsets of LibriSpeech [16] in a similar
+setting as used in [6]. As highlighted previously in Section 1,
+we specifically aim to improve the performance of the baseline
+model for the speakers of the accents that see high WERs even
+though the model performs well on the standard benchmarks.
+For example, the WER of the baseline model on inandscac-
+cent from the publicly available MCV dataset are 24.8 and 52.0
+respectively. All the numbers reported in our tables are WER
+Reduction % (WERR) over the baseline model. Important find-
+ings from our experiments are summarized below:
+Continued self-supervision enables learning rich task-
+agnostic representations for different accents : We showcase
+that models with continued self-supervision perform signifi-
+cantly better than the baseline on the ASR task. In Table 2,Table 2: WERR (%) of accent-specific models as compared to
+the baseline. The baseline model is HuBERT-large, a state-of-
+the-art model that performs poorly on the selected target ac-
+cents from the publicly available MCV datasets. The baseline
+model has a WER of 24.8 and 52.0 oninandscaccents re-
+spectively.
+ModelWERR (%) on Target Accents
+in sc de cn
+HuBERT-large – – – –
+Accent-Adapters 23.9% 28.5% 17.7% 20.8%
+Accent-HuBERT 27.2% 27.8% 22.8% 22.7%
+our models reduce WERs on all four accents without using any
+accent-specific labeled data during training. Accent-Adapters
+andAccent-HuBERT achieve 22.7% and 25.1% WERR on av-
+erage respectively. Since we use the same task-specific fine-
+tuning setting for both the baseline and our methods, we at-
+tribute the improvements to richer audio representations learned
+by the base model that can adapt to speech characteristics re-
+lated to the target accent. This is an important finding as it
+enables performance gains on any downstream task without
+spending resources on collection of task-specific labeled data.
+To validate our hypothesis that the improvement in ASR
+performance is indeed the result of richer acoustic representa-
+tions of the accented speech, we evaluate our models on unseen
+datasets. We use the model trained on the audio from the in
+accent in the MCV dataset and evaluate it on two independently
+collected datasets by speakers of the same accent. The WERR
+%ages from the baseline are summarized in Table 3. We see a
+significant 12.6% and 6.7% reduction in WER of our Accent-
+HuBERT model on the inaccent subset of V oxForge and Con-
+versational data respectively. We attribute these improvements
+specifically to accent-related acoustic features learned by the
+HuBERT model as it is the only common factor between the
+training and the evaluation dataset. All other confounding fac-
+tors related to the unlabeled audio like content of the audio,
+individual speaker related features, signal-noise ratio etc., are
+factored out in these evaluations. This showcases the robust-
+ness of the improvements stemming from our methodology.
+Table 3: WERR (%) over the the baseline of the accent-specific
+models trained on inaccent of the MCV dataset when eval-
+uated on the subsets of VoxForge and Conversational datasets
+with the same accent. The baseline model has a WER of 18.6
+on this subset from the VoxForge dataset.
+ModelWERR (%) on Datasets
+VoxForge Conv.
+HuBERT-large – –
+Accent-Adapters 12.6% 6.7%
+Accent-HuBERT 19.5% 8.9%
+Adapters are a cost-effective way to capture accent-specific
+features in large self-supervised speech models : Our base-
+line model HuBERT-large ( Θ) has 317M parameters. Fine-
+tuning, storing and deploying such models individually for each
+speaker group can be limited by computational and memory
+constraints, although that would give the best performance in
+principle. Adapters, on the other hand, can achieve similar per-
+formance using ∼85% less parameters per speaker group. Our
+findings are in line with many prior works in natural languageprocessing (NLP) [11, 12] and speech [7, 14], where adapter
+modules have been showcased to influence the output of the
+Transformer model using bottle-neck layers. The dimension of
+this bottle-neck layer ( Bada) is used to trade-off between the
+performance and cost of the model. In Table 4, we provide an
+ablation for the choice of Badaand the WERR % on one of
+the accents used for evaluation i.e., infrom the MCV test set.
+With just 16% of the base model parameters, we see a strong
+23.9% WERR over the baseline. We see diminishing returns of
+performance improvement as we increase the size of the bottle-
+neck dimension beyond 1024. Therefore, Bada= 1024 was
+the choice for all the other experiments in this work.
+Table 4: WERR (%) over the baseline and the accent-specific
+parameter count (as %age of the count of the base model pa-
+rameters) of different accent-specific models with different bot-
+tleneck sizes ( Bada). These reductions are on top of the baseline
+WER of 24.8 on inaccent from the MCV dataset.
+Model Bada % params WERR (%)
+HuBERT-large NA – –
+Accent-Adapter512 8 19.8
+1024 16 23.9
+2048 32 24
+Accent-HuBERT NA 100 27.2
+5. Conclusions
+In this paper, we propose adapting self-supervised speech rep-
+resentations to atypical accents by continuing to perform self-
+supervision using such data. To the best of our knowledge, we
+are the first to show strong improvements over state-of-the-art
+baselines by adapting models using self-supervision on unla-
+beled accented data. We experiment with modifying the base
+encoder by adding adapters to each Transformer block and up-
+dating the adapters alone during accent-adaptive pre-training, as
+well as with updating the entire encoder during accent-adaptive
+pre-training. Our method achieves strong WERR over the state-
+of-the-art on 4 different non-native accents. We achieve an av-
+erage 22.7% WERR when using adapters and an average of
+25.1% WERR when updating the entire encoder. We also show
+that our models adapted to an accent using a given dataset per-
+form well on other evaluation sets with similar speaker charac-
+teristics, thus validating our hypothesis that our models adapt by
+learning accent-specific acoustic representations from the tar-
+get speech. Our approach is parameter-efficient and we show
+strong WERR by updating just 16% of the model parameters.
+Although, we conduct our experiments with ASR as the down-
+stream task in this work, we posit that our approach is task
+agnostic, since we perform adaptation during the pre-training
+stage.
+Our proposed approach has great practical viability due to
+2 reasons: (a) we can adapt using unlabeled data alone, which
+is far easier and cheaper to obtain compared to high-quality
+labeled data, and (b) we can adapt models to different ac-
+cents in a parameter-efficient way with only a small number of
+accent-specific parameters, without needing to incur the mem-
+ory and compute costs of maintaining large models for each
+accent. While our current work focuses on adapting to unla-
+beled accented data, effectively utilizing a small amount of la-
+beled accented data alongside accent-adaptive self-supervision
+is a promising future direction to explore.6. 

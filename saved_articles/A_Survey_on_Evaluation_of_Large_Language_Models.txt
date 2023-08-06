@@ -1,0 +1,907 @@
+PREPRINT 1
+A Survey on Evaluation of Large Language
+Models
+Yupeng Chang, Xu Wang, Jindong Wang, Yuan Wu, Kaijie Zhu, Hao Chen, Linyi Y ang, Xiaoyuan Yi,
+Cunxiang Wang, Yidong Wang, Wei Y e, Yue Zhang, Yi Chang, Senior Member, IEEE,
+Philip S. Yu, Fellow, IEEE , Qiang Y ang, Fellow, IEEE , and Xing Xie, Fellow, IEEE
+Abstract —Large language models (LLMs) are gaining increasing popularity in both academia and industry, owing to their
+unprecedented performance in various applications. As LLMs continue to play a vital role in both research and daily use, their
+evaluation becomes increasingly critical, not only at the task level, but also at the society level for better understanding of their potential
+risks. Over the past years, significant efforts have been made to examine LLMs from various perspectives. This paper presents a
+comprehensive review of these evaluation methods for LLMs, focusing on three key dimensions: what to evaluate ,where to evaluate ,
+andhow to evaluate . Firstly, we provide an overview from the perspective of evaluation tasks, encompassing general natural language
+processing tasks, reasoning, medical usage, ethics, educations, natural and social sciences, agent applications, and other areas.
+Secondly, we answer the ‘where’ and ‘how’ questions by diving into the evaluation methods and benchmarks, which serve as crucial
+components in assessing performance of LLMs. Then, we summarize the success and failure cases of LLMs in different tasks. Finally,
+we shed light on several future challenges that lie ahead in LLMs evaluation. Our aim is to offer invaluable insights to researchers in the
+realm of LLMs evaluation, thereby aiding the development of more proficient LLMs. Our key point is that evaluation should be treated
+as an essential discipline to better assist the development of LLMs. We consistently maintain the related open-source materials at:
+https://github.com/MLGroupJLU/LLM-eval-survey.
+Index Terms —Large language models, evaluation, model assessment, benchmark
+✦
+1 I NTRODUCTION
+UNDERSTANDING the essence of intelligence and es-
+tablishing whether a machine embodies it poses a
+compelling question for scientists. It is generally agreed
+upon that authentic intelligence equips us with reasoning
+capabilities, enables us to test hypotheses, and prepare
+for future eventualities (Khalfa, 1994). In particular, Artifi-
+cial Intelligence (AI) researchers focus on the development
+of machine-based intelligence, as opposed to biologically
+based intellect (McCarthy, 2007). Proper measurement helps
+to understand intelligence. For instance, measures for gen-
+eral intelligence in human individuals often encompass IQ
+tests (Brody, 1999).
+Within the scope of AI, the Turing Test (Turing, 2009),
+a widely recognized test for assessing intelligence by dis-
+cerning if responses are of human or machine origin, has
+•Y. Chang, X. Wang, Y. Wu and Y. Chang are with the School of Artificial
+Intelligence, Jilin University, Changchun, China. The first two authors
+contributed equally.
+•J. Wang, X. Yi, and X. Xie are with Microsoft Research Asia, Beijing,
+China.
+•K. Zhu is with Institute of Automation, CAS. H. Chen is with Carnegie
+Mellon University.
+•L. Yang, C. Wang, and Y. Zhang are with Westlake University, Hangzhou,
+China.
+•Y. Wang and W. Ye are with Peking University, Beijing, China.
+•P . Yu is with the University of Illinois at Chicago, IL, USA.
+•Q. Yang is with Hong Kong University of Science and Technology,
+Kowloon, Hong Kong.
+•Correspondence to: Yuan Wu (yuanwu@jlu.edu.cn) and Jindong Wang
+(jindong.wang@microsoft.com).
+Manuscript received April 19, 2005; revised August 26, 2015.been a longstanding objective in AI evolution. It is generally
+believed among researchers that a computing machine that
+successfully passes the Turing Test can be regarded as intel-
+ligent. Consequently, when viewed from a wider lens, the
+chronicle of AI can be depicted as the timeline of creation
+and evaluation of intelligent models and algorithms. With
+each emergence of a novel AI model or algorithm, re-
+searchers invariably scrutinize its capabilities in real-world
+scenarios through evaluation using specific and challenging
+tasks. For instance, the Perceptron algorithm (Gallant et al.,
+1990), touted as an Artificial General Intelligence (AGI) ap-
+proach in the 1950s, was later revealed as inadequate due to
+its inability to resolve the XOR problem. The subsequent rise
+and application of Support Vector Machines (SVMs) (Cortes
+and Vapnik, 1995) and deep learning (LeCun et al., 2015)
+have marked both progress and setbacks in the AI land-
+scape. A significant takeaway from previous attempts is the
+paramount importance of AI evaluation, which serves as a
+critical tool to identify current system limitations and inform
+the design of more powerful models.
+Recently, large language models (LLMs) has incited
+substantial interest across both academic and industrial
+domains (Bommasani et al., 2021; Wei et al., 2022a; Zhao
+et al., 2023a). As demonstrated by existing work (Bubeck
+et al., 2023), the great performance of LLMs has raised
+promise that they could be AGI in this era. LLMs posses
+the capabilities to solve diverse tasks, contrasting with
+prior models confined to solving specific tasks. Due to its
+great performance in handling different applications such
+as general natural language tasks and domain-specific ones,
+LLMs are increasingly used by individuals with criticalarXiv:2307.03109v1  [cs.CL]  6 Jul 2023PREPRINT 2
+LLMs
+evaluationWhat to evaluate
+(Sec. 3)Natural
+language
+processingNatural language understanding:
+(1) Sentiment analysis: (Lopez-Lira and Tang, 2023) / (Qin et al., 2023) / Bang et al. (2023) / (Liang et al., 2022) / (Zhang et al., 2023d)
+(2) Text classification: (Yang and Menczer, 2023) / (Liang et al., 2022) / (Pe ˜na et al., 2023)
+(3) Natural language inference: (Qin et al., 2023) / (Lee et al., 2023)
+(4) Others: (Tao et al., 2023) / (Riccardi and Desai, 2023) / (Choi et al., 2023)
+Reasoning: (Bian et al., 2023) / (Qin et al., 2023) / (Orr `u et al., 2023) / Bang et al. (2023) / (Saparov et al., 2023) /
+(Fu et al., 2023) / (Li ´evin et al., 2022) / (Xu et al., 2023a) / (Liu et al., 2023a)
+Natural language generation:
+(1) Summarization: (Qin et al., 2023) / (Bang et al., 2023) / (Liang et al., 2022) / (Pu and Demberg, 2023)
+(2) Dialogue: (Qin et al., 2023) / (Bang et al., 2023) / (Lin and Chen, 2023)
+(3) Translation: (Wang et al., 2023d) / (Bang et al., 2023)
+(4) Question answering: (Bian et al., 2023) / (Qin et al., 2023) / (Bang et al., 2023) / (Liang et al., 2022) / (Bai et al., 2023)
+(5) Others: (Pu and Demberg, 2023) / (Chen et al., 2023) / (Chia et al., 2023)
+Multilingual: (Lai et al., 2023) / (Bang et al., 2023) / Abdelali et al. (2023) / (Zhang et al., 2023c)
+Factuality: (Honovich et al., 2022)/ (Pezeshkpour, 2023)/ (Gekhman et al., 2023) / (Manakul et al., 2023a)/ (Min et al., 2023)/ (Wang et al., 2023b)
+Robustness / Ethics/
+Biases/ TrustworthinessRobustness: Zhao et al. (2023b) / (Wang et al., 2022) / Wang et al. (2023c) / Zhuo et al. (2023b) /
+(Yang et al., 2022) / (Li et al., 2023b) (Zhu et al., 2023)
+Ethics and biases: (Gehman et al., 2020) / (Sheng et al., 2021) / Zhuo et al. (2023a) / (Dhamala et al., 2021) /
+(Parrish et al., 2022) / Deshpande et al. (2023) / Ferrara (2023) / (Rutinowski et al., 2023) /
+(Hartmann et al., 2023) / (Simmons, 2022) / (Cao et al., 2023)
+Trustworthiness: (Wang et al., 2023a) / (Hagendorff and Fabi, 2023)
+Social science (Wu et al., 2023a) / (Ziems et al., 2023) / (Deroy et al., 2023) / (Nay et al., 2023)
+Natural science
+& engineeringMathematics: (Yuan et al., 2023) / (Arora et al., 2023) / (Wu et al., 2023b) / (Collins et al., 2023)/ (Dao and Le, 2023) / (Wei et al., 2023)
+Science: (Castro Nascimento and Pimentel, 2023)/ (Arora et al., 2023)
+Engineering: (Liu et al., 2023b) / (Sridhara et al., 2023) / (Valmeekam et al., 2022) / (Valmeekam et al., 2023)/ (Pallagani et al., 2023)
+Medical applicationsMedical QA: (Thirunavukarasu et al., 2023) / (Duong and Solomon, 2023) / (Samaan et al., 2023) / (Holmes et al., 2023) /
+(Johnson et al., 2023) / (Chervenak et al., 2023) / (Hamidi and Roberts, 2023) / (Jahan et al., 2023)
+Medical examination: (Gilson et al., 2023) / (Kung et al., 2023)
+Medical education: (Oh et al., 2023) / (Lyu et al., 2023)
+Medical assistants: (Lahat et al., 2023) / (Cascella et al., 2023) / (Wang et al., 2023f) / (Khan et al., 2023)
+Agent applications Huang et al. (2023a) / Karpas et al. (2022) / (Parisi et al., 2022) / (Schick et al., 2023) / (Shen et al., 2023)
+Other
+applicationsEducation: (Dai et al., 2023) / (de Winter, 2023) / (Wang and Demszky, 2023) / (Hellas et al., 2023) / Wei et al. (2023)
+Search and recommendation: (Sun et al., 2023) / (Fan et al., 2023) / (Zhang et al., 2023a) / (Xu et al., 2023b)
+Personality testing: (Song et al., 2023) / (Jentzsch and Kersting, 2023) / (Safdari et al., 2023)
+Other tasks: (Lanzi and Loiacono, 2023) / (Wang et al., 2023e) / (Le and Zhang, 2023)
+Where to evaluate
+(Sec. 4)General
+benchmarksAlpacaEval (Li et al., 2023c)/ KoLA (Yu et al., 2023)/ DynaBench (Kiela et al., 2021)/ AGIEval (Zhong et al., 2023)/
+PromptBench (Zhu et al., 2023) / PandaLM (Wang et al., 2023e)/ Leaderboard (HuggingFace, 2023)
+HELM (Liang et al., 2022) / GLUE-X (Yang et al., 2022)
+Specific benchmarksMultiMedQA (Singhal et al., 2022)/ Big-Bench (Srivastava et al., 2022)/ C-Eval (Huang et al., 2023b)/
+M3Exam (Zhang et al., 2023c)/ SOCKET (Choi et al., 2023)/ API-Bank (Li et al., 2023a)/ ToolBench (ToolBench, 2023)
+How to evaluate
+(Sec. 5)Evaluation criterionAutomatic evaluation: (Qin et al., 2023) / (Bang et al., 2023) / (Lin and Chen, 2023) / (Wang et al., 2023e)
+Human evaluation: (Liang et al., 2022) / (Bang et al., 2023) / (Bubeck et al., 2023) / (Ziems et al., 2023)
+Summary
+(Sec. 6)Tasks: success and failure cases of LLMs
+Benchmark and evaluationsHuman-in-the-loop: AdaVision (Gao et al., 2022) / AdaTest (Ribeiro and Lundberg, 2022)
+Crowd-sourcing testing: DynaBench (Kiela et al., 2021) / DynaBoard (Ma et al., 2021) / DynaTask (Thrush et al., 2022) /
+DynamicTempLAMA (Margatina et al., 2023)
+More challenging tasks: DeepTest (Tian et al., 2018) / CheckList (Ribeiro et al., 2020) / AdaFilter (Phang et al., 2021)
+HELM (Liang et al., 2022) / Big-Bench (Srivastava et al., 2022) / PromptBench (Zhu et al., 2023)
+Grand challenges
+(Sec. 7)Challenges(1) Designing AGI benchmarks (2) Complete behavioral evaluation (3) Robustness evaluation (4) Dynamic and evolving evaluation
+(5) Principled and trustworthy evaluation (6) Unified evaluation that supports all LLMs tasks (7) Beyond evaluation: LLMs enhancement
+Fig. 1. Structure of this paper.
+information needs, such as students or patients.
+Evaluation is of paramount prominence to the success
+of LLMs due to several reasons. First, evaluating LLMs
+helps us better understand the strengths and weakness of
+LLMs. For instance, the PromptBench (Zhu et al., 2023)
+benchmark illustrates that current LLMs are sensitive to
+adversarial prompts, thus a careful prompt engineering is
+necessary for better performance. Second, better evaluations
+can provide a better guidance for human-LLMs interaction,
+which could inspire future interaction design and imple-
+mentation. Third, the broad applicability of LLMs under-
+scores the paramount importance of ensuring their safety
+and reliability, particularly in safety-sensitive sectors suchas financial institutions and healthcare facilities. Finally, as
+LLMs are becoming larger with more emergent abilities,
+existing evaluation protocols may not be enough to evaluate
+their capabilities and potential risks. Therefore, we aim to
+call awareness of the community of the importance to LLMs
+evaluations by reviewing the current evaluation protocols
+and most importantly, shed light on future research about
+designing new LLMs evaluation protocols.
+With the introduction of ChatGPT (OpenAI, 2023a) and
+GPT-4 (OpenAI, 2023b), there have been a number of re-
+search efforts aiming at evaluating ChatGPT and other
+LLMs from different aspects (Fig. 2), encompassing a range
+of factors such as natural language tasks, reasoning, ro-PREPRINT 3
+bustness, trustworthiness, medical applications, and ethi-
+cal considerations. Despite these efforts, a comprehensive
+overview capturing the entire gamut of evaluations is still
+lacking. Furthermore, the ongoing evolution of LLMs has
+also presents novel aspects for evaluation, thereby challeng-
+ing existing evaluation protocols and reinforcing the need
+for thorough, multifaceted evaluation techniques. While
+existing research such as (Bubeck et al., 2023) claimed that
+GPT-4 can be seen as sparks of AGI, others contest this claim
+due to the heuristic nature of its evaluation approach.
+This paper serves as the first comprehensive survey
+on the evaluation of large language models. As depicted
+in Fig. 1, we explore existing work in three dimensions:
+1) What to evaluate, 2) Where to evaluate, and 3) How
+to evaluate. Specifically, “what to evaluate” encapsulates
+existing evaluation tasks for LLMs, “where to evaluate”
+involves selecting appropriate datasets and benchmarks for
+evaluation, while “how to evaluate” is concerned with the
+evaluation process given appropriate tasks and datasets.
+These three dimensions are integral to the evaluation of
+LLMs. We subsequently discuss potential future challenges
+in the realm of LLMs evaluation.
+The contributions of this paper are as follows:
+1) We provide a comprehensive overview of LLMs
+evaluations from three aspects: what to evaluate,
+where to evaluate, and how to evaluate. Our cat-
+egorization is general and encompasses the entire
+life cycle of LLMs evaluation.
+2) Regarding what to evaluate, we summarize existing
+tasks in various areas and obtain insightful con-
+clusions on the success and failure case of LLMs
+(Sec. 6), providing experience for future research.
+3) As for where to evaluate, we summarize evaluation
+metrics, datasets, and benchmarks to provide a pro-
+found understanding of current LLMs evaluations.
+In terms of how to evaluate, we explore current pro-
+tocols and summarize novel evaluation approaches.
+4) We further discuss future challenges in evaluating
+LLMs. We open-source and maintain the related ma-
+terials of LLMs evaluation at https://github.com/
+MLGroupJLU/LLM-eval-survey to foster a collabo-
+rative community for better evaluations.
+The paper is organized as follows. In Sec. 2, we provide
+the basic information of LLMs and AI model evaluation.
+Then, Sec. 3 reviews existing work from the aspects of “what
+to evaluate”. After that, Sec. 4 is the “where to evaluate”
+part, which summarizes existing datasets and benchmarks.
+Sec. 5 discusses how to perform the evaluation. In Sec. 6, we
+summarize the key findings of this paper. We discuss grand
+future challenges in Sec. 7 and Sec. 8 concludes the paper.
+2 B ACKGROUND
+2.1 Large Language Models
+Language models (LMs) (Devlin et al., 2018; Gao and Lin,
+2004; Kombrink et al., 2011) are computational models that
+have the capability to understand and generate human
+language. LMs have the transformative ability to predict the
+likelihood of word sequences or generate new text based on
+a given input. N-gram models (Brown et al., 1992), the most2020 2021 2022
+2023.01 2023.02 2023.03 2023.04 2023.052023.06+05101520253035Number of papersNumber of papers
+Fig. 2. Trend of LLMs evaluation papers over time (2020 - Jun. 2023,
+including Jul. 2023.).
+common type of LM, estimate word probabilities based on
+the preceding context. However, LMs also face challenges,
+such as the issue of rare or unseen words, the problem
+of overfitting, and the difficulty in capturing complex lin-
+guistic phenomena. Researchers are continuously working
+on improving LM architectures and training methods to
+address these challenges.
+Large Language Models (LLMs) (Chen et al., 2021; Kas-
+neci et al., 2023; Zhao et al., 2023a) have gained significant
+attention in recent years due to their remarkable capabilities
+in natural language processing tasks. The core module be-
+hind many LLMs such as GPT-3 (Floridi and Chiriatti, 2020),
+InstructGPT (Ouyang et al., 2022), and GPT-4 (OpenAI,
+2023b) is the self-attention module in Transformer (Vaswani
+et al., 2017) that serves as the fundamental building block for
+language modeling tasks. Transformers have revolutionized
+the field of NLP with their ability to handle sequential data
+efficiently, allowing for parallelization and capturing long-
+range dependencies in text. One key feature of LLMs is in-
+context learning (Brown et al., 2020), where the model is
+trained to generate text based on a given context or prompt.
+This enables LLMs to generate more coherent and contextu-
+ally relevant responses, making them suitable for interactive
+and conversational applications. Reinforcement Learning
+from Human Feedback (RLHF) (Christiano et al., 2017;
+Ziegler et al., 2019) is another crucial aspect of LLMs. This
+technique involves fine-tuning the model using human-
+generated responses as rewards, allowing the model to learn
+from its mistakes and improve its performance over time.
+In an autoregressive language model, such as GPT-3
+(Floridi and Chiriatti, 2020) and PaLM (Chowdhery et al.,
+2022), given a context sequence X, the LM tasks aim to
+predict the next token y. The model is trained by maximiz-
+ing the probability of the given token sequence conditioned
+on the context, i.e., P(y|X) =P(y|x1, x2, ..., x t−1), where
+x1, x2, ..., x t−1are the tokens in the context sequence, and
+tis the current position. By using the chain rule, the con-
+ditional probability can be decomposed into a product ofPREPRINT 4
+TABLE 1
+Comparison of traditional ML, deep learning, and LLMs
+Comparison Traditional ML DL LLMs
+Training Data Size Large Large Very large
+Feature Engineering Manual Automatic Automatic
+Model Complexity Limited Complex Very Complex
+Interpretability Good Poor Poorer
+Performance Moderate High Highest
+Hardware Requirements Low High Very High
+probabilities at each position:
+P(y|X) =TY
+t=1P(yt|x1, x2, ..., x t−1),
+where Tis sequence length. In this way, the model predicts
+each token at each position in an autoregressive manner,
+generating a complete text sequence.
+One common approach to interacting with LLMs is
+prompt engineering (Clavi ´e et al., 2023; White et al., 2023;
+Zhou et al., 2022), where users design and provide specific
+prompt texts to guide LLMs in generating desired responses
+or completing specific tasks. This is widely adopted in exist-
+ing evaluation efforts. People can also engage in question-
+and-answer interactions (Jansson et al., 2021), where they
+pose questions to the model and receive answers, or en-
+gage in dialogue interactions, having natural language con-
+versations with LLMs. In conclusion, LLMs, with their
+Transformer architecture, in-context learning, and RLHF
+capabilities, have revolutionized NLP and hold promise in
+various applications. TABLE 1 provides a brief comparison
+of traditional ML, deep learning, and LLMs.
+2.2 AI Model Evaluation
+AI model evaluation is an essential step in assessing the per-
+formance of a model. There are some standard model evalu-
+ation protocols, including K-fold cross-validation, Holdout
+validation, Leave One Out cross-validation (LOOCV), Boot-
+strap, and Reduced Set (Berrar, 2019; Kohavi et al., 1995).
+For instance, k-fold cross-validation divides the dataset
+into k parts, with one part used as a test set and the
+rest as training sets, which can reduce training data loss
+and obtain relatively more accurate model performance
+evaluation (Fushiki, 2011); Holdout validation divides the
+dataset into training and test sets, with a smaller calculation
+amount but potentially more significant bias; LOOCV is
+a unique K-fold cross-validation method where only one
+data point is used as the test set (Wong, 2015); Reduced
+Set trains the model with one dataset and tests it with the
+remaining data, which is computationally simple, but the
+applicability is limited. The appropriate evaluation method
+should be chosen according to the specific problem and data
+characteristics for more reliable performance indicators.
+Fig. 3 illustrates the evaluation process of AI models,
+including LLMs. Some evaluation protocols may not be fea-
+sible to evaluate deep learning models due to the extensive
+training size. Thus, evaluation on a static validation set has
+long been the standard choice for deep learning models. For
+instance, computer vision models leverage static test sets
+such as ImageNet (Deng et al., 2009) and MS COCO (Lin
+What
+(Task)Where
+(Data)How
+(Process)ModelFig. 3. The evaluation process of AI models.
+et al., 2014) for evaluation. LLMs also use GLUE (Wang
+et al., 2018) or SuperGLUE (Wang et al., 2019) as the com-
+mon test sets.
+As LLMs are becoming more popular with even poorer
+interpretability, existing evaluation protocols may not be
+enough to evaluate the true capabilities of LLMs thoroughly.
+We will introduce recent evaluations of LLMs in Sec. 5.
+3 W HAT TO EVALUATE
+What tasks should we evaluate LLMs to show their perfor-
+mance? On what tasks can we claim the strength and weak-
+ness of LLMs? In this section, we divide existing tasks into
+the following categories: natural language processing tasks,
+ethics and biases, medical applications, social sciences, natu-
+ral science and engineering tasks, agent applications (using
+LLMs as agents), and others.
+3.1 Natural Language Processing Tasks
+The initial objective behind the development of language
+models, particularly large language models, was to enhance
+performance on natural language processing tasks, encom-
+passing both understanding and generation. Consequently,
+the majority of evaluation research has been primarily
+focused on natural language tasks. TABLE 2 summarizes
+the evaluation aspects of existing research, and we mainly
+highlight their conclusions in the following.1
+3.1.1 Natural language understanding
+Natural language understanding represents a wide spec-
+trum of tasks that aims to obtain a better understanding
+of the input sequence. We summarize recent efforts in LLMs
+evaluation from several aspects.
+Sentiment analysis is a task that analyzes and interprets
+the text to determine the emotional inclination. It is typically
+a binary (positive and negative) or triple (positive, neutral,
+and negative) class classification problem. Evaluating sen-
+timent analysis tasks is a popular direction. Liang et al.
+(2022); Zeng et al. (2022) showed that model performance is
+often high. ChatGPT’s sentiment analysis prediction perfor-
+mance is superior to traditional sentiment analysis methods
+(Lopez-Lira and Tang, 2023) and comes close to that of GPT-
+3.5 (Qin et al., 2023). In low-resource learning environments,
+LLMs exhibit significant advantages over small language
+models (Zhang et al., 2023d), but the ability of ChatGPT to
+understand low-resource languages is limited (Bang et al.,
+2023). In conclusion, LLMs have demonstrated commend-
+able performance in sentiment analysis tasks. Future work
+should focus on enhancing their capability to understand
+emotions in under-resourced languages.
+1. Note that several NLP areas have intersections and thus our
+categorization of these areas is only one possible way to categorize.PREPRINT 5
+TABLE 2
+Summary of evaluation on natural language processing tasks: NLU (Natural Language Understanding, including SA (Sentiment Analysis), TC
+(Text Classification), NLI (Natural Language Inference) and other NLU tasks), Rng. (Reasoning), NLG (Natural Language Generation, including
+Summ. (Summarization), Dlg. (Dialogue), Tran (Translation), QA (Question Answering) and other NLG tasks), and Mul. (Multilingual tasks).
+NLURng.NLGMul.
+Reference SA TC NLI Others Summ. Dlg. Tran. QA Others
+(Lai et al., 2023) ✓
+(Lopez-Lira and Tang, 2023) ✓
+(Bian et al., 2023) ✓ ✓
+(Chen et al., 2023) ✓
+(Wang et al., 2023d) ✓
+(Yang and Menczer, 2023) ✓
+(Qin et al., 2023) ✓ ✓ ✓ ✓ ✓ ✓
+(Orr `u et al., 2023) ✓
+(Bang et al., 2023) ✓ ✓ ✓ ✓ ✓ ✓ ✓
+(Liang et al., 2022) ✓ ✓ ✓ ✓
+(Choi et al., 2023) ✓
+(Abdelali et al., 2023) ✓
+(Tao et al., 2023) ✓
+(Saparov et al., 2023) ✓
+(Lee et al., 2023) ✓
+(Lin and Chen, 2023) ✓
+(Zhang et al., 2023d) ✓
+(Fu et al., 2023) ✓
+(Pe˜na et al., 2023) ✓
+(Li´evin et al., 2022) ✓
+(Riccardi and Desai, 2023) ✓
+(Bai et al., 2023) ✓
+(Zhang et al., 2023c) ✓
+(Chia et al., 2023) ✓
+(Pu and Demberg, 2023) ✓ ✓
+(Xu et al., 2023a) ✓
+(Liu et al., 2023a) ✓
+(Honovich et al., 2022) ✓ ✓ ✓ ✓
+(Pezeshkpour, 2023) ✓
+(Gekhman et al., 2023) ✓
+(Manakul et al., 2023a) ✓ ✓
+(Min et al., 2023) ✓
+(Wang et al., 2023b) ✓ ✓
+Text classification and sentiment analysis are related
+fields, text classification not only focuses on sentiment, but
+also includes the processing of all texts and tasks. Liang
+et al. (2022) showed that GLM-130B is the best-performed
+model, with an overall accuracy of 85.8% for miscellaneous
+text classification. Yang and Menczer (2023) found that
+ChatGPT can produce credibility ratings for a wide range of
+news outlets, and these ratings have a moderate correlation
+with those from human experts. Furthermore, ChatGPT
+achieves acceptable accuracy in a binary classification sce-
+nario (AUC=0.89). Pe ˜na et al. (2023) discussed the prob-
+lem of topic classification for public affairs documents and
+showed that using an LLM backbone in combination with
+SVM classifiers is a useful strategy to conduct the multi-label
+topic classification task in the domain of public affairs with
+accuracies over 85%. Overall, LLMs perform well on text
+classification and can even handle text classification tasks in
+unconventional problem settings as well.
+Natural language inference (NLI) is the task of deter-
+mining whether the given “hypothesis” logically follows
+from the “premise”. Qin et al. (2023) showed that ChatGPT
+outperforms GPT-3.5 for NLI tasks. They also found that
+ChatGPT excels in handling factual input that could be
+attributed to its RLHF training process in favoring human
+feedback. However, Lee et al. (2023) observed LLMs per-
+form poorly in the scope of NLI and further fail in rep-
+resenting human disagreement, which indicates that LLMsstill have a large room for improvement in this field.
+Semantic understanding refers to the meaning or under-
+standing of language and its associated concepts. It involves
+the interpretation and comprehension of words, phrases,
+sentences and the relationships between them. Semantic
+processing goes beyond the surface level and focuses on
+understanding the underlying meaning and intent. Tao
+et al. (2023) comprehensively evaluated the event semantic
+processing abilities of LLMs covering understanding, rea-
+soning, and prediction about the event semantics. Results
+indicated that LLMs possess an understanding of individual
+events, but their capacity to perceive the semantic similarity
+among events is constrained. In reasoning tasks, LLMs
+exhibit robust reasoning abilities in causal and intentional
+relations, yet their performance in other relation types is
+comparatively weaker. In prediction tasks, LLMs exhibit
+enhanced predictive capabilities for future events with in-
+creased contextual information. Riccardi and Desai (2023)
+explored the semantic proficiency of LLMs and showed that
+these models perform poorly in evaluating basic phrases.
+Furthermore, GPT-3.5 and Bard cannot distinguish between
+meaningful and nonsense phrases, consistently classifying
+highly nonsense phrases as meaningful. GPT-4 shows signif-
+icant improvements, but its performance is still significantly
+lower than that of humans. In summary, the performance of
+LLMs in semantic understanding tasks is poor. In the future,
+we can start from this aspect and focus on improving itsPREPRINT 6
+performance on this application.
+In the field of social knowledge understanding, Choi
+et al. (2023) evaluates how well models perform at learn-
+ing and recognizing concepts of social knowledge and the
+results reveal that despite being much smaller in the number
+of parameters, finetuning supervised models such as BERT
+lead to much better performance than zero-shot models
+using state-of-the-art LLMs, such as GPT (Radford et al.,
+2018), GPT-J-6B (Wang and Komatsuzaki, 2021) and so on.
+This shows that supervised models significantly outperform
+zero-shot models and that more parameters do not guaran-
+tee more social knowledge in this setting.
+3.1.2 Reasoning
+From TABLE 2, it can be found that evaluating the reason-
+ing ability of LLMs is a popular direction, and more and
+more articles focus on exploring its reasoning ability. The
+reasoning task is a very challenging task for an intelligent
+AI model. It requires the model not only to understand the
+given information, but also to reason and infer from the
+existing context in the absence of direct answers. At present,
+the evaluation of reasoning tasks can be roughly classified
+into mathematical reasoning, common sense reasoning, log-
+ical reasoning, professional field reasoning, etc.
+ChatGPT outperform GPT-3.5 on most arithmetic rea-
+soning tasks, demonstrating that ChatGPT has strong arith-
+metic reasoning ability (Qin et al., 2023), but ChatGPT still
+lacks mathematical reasoning (Bang et al., 2023; Frieder
+et al., 2023) abilities. On symbolic reasoning tasks, Chat-
+GPT is mostly worse than GPT-3.5, which may be because
+ChatGPT is prone to uncertain responses, leading to poor
+performance (Bang et al., 2023). In logical reasoning, Liu
+et al. (2023a) indicated that ChatGPT and GPT-4 outper-
+formed traditional fine-tuning methods on most logical
+reasoning benchmarks, demonstrating their superiority in
+logical reasoning. However, both models face challenges
+when handling new and out-of-distribution data. ChatGPT
+does not perform as well as other LLMs, including GPT-
+3.5 and BARD (Qin et al., 2023; Xu et al., 2023a). This
+is because ChatGPT is designed explicitly for chatting, so
+it does an excellent job of maintaining rationality. FLAN-
+T5, LLaMA, GPT-3.5, and PaLM perform well in general
+deductive reasoning tasks (Saparov et al., 2023). GPT-3.5
+is not good at keep oriented for reasoning in the induc-
+tive setting (Xu et al., 2023a). For multi-step reasoning, Fu
+et al. (2023) showed PaLM and Claude2 are the only two
+model families that achiving similar performance (but still
+worse than) the GPT model family. Moreover, LLaMA-65B
+is the most robust open-source LLMs to date, which per-
+forms closely to code-davinci-002. Some papers separately
+evaluate the performance of ChatGPT on some reasoning
+tasks: ChatGPT generally performs poorly on commonsense
+reasoning tasks, but relatively better than non-text semantic
+reasoning (Bang et al., 2023). Meanwhile, ChatGPT also
+lacks spatial reasoning ability, but exhibits better temporal
+reasoning. Finally, while the performance of ChatGPT is
+acceptable on causal and analogical reasoning, it performs
+poorly on multi-hop reasoning ability, which is similar to
+the weakness of other LLMs on complex reasoning (Ott
+et al., 2023). In professional domain reasoning tasks, zero-
+shot InstructGPT and Codex are capable of complex medicalreasoning tasks, but still need to be further improved (Li ´evin
+et al., 2022). In terms of language insight issues, (Orr `u et al.,
+2023) demonstrated the potential of ChatGPT for solving
+verbal insight problems, as ChatGPT’s performance was
+comparable to that of human participants. It should be
+noted that most of the above conclusions are obtained for
+specific data sets. Overall, LLMs show great potential in
+reasoning and show a continuous improvement trend, but
+still face many challenges and limitations, requiring more
+in-depth research and optimization.
+3.1.3 Natural language generation
+Natural language generation (NLG) evaluates the capabil-
+ities of LLMs in generating specific texts, which consists
+of several tasks, including summarization, dialogue gener-
+ation, machine translation, question answering, and other
+open-ended generation applications.
+Summarization is a generation task that aims to learn
+a concise abstract for the given sentence. In this line of
+evaluation, Liang et al. (2022) showed that TNLG v2 (530B)
+(Smith et al., 2022) has the highest score for both scenarios,
+and OPT (175B) (Zhang et al., 2022) ranked second. It is
+disappointing that ChatGPT sometimes generates a longer
+summary than the input document (Bang et al., 2023).
+The fine-tuned Bart (Lewis et al., 2019) is still better than
+zero-shot ChatGPT. Specifically, ChatGPT has similar zero-
+shot performance to text-davinci-002 (Bang et al., 2023), but
+performs worse than GPT-3.5 (Qin et al., 2023). In control-
+lable text summarization, Pu and Demberg (2023) showed
+that ChatGPT summaries are slightly more extractive (i.e.,
+containing more content copied directly from the source)
+compared to human summaries. The above shows that
+LLMs, especially ChatGPT, have a general performance in
+summarizing tasks, but the summary and generalization
+ability still needs to be improved.
+Evaluating the performance of LLMs on dialogue tasks
+is crucial to the development of dialogue systems and
+improving the human-computer interaction. Through such
+evaluation, the natural language processing ability, context
+understanding ability and generation ability of the model
+can be improved, so as to realize a more intelligent and
+more natural dialogue system. Both Claude and ChatGPT
+generally achieve better performance across all dimensions
+when compared to GPT-3.5 (Lin and Chen, 2023; Qin et al.,
+2023). When comparing the Claude and ChatGPT models,
+both models demonstrate competitive performance across
+different evaluation dimensions, with Claude slightly out-
+performing ChatGPT in specific configurations. Bang et al.
+(2023) test ChatGPT’s for response generation in various
+dialogue settings: 1) Knowledge-Grounded Open-Domain
+Dialogue and 2) Task-Oriented Dialogue. The automatic
+evaluation results showed that the performance of ChatGPT
+is relatively low compared to GPT2 fine-tuned on the dataset
+for knowledge-grounded open-domain dialogue. In task-
+oriented dialogue, the performance of ChatGPT is accept-
+able, but it is prone to errors when the following problems
+occur: long-term multi-turn dependency, fundamental rea-
+soning failure, and extrinsic hallucination.
+While LLMs are not trained explicitly for translation
+tasks, it can indeed show strong performance. Wang et al.
+(2023d) showed that ChatGPT and GPT-4 demonstratedPREPRINT 7
+superior performance compared to commercial machine
+translation (MT) systems in terms of human evaluation and
+outperformed most document-level NMT methods in terms
+of sacreBLEU. When comparing ChatGPT to traditional
+translation models during contrastive testing, it exhibits
+lower accuracy. On the other hand, GPT-4 showcases a ro-
+bust capability in explaining discourse knowledge, despite
+the possibility of selecting incorrect translation candidates.
+The results in (Bang et al., 2023) suggested that ChatGPT
+could perform X →Eng translation well, but it still lacked
+the ability to perform Eng →X translation. In summary,
+while LLMs perform satisfactorily in translation tasks, there
+is still room for improvement. Specifically, enhancing the
+translation ability from English to non-English languages
+should be prioritized.
+Question answering is one of the key technologies in
+the field of human-computer interaction, and it has been
+widely used in application scenarios such as search en-
+gines, intelligent customer service, and intelligent question
+answering. Measuring the accuracy and efficiency of QA
+models will have important implications for these applica-
+tions. Liang et al. (2022) showed that InstructGPT davinci
+v2 (175B) performed best in terms of accuracy, robustness,
+and fairness for the 9 question answering scenarios, among
+all the evaluated models. GPT-3.5 and ChatGPT achieve sig-
+nificant improvements over GPT-3 on the task of answering
+general knowledge questions. ChatGPT outperforms GPT-
+3.5 by over 2% in most domains (Bian et al., 2023; Qin
+et al., 2023). However, ChatGPT falls slightly behind GPT-
+3.5 on CommonsenseQA and Social IQA. This is because
+ChatGPT is likely to be cautious, refusing to give an answer
+when there is not enough information. Fine-tuned models,
+including Vicuna and ChatGPT, demonstrate near-perfect
+performance in terms of their scores, far outperforming
+models without supervised fine-tuning (Bai et al., 2023;
+Bang et al., 2023). Overall, LLMs performed flawlessly on
+QA tasks, and can further improve performance on social,
+event, and temporal commonsense knowledge in the future.
+There are also other generation tasks. In the field of
+sentence style transfer , Pu and Demberg (2023) showed
+that ChatGPT outperformed the previous supervised SOTA
+model by training on the same subset for few-shot learn-
+ing, as evident from the higher BLEU score. In terms of
+controlling the formality of sentence style, ChatGPT’s per-
+formance still exhibits significant differences compared to
+human behavior. In writing tasks , Chia et al. (2023) found
+that LLMs perform consistently across writing-based tasks
+including informative, professional, argumentative, and cre-
+ative writing categories, showing their general writing abil-
+ity. In text generation quality, Chen et al. (2023) showed
+that ChatGPT was able to effectively evaluate text quality
+from various perspectives in the absence of reference texts
+and outperformed most existing automated metrics. Using
+ChatGPT to generate numerical scores for text quality was
+considered the most reliable and effective method among
+various testing methods.
+3.1.4 Multilingual tasks
+Many LLMs are trained on mixed-language training data.
+While English is the predominant language, the combina-
+tion of multilingual data indeed helps LLMs gain the abilityto process inputs and generate responses in different lan-
+guages, making them widely adopted and accepted across
+the globe. However, given the relatively recent emergence
+of this technology, LLMs are primarily evaluated on English
+data, while evaluating their multilingual performance is
+an important aspect that cannot be ignored. Several arti-
+cles have provided comprehensive, open, and independent
+evaluations of LLMs performance on various NLP tasks in
+different non-English languages, offering appropriate per-
+spectives for future research and applications.
+Abdelali et al. (2023) evaluated the performance of Chat-
+GPT in standard Arabic NLP tasks and found that ChatGPT
+had lower performance compared to SOTA in the zero-shot
+setting for most tasks. Bang et al. (2023); Lai et al. (2023);
+Zhang et al. (2023c) used more languages on more datasets,
+covered more tasks, and conducted a more comprehensive
+evaluation of LLMs. The results showed LLMs (including
+BLOOM, Vicuna, Claude, ChatGPT, and GPT-4) performed
+worse for non-Latin languages as well as low-resource
+languages. Despite the languages being resource-rich, Bang
+et al. (2023) highlighted that ChatGPT faced a limitation in
+translating sentences written in non-Latin script languages.
+The aforementioned demonstrates that there are numerous
+challenges and ample opportunities for enhancement in
+multilingual tasks for LLMs. Future research should pay at-
+tention to multilingual balance, and strive to solve the prob-
+lem of non-Latin languages and low-resource languages to
+better support users around the world. At the same time,
+attention should be paid to the impartiality and neutrality
+of the language to avoid the impact of the model’s English
+bias or other biases on multilingual applications.
+3.1.5 Factuality
+Factuality in the context of LLMs refers to the extent to
+which the information or answers provided by the model
+align with real-world truths and verifiable facts. Factual-
+ity in LLMs significantly impacts a variety of tasks and
+downstream applications, such as question answering sys-
+tems, information extraction, text summarization, dialogue
+systems, and automated fact-checking, where incorrect or
+inconsistent information could lead to substantial misunder-
+standings and misinterpretations. Evaluating factuality is of
+great importance in order to trust and efficiently use these
+models. This includes the ability of these models to maintain
+consistency with known facts, avoid generating misleading
+or false information (known as ”factual hallucination”), and
+effectively learn and recall factual knowledge. A range of
+methodologies have been proposed to measure and improve
+the factuality of LLMs.
+Wang et al. (2023b) evaluate the internal knowledge
+of large models, specifically InstructGPT (Ouyang et al.,
+2022), ChatGPT-3.5, ChatGPT-4, and BingChat (Microsoft,
+2023), by having them directly answer Open Questions
+based on the Natural Questions (Kwiatkowski et al., 2019)
+and TriviaQA (Joshi et al., 2017) datasets. The evaluation
+is conducted through human assessment. The paper finds
+that while ChatGPT-4 and BingChat can correctly answer
+over 80% of the questions, there is still a gap of more
+than 15% to achieve complete accuracy. Honovich et al.
+(2022) review existing factual consistency evaluation meth-
+ods, pointing out the lack of a unified comparison and thePREPRINT 8
+limited reference value of related scores compared to binary
+labels. They transform existing fact consistency related tasks
+into binary labels, taking into account only if there’s fac-
+tual conflict with the input text, not considering external
+knowledge. The paper finds that fact evaluation methods
+based on Natural Language Inference (NLI) and Question
+Generation-Question Answering (QG-QA) perform best and
+can complement each other. Pezeshkpour (2023) propose
+a new metric based on information theory to measure
+whether a certain knowledge is included in LLMs. It uses
+uncertainty in knowledge to measure factualness, calculated
+by LLMs filling in prompts and examining the probability
+distribution of the answer. Two methods to inject knowledge
+are discussed: explicitly by including the knowledge in
+the prompt, and implicitly by fine-tuning the LLMs on
+the knowledge piece. The paper shows that this approach
+outperforms the traditional ranking methods metrics by
+over 30% in accuracy. Gekhman et al. (2023) improve the fact
+consistency evaluation method for summarization tasks.
+It proposes training student NLI models on summaries
+generated by multiple models and annotated by LLMs for
+fact consistency. This trained student model is then used for
+summarization fact consistency evaluation. Manakul et al.
+(2023a) operate on two hypotheses about how LLMs create
+factual or hallucinated responses. It proposes using three
+formulas (BERTScore (Zhang et al., 2019), MQAG (Man-
+akul et al., 2023b), n-gram) to evaluate factuality, utilizing
+alternative LLMs to gather token probabilities for black-box
+language models. The study finds that merely computing
+sentence likelihood or entropy helps validate the factuality
+of responses. Min et al. (2023) break text generated by
+LLMs down into individual ’atomic’ facts, which are then
+evaluated for their correctness. The FActScore is used to
+measure the performance of estimators through the calcu-
+lation of F1 scores. The paper tests various estimators and
+reveals that current estimators are still some way off from
+effectively addressing the task. Lin et al. (2021) introduces
+the TruthfulQA dataset, designed to cause models to make
+mistakes. Several language models are tested in providing
+factual answers. The findings suggest that simply scaling
+up model sizes might not improve its truthfulness, and
+recommendations are provided for the training approach.
+This dataset is widely used in evaluating the factuality of
+LLMs (Kadavath et al., 2022; OpenAI, 2023b; Touvron et al.,
+2023; Wei et al., 2022b).
+3.2 Robustness, Ethic, Bias, and Trustworthiness
+The evaluation of LLMs encompasses the crucial aspects
+of robustness, ethics, biases, and trustworthiness. These
+factors have gained increasing importance in assessing the
+performance of LLMs comprehensively.
+3.2.1 Robustness
+Robustness studies the stability of a system when fac-
+ing unexpected inputs. Specifically, out-of-distribution
+(OOD) (Wang et al., 2022) and adversarial robustness are
+two popular research topics for robustness. Wang et al.
+(2023c) is an early work that evaluated ChatGPT and other
+LLMs from both the adversarial and OOD perspectives
+using existing benchmarks such as AdvGLUE (Wang et al.,TABLE 3
+Summary of LLMs evaluation on robustness, ethics, biases, and
+trustworthiness .
+Reference Robustness Ethics and Biases Trustworthiness
+(Zhao et al., 2023b) ✓
+(Wang et al., 2022) ✓
+Wang et al. (2023c) ✓
+(Zhuo et al., 2023b) ✓
+(Yang et al., 2022) ✓
+(Li et al., 2023b) ✓
+(Zhu et al., 2023) ✓
+(Gehman et al., 2020) ✓
+(Sheng et al., 2021) ✓
+(Zhuo et al., 2023a) ✓
+(Dhamala et al., 2021) ✓
+(Parrish et al., 2022) ✓
+(Deshpande et al., 2023) ✓
+(Ferrara, 2023) ✓
+(Rutinowski et al., 2023) ✓
+(Hartmann et al., 2023) ✓
+(Simmons, 2022) ✓
+(Cao et al., 2023) ✓
+(Wang et al., 2023a) ✓
+(Hagendorff and Fabi, 2023) ✓
+2021), ANLI (Nie et al., 2019), and DDXPlus (Fansi Tchango
+et al., 2022) datasets. Zhuo et al. (2023b) evaluated the
+robustness of semantic parsing. Yang et al. (2022) evaluated
+OOD robustness by extending the GLUE (Wang et al., 2018)
+dataset. The results of this study emphasize the potential
+risks to the overall system security when manipulating
+visual input. For vision-language models, Zhao et al. (2023b)
+evaluated LLMs on visual input and transferred them to
+other visual-linguistic models, revealing the vulnerability
+of visual input. Li et al. (2023b) provides an overview of
+OOD evaluation for language models: adversarial robust-
+ness, domain generalization, and dataset biases. The authors
+compare and unify the three research lines, summarize the
+data-generating processes and evaluation protocols for each
+line, and highlight the challenges and opportunities for
+future work.
+For adversarial robustness, Zhu et al. (2023) evaluated
+the robustness of LLMs to prompts by proposing a uni-
+fied benchmark called PromptBench. They comprehensively
+evaluated adversarial text attacks at multiple levels (charac-
+ter, word, sentence, and semantics). The results showed that
+contemporary LLMs are vulnerable to adversarial prompts,
+highlighting the importance of the models’ robustness when
+facing adversarial inputs.
+3.2.2 Ethic and bias
+LLMs have been found to internalize, spread, and poten-
+tially magnify harmful information existing in the crawled
+training corpora, usually, toxic languages, like offensiveness,
+hate speech, and insults (Gehman et al., 2020), as well as so-
+cial biases like stereotypes towards people with a particular
+demographic identity ( e.g., gender, race, religion, occupation
+and ideology) (Sheng et al., 2021). More recently, Zhuo et al.
+(2023a) uses conventional testing sets and metrics (Dhamala
+et al., 2021; Gehman et al., 2020; Parrish et al., 2022) to
+perform a systematic evaluation of ChatGPT’s toxicity and
+social bias, finding that it still exhibits noxious content
+to some extend. Taking a further step, Deshpande et al.
+(2023) introduced role-playing into the model and observed
+an increase in generated toxicity up to 6x. Furthermore,
+such role-playing also caused biased toxicity towards spe-
+cific entities. Different from simply measuring social biases,PREPRINT 9
+Ferrara (2023) investigated the sources, underlying mech-
+anisms and corresponding ethical consequences of these
+biases potentially produced by ChatGPT. Beyond social
+biases, LLMs have also been assessed by political tendency
+and personality traits (Hartmann et al., 2023; Rutinowski
+et al., 2023) based questionnaires like Political Compass Test
+and MBTI test, demonstrating a propensity for progressive
+views and an ENFJ personality type. In addition, LLMs like
+GPT-3 were found to have moral biases (Simmons, 2022)
+in terms of the Moral Foundation theory (Graham et al.,
+2013); ChatGPT was also observed to exhibit somewhat bias
+on cultural values (Cao et al., 2023). All these ethical issues
+might elicit serious risks, impeding the deployment of LLMs
+and having a profound negative impact on society.
+3.2.3 Trustworthiness
+Lastly, some work focuses on other trustworthiness.2The
+study conducted by Wang et al. (2023a) discovered trustwor-
+thiness vulnerabilities in the GPT model, revealing its sus-
+ceptibility to being misled and generating harmful, biased
+outputs that could potentially expose private information.
+While GPT-4 typically demonstrates greater trustworthi-
+ness than GPT-3.5 in standardized evaluations, it is also
+more vulnerable to attacks. In another study by Hagendorff
+and Fabi (2023), LLMs with enhanced cognitive abilities
+were evaluated. The researchers found that these models
+can avoid common human intuitions and cognitive errors,
+demonstrating super-rational performance. By utilizing cog-
+nitive reflection tests and semantic illusion experiments, the
+researchers gained insights into the psychological aspects of
+LLMs. This approach offers new perspectives for evaluating
+model biases and ethical issues that may not have been
+previously identified.
+3.3 Social Science
+Social science involves the study of human society and
+individual behavior, including economics, sociology, po-
+litical science, law, and other disciplines. Evaluating the
+performance of LLMs in the field of social science is of great
+significance for academic research, policy formulation, and
+social problem-solving. Such evaluations can help improve
+the applicability and quality of models in the social sciences,
+increasing understanding of human societies and promoting
+social progress.
+Wu et al. (2023a) evaluated the potential use of LLMs in
+addressing scaling and measurement issues in social science
+and found that LLMs could generate meaningful responses
+regarding political ideology and significantly improve text-
+as-data methods in social science.
+In computational social science (CSS) tasks, Ziems et al.
+(2023) presented a comprehensive evaluation of LLMs on
+several CSS tasks. During classification tasks, LLMs exhibit
+the lowest absolute performance on event argument extrac-
+tion, character tropes, implicit hate, and empathy classifi-
+cation, achieving accuracy below 40%. These tasks either
+involve complex structures (event arguments) or subjective
+expert taxonomies with semantics that differ from those
+learned during LLM pretraining. Conversely, LLMs achieve
+2. The term ‘trustworthiness’ in this section refers to other work that
+contains more than robustness and ethics.TABLE 4
+Summary of evaluations on natural science and engineering tasks
+based on three aspects: Mathematics, Science and Engineering
+Reference Mathematics Science Engineering
+(Castro Nascimento and Pimentel, 2023) ✓
+(Liu et al., 2023b) ✓
+(Yuan et al., 2023) ✓
+(Arora et al., 2023) ✓ ✓
+(Sridhara et al., 2023) ✓
+(Valmeekam et al., 2023) ✓
+(Pallagani et al., 2023) ✓
+(Wu et al., 2023b) ✓
+(Collins et al., 2023) ✓
+(Dao and Le, 2023) ✓
+(Valmeekam et al., 2022) ✓
+(Wei et al., 2023) ✓
+the highest absolute performance on misinformation, stance,
+and emotion classification. When it comes to generation
+tasks, LLMs often produce explanations that surpass the
+quality of gold 

@@ -1,0 +1,444 @@
+Tool Documentation Enables Zero-Shot
+Tool-Usage with Large Language Models
+Cheng-Yu Hsieh1†, Si-An Chen2†, Chun-Liang Li3, Yasuhisa Fujii4,
+Alexander Ratner1, Chen-Yu Lee3, Ranjay Krishna1∗, Tomas Pfister3∗
+1University of Washington,2National Taiwan University,
+3Google Cloud AI Research,4Google Research
+cydhsieh@cs.washington.edu
+Abstract
+Today, large language models (LLMs) are taught to use new tools by providing a
+few demonstrations of the tool’s usage. Unfortunately, demonstrations are hard to
+acquire, and can result in undesirable biased usage if the wrong demonstration is
+chosen. Even in the rare scenario that demonstrations are readily available, there is
+no principled selection protocol to determine how many and which ones to provide.
+As tasks grow more complex, the selection search grows combinatorially and in-
+variably becomes intractable. Our work provides an alternative to demonstrations :
+tooldocumentation . We advocate the use of tool documentation—descriptions for
+the individual tool usage—over demonstrations. We substantiate our claim through
+three main empirical findings on 6tasks across both vision and language modalities.
+First, on existing benchmarks, zero-shot prompts with only tool documentation
+are sufficient for eliciting proper tool usage, achieving performance on par with
+few-shot prompts. Second, on a newly collected realistic tool-use dataset with
+hundreds of available tool APIs, we show that tool documentation is significantly
+more valuable than demonstrations, with zero-shot documentation significantly
+outperforming few-shot without documentation. Third, we highlight the benefits
+of tool documentations by tackling image generation and video tracking using
+just-released unseen state-of-the-art models as tools. Finally, we highlight the
+possibility of using tool documentation to automatically enable new applications:
+by using nothing more than the documentation of GroundingDino, Stable Diffu-
+sion, XMem, and SAM, LLMs can re-invent the functionalities of the just-released
+Grounded-SAM [23] and Track Anything [70] models.
+1 Introduction
+Today, large language models (LLMs) summon the imagery of a craftsman: when asked to solve a
+complex task, they decompose the task into simpler sub-tasks and assemble the best possible tools to
+tackle each sub-task [ 51,72]. For example, consider the complex task of question answering given
+the image in Figure 1. To answer “whether the two magnets will attract or repel each other”, the LLM
+needs the following: it needs to identify the positions of the magnets in the image, extract general
+knowledge explaining that “opposite (same) poles attract (repel)”. Just like a competent craftsman
+who knows what their tools are capable of, an LLM with such knowledge of its tools will be able
+to invoke one tool (e.g. its Text Detector) to identify the north and south poles and a second tool
+(e.g. Knowledge Retriever) to extract pertinent background knowledge about magnetic forces. But
+how does an LLM know which tool is capable of what?
+†Work done as student researchers at Google Cloud AI Research.
+*The authors contributed equally to this work.
+Preprint. Under review.arXiv:2308.00675v1  [cs.CL]  1 Aug 2023Figure 1: Example workflow of tool-using with LLMs to solve a multi-modal question answering
+task. Given the input question with an image, the LLM selects appropriate tools from the tool set
+and generates an execution plan to answer the question correctly. Here, the LLMs outlines a plan
+to first use Text Detector to understand the positioning of the magnets in the image, then leverage
+Knowledge Retriever to obtain relevant background knowledge about magnets, then finally generate
+the solution based on the previous steps.
+Currently, LLM tool-usage provides LLMs with few-shot demonstrations (demos) of what its tools can
+do, hoping that these demos will help generalize the model’s behavior to newer complex tasks. This
+process has been rather successful so far. These few-shot demos contain one or several exemplars
+of <input, output> mappings [ 68] on given instructions and their corresponding tool-use plans
+(illustrated in Figure 2). LLMs are expected to find patterns within these demos and generalize
+them for new tasks. On textual tasks, LLMs have presented with demos of calculators [ 15,47,56],
+Python interpreters [ 13,18] and search engines [ 62,43,50,56,40] can perform logical and arithmetic
+operations to obtain more accurate and factual knowledge. On visual tasks, LLMs with demos of
+pretrained vision models can do complex visual reasoning [ 37,40,57,16,73], can generate and
+even edit images [ 19,9]. On embodied robotic tasks, LLMs can similarly be used to reason and
+plan [75, 21, 1, 17].
+We argue that this reliance on demos in tool using is unnecessary in some cases, and might be even
+limiting. In fact, recent work finds that LLMs tend to be sensitive to demos [ 81], and carefully
+selecting demos is needed to avoid biasing or overfitting to a particular usage [ 12]. This leads to the
+follow-up question: how do we choose which few-shot demos to use? There are no known principled
+approaches to select demos without human intervention or to even efficiently enable humans to choose
+or create them. To make the matter worse, when we scale up the number of tools that LLMs have
+access to, this few-shot selection process becomes combinatorially intractable. Just as a craftsman
+doesn’t need to see a new tool being demonstrated and can instead discern their capabilities from
+reading a user manual for the tool, we seek to enable LLMs to learn how to use tools without seeing
+any demos.
+Our work provides an alternative to demonstrations : tool documentation (doc). Similar to the
+metaphor of a manual indicating an physical tool’s capabilities, a software tool’s docs outline what
+the tool can and cannot be used for and how to invoke it. Docs provide relatively neutral instruction
+about the tools’ functionalities and how individual tools should be used (illustrated in Figure 2), and
+they are usually conveniently available through the creation of the tools organically. Intuitively, just
+as the craftman leans to use a new tool by reading the manual, we provide LLMs with README files
+when encountering a new tool/repository. With docs, an LLM may not necessarily need demos to use
+a new tool.
+Distinct from existing work that rely mostly on few-shot demos for tool-learning, in this work,
+we study whether LLMs can instead solely rely on docs to use tools. We study the tool-learning
+performances of LLMs as we include or exclude docs, and vary the number of demos from few-shot
+down to zero-shot. We conduct the experiments on 6tasks across vision and text modalities. Our
+experiments show that:
+•Surprisingly, when provided with tool docs, LLMs’ zero-shot tool-using performance is on par
+or even better than their few-shot counterparts, showing that including docs is an effective way
+to sidestep the few-shot demos needed.
+2Demo nstration:  Below are examples mapping a problem to a tool-use plan. 
+●Question: Which property do these three objects have in common? 
+Tool-use Plan: 
+Text Detector → Knowledge Retriever → Solution Generator 
+●Question: Which material is this jar made of? 
+Tool-use Plan: 
+Image Captioner → Solution Generator 
+DEMO Chips Pretzel Fries Demo nstration  
+Description: examples of questions and the tool-use plan. 
+●Question: 
+Which property do these objects have in common? 
+Tool-use Plan: 
+Text Detector → Knowledge Retriever → Solution Generator 
+●Question: […]
+Tool-use Plan: […]
+●Question: […]
+Tool-use Plan: […]
+Documentation  
+Description: available tools and their functionalities. 
+●Text Detector: 
+It detects the text in an image […] 
+●Knowledge Retriever: 
+It retrieves relevant knowledge […] 
+●Search Engine: 
+It searches the web for relevant info […] 
+●Image Captioner: 
+It generates a caption for an image […] 
+●…
+Figure 2: Two types of knowledge for prompting LLMs for tool-use: Demonstrations (demos) and
+Documentations (docs). Demos consist of <input, output> pairs on input instructions and their
+corresponding output tool-use plans. They require manual efforts for careful curation on every new
+task, and the model performance can be sensitive to which demos are used [ 81,12]. Many demos
+may also be necessary for good coverage when the number of tools scales up. On the other hand,
+docs provide descriptions for the tool functionality, and are usually organically available for tools.
+•Building on the above finding, we relax the few-shot demo constraint, and show that we can
+efficiently scale up to a significantly larger tool set, on a newly collected API usage dataset, by
+simply providing the LLMs with docs.
+•We show how to seamlessly add new tools along with their docs to a tool set for LLMs to
+solve unseen tasks on image editing and video tracking, all without any further demos in a
+plug-and-play manner.
+•Finally, with unseen tools developed recently as building blocks, we showcase LLMs are
+capable of re-inventing popular yet even more recent works Grounded-SAM [ 23] and Track
+Anything [ 70], which suggests a potential from zero-shot tool usage to automatic knowledge
+discovery.
+2 Related work
+LLMs with retrieval augmentation and tools. In spite of the remarkable achievements demon-
+strated by LLMs, the performance can be further boosted with external tool usages to be more
+accurate, efficient or versatile for wider applications. The authors in [ 51] detailed the cognitive
+origins, the paradigm shift of foundation models, and the complementary roles of tools and models to
+LLMs. The example tool usage starts from knowledge retrieval [ 6,20,33,74,77] and expands to
+search engine [ 43,31,32,62,58,46,40], QA system [ 56], calculator [ 15,47,56], the Python inter-
+preter [ 18,13,65,24,46,16], simulation engines [ 37], machine learning models [ 57,73,69,40,16],
+or even tools created by LLMs [ 11]. Pioneer works of LLMs with tools often rely on human su-
+pervision [ 62,31] or additional self-supervised learning techniques [ 56], which pose challenges for
+practical plug-and-play usage. Recent advancements eliminate additional training by using example
+demos in the prompt [ 19,75,73,57,40,46]. Our work further simplifies prompt design by only
+leveraging documentation for individual tools, while maintaining competitive performance.
+Planning with LLMs. Language models are proven to have potential to conduct planning for
+solving complex tasks or decompose the complex tasks into sub-problems when prompted properly.
+[21,22] retrieve demos at test-time with large knowledge space coverage to generate admissible
+actions. [ 28] relies on pre-designed demos for task decomposition. Similarly, recent works of tool
+using with LLMs leverage the example demonstrations of solving examples tasks with a planning
+of tools [ 13,19,75,73,57,40,46]. However, crafting demos of interactions between tools may be
+challenging in practice when the number of tools surges. Concurrent work [ 48,52,71] tackles the
+challenge by using strong LLMs such as GPT-4 [ 45] to create large instruction-following datasets
+that cover diverse instructions and corresponding tool-use plans, typically through mechanisms like
+3self-instruct [ 66]. The resultant datasets can then be used to finetune and equip other LLMs (e.g.,
+LLaMA [ 63] and OPT [ 79]) the ability to use a large collection of tools for unseen instructions. On
+the other hand, our work showcases the potential for LLMs to utilize any unseen new tools by reading
+their tool docs.
+Demonstration and Documentation. Learning from demonstration is popular in reinforcement
+learning [ 49,4,44,55]. [8] propose the in-context learning algorithm for efficient and effective
+downstream task adaptations through showing example demonstrations. Inspired by the success,
+most of existing LLM tool-using works rely on few-shot demonstration [ 13,19,75,73,57,40,46].
+However, [ 12] show that having more example demonstration might counter-intuitively degrade
+performance, and a careful selection might be needed. [ 35] proposes a retrieval method for demo
+selection, which implicitly requires a larger set of examples to be selected. Using documentation
+to improve algorithms is relatively under-explored. [ 7,82] propose document reading algorithms
+for specific games. [ 83] introduced DocPrompting, which employs a trained retriever on the given
+training data to boost code generation by retrieving relevant documents. In this work, we take a step
+towards exploring the zero-shot tool planning in LLMs solely with the aid of documentation, and
+investigate a wide range of diverse tasks from language to vision domains. While [ 64,42] showcase
+pure zero-shot planning capability of LLMs, they do not study either the tool usage or the unseen
+scenarios to the language models. ViperGPT [ 16] is a concurrent work, which focuses on visual
+programming in Python and uses function implementations and specifications as documentation.
+Lastly, while AutoGPT [ 3] provides several demos that showcase the LLM’s capability of tool
+using through documentation reading, our study focuses on a systematic exploration ranging from
+real-world use cases to academic benchmarks.
+3 Experimental setup
+3.1 General workflow
+We follow the general framework of tool-using with LLMs in [ 51], which encompasses many of
+the recent works [ 75,27,19,57,73,69,40]. Specifically, given a natural language instruction, an
+LLM planner generates a program to be sequentially executed where each step of the program may
+rely on using tools selected from a tool set . After the program is generated, it is then executed
+by an environment which finally returns the execution results. Here, the program extends beyond
+conventional coding practice [ 76,53,25] and is more closely associated with automata theory [ 59]:
+a set of instructions of automations (e.g. tools in our case). Therefore, the tool set can be libraries
+with specific programming languages (e.g. Python), or general computation with properly defined
+input-output, such as trained models, API calls, and beyond.
+3.2 Tool-use prompting methods
+As discussed in Section 1, two main types of information are considered in prompting LLMs
+for tool-using plans: demonstrations (demos) and documentations (docs). Demos showcase how
+toolinteractions can accomplish specific tasks, while docs describe individual tool functionalities
+without task-specific ties as shown in Figure 2. In the experiment, we explore combinations of
+including/excluding docs and demos in prompts, as well as varying numbers of demos.
+3.3 Evaluation tasks
+We conduct our experiments on 6 tasks across multiple modalities with a variety of tool sets. We
+describe the setup and the tool sets for each task below. Except for specific cases where it is explicitly
+specified, the LLM planner is ChatGPT ( gpt-3.5-turbo ).
+Multi-modal question answering on ScienceQA. ScienceQA [ 39] consists of multi-modal multiple-
+choice science questions that requires language and visual understanding as well as domain-specific
+knowledge to answer correctly. On ScienceQA, we follow the setup used in Chameleon [ 40] and
+employ the same tool set with 7 tools, such as the search engine and the image text detector.
+Tabular math reasoning on TabMWP. TabMWP [ 41] is a math reasoning dataset with various
+forms of tables. It requires a model to understand structured or domain-specific tables, and utilize the
+4Z er o Sho t 
+●llmcloud firewall allow my_vm --port 
+8000 --protocol tcp [H allu cin a t i o n] 
+●touch my_file 
+●scp -P 8000 /path/to/my_file 
+user@server_ip:~  [W r o n g c o mm and] 
+● [Miss in g t o p i c c r e a t i o n] 
+●llmcloud publish-message --project 
+PROJ --message "Hi"  [H allu cin a t i o n] 
+D ocumen t a t i o n 
+●llmcloud comp firewall-rules create 
+NAME --allow tcp:8000 
+●touch my_file 
+●llmcloud comp scp --port 8000 
+my_file my_vm:./ 
+●llmcloud pubsub topics create TOPIC 
+●llmcloud pubsub topics publish PROJ 
+--message "hi" 
+F e w Sho t 
+●llmcloud comp firewall-rules 
+create NAME --allow tcp:8000 
+●touch my_file 
+●llmcloud comp scp --P 8000 
+my_file my_vm:./  [W r o n g fl a g] 
+● [Miss in g t o p i c c r e a t i o n] 
+●llmcloud pubsub topics publish 
+PROJ my-topic --message "Hi" 
+Qu e s t i o n:  
+● H er e is a ne w cl o u d s er vi c e c all e d LLM VM, whi ch p r o vi d e s i t s 
+o wn SDK CLI t oo l (llmcl o u d). 
+● C r e a t e a  fir e w all all o win g po rt 8000. P l e a s e t o u ch a fil e 
+m y _fil e t hen c o p y i t t o s er v er wi t h po rt 8000. 
+● La s t, p l e a s e p ub lish a me ss a g e “Hi” t o t he p r o j e c t. An sw er (in GCP) 
+●gcloud compute firewall-rules create NAME 
+--allow tcp:8000 
+●touch my_file 
+●gcloud compute scp --port 8000 my_file my_vm:./ 
+●gcloud pubsub topics create TOPIC 
+●gcloud pubsub topics publish PROJ --message "hi" 
+Figure 3: The new LLM Cloud Platform command-line toolkit, which is an unseen toolset to existing
+LLMs based on real-world Google Cloud command-line tools through renaming.
+information to answer corresponding math questions. On TabMWP, we also follow Chameleon [ 40]
+with the same tool set with 9 tools, such as program generator and column lookup.
+Multi-modal reasoning on NLVRv2. NLVRv2 [ 60] requires the model to verify whether a statement
+is true on a pair of images, requiring compositional understanding of both texts and images. On
+NLVRv2, we follow the setup used in Visual Programming (VisProg) [ 19] with 20 vision modules
+(tools) for image understanding and manipulation. Since VisProg only relies on few-shot demonstra-
+tions and does not utilize documentations for the modules. We generate the documentation for each
+module by including descriptions on the functionality of the module and the function signature. We
+provide the full documentations we use for each module in the appendix.
+Unseen API usage on a newly collected dataset. Existing benchmarks used in literature come
+with a limited set of tools. To explore real-world use cases involving a large number of tools, we
+collect a new benchmark called the LLM Cloud CLI that consists of 200 commands representing the
+functionalities of the Google Cloud Platform (GCP) command-line interface (CLI). Each command
+in our CLI is renamed from its corresponding GCP command, preserving the semantics and logic
+of the original tools, while being unseen to the language models. For instance, the command
+gcloud compute create NAME , responsible for creating a virtual machine, is renamed to be
+llmvm compute make NAME . The renaming conventions also allow us to utilize authentic GCP
+examples as few-shot demos and leverage the corresponding GCP documentation. The benchmark
+comprises 50 questions, each focused on creating and configuring specific cloud services using
+command-line tools. Each question requires at least two commands to complete the task. We show
+an example in Figure 3, and include more in appendix.
+Due to the length constraints of the LLM we use, we cannot fit documentation of 200 tools in a single
+prompt. Therefore, we employ a simple TF-IDF search using the questions as queries to retrieve the
+most relevant documentations and truncate them to fit within the prompt length. More details can be
+found in the appendix.
+Image editing with natural language. We consider image editing as a form of qualitative evaluation.
+This process calls for the model to plan and use different vision modules to handle complex natural
+language instructions. For instance, to execute an instruction like "replace the red bus with a green
+bicycle", the model must localize the red bus, generate its segmentation mask, and then inpaint
+the masked area. We use the tool sets from VisProg. Unlike VisProg, which depends on few-shot
+demonstrations, our model only looks at the module documentation. We further include the recently
+released image understanding works, Segment Anything (SAM) [ 30] and Grouding DINO [ 38] to
+expand the tool set to test the zero-shot capability on the new and unseen tools in a plug-and-play
+fashion.
+Video tracking. Video tracking is also utilized in this study as a qualitative evaluation. This task aims
+to acquire the masks of a tracked object in each frame of a video, necessitating the deployment of
+processes such as object localization, segmentation, and tracking. In addition to SAM and Groudning
+DINO, we incorporate the documentation of an unseen object tracking module, Xmen [ 14] into the
+VisProg framework with the aim to showcase the model’s ability to adapt and employ new tools
+without the need for explicit demonstrations again on a different task.
+5Figure 4: Tool-using performance with gpt-3.5-turbo on different benchmarks, which covers
+from langauge to vision modalities. We report results with and without documentation (doc) and
+demonstations (demo), and their combinations. Clearly, with documentation only (upper-left blue
+dot) shows competitive performance across all datasets.
+4 Empirical findings
+We showcase the importance of tool documentation in three-fold: First, we show that tool documen-
+tations reduces the need of demonstrations (Section 4.1). Second, based on the finding, we further
+show that relying on documentation rather than demonstrations provides a more scalable solution
+to equip LLMs with a large number of available tools (Section 4.2). Finally, we show that with
+tool documentations alone, LLMs are able to comprehend and utilize most recent vision models to
+accomplish impressive results on image editing and video tracking tasks, on which existing results
+are achieved either with human-crafted demos or predefined procedures (Section 4.3).
+4.1 Documentations sidestep the need for demonstrations
+In this section, we show how tool documentations reduce the need of demonstrations. We present the
+findings on three datasets: ScienceQA, TabMWP, and NLVRv2. We evaluate the model performance,
+with and without tool documentations, across varying number of demonstrations (demo) on each
+dataset.
+In Figure 4, we see that when provided with tool docs, the model is able to maintain stable performance
+as we strip away the number of demos used. In fact, without using any demos (i.e., 0-shot), the
+model is able to achieve on par performances to using 16-shot on TabMWP, and using 12-shot on
+NLVRv2. On ScienceQA, the model can even achieve better performance solely with docs compared
+to additionally using 10-shot demos. On the other hand, without tool docs, the model performance is
+very sensitive to the number of demos used. As we decrease the number of demos, we see significant
+performance drop on all three datasets. This highlights the importance of tool docs and shows that it
+provides an effective way to reduce the reliance on demos. In Table 1, when compared to existing
+baseline methods, we also see that with doc, even 0-shot can perform very competitively.
+By sidestepping the need for demos, we are able to alleviate the efforts needed to carefully curate
+these demos. For example, aligned with recent studies [ 81,12], we observe in Figure 4 that the model
+performance is sensitive to which demos are used, shown by the large performance variances under
+5-shot on ScienceQA and 2-shot on NLVRv2.
+4.2 Documentations enable efficient scaling on tool-using
+The findings in Section 4.1 show that one can in fact reduce the reliance on few-shot demos with tool
+docs. By relaxing this constraint, we study whether tool docs enables a more scalable way to equip
+LLMs with a large number of tools, wherein few-shot demos can specifically fall short on covering
+limited tool-use cases. We present our findings in this section on the newly collected LLM Cloud
+CLI dataset with 200 available tools.
+Qualitative walk-through result. Figure 3 serves as a qualitative example illustrating the limita-
+tions of the LLMs with different information. As expected, zero-shot LLM successfully identifies and
+responds to the touch command, which is familiar and well-known. However, when faced with the
+6Table 1: Comparisons to existing baseline methods on different benchmarks. We follow [ 40,19]
+to select the beasline methods for each benchmark task. We see that 0-shot with doc performs
+competitively, outperforming CoT and PoT on ScienceQA and TabMWP. On NLVRv2, ViLT-NLVR
+is finetuned on the dataset, while the LLM performs in a zero-shot fashion.
+Benchmark Methods
+CoT [67] without doc ( 0-shot) with doc ( 0-shot)
+ScienceQA 78.54 78.25 79.91
+PoT [13] without doc ( 0-shot) with doc ( 0-shot)
+TabMWP 89.28 84.13 92.69
+ViLT-NLVR [29] without doc ( 0-shot) with doc ( 0-shot)
+NLVRv2 76.30 0.00 63.40
+Figure 5: Command planning of LLM Cloud Platform CLI with and without documentation (doc)
+and demonstations (demo), and their combinations. Few-shot demonstration without documentation
+results in unsatisfactory performance due to low coverage of large number of tools, while reading
+documentation significantly boosts the performance.
+unseen LLM-Cloud command lines, the zero-shot LLM fails to generate accurate responses involving
+these unfamiliar tools due to its lack of knowledge regarding their syntax and usage.
+While few-shot demonstrations have the potential to enhance model performance, it is important
+to acknowledge that the coverage of these demonstrations is limited due to the vast number of
+command-line tools. Consequently, certain commands or flags may not be adequately covered. In
+Figure 3, although we observe data copying is commonly appeared the few-shot examples, however,
+the model encounters difficulties in correctly configuring the less common flag --port , instead
+hallucinating the use of -Pbased on familiarity with the scp -P command in Linux.
+Conversely, in the same example illustrated in Figure 3, by solely utilizing the provided documentation,
+the language models not only successfully discern the steps required for utilizing tools (such as a
+hidden step of creating a topic before sending messages), but also possess the ability to accurately
+configure flags (e.g., --port ) by leveraging information extracted from the documentation.
+Quantitative comparisons. We calculate the command-line level F1 score of each example and
+report the average F1 across 50 examples. Figure 5 showcases the performance of various LLMs in the
+zero-shot setting, where they have no prior exposure to the LLM-Cloud command-line tools we create.
+As anticipated, all zero-shot LLMs demonstrate low F1 scores. Zero-shot text-davinci-002
+achieves an F1 score of 0.02, while the gpt-3.5-turbo model achieves a slightly higher score of
+0.13. The improved performance of the gpt-3.5-turbo model can be attributed to better handling
+of common Linux commands, such as touch . As mentioned in quantitative comparison, few-shot
+demos improve upon zero-shot, but still fail on uncovered commands or flags in the demo. Therefore,
+the best few-shot demo in text-davinci-002 andgpt-3.5-turbo are only with 0.05 and 0.19
+F1 scores respectively. On the other hand, LLM with documentation boosts the performance by a
+large margin to be 0.37 in text-davinci-002 and 0.45 in gpt-3.5-turbo .
+7Figure 6: Plug-and-play new vision tools without demonstration. We add GroundingDINO [ 38],
+Segment Anything (SAM) [ 30], XMem [ 14] as new tools for VisProg. Solely with the documentations
+of the new tools, the LLM is able to automatically “re-invent” recent Grounded-SAM [ 23] and
+Track Anything [ 70] without knowing these derivatives, taking a further step toward automatic
+knowledge discovery.
+We further compare the performance of the documentation reading with that of the documentation
+supplemented with few-shot demonstrations. In the case of text-davinci-002 , with documen-
+tation only, we achieves an F1 score of 0.37. Conversely, the documentation augmented with
+different shots yields an average F1 score of 0.35. Similarly, in the gpt-3.5-turbo experiment, the
+performance with different shot demonstrations (0.44, 0.44, 0.42) are consistently lower than the
+documentation-only performance (0.45).
+These results highlight two observations. First, the performance of the model is highly sensitive to the
+selection of few-shot demonstrations. The observation aligns the finding in [ 12] that more few-shot
+demos might be redundant and even degrade performance due to spurious correlations. It emphasizes
+the importance of careful selection and design, which may involve more human effort. Second, the
+zero-shot documentation reading baseline exhibits remarkable robustness and delivers competitive
+performance across both examples. This highlights the potential value and reliability of relying solely
+on the documentation, which is usually easy to get in many packages and tools.
+4.3 Plug-and-play with new image and video tools
+In this section, we validate that one can equip LLMs with unseen tools to solve novel tasks solely
+with tool docs, and without any further demos. We present our results on image editing and video
+tracking tasks. We show that LLMs can effectively re-invent existing human-programmed image
+editing and video tracking pipelines, backed by state-of-the-art vision models to achieve impressive
+results.
+Recent advancements in vision models, including GroundingDINO [ 38], an advanced open-set object
+detector; Segment Anything (SAM) [ 30], a cutting-edge image segmentation tool; and XMem [ 14], a
+8state-of-the-art video object segmentation tool, accompany the progress of language models. These
+breakthroughs, emerging in the past year, serve as additional tools that are yet unfamiliar to our
+LLM ( gpt-3.5-turbo ). By expanding VisProg to include these new tools, we embark on the
+intriguing exploration of whether LLMs can effortlessly comprehend the documentation associated
+with these new models, and combine these tools in a plug-and-play manner, enabling a wide range of
+applications.
+In Figure 6, when performing an image editing request “replace the bench with a blue sofa”, the
+LLM generates a VisProg program that harnesses the power of GroundingDINO and SAM from the
+expanded tool set to segment the bench, and apply the stable diffusion [ 54] for synthesizing the sofa.
+This program re-invents the wheel by replicating the behavior of recent popular project, Grounded-
+SAM [ 23] without prior knowledge of this repository. Similarly, when tasked with video tracking
+“track the cat in the video”, the generated VisProg program by the LLM incorporates GroundingDINO
+together SAM for first frame segmentation as the initialization for XMem to do video tracking. It
+again re-invents the results obtained in the contemporary work, Track Anything [ 70]. We note that
+TaskMatrix [ 69] also has an updated approach with Grounded-SAM. However, they pre-program the
+entire Grounded-SAM editing pipeline as an image editing function, allowing the LLM to control it
+rather than enabling the LLM to generate the editing program using the building tools alone as we
+present here.
+By successfully re-inventing the functionalities of Grounded-SAM and Track Anything without prior
+knowledge, solely relying on the available building blocks, the LLM demonstrates not only its capacity
+to effortlessly comprehend and combine new tools with documentation only but also highlights its
+potential for automatic knowledge discovery. It discovers new insights through leveraging its existing
+knowledge only without further demonstration.
+4.4 Performance v.s. documentation quality
+We investigates the impact of documentation quality on performance. To assess LLM’s capability
+to comprehend realistic documentation, we refrain from engineering or curating the content of the
+documentation. Instead, we vary the document length by truncating the documents and keeping the
+firstnwords, using it as a proxy for assessing thoroughness and quality. In this ablation, we consider
+the LLM-Cloud benchmark, which has long documentation based on real-world GCP CLI manuals.
+We illustrate the result in Figure 7.
+200 300 400 500 600 700 800
+Documentation Length0.100.150.200.250.300.350.400.45F1 Score
+gpt-3.5-turbo (doc)
+text-davinci-002 (doc)
+gpt-3.5-turbo (best 15 shots)
+text-davinci-002 (best 15 shots)
+Figure 7: Performance of zero-shot documentation LLM when varying the input document length.
+In both text-davinci-002 andgpt-3.5-turbo experiments, we consistently observe a trend
+where performance improves as the document length increases, up to a length of 600. This finding
+aligns with our hypothesis that the models possess the ability to comprehend and leverage documen-
+tation effectively. Remarkably, this improvement in performance is achieved without any additional
+training, fine-tuning nor document curation . It highlights the tremendous value of providing compre-
+hensive documentation, as it empowers the models to leverage a wide range of command-line tools at
+scale , solely through the process of reading and understanding the documentation.
+We note that a degradation in performance after the document length exceeds 600 words. We attribute
+this decline to the inherent challenges associated with comprehending lengthy documents in language
+models [ 61]. However, we foresee the ongoing advancements in handling long inputs in language
+models will gradually address this limitation [ 10,5,2]. We leave exploring solutions for overcoming
+this limitation for future research.
+95 Conclusion
+In this paper, we examined the effectiveness of tool docs in enabling zero-shot tool usage with LLMs.
+We first showed that LLMs can achieve on par or better performance than their few-shot counterparts
+when provided with tool docs. We then scaled up to a significantly larger tool set on a newly collected
+API through docs only. By simply plugging in new tools along with their docs, LLMs are able to
+tackle unseen tasks in image editing and video tracking without further demos and replicate the
+functionalities of recent popular projects, suggesting a potential for automatic knowledge discovery.
+Overall, we shed light on a new perspective of tool usage with LLMs by focusing on their internal
+planning and reasoning capabilities with docs, rather than explicitly guiding their behaviors with
+demos.

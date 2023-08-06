@@ -1,0 +1,30 @@
+Generative Job Recommendations with Large
+Language Model
+Zhi Zheng1,2,†, Zhaopeng Qiu1,†, Xiao Hu1, Likang Wu1,2, Hengshu Zhu1∗, Hui Xiong3,4∗
+1Career Science Lab, BOSS Zhipin .
+2University of Science and Technology of China ,
+3The Thrust of Artificial Intelligence, The Hong Kong University of Science and Technology .
+4The Department of Computer Science and Engineering, The Hong Kong University of Science and Technology .
+zhengzhi97@mail.ustc.edu.cn, zhpengqiu@gmail.com, zhuhengshu@gmail.com, xionghui@ust.hk
+Abstract —The rapid development of online recruitment ser-
+vices has encouraged the utilization of recommender systems
+to streamline the job seeking process. Predominantly, current
+job recommendations deploy either collaborative filtering or
+person-job matching strategies. However, these models tend to
+operate as “black-box” systems and lack the capacity to offer
+explainable guidance to job seekers. Moreover, conventional
+matching-based recommendation methods are limited to retriev-
+ing and ranking existing jobs in the database, restricting their
+potential as comprehensive career AI advisors. To this end, here
+we present GIRL (GeneratIve job Recommendation based on
+Large language models), a novel approach inspired by recent
+advancements in the field of Large Language Models (LLMs).
+We initially employ a Supervised Fine-Tuning (SFT) strategy
+to instruct the LLM-based generator in crafting suitable Job
+Descriptions (JDs) based on the Curriculum Vitae (CV) of a
+job seeker. Moreover, we propose to train a model which can
+evaluate the matching degree between CVs and JDs as a reward
+model, and we use Proximal Policy Optimization (PPO)-based
+Reinforcement Learning (RL) method to further fine-tine the
+generator. This aligns the generator with recruiter feedback,
+tailoring the output to better meet employer p

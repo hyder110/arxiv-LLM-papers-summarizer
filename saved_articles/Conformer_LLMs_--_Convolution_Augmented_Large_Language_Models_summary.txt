@@ -1,0 +1,26 @@
+Summary:
+This paper proposes a new architecture called Conformer LLMS which combines convolutional layers and Transformers for large language models (LLMs). The authors adapt non-causal conformers, commonly used in automatic speech recognition, in a causal setup for training LLMs. By combining local and global dependencies using causal convolutional filters and Transformers, the Conformer LLMS achieves significant performance gains. The architecture is robust and can be applied beyond speech applications for large-scale language modeling.
+
+Bullet Points:
+1. Conformer LLMS combines convolutional layers and Transformers for large language models.
+2. Non-causal conformers are adapted for a causal setup in training LLMs.
+3. Transformers decoders capture long-range dependencies and are a core backbone in machine learning.
+4. Convoluntional architectures are popular for extracting features from signals, speech, and images.
+5. Conformer LLMS combines local and global dependencies using causal convolutional filters and Transformers.
+6. The proposed architecture demonstrates significant performance gains.
+7. The Conformer LLMS can be integrated and adapted in a causal setup beyond speech applications.
+8. The paper mentions the advancements and applications of large language models in various domains.
+9. Conformers, convolution augmented image transformers, and CLDNN architectures are discussed as related works.
+10. The experiments show the scalability and performance improvements of the Conformer LLMS in language modeling and prediction tasks.
+
+Keywords:
+- Conformer LLMS
+- large language models
+- convolutional layers
+- Transformers
+- automatic speech recognition
+- causal setup
+- local and global dependencies
+- performance gains
+- speech applications
+- scalability

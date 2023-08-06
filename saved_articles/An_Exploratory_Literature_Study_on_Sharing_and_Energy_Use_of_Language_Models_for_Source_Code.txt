@@ -1,0 +1,308 @@
+An Exploratory Literature Study on Sharing and
+Energy Use of Language Models for Source Code
+Max Hort
+Simula Research Laboratory
+Oslo, Norway
+maxh@simula.noAnastasiia Grishina
+Simula Research Laboratory &
+University of Oslo
+Oslo, Norway
+anastasiia@simula.noLeon Moonen
+Simula Research Laboratory &
+BI Norwegian Business School
+Oslo, Norway
+leon.moonen@computer.org
+Abstract —C ONTEXT : Large language models trained on
+source code can support a variety of software development
+tasks, such as code recommendation and program repair. Large
+amounts of data for training such models benefit the models’
+performance. However, the size of the data and models results
+in long training times and high energy consumption. While
+publishing source code allows for replicability, users need to
+repeat the expensive training process if models are not shared.
+GOALS : The main goal of the study is to investigate if pub-
+lications that trained language models for software engineering
+(SE) tasks share source code and trained artifacts. The second
+goal is to analyze the transparency on training energy usage.
+METHODS : We perform a snowballing-based literature search
+to find publications on language models for source code, and
+analyze their reusability from a sustainability standpoint.
+RESULTS : From a total of 494 unique publications, we
+identified 293 relevant publications that use language models to
+address code-related tasks. Among them, 27% (79 out of 293)
+make artifacts available for reuse. This can be in the form of
+tools or IDE plugins designed for specific tasks or task-agnostic
+models that can be fine-tuned for a variety of downstream tasks.
+Moreover, we collect insights on the hardware used for model
+training, as well as training time, which together determine the
+energy consumption of the development process.
+CONCLUSION : We find that there are deficiencies in the
+sharing of information and artifacts for current studies on source
+code models for software engineering tasks, with 40% of the
+surveyed papers not sharing source code or trained artifacts. We
+recommend the sharing of source code as well as trained artifacts,
+to enable sustainable reproducibility. Moreover, comprehensive
+information on training times and hardware configurations
+should be shared for transparency on a model’s carbon footprint.
+Index Terms —sustainability, reuse, replication, energy, DL4SE.
+I. I NTRODUCTION
+The FAIR data principles are designed to support and en-
+hance the reusability of digital research objects following four
+guiding principles: to be findable, accessible, interoperable,
+and reusable [1]. While the initial focus of FAIR was on
+scientific data, the principles have been transferred to research
+software [2]. Publishing source code supports the replicability
+of software but may incur repeated training costs, if a software
+product is data-driven. Training costs can be especially high
+for tools that are trained on large amounts of data, such as
+Machine Learning (ML) models, which have achieved state-of-
+the-art performance in various disciplines (e.g., text and imageunderstanding, video content prediction [3, 4]). In particular,
+Deep Learning (DL) often achieves performance improve-
+ments by increasing the amount of training data and the size
+of the model, leading to long training times and substantial
+energy consumption [5], with an increase in computational
+costs for state-of-the-art models by a factor of 300 000 between
+2012 and 2018 [6, 7]. This trend not only raises barriers for
+researchers with limited computational resources [8], it is also
+harmful to the environment [5, 6].
+One class of DL models that benefit from training on large
+amounts of data are Large Language Models (LLMs). LLMs
+have been able to learn semantic information via training
+on texts from the Internet and achieve high performance on
+Natural Language Processing (NLP) tasks [5, 9]. Similarly,
+by training language models on a large corpus of source
+code (e.g., as provided by GitHub1), one can learn semantic
+information of source code [10] and apply the models on SE
+tasks, such as code generation, bug prediction and fixing, to
+alleviate developers from tedious work [11]. This research area
+is referred to as DL4SE, and the models are referred to as
+Source Code Models (SCMs).
+Training an SCM can take more than 100 days and incur
+high costs from hardware and energy requirements [12, 13].
+From an energy usage point of view, only sharing the source
+code to train the model is wasteful, because replication or
+reuse requires repeating the expensive and energy-consuming
+training process. Instead, trained models should be considered
+digital artifacts that must be shared to lower the bar for build-
+ing on existing work [14]. For instance, fine-tuning an existing
+task-agnostic model requires only a fraction of the computa-
+tional costs of training such a model from scratch [12].
+Despite the benefits of sharing the trained models and source
+code, a large number of studies in DL, including many in
+DL4SE, do not make code or models publicly available. Liu et
+al. [15] surveyed deep learning studies in SE conferences and
+journals. They found that 74.2% of the studies did not share
+the source code and data for replication. Failing to share the
+data or trained artifacts contradicts the software sustainability-
+quality characteristics [16]. Software sustainability is defined
+from economic, environmental, social and technical dimen-
+1www.github.com
+This work is licensed under a Creative Commons
+Attribution 4.0 International (CC BY 4.0) license.1Accepted for publication in the 17th ACM/IEEE International Symposium
+on Empirical Software Engineering and Measurement (ESEM 2023).arXiv:2307.02443v1  [cs.SE]  5 Jul 2023sions in that software should generate economic value, enable
+equal and sustained access to social resources, minimize harm
+to the environment, and ensure technical improvements and
+maintainability [17]. In this study, we focus on the techni-
+cal and environmental aspects of sustainability in software,
+namely reusability and efficiency [16, 18]. To investigate the
+reusability and resource efficiency of source code models, we
+perform an exploratory literature search of existing DL4SE
+publications. For each publication, we investigate whether
+code and trained models are available, and what the training
+and energy requirements are. In other words, we focus on the
+following two research questions:
+RQ1: How many DL4SE publications share source code
+and/or trained models or related trained artifacts?
+RQ2: How much energy was used to train these models?
+Contributions: The contributions of this paper include:
+⋆We conduct an exploratory study on the sustainability
+and reusability of (large) language models for source
+code. We analyze to what extent publications make
+trained artifacts available, so that software developers
+and researchers can reuse and profit from large models
+trained with high energy consumption without incurring
+such training costs themselves.
+⋆We investigate the information provided in 79 publica-
+tions with shared artifacts;
+⋆We estimate the energy needed for training models from
+30 publications that provided sufficient information;
+⋆We summarize the lessons learned while studying the
+academic literature with this focus on sustainability;
+⋆We provide recommendations to help researchers make
+their models more sustainable and support clearly com-
+municating the relevant aspects in their publications.
+II. R ELATED WORK
+A. Sustainable Software Engineering
+Sustainable software engineering addresses sustainability in
+two regards: (1) creating software that empowers sustain-
+able applications and (2) creating software in a sustainable
+resource-efficient way. The former is referred to as Information
+Technology for Green (IT for Green) [19] or sustainability
+BYsoftware [16]. The latter is called Green IT [20] or
+sustainability INsoftware [16]. In this study, we focus on sus-
+tainability INsoftware and use the term sustainable software
+orsustainable software engineering to define reusable shared
+software that is built with resource usage considerations in
+mind. Development of sustainable software can be supported
+by integrating sustainability goals in the development pro-
+cess [20]. One way to improve the sustainability of software
+is to optimize its performance by refactoring the source code,
+which can have positive impacts on the accompanying energy
+consumption [21]. For example, Verdecchia et al. [22] showed
+that refactoring code smells in Java applications can reduce
+energy consumption by almost 50%.
+In addition to observing the energy consumed by applying
+software and potential positive effects by providing sustain-able solutions, the energy consumed during the development
+process is of relevance as well, as pointed out by the GREEN-
+SOFT model [23]. The GREENSOFT model presents a life
+cycle for software products. Accordingly, a green software
+product should be sustainable during the course of the life
+cycle, including the software engineering process and the tasks
+developers address during implementation and maintenance.
+To alleviate their workload, they can use tools to automate and
+support software engineering tasks. In this regard, Martinez
+et al. [24] addressed the field of green software research
+by measuring energy consumption induced by development
+and maintenance activities, in particular Automated Program
+Repair (APR). APR is used to fix software bugs, which usually
+incur a high monetary cost to resolve, without requiring
+manual intervention of developers. While APR tools tend to
+report their performance in terms of number of bugs they
+are able to fix, Martinez et al. [24] considered their energy
+consumption as an additional quality measure. To evaluate the
+trade-off between accuracy and energy consumption of APR
+tools, they computed the energy cost for each point of accuracy
+(i.e., energy consumption divided by accuracy).
+B. Energy Consumption of Machine Learning Models
+The energy consumption of training and developing ML mod-
+els is becoming a growing concern [25], with models requiring
+large amounts of computational resources to train, causing
+financial costs and CO 2emissions [7, 26]. Recently, imple-
+mentation challenges and leaderboards have been introduced
+to incentivize the development of energy efficient models [27,
+28]. Another proposition is to measure the performance of ML
+models not only with regard to accuracy, but also to consider
+energy consumption and trade-offs between the two metrics.
+To account for the sustainability–accuracy trade-off,
+Guti´errez et al. [29] analyzed the impact of changing solvers
+for ML models. Having applied the models to credit card fraud
+data, they found configurations that required 2.9x more energy
+while improving accuracy by only 0.016. This illustrates that
+developers can make trade-offs between energy consumption
+and ML quality measures, such as precision and recall. In
+the same line of research, Georgiou et al. [7] compared
+the energy consumption of two frameworks (T ENSOR FLOW ,
+PYTORCH ) for the development of DL by implementing and
+comparing the performance of six machine learning models.
+Energy consumption varied significantly in both the training
+and inference stages, with T ENSOR FLOW requiring less energy
+for training and P YTORCH less energy for inference. However,
+the framework documentation did not provide information on
+hardware specifications to allow developers to select models
+and frameworks with regard to energy requirements.
+Verdecchia et al. [25] modified the underlying datasets for
+training DL models to reduce energy consumption during
+training. Results showed that reducing dataset size, either in
+the number of features or number of data points, improves
+the energy efficiency by up to 92%, while having a negligible
+effect on accuracy reduction for selected algorithms. Garcia-
+Martin et al. [30] investigated the impact of parameter tun-
+2research
+questions
+select initial
+seed papersfilteringextract
+information
+& classifyrepeat backward
+snowballing
+& selection
+435exclusion
+criteria
+676 backward
+snowballing202 108information
+extraction
+templatereusable
+(model available)
+79
+reproducible
+(code available)
+98
+nothing
+available
+11633repeat filtering,
+extraction
+& classification444x
+40 58
+83deduplication
+& selection
+1 2 3 4 5 76
+inclusion
+criteria
+292
+107
+ 94
+ 474
+Fig. 1. Overview of the search procedure.
+ing on energy consumption and accuracy for the Very Fast
+Decision Tree algorithm. In some cases, small reductions in
+accuracy ( <0.1) can reduce energy consumption by more than
+70%. For an overview of publications addressing Green AI (AI
+systems developed with sustainability and costs considered),
+we refer to the systematic review by Verdecchia et al. [31].
+C. Energy Consumption of Large Language Models
+To support responsible NLP, Zhou et al. [12] proposed the
+platform H ULK for benchmarking pre-trained language models
+in terms of time and cost. Processing time and costs are mea-
+sured according to cloud services’ hardware specifications and
+resource consumption. The cost of NLP models is evaluated
+at three stages: pre-training, fine-tuning, and inference. Pre-
+training is the most expensive stage in the development of
+language models: it can take several days and can cost up to
+75,000$. However, once pre-trained, a model can be fine-tuned
+for several tasks, which requires less computational resources.
+Strubell et al. [5] provided insights on the financial and
+environmental costs of training large language models for NLP
+tasks. In particular, they estimate the training cost in USD and
+carbon emissions for four open-source models. For example,
+training large language models with neural architecture search
+can cause CO 2emissions 17 times as high as the average
+per-capita consumption in America. Given the high cost of
+NLP models, Strubell et al. formulated three actionable recom-
+mendations: (1) authors should report training times to allow
+for a cost-benefit analysis rather to solely focus on accuracy;
+(2) researchers need equal access to computational resources;
+(3) efficient hardware and algorithms should be prioritized.
+III. L ITERATURE SEARCH
+To find relevant literature, we adopt and adapt a snowballing
+search procedure [32–34]. We make small adjustments to
+the search procedure described by Wohlin et al. [33], as we
+aim to build on four recent surveys in the domain of deep
+learning models for software engineering tasks. The surveys
+examine different research questions than ours but consider
+the same domain, which makes them good starting points.
+Moreover, we apply the inclusion and exclusion criteria after
+each snowballing step to control the scope of the search,
+as it can quickly become too wide and cover all of SE.
+Figure 1 presents an overview of the search procedure and the
+number of publications collected. The search and subsequentinformation extraction were conducted by the first two authors;
+the third author helped mitigate classification discrepancies
+where needed. In step 1, we select the four survey papers
+that seed the study. We include both published work and arXiv
+preprints to ensure timeliness. The four seed surveys are:
+•Chen and Monperrus [35]: A literature study on em-
+beddings learned from source code. Embeddings have
+been trained on different levels of granularity (e.g., binary
+code, tokens, functions). A list of 21 publicly available
+embeddings is provided.
+•Sharma et al. [36]: A survey of ML techniques for
+analysing source code. A total of 364 studies published
+from 2002–2021, divided over 12 SE tasks. For each
+task, data collection, feature extraction and model training
+stages are outlined. They listed 61 tools for analyzing
+source code and applying ML techniques.
+•Watson et al. [37]: A literature review of deep learning
+approaches in SE research. A total of 128 deep learning
+publications spanning 23 SE tasks have been reviewed.
+•Niu et al. [38]: A survey on pre-trained models on source
+code applied to SE tasks. They presented a total of 20 pre-
+trained code models that have been applied to 18 tasks.
+These four initial studies contain 

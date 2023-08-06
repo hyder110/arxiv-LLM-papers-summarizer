@@ -1,0 +1,26 @@
+Summary:
+This paper presents PULSAR, a system submission for the ImageClef 2023 MediQA-Sum challenge that focuses on summarizing patient-doctor dialogues into clinical records. PULSAR utilizes domain-specific pre-training and data augmentation techniques to improve performance. The study finds that while domain-specific pre-training and data augmentation have limited efficacy, scaling up the language model leads to the best performance gains. The proposed approach ranked second and third among 13 submissions for task B of the challenge.
+
+Bullet Points:
+1. PULSAR is a system submission for summarizing patient-doctor dialogues into clinical records.
+2. The framework relies on domain-specific pre-training and data augmentation techniques.
+3. Limited evidence is found towards the efficacy of domain-specific pre-training and data augmentation.
+4. Scaling up the language model yields the best performance gains.
+5. PULSAR ranked second and third among 13 submissions for task B of the challenge.
+6. Language models have the potential to improve operational efficiency and documentation quality in healthcare.
+7. Dialogue summarization is an established task in the Natural Language Processing (NLP) community.
+8. PULSAR utilizes a pre-training objective that learns to reconstruct pseudo-summaries consisting of medical terms.
+9. Data augmentation is used to generate additional training data for the model.
+10. The performance of PULSAR demonstrates the potential of large language models in clinical settings.
+
+Keywords:
+- Patient-doctor dialogues
+- Clinical records
+- Summarization
+- Language models
+- Domain-specific pre-training
+- Data augmentation
+- Healthcare
+- Natural Language Processing
+- Dialogue summarization
+- Medical documentation

@@ -1,0 +1,33 @@
+Summary:
+
+- The paper introduces JIANG, a large-scale Chinese language model designed to address the specific needs of the Chinese language.
+- While existing large-scale models have some Chinese language skills, their performance in the Chinese domain is limited due to factors like vocabulary design and training corpora.
+- JIANG is trained on a large quantity of textual data, including both English and Chinese, and incorporates various sources such as Chinese internet, Wikipedia, ThePile, GitHub, and more.
+- The model follows the transformer architecture and incorporates unique features like partially cancelling the bias in fully-connected layers, RMSNorm layer, gated mechanism, RoPE position embedding approach, and FlashAttention.
+- Extensive testing demonstrates that JIANG performs well in Chinese reasoning tasks, although its performance in English tasks is slightly lower due to limited English language corpus during training.
+- JIANG achieves comparable capabilities to other Chinese models and ranks among the top-tier of Chinese large-scale models.
+
+Bullet Points:
+
+1. JIANG is a large-scale language model specifically designed for the Chinese language.
+2. Existing large-scale models have limited performance in Chinese due to vocabulary design and training corpus.
+3. JIANG incorporates a mixture of Chinese and English data sources for training.
+4. The model follows the transformer architecture and includes unique features like partial bias cancellation, RMSNorm layer, gated mechanism, RoPE position embedding, and FlashAttention.
+5. JIANG performs well in Chinese reasoning tasks, but its performance in English tasks is slightly lower.
+6. The model achieves comparable capabilities to other Chinese models and ranks among the top-tier.
+7. JIANG's training process takes approximately 52 days using a large batch size and utilizes various training optimization techniques.
+8. Extensive testing shows that JIANG performs well in Chinese tasks like iflytek, ocnli, and pawsx_zh.
+9. In English tasks like boolq and examqa, JIANG's performance is slightly lower due to the smaller English training corpus.
+10. The emergence and open-sourcing of JIANG is expected to accelerate the advancement of Chinese large-scale models.
+
+Keywords:
+- Chinese language model
+- large-scale language model
+- transformer architecture
+- training corpus
+- Chinese reasoning tasks
+- English language corpus
+- training optimization techniques
+- data collection process
+- open-sourcing
+- performance evaluation.

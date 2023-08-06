@@ -1,0 +1,24 @@
+Summary:
+This paper explores the use of large language models (LLMs) to automatically extract models from textual problem descriptions in order to facilitate constraint programming (CP). The goal is to bridge the gap between natural language descriptions of problems and their formal formulation as optimization models. The authors propose a modular step-by-step framework that involves extracting problem entities, identifying relations between entities, formulating the problem as a constraint model, translating it into a modeling language, and validating and refining the model. The paper discusses the use of LLMs for prompt engineering and leveraging techniques such as roles and goals, few-shot learning, chain-of-thought, and plan-and-solve. The authors also propose evaluating the system at different levels of abstraction in problem descriptions.
+
+Bullet points:
+- Constraint programming represents a Holy Grail of programming where the user states the problem and the computer solves it.
+- Current constraint programming tools require the user to know the formalism and have expertise in modeling combinatorial problems.
+- This paper proposes using pre-trained large language models (LLMs) to extract models from textual problem descriptions.
+- The framework involves several subtasks: semantic entity extraction, identifying relations between entities, formulating the problem, translating it into a modeling language, and validating and refining the model.
+- Prompt engineering techniques, such as roles and goals, few-shot learning, chain-of-thought, and plan-and-solve, are used to leverage LLM capabilities.
+- The system will be evaluated at different levels of abstraction in problem descriptions to measure its recognition and modeling abilities.
+- Examples are provided to demonstrate the effectiveness of the framework in extracting correct constraint programming models.
+- Future work includes exploring other LLMs, specialized methods for each subtask, fine-tuning LLMs with optimization-specific corpora, and improving user interactions to minimize mistakes.
+
+Keywords:
+- Constraint programming
+- Large language models (LLMs)
+- Modeling
+- Natural Language Processing (NLP)
+- Optimization
+- Prompt engineering
+- Semantic entity extraction
+- Problem formulation
+- Validation and refinement
+- Abstraction levels

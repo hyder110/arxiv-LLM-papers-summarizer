@@ -1,0 +1,612 @@
+1
+Wireless Multi-Agent Generative AI: From
+Connected Intelligence to Collective Intelligence
+Hang Zou, Qiyang Zhao, Lina Bariah, Mehdi Bennis, and M ´erouane Debbah.
+Abstract —The convergence of generative large language mod-
+els (LLMs), edge networks, and multi-agent systems represents
+a groundbreaking synergy that holds immense promise for
+future wireless generations, harnessing the power of collective
+intelligence and paving the way for self-governed networks where
+intelligent decision-making happens right at the edge. This article
+puts the stepping-stone for incorporating multi-agent generative
+artificial intelligence (AI) in wireless networks, and sets the
+scene for realizing on-device LLMs, where multi-agent LLMs are
+collaboratively planning and solving tasks to achieve a number of
+network goals. We further investigate the profound limitations
+of cloud-based LLMs, and explore multi-agent LLMs from a
+game theoretic perspective, where agents collaboratively solve
+tasks in competitive environments. Moreover, we establish the
+underpinnings for the architecture design of wireless multi-
+agent generative AI systems at the network level and the
+agent level, and we identify the wireless technologies that are
+envisioned to play a key role in enabling on-device LLM. To
+demonstrate the promising potentials of wireless multi-agent
+generative AI networks, we highlight the benefits that can be
+achieved when implementing wireless generative agents in intent-
+based networking, and we provide a case study to showcase
+how on-device LLMs can contribute to solving network intents
+in a collaborative fashion. We finally shed lights on potential
+challenges and sketch a research roadmap towards realizing the
+vision of wireless collective intelligence.
+I. I NTRODUCTION
+Generative artificial intelligence (AI) has evolved as a pow-
+erful branch of AI, endowing machines with algorithms that
+enable them to create original content, such as images, text,
+and human-like conversations. In particular, Large Language
+Models (LLMs), a particular model of generative AI that are
+trained on a massive unlabeled textual dataset, have shown
+impressive capabilities in many applications, such as question
+answering, language understanding, reading comprehension,
+code generation, mathematical and common sense reasoning
+[1]. As a promising example of LLMs, the recent release of
+ChatGPT, based on the generative pre-trained transformers
+(GPT) with 175B parameters (GPT-3) and 1 trillion parameters
+(GPT-4), has showcased remarkable capabilities of large-scale
+LLMs in content generation tasks. ChatGPT plugins allows
+LLMs to access up-to-date information, execute tasks, while
+interacting with the real-world. More recently, the open-source
+Falcon [2] has outperformed GPT-3 with only 40B parameters,
+75% training cost, and 20% inference compute budget; Similar
+results were achieved by LLaMA with 65B parameters [3].
+On the other hand, PaLM-2 model has excelled at advanced
+reasoning tasks including code generation and maths [4].
+Such outstanding results of various LLMs has paved the way
+for integrating LLM in different domains, such as robotics,telecom, and healthcare [1]. The maturity of LLMs constitutes
+a stepping stone towards realizing the vision of artificial
+general intelligence (AGI), which is a broader concept than AI,
+that encompasses highly autonomous systems of machines that
+possess general intelligence and cognition capabilities that are
+comparable to humans. Within this context, LLMs will play
+an essential role in AGI-based systems through their abilities
+to perform complex tasks on multi-modal data across many
+domains, with only a few examples [5].
+The remarkable capabilities of LLMs are owed to the Trans-
+former architecture, rooted in the self-attention mechanism [6].
+Leveraging multi-head attention, Transformers capture long-
+range dependencies in parallel by attending a word to all
+previous words, or to all other words in the text. With pre-
+training on huge unlabeled corpus, generative models can
+learn universal knowledge representation, and can be further
+tuned to narrow their scopes into a particular domain. Tuning
+generative LLMs on specific tasks or domains can be done
+via 1) fine-tuning by adapting pre-trained weights to task-
+dependent loss or domain-specific dataset; 2) prompt-tuning
+by applying task description or instruction with a few shot
+examples to help LLMs to understand the task; 3) instruct-
+tuning by reinforcement learning (RL) to ground LLM into
+real-world context.
+Accordingly, LLMs running on wireless devices should
+understand domain specific knowledge and interact effectively
+with the environment to perform specific tasks. Grounding
+LLMs in a real-world context with modular and causal
+knowledge is crucial to produce scalable and lightweight
+on-device LLMs. Such knowledge should be transferred in
+wireless networks and encoded into on-device LLMs, to per-
+form logical decisions [7]. This includes planning, that breaks
+down high-level goals into low-level tasks and reasoning,
+that deconstructs complex problems into priors and beliefs.
+Grounding, planning, and reasoning allow on-device LLMs
+to act as autonomous agents. Wireless networks represent a
+promising field for the deployment of generative multi-agent
+system, where multiple on-device LLMs plan and solve tasks
+in a collaborative manner. Specifically, multi-agent planning
+is essential to decompose a complex task that requires multi-
+modality sensors and multi-task executors across different
+wireless devices. Moreover, since on-device LLM encodes
+specific knowledge due to resource constraints, collective
+intelligence from multiple LLMs is essential to effectively
+complete complex tasks. To achieve this, generative multi-
+agent games can be applied with LLMs to solve advanced
+multi-task reasoning problems [8]. Furthermore, LLMs can be
+used with multi-agent RL to learn optimal collaborative goal-arXiv:2307.02757v1  [cs.MA]  6 Jul 20232
+oriented behaviours.
+A. Related work
+The release of ChatGPT has led to a fast growing research in
+autonomous and generative agents. Several recently emerged
+frameworks expand on ChatGPT from autonomous task plan-
+ning and reasoning, to multi-agent generative systems. As
+an example, BabyAGI [9] is a task-driven autonomous agent
+built on LLMs, that can generate, execute and prioritize tasks
+in real-time. Similarly, Auto-GPT [10] is an AI agent that
+attempts to achieve a goal specified in natural language.
+It chains together LLM ”thoughts” in an infinite loop of
+reasoning, and planning the next action. AgentGPT is a user
+interface powered by the idea of BabyAGI and AutoGPT.
+Another line of work represented by HuggingGPT in [11]
+developed a collaborative system utilizing multiple AI models
+to complete a task. In HuggingGPT, LLMs use language as
+an interface to connect numerous AI models in Hugging Face
+for solving complicated tasks. In this framework, LLMs act as
+a controller to manage and organize cooperation of expert AI
+models, which pushes the boundary of LLMs to applications
+requiring domain specific knowledge.
+Furthermore, several frameworks on multi-agent LLM have
+been developed. A role-playing communicative agent frame-
+work called CAMEL has been developed in [12], in which an
+agent receives an idea to implement from a human, then cre-
+ates an AI assistant and an AI user agent. The AI user assigns
+tasks for AI assistant to execute, and plans new tasks according
+to the results. The two agents collaboratively communicate by
+chatting with each other to solve the specified task. Moreover,
+a generative agent framework in a “west world” simulation
+has been developed in [13]. It is a sandbox of multiple AI
+agents that can interact with each other and simulate human
+behavior. The agent can observe the environment, plan a
+sequence of actions to execute, create high-level reflections
+of observation in a memory stream and formulate long-term
+plans. The agents communicate in full natural language using
+LLMs, to collaboratively complete a planned task.
+The state-of-the art (SOTA) of generative agents explores
+multiple LLMs collaboratively planing and solving tasks.
+However, most works are executed in the cloud or in sim-
+ulation environments, where the cost of communication, com-
+puting, and storage is ignored. In wireless generative agent
+networks, LLM models and their inter-agent communication
+requires a new system design and optimization, which is the
+goal of this paper.
+B. Contributions
+Motivated by the above discussion, in this article we es-
+tablish the initial foundation for integrating the generative
+agents paradigm in wireless networks. In particular, we lay
+the first building block toward realizing collective intelligence
+in 6G, where we articulate the collaborative role of multiple
+on-device LLMs in solving Telecom tasks, and we put a future-
+oriented perspective on the architecture of multi-agent LLM-
+enabled wireless network. We further provide insights into the
+technologies that have manifested themselves as enablers formulti-agent LLMs in wireless networks, focusing on: 1) multi-
+agent LLM planning and reasoning to break down high-level
+goals into low-level tasks; 2) multi-agent LLM games and RL
+to learn the optimal collaborative behaviours from competing
+actors to achieve a goal; 3) semantic communication that trans-
+fers knowledge in the network for system 2-type1on-device
+LLMs. With the aim to demonstrate its promising potential,
+we shed lights on the anticipated applications of generative
+agents in wireless networks, and we present a case study
+for showcasing a scenario where reasoning in multi-agent
+LLM is required to achieve a network-level energy saving
+goal and guaranteeing users’ transmission rates. Finally, we
+explore future research directions for the successful realization
+of collective intelligence through on-device LLM.
+II. F ROM CLOUD LLM TOMASSIVE ON-DEVICE LLM S
+A. Recent advances in cloud-based LLMs
+From an architectural perspective, the evolution of LLMs
+can be classified as encoder-only (BERT-like), decoder-only
+(GPT-like), and encoder-decoder (T5). The decoder-only GPT
+merely utilizes the auto-regressive (AR) transformer with
+multiple stacked transformer decoder layers, equipped with
+masked self-attention. This mechanism enables GPT-like
+LLMs to attend all previous tokens to predict the subsequent
+one. GPT-4 (with plugs-in and web browsing) was reported
+to successfully solve the top 10% of various academic and
+professional exams with improved reasoning capability. On
+the other hand, a number of lightweight LLMs have been
+released, such as LLaMA and Falcon. These models have
+fewer parameters (Falcon-1B) and a smaller number of pre-
+trained tokens (1T), yielding the same performance as larger
+models [2].
+The encoder-only BERT is pre-trained on masked language
+modeling (MLM) or next sentence prediction (NSP) tasks.
+Specifically, multiple tokens from a sequence are masked to
+force the model to acquire bidirectional contextual information
+during the pre-training process. The non-AR nature of MLM
+allows faster and paralleled computing by dynamically unfold-
+ing the masked tokens of all positions. Enhanced versions of
+BERT can be achieved by optimizing the hyper-parameters and
+the pre-training tasks, i.e., RoBERTa and ALBERT, respec-
+tively. On the other hand, the encoder-decoder architecture,
+such as T5, converts diverse tasks that involve generating
+sequences or text into a text-to-text framework for pre-training.
+However, this architecture is computationally expensive to
+train, and has limited contextual understanding and reasoning.
+Following the success of text-based LLMs, multi-modal
+LLMs have emerged to proliferate the potential use-cases of
+LLMs. Among others, DALL-E is a zero-shot text to image
+generative model [14], with 2 pre-training stages. During the
+first stage, a discrete variational autoencoder (V AE) is trained
+to compress image into grid of tokens. While in the second
+stage, the image tokens are concatenated with text tokens, in
+order to train an AR transformer to model the joint distribution
+1System 2-type model refers to human-like cognition, based on reasoning
+and logical deduction, for solving complex problems and making calculated
+decisions.3
+TABLE I: Comparison of typical LLMs
+Model Parameters Train data Train energy Inference FLOPs Architecture Modality Pretrain Tasks
+GPT-3 175B 300B tokens 1287MWh 7.4×1014Decoder Text MLM (AR)
+GPT-4 170T 10T tokens 7500MWh — Decoder Text, Image MLM (AR)
+Falcon 1B - 40B 1T tokens ≈960MWh ≈1.48×1014Decoder Text MLM (AR)
+LLaMA 7B−65B 1.4T tokens 449MWh — Decoder Text MLM (AR)
+PaLM-2 340B 3.6T tokens — — Decoder Text MLM (AR)
+T5 220M−11B 1T tokens 86MWh — Encoder-Decoder TextText-to-Text
+generation
+BERT 110M, 335M 250B tokens 1.536KWh 3.4×1011Encoder Text MLM, NSP
+RoBERTa 110M, 335M 2T tokens ≈12.3KWh 3.4×1012Encoder Text MLM, NSP
+DALL-E 12B 2.5B pairs — — dV AE, Decoder Text, Image MLM (AR)
+DALL-E2 3.5B 6.5B pairs — —Encoder CLIP
+AR / Diffusion PriorText, ImageText-to-Image
+diffusive generation
+over the text and image tokens. With an enhanced approach,
+DALL-E2 utilizes a CLIP similarity matrix to train a text
+encoder and an image encoder. The text embedding is then
+passed through a diffusion or AR models prior to produce an
+image embedding and a diffusion decoder to generate images
+[15]. A comparison of common LLMs are given in Table I.
+B. On-device LLMs Challenges
+Despite their promising capabilities, building intelligent
+wireless networks that are empowered by generative agents
+is extremely challenging using current LLMs. This is due
+to their huge parameter sizes, which limits their deployment
+at the edge. In particular, it was demonstrated that, in few-
+shot scenarios, models’ memory requirements dramatically
+increase as the number of parameters increase. For example,
+it takes roughly 86 GB of GPU memory for Falcon-40B to
+infer. In addition to that, LLMs have long inference time
+when solving sophisticated tasks (planning and reasoning),
+which significantly increases the communication latency. Fi-
+nally, updating or knowledge synchronization from central
+LLMs to on-device LLMs could be energy-consuming through
+conventional techniques, such as federated learning.
+With the aim to realize lightweight LLMs, neural network
+compression techniques such as weight sharing, pruning,
+knowledge distillation, low-rank decomposition, and quanti-
+zation can be applied. Within the context of compression, it
+should be highlighted that, since LLMs are few-shot learn-
+ers rather than task-specific models, compression techniques
+should preserve LLM’s transferring abilities. In a different
+context, QLoRA is a high-precision quantization technique,
+that can be used to quantize an LLM to 4-bit, then adds a small
+set of learnable low-rank adapters, which are tuned through
+back-propagating gradients using the quantized weights. This
+significantly reduces the GPU memory and latency in fine-
+tuning and inference. Although compression and quantization
+can reduce the model size and computation requirements,
+due to the non-modular nature of LLMs’ knowledge, such
+approach can yield degraded performance in specific tasks.
+III. M ULTI -AGENT COLLECTIVE INTELLIGENCE VIA
+GENERATIVE LLM
+A. Multi-Agent LLM Network Architecture
+Deploying generative AI in wireless networks requires the
+realization of collective intelligence from multiple on-deviceLLMs, that can interact with the environment, plan actionable
+tasks from a goal, and solve the tasks collaboratively by
+exchanging knowledge. Our aim in this section is to set the
+groundwork for integrating generative agents into future wire-
+less networks, in which a wireless generative agent leverages
+LLMs to perform a close-loop task planning, execution, and
+optimization. As illustrated in Fig. 1, this process can be
+achieved through multiple steps. First, the agent deconstructs
+higher-level intents or goals, and plan sequences of lower-
+level tasks over time. Afterwards, it perceives the environment,
+performs decisions and takes actions accordingly, and then
+optimizes the decision policy from the rewards. According to
+the results, the agent creates new tasks until the intent’s goal
+is achieved, and then generates a final response.
+In order to realize collective intelligence, the earlier men-
+tioned procedure can be performed through multiple wireless
+generative agents, in which the agents exchange knowledge
+through the network, to collaboratively plan tasks, take actions
+and optimize policies, based on the architecture shown in Fig.
+2. Note that knowledge is an abstracted representation of the
+data, which can be encoded into LLMs for performing specific
+tasks. From the network perspective, intents from humans or
+machines are provided to generative agents through different
+wireless terminals. These terminals create prompts to an on-
+device LLM to complete each step, as shown in Fig. 1. The
+tasks are planned collaboratively among multiple generative
+agents, to best leverage the knowledge of different LLMs,
+and the capabilities of different devices. The on-device LLM
+can obtain domain specific knowledge from the cloud-based
+LLM, or from other on-device LLMs when the planned task
+is received from other agents. From the device perspective, a
+wireless generative agent has a perceiver (sensor) to observe
+the environment, and an actor (controller) to execute the
+decisions. The on-device LLM extracts semantic information
+from the observed raw data in multi-modalities (text, image,
+sound), and stores it in a memory stream for planning new
+tasks in the future. Accordingly, to perform a particular task,
+the relevant semantic information is retrieved for taking an
+action. After completing its planned actions from the received
+higher-level tasks, the agent can further create lower-level
+tasks and send it to other agents to complete the goal.4
+Fig. 1: Close-loop task planning, execution, optimization in wireless generative agents.
+Fig. 2: Wireless generative agent network and device architecture.
+B. Multi-Agent LLM Technologies
+1) Planning and Reasoning: A high-level goal for wireless
+agents usually contains complex tasks or problems, and there-
+fore, planning is an essential step for the generative agents to
+create actionable tasks over time to achieve a specific goal. The
+currently available LLMs have limited capabilities in solving
+problems with complex reasoning and multi-step planning.
+This can be a limiting factor in the deployment of wireless
+generative agents in networks with ultra-high reliability re-
+quirement. Therefore, system 2-type LLMs can endow wire-
+less generative agents with reasoning capabilities. Recently,
+many works have shown the reasoning abilities of LLMs
+through prompting engineering. For instance, chain-of-thought
+prompting, which prompts LLMs with a sequence of short
+sentences serving as intermediate reasoning steps to solve
+problems, have demonstrated an outstanding performance on
+a wide range of reasoning tasks. Thereafter, self-consistency
+strategy is proposed to replace the greedy decoding of chain-
+of-thought prompting. Furthermore, tree of thoughts is another
+method which maintains a tree for each immediate step of
+thought so that LLMs can deliberately evaluate multiple paths
+and adjust decisions as needed for optimal outcomes. As an
+alternative to prompts optimization which can be regarded as
+an outcome-supervision, one possible solution is to supervise
+along the reasoning process. This requires LLMs to properly
+model and encode a domain specific knowledge for solving
+different tasks. Furthermore, multi-agent planning can reduce
+the cost of inference or fine-tuning, by distributing the task
+between multiple LLM devices with domain specific knowl-
+edge.
+2) Multi-agent LLM Games and RL: Current LLMs are
+trained to generate contents which are helpful, reliable, and
+harmless to the users. These attributes can be achieved only if
+one-to-one iteration between a human and an agent is consid-ered. However, in the presence of multiple generative agents,
+it is yet debatable whether these features can be realized. For
+instance, egocentric agents, which are extensively serving their
+corresponding users, can hinder the normal operation of other
+agents or be unresponsive to some collaborative tasks. On the
+contrary, selfless agents which are instructed to be helpful
+can be vulnerable to malicious attacks. Hence, it is essential
+to strike a balance between selfishness and selflessness when
+designing generative agents. Within this context, game theory
+constitutes a suitable tool to model multi-agent LLMs and
+analyze their behaviour. Initial attempts to understand the
+interactions between multiple LLMs (i.e. LLM games ) are
+presented in [8].
+Multi-agent RL (MARL) is another approach to observe the
+optimal collaborative behavior in a multi-agent system, which
+can also be applied to LLMs. In particular, it is essential for
+the wireless agents to interact with the environment, where
+RL tunes the actions generated by LLMs with environment
+rewards, in order to ground LLMs into a real-world context.
+MARL-enabled LLMs can further model the interaction be-
+tween the wireless agents, using LLM’s knowledge, to learn
+the optimal collaboration policy and communication protocols
+among distributed LLM agents. In doing so, communication
+costs can be reduced as agents converge towards optimal
+decision policies.
+3) Semantic Information and Communication: The interac-
+tion between the multiple wireless generative agents in collab-
+orative systems will result in a huge amount of information to
+be generated, exchanged, and perceived. Shannon communica-
+tion rooted in the level A of Weaver’s 3-level communications
+solely aims at transmitting symbols accurately and efficiently,
+while ignoring the conveyed meaning of the transmitted mes-
+sages. In contrast, in semantic communication, the transmitter
+sends only useful/relevant information to the receiver, in5
+order to solve a given downstream task. This paradigm is
+possible if the goal/objective of the communication is known
+at both sides. Recalling that wireless generative agents aim
+to collaboratively solve a specific problem, semantic commu-
+nication can transfer task specific knowledge for LLMs on
+targeted devices. Furthermore, agents can communicate based
+on their abstracted state information, to improve multi-agent
+cooperation with efficient protocols.
+Similarly, semantic information can enable LLMs to in-
+tegrate multi-modal raw data in a common concept space.
+In doing so, the data exchanged and stored among wireless
+devices can be largely reduced. Moreover, LLMs can exploit
+abstracted ”thoughts” from the perceived data by modelling
+it using semantic information on a topological space. Hence,
+LLMs can perform effectively in short-term actions with
+lower-order information, and in long-term plans with higher-
+order abstractions. This also enables LLMs to encode domain
+or task specific knowledge, and thereby, to reduce the model
+size and computing costs, making it suitable for resource
+constrained devices.
+IV. A PPLICATIONS OF MULTI -AGENT LLM N ETWORKS
+A. Intent-driven Network Automation
+With the vision to enable network automation in future
+wireless networks, it is envisioned that 6G will support intent-
+based networking, which aligns the network operation with
+particular intents and objectives. Although intent-driven net-
+works are defined in 3GPP and IETF, their functionalities and
+their flexible deployment are still limited. On the one hand,
+intent translation and orchestration relies heavily on services
+models and policies, which limits its capabilities in handling
+new scenarios. On the other hand, intent driven networking
+has not been applied yet in general networks and user devices,
+including radio access networks.
+LLMs can potential extend the concept of intent driven net-
+works to a general purpose self-designed communication net-
+work. The Open AI’s ChatGPT-4 has recently been equipped
+with a number of plugins, allowing an autonomous agent to
+execute the commands generated by GPT and produce outputs
+in natural languages. Inspired by this, intent driven networking
+can utilize LLMs to break down higher-level intents, (e.g.,
+reducing the network energy consumption by 5%) into a
+sequence of lower level tasks (e.g., tuning transmit power,
+channel measurement, etc.), and instruct related executors
+to take actions (i.e. gNB). The results are then prompted
+to the LLM, which will add subsequent tasks, if necessary,
+until the intent’s goals are achieved. In a multi-agent LLM
+network, each network device will leverage LLMs to analyze
+the perceived information, including the observations from the
+environment and actions taken by other agents. Once the agent
+plans and prioritizes a set of sub-tasks, it takes actions on local
+tasks, which can be accomplished by the local actor. After that,
+it utilizes LLMs to generate a protocol language including
+the remaining and newly created sub-tasks, and sends to other
+agents through the wireless network. Each agent conducts such
+loops and communicates with others until the added tasks are
+completed and the goal is achieved.B. Case Study: Wireless Energy Saving
+The vision of generative agent-enabled intent-driven net-
+working requires LLMs to deconstruct a wireless network
+goal into sub-tasks or sub-problems and solve them via multi-
+agent cooperation. One important step in this process is the
+efficiency of multiple LLM instances in formulating and solv-
+ing problems pertinent to wireless networks. In this section,
+we consider a scenario with multiple mobile users playing
+a game to reduce the total power consumption. Our aim is
+to evaluate the capability of on-device LLMs in solving a
+wireless communication problem, and show their potentials
+in enabling an end-to-end autonomous network.
+In our setup, we assume a network with K= 4 users
+transmitting in a shared spectrum. Each user has a channel
+gain of g= (1.21,2.01,0.58,0.13), bandwidth b= 15 kHz,
+and noise n= 1dB. The game starts with an initial transmit
+power p= (2 ,4,5,6)W. The base station has the goal
+of ”reducing network energy consumption by ∆p= 0.85
+W” while maintaining individual transmission rates above
+r= (3 .50,15.80,4.40,1.00)Kbps, respectively. We create
+independent LLM instances for each user. The above envi-
+ronment information is given to each LLM instance in the
+beginning of the game. Moreover, the users compete for
+power savings goal under mutual interference. Note that when
+implemented in a real wireless network, these parameters are
+measured by on-device perceivers and provided to on-device
+LLMs. We generate our results using the GPT-4 model.
+The prompts we created for LLMs to play this game are
+shown in Fig. 3. In the beginning, a prompt consisting of
+general description, game rules, goal of the base station, and
+the individual goal of each users is passed to each LLM
+instance. In each round, the LLM instances are requested to
+choose a new power level pi, given the actions of all users
+in the previous round, through a prompt. The transmission
+powers chosen by each agent from GPT-4 in each round are
+illustrated in Fig. 4. The obtained results are compared with the
+minimum theoretical power required for the transmission rate
+r. It can be seen that LLM-enabled agents managed to achieve
+the power saving target ∆pat round 2, with 3 users allocated
+the theoretical minimum power to keep their transmission rate
+at above r(except user 1). This can be further noticed in Fig.
+5 which shows the users’ rate difference to r, where user 1’s
+rate can be further reduced, and hence, the transmission energy
+can be reduced. Furthermore, users 1 and 4 violate the goal of
+minimum transmission rate in round 3. The simulation results
+in Fig. 5 also show that current GPT-4 experiences some
+difficulties in maintaining multiple goals when the number of
+agents increases.
+This use-case demonstrates that an LLM (GPT-4) can per-
+form mathematical reasoning in a wireless communication-
+based problem, in order to achieve a global power saving
+and individual transmission rates targets. The takeovers of
+this study are: 1) LLMs have the potential to analyze a radio
+environment, formulate and solve a radio network problem
+to achieve a network operation goal; 2) Multi-agent LLMs
+can achieve a cooperative goal while keeping their own
+KPIs; 3) Training a wireless domain-specific LLM is essential6
+Fig. 3: Playing repeated games in an example of power allocation on mobile users to minimize network power consumption.
+for LLMs to understand effectively the wireless network
+goals (without mathematical prompts), to achieve a fully
+autonomous intent-driven network.
+Fig. 4: Users’ transmission power given by LLMs, and power
+to maintain a minimum transmission rate v.s. round for reduc-
+ing total power by 5%at least.
+Fig. 5: The difference of transmission rate w.r.t. minimum rate
+v.s. round for total power reduction by at least 5%.
+V. C HALLENGES AND OPPORTUNITIES
+A. TelecomLLM with domain knowledge
+Building a TelecomLLM with domain-specific knowledge
+is a foundation to enable wireless generative agents. CurrentGPT-4 can only provide general responses to a wireless
+network goal described in natural language. To operate an
+autonomous network, the LLM should give instructions to
+specific network functions or entities. This requires LLMs to
+be trained on Telecom domain corpus, such as standard and
+product specifications. Moreover, grounding and calibrating
+on-device LLM to real-time wireless environment is important
+for wireless agents to make optimal decisions on specific
+wireless tasks. Furthermore, tuning TelecomLLM with emerg-
+ing wireless knowledge is crucial to keep the model updated
+with new wireless standards and features, in order to support
+efficient network upgrade.
+B. Wireless LLM Hallucination
+Model hallucination phenomenon refers to the event when
+the generative model produce content that is nonsensical or
+untruthful in relation to certain sources. In wireless networks,
+this can be a result of continuous channel variations and
+network dynamicity. In particular, model hallucination can
+be experienced when the generative agent is not capable of
+capturing the variations of a rapidly evolving network, lead-
+ing to inaccurate representation of the wireless environment.
+Furthermore, generative agents may hallucinate due to the
+impact of inter-agent interference and the lack of relevant on-
+board data. Hence, efficient hallucination avoidance schemes
+are needed to ensure trustworthy agent behaviours in different
+network functionalities.
+C. Self-replicating Wireless Generative Agents
+The concept of self-replication within the context of gener-
+ative agents indicates their capability of creating copies of
+themselves, including their knowledge and experiences, to
+communicate effectively with other agents. While still being a
+speculative and a hypothetical concept, it represents a promis-
+ing skill that enables such agents to cope with the growing
+nature of wireless networks, and achieve autonomously scal-
+able wireless networks. Also, replicated agents can adapt their
+models to their own wireless environments and tasks. Knowl-
+edge driven wireless generative agents and inter-agent com-
+munications are key enabling technologies for self-replicating
+agents. For example, modularized LLMs have the potential to
+provide flexible knowledge inheritance for different generative
+agents, with reduced training and communication overhead.
+This calls for a thorough study in explainable LLM which
+can encode knowledge on-demand. It is worthy to emphasize7
+that, although self-replicating generative agents are aimed for
+improved wireless networks performance, reliable wireless
+communication is essential for ensuring accurate knowledge
+transfer, and therefore, to prevent replication errors and agents
+mutations.
+D. Resource management for on-device LLMs
+The inherent limitations on the available resources in wire-
+less networks, particularly IoT systems, represent a perfor-
+mance bottleneck in the efficient realization of generative
+multi-agent systems in future wireless networks. While be-
+ing a promising technology, due to the diverse capabilities
+of wireless nodes, on-device LLM requires a sophisticated
+balance between computing and energy resources, memory
+constraints, inference reliability, as well as user’s experience
+and demands. Accordingly, it is essential to develop opti-
+mization and resource-management approaches that can be
+tailored to a certain use-case, through assessing the resource
+utilization performance of each agent, and its impact on the
+CPU, memory, and energy efficiency, while meeting particular
+requirements imposed by the communication scenario.
+E. Multi-Agent Convergence
+Multi-agent convergence in generative systems can be par-
+ticularly challenging in wireless networks, due to the dynamic
+nature of the latter, and therefore, the continuous need for
+agents’ models adaptation to cope up with the evolving net-
+work conditions. Such a challenge is particularly pronounced
+when a massive number of agents are involved in achieving
+different network goals. Failing to converge might result in
+suboptimal solutions, which will then necessitate a high level
+of coordination among the multiple agents, contradicting the
+goal of achieving self-governance and automation among
+the agents. Accordingly, this opens up a new horizon for
+exploring collective approaches to allow the agents to achieve
+a consensus in a real-time manner, regardless of the network
+dynamicity condition.
+F . Multi-modal efficient on-device LLMs
+Generative agents employed in wireless networks are an-
+ticipated to handle multi-modal data, such as text, images,
+locations, and radio signals. Meanwhile, multi-modal on-
+device LLM is constrained by communication and computing
+resources. This raises significant challenges in the model
+design, where current multi-modal LLMs encoding raw data
+are too large to be deployed on mobile device. Knowledge
+based LLM that encodes multi-modal data from a concept
+space can potentially reduce the model size and inference
+cost, by learning a minimal structure of data. Research efforts
+should be devoted to build effective concept space for multi-
+modal data.
+VI. C ONCLUSION
+In this paper, we introduced the concept of multi-agent
+generative AI network, which exploits the collective intel-
+ligence from on-device LLMs. We identified the challengesand key enabling technologies of on-device LLMs, focusing
+on LLM planning and reasoning to solve complex tasks;
+multi-agent LLM games and RL-based LLMs to achieve
+goals in competition scenarios; and semantic information and
+communication to connect LLMs with knowledge for effective
+short-term and long-term task planing. Moreover, we discussed
+potential applications of multi-agent LLMs in 6G, including
+intent-driven network automation. We further demonstrated
+a use case where multi-agent LLMs can play a game to
+achieve goals of network energy saving and user transmission
+rate. Finally, we discussed potential research opportunities of
+multi-agent LLM network such as system 2 ML with strong
+reasoning, human-agent interaction and collaboration. This
+paper initiates a new framework for future wireless network
+design to empower collective intelligence from large scale
+wireless devices, opening up new research opportunities of
+generative AI in wireless networks.

@@ -1,0 +1,984 @@
+Distilling Large Vision-Language Model with Out-of-Distribution Generalizability
+Xuanlin Li* * Yunhao Fang* Minghua Liu Zhan Ling Zhuowen Tu Hao Su
+UC San Diego
+Abstract
+Large vision-language models have achieved outstanding
+performance, but their size and computational requirements
+make their deployment on resource-constrained devices and
+time-sensitive tasks impractical. Model distillation, the pro-
+cess of creating smaller, faster models that maintain the per-
+formance of larger models, is a promising direction towards
+the solution. This paper investigates the distillation of vi-
+sual representations in large teacher vision-language models
+into lightweight student models using a small- or mid-scale
+dataset. Notably, this study focuses on open-vocabulary out-
+of-distribution (OOD) generalization, a challenging problem
+that has been overlooked in previous model distillation liter-
+ature. We propose two principles from vision and language
+modality perspectives to enhance student’s OOD general-
+ization: (1)by better imitating teacher’s visual represen-
+tation space, and carefully promoting better coherence in
+vision-language alignment with the teacher; (2)by enrich-
+ing the teacher’s language representations with informative
+and finegrained semantic attributes to effectively distinguish
+between different labels. We propose several metrics and
+conduct extensive experiments to investigate their techniques.
+The results demonstrate significant improvements in zero-
+shot and few-shot student performance on open-vocabulary
+out-of-distribution classification, highlighting the effective-
+ness of our proposed approaches. Our code will be released
+at this link.
+1. Introduction
+In recent years, there has been a significant growth and
+development of large vision language models (large VLMs)
+such as CLIP [ 44], GLIP [ 33], OFA [ 55], SimVLM [ 59],
+BEiT [ 56], Florence [ 66], and Flamingo [ 2], which have
+been pretrained on massive amounts of internet-scale data.
+These models have demonstrated enormous potential in
+a wide range of downstream applications, including clas-
+sification/detection, image-to-text generation, and vision-
+language reasoning, especially for the out-of-distribution
+*Equal contributions
+035Accuracy
+14.221.623.234.939.040.4CaltechBirds
+14.719.820.0 20.038.537.5StanfordCars
+4.514.617.646.252.052.7Flower102
+0-shot ood 5-shot ood035Accuracy16.132.033.9
+24.543.243.7Food101
+0-shot ood 5-shot ood13.621.523.328.634.736.8SUN397
+0-shot ood 5-shot ood13.920.523.527.535.336.2tiered-ImageNet
+Naive Baseline
+Visual Space & V-L Alignment
+Visual Space & V-L Alignment + Language EnrichmentFigure 1: Improvements of student’s open-vocabulary clas-
+sification accuracy on out-of-distribution (OOD) concepts
+across different datasets. We strengthen student’s OOD gen-
+eralization ability from two key perspectives: 1) by better
+imitating teacher’s visual representation space, and carefully
+promoting better coherence in vision-language alignment
+with the teacher; 2) by enriching teacher’s language represen-
+tations with more informative, finegrained, and meaningful
+attributes to effectively distinguish between different labels.
+The latter can be accomplished using large language models
+(LLMs) such as ChatGPT.
+(OOD) samples and open-vocabulary settings. Despite their
+potential, the large model sizes, high computational resource
+requirements, and inefficient inference speed of these mod-
+els restrict their deployment on mobile and IoT edge de-
+vices [ 26,50], as well as in scenarios like robotic control [ 5]
+that require rapid network inference. Thus, it would be ideal
+if we can obtain small and compact models that still possess
+strong generalizability towards diverse open-set concepts
+encountered in the real world.
+We note that the internet-scale data has endowed founda-
+tion models with well-aligned vision and language represen-arXiv:2307.03135v1  [cs.CV]  6 Jul 2023Shared  
+Language SpaceTeacher  
+Visual SpaceStudent  
+Visual Space
+cheesecake
+pizza
+pizzacheesecake
+"pizza"
+ Sc1
+Sc2
+Sp
+Timg,cTimg,p
+Ttxt,cTtxt,pSc2  = argmin{dist(S, Timg,c)} 
+ 
+dist( Sc2 , Timg,c) > dist( Sc2 , Timg,p) 
+dist( Sc2 , Ttxt,c) > dist( Sc2 , Ttxt,p) 
+Pred( Sc2) = "pizza"  
+ 
+dist( Sc1 , Timg,c) < dist( Sc1 , Timg,p) 
+dist( Sc1 , Ttxt,c) < dist( Sc1 , Ttxt,p) 
+Pred( Sc1) = "cheesecake"  (a)
+No Language Enrichment
+With Language Enrichment
+Student Image Feature
+Language Feature (b)
+Figure 2: (a)Illustration of better teacher-student visual space alignments, motivated by our finding that achieving precise
+matching between teacher and student’s high-dimensional visual spaces is inherently challenging. While the student cheesecake
+image feature Sc2minimizes its distance to the teacher’s cheesecake image feature, it is even closer to the teacher’s pizza
+image feature. This discrepancy results in poor coherence in visual space and vision-language alignment with the teacher,
+causing classification mistakes. By replacing the “minimizing distance” requirement with the “relative distance” requirement,
+which encourages student visual features to be closer to their corresponding teacher visual features than other teacher visual
+features, we greatly enhance visual space and vision-language alignment coherency with the teacher, thereby improving OOD
+generalization. (b)UMAP embeddings of student visual features and text features before and after language representation
+enrichment with LLMs. Different colors denote different OOD classes on tiered-ImageNet. Language representation
+enrichment confers better clusterings of image features around their corresponding text features, enhancing OOD generalization.
+tation spaces across diverse domains and datasets. Ideally,
+if such representation spaces can be perfectly distilled into
+smaller models, the resulting models can naturally possess
+similar open-set OOD generalization ability as their larger
+counterparts. However, it is usually not the case, as demon-
+strated in our later experiments. Therefore, we ask the fol-
+lowing question: How to effectively distill representation
+spaces of large vision-language teacher models to benefit
+OOD generalization of smaller student models?
+In this study, we investigate the principles and tech-
+niques for distilling visual representations from large vision-
+language models using small- to mid-scale datasets, with a
+specific focus on out-of-distribution (OOD) generalization.
+Although large-scale datasets with image-text pairs exist,
+as a pioneer work in this direction, we argue that small- to
+mid-scale datasets has many practical scenarios for vision
+application researchers (e.g., for robotics), because this is
+more flexible, allowing for faster research and development
+cycles with fewer resource dependencies. Additionally, as
+we shall see, extensive experiments yield a deeper under-
+standing of the representation spaces of vision-language
+models, which can be beneficial for future tasks like distill-
+ing image-based foundation models for detection [ 27,55],
+segmentation [ 29,13], and other data modalities like 3D
+geometries [ 64,41,34]. To keep study focused and fun-damental, we also choose the image classification task to
+explore many possible strategies.
+Based on extensive experimental results, we propose to
+preserve the internal structure of the representation spaces.
+Specifically, we propose techniques to maintain the relation-
+ship between the visual and language representation spaces
+of the teacher models and a novel strategy to enhance the
+text representation used during distillation. Across our study,
+we make the following contributions:
+1)We motivate the ability for students to generalize towards
+out-of-distribution (OOD) concepts by designing several
+metrics that measure the visual representation space con-
+sistency and the vision-language alignment consistency be-
+tween the student and the teacher vision-language model.
+2)We find that by better imitating teacher’s visual represen-
+tation space, and carefully promoting better coherence in
+vision-language alignment with the teacher, we substantially
+strengthen student’s OOD generalization ability.
+3)We further improve student’s OOD generalization ability
+by enriching teacher’s language representations with more
+informative, finegrained, and meaningful semantic attributes
+to effectively distinguish between different labels.
+4)We conduct a thorough experimental analysis to under-
+stand the efficacy and impact of our techniques on students’
+OOD generalization ability.2. Related Work
+Vision-Language Models (VLMs) . Recent years have
+witnessed tremendous progress on vision language mod-
+els [44,33,55,59,56,66,2]. Various lines of approaches
+have been proposed to improve the downstream task perfor-
+mance of VLMs, such as prompt learning [ 72,65,67,73],
+prompt engineering [ 43,24,35], and finetuning via vision-
+language fusion [ 48,57,30]. Different from these works
+that utilize existing VLMs on downstream tasks, our work
+studies distilling large VLM’s feature space structures to-
+wards smaller student networks. Specifically, we investigate
+principles that effectively leverage the visual representation
+spaces and vision-language alignments in large VLMs to
+enhance the OOD generalization ability of students.
+Network Distillation on VLMs . The teacher-student distil-
+lation framework [ 25] aims to distill teacher model knowl-
+edge into student models, thereby improving their down-
+stream task performance. A classic setting considers teach-
+ers and students to be vision-only. In particular, distilling
+image representations from teacher visual backbones, such
+as CNNs [ 22] and Vision Transformers [ 15], have been
+well-studied [ 53,39,36,8,52,42,17,62]. With the suc-
+cess of large-scale VLMs, recent works start to distill their
+powerful multimodal visual and language representations
+towards various downstream tasks, such as object detec-
+tion [ 20,37], visual-language reasoning [ 58,11,16], scene
+understanding [ 41], or adopt distillation during vision lan-
+guage model pretraining to further enhance their perfor-
+mance [31, 32, 14, 70, 51].
+As the real world is full of concepts unseen during model
+training, it is essential for student models to attain strong
+OOD generalization capabilities. However, prior works have
+rarely carefully studied how to design distillation approaches
+to enhance such ability. In this work, we propose principles
+and approaches to improve student’s OOD generalization
+ability, and we carefully analyze their efficacies through
+various metrics and extensive experiments.
+3. Overview
+Problem Setup . We distill a large vision-language teacher
+model T(e.g., CLIP ViT-L/14) to a small student image
+model S(e.g., ResNet18) by focusing on out-of-distribution
+(OOD) generalization for open-vocabulary object classifica-
+tion. We choose small- or mid-scale datasets to achieve the
+distillation so that the distillation process is flexible for fast
+research cycle and has less resource dependency.
+The teacher consists of an image encoder Timg(·)and a
+text encoder Ttxt(·). During distillation, we keep the flexi-
+bility of the existing teacher text encoder for the open-set
+setting, and we let the student model Sbe vision-only, i.e.,
+S=Simg. Through this process, we hope that Snot only
+achieves high prediction accuracy on seen labels Yid, but alsoattains strong generalization ability on out-of-distribution
+labelsYood. In addition, we train students from scratch to
+avoid label contamination, allowing us to more carefully
+assess and understand their OOD generalization ability.
+Experiment Setup . We are given a training (distillation)
+dataset Xtrain, an in-distribution evaluation dataset Xid, and
+an out-of-distribution evaluation dataset Xood. Each dataset
+consists of image-label pairs {(x, y)}. For (x, y)∈ X train∪
+Xid, we have y∈ Y id, and for (x, y)∈ X ood, we have
+y∈ Y ood, where Yid,Yooddenote in-distribution and out-
+of-distribution label sets, and Yid∩ Yood=∅. We evaluate
+the student on Xid, along with zero-shot and few-shot gen-
+eralization on Xood. For few-shot learning, we finetune our
+student models (we will show later in our ablation study
+that finetuning achieves much higher performance on Xood
+than training-free retrieval). We also adopt balanced training
+batches where at most half of samples come from few-shot
+data and the rest from Xtrain. This strategy leads to simi-
+lar performance on Xidbefore and after finetuning. More
+implementation details are presented in Appendix B.
+We adopt a diverse collection of recognition tasks us-
+ing small to medium-scale datasets, including Caltech-
+Birds [ 61], StanfordCars [ 28], Flower102 [ 40], Food101 [ 4],
+SUN397 [ 63], and tiered-ImageNet [ 45,12]. We split
+the dataset labels such that |Yid|=|Yood|, except tiered-
+ImageNet, which comes with an existing split. Detailed
+dataset statistics are listed in Appendix A.
+Organization of Exposition . Like other papers on under-
+standing neural network behaviors [ 21,3,23,54], we will
+propose techniques and invent metrics to help understand
+the effectiveness of each technique. Following the organiza-
+tion of a representative work of this kind [ 68], we present
+different techniques in a waterfall style and organize the
+presentation of each technique by grouping the approach,
+metric, and results together.
+Approach Overview . Our approach aims to preserve the
+structure of the visual representation space and its relation-
+ship with the text representation space inherited from the
+teacher model to enhance the student’s OOD generalization
+ability. Specificially, (1)In Sec. 4, we show that by better
+imitating teacher’s visual representation space, and carefully
+promoting better coherence in vision-language alignment
+with the teacher, students achieve substantially better OOD
+generalization. (2)In Sec. 5, we show that by enriching
+teacher’s language representations, there are more mean-
+ingful attributes to effectively distinguish between different
+labels, thereby further enhancing student’s OOD generaliza-
+tion ability. A summary of our main experimental findings
+is illustrated in Fig. 1 and Fig. 2.CaltechBirds StanfordCars Flower102 Food101 SUN397 tiered-ImageNet Average
+CLIP ViT-L/14 70.0 / 70.5 79.3 / 78.3 74.4 / 84.1 90.5 / 91.2 72.8 / 74.4 71.1 / 76.3 76.4 / 79.1
+CLIP RN50 57.1 / 56.4 53.2 / 56.3 59.3 / 65.3 76.5 / 78.3 65.0 / 66.3 55.7 / 62.0 61.1 / 64.1
+Closed-Set Classification 48.1 / NA / 18.1 27.9 / NA / 10.1 77.1 / NA / 45.0 71.7 / NA / 30.3 57.8 / NA / 31.1 63.4 / NA / 31.2 57.7 / NA / 27.6
+Lcls 61.0 / 14.2 / 34.9 56.3 / 14.7 / 20.0 81.2 / 4.5 / 46.2 72.2 / 16.1 / 24.5 57.5 / 13.6 / 28.6 64.4 / 13.9 / 27.5 65.4 / 12.8 / 30.3
+Lmse 27.0 / 12.0 / 14.3 5.5 / 3.8 / 4.0 48.1 / 7.3 / 15.0 45.0 / 17.0 / 19.3 24.3 / 11.0 / 14.5 49.3 / 14.8 / 23.2 33.2 / 11.0 / 15.1
+Lcls+Lmse 63.7 / 17.4 / 36.2 62.2 / 18.8 / 35.1 82.6 / 6.3 / 46.0 72.3 / 19.0 / 35.5 57.1 / 15.3 / 29.4 66.2 / 14.9 / 28.5 67.4 / 15.3 / 35.1
+Lim-cst 42.1 / 21.3 / 29.1 33.2 / 13.7 / 20.0 54.8 / 13.3 / 27.3 70.0 / 34.9 / 36.8 45.2 / 22.8 / 27.2 46.3 / 22.8 / 30.8 48.6 / 21.5 / 28.5
+Lcls+Lim-cst 60.9 / 20.4 / 37.6 59.6 / 18.3 / 31.2 82.4 / 12.7 / 52.5 74.0 / 30.5 / 42.0 62.5 / 18.8 / 35.2 64.4 / 18.0 / 33.5 67.3 / 19.8 / 38.7
+Lcls+Lim-cst+Lmse 62.5 / 20.8 / 39.0 59.6 / 19.0 / 33.1 82.6 / 12.0 / 48.7 75.0 / 31.2 / 42.0 60.0 / 19.8 / 35.2 67.0 / 19.4 / 34.6 67.8 / 20.3 / 38.8
+Lcls+Lim-cst+Lvlprox(+Lmse)162.3 / 21.6 / 39.0 63.9 /19.8 / 38.5 82.7 /14.6 / 52.0 74.3 / 32.0 / 43.2 61.7 / 21.5 / 34.7 67.5 / 20.5 / 35.3 68.7 / 21.7 / 40.5
+Lim-cst+Lvlprox(+Lmse) 45.3 / 21.9 / 30.4 46.5 / 17.8 / 26.9 66.9 / 13.5 / 35.4 71.4 / 35.2 / 40.0 52.0 / 23.1 / 28.8 57.5 / 23.0 / 33.2 56.6 / 22.4 / 32.5
+Table 1: Comparison between student models trained without teacher-student visual representation space alignment ( Lclsonly),
+with direct teacher visual feature fitting ( +Lmse), with improved teacher-student visual space alignment ( +Lim-cst), and with
+improved preservation of teacher’s vision-language alignment structure ( +Lvlprox). We adopt ResNet18 as the student and
+CLIP ViT-L/14 as the teacher. The three numbers x1/x2/x3in each entry denote the evaluation performance on Xid, zero-shot
+performance on Xood, and 5-shot performance on Xood, respectively (“NA”=not applicable). As reference, we also report CLIP
+performance ( x1/x2in each entry denote zero-shot results on XidandXood), along with a closed-set classfication baseline that
+uses separate classifiers for YidandYood. Note that CLIP was pretrained on LAION [ 47], where the training image-text pairs
+contain many concepts similar to those in YidandYood, resulting in higher evaluation performance on Xood.
+4. Teacher-Student Visual Space and Vision-
+Language Alignments
+4.1. Better Imitating Teacher’s Visual Representa-
+tion Space
+Naive baseline without visual space alignment between
+teacher and student . A straightforward approach to training
+a student model is to directly align its visual representation
+with teacher’s language representation through only the fol-
+lowing contrastive loss:
+Lcls(x, y) =X
+y′−1y′=ylogPS(y′|x)
+PS(y|x) =exp(cos( S(x), Ttxt(l(y)))/τ)P
+y′∈Yexp(cos( S(x), Ttxt(l(y′)))/τ)(1)
+Here τis the temperature parameter. S(x)denotes the fea-
+ture of xextracted by a student image model S.l(y) =
+prompt +description (y)is a language generation function
+that maps the label yto its natural language representation,
+which consists of a prompt and a description of y. For this
+baseline, we use the suggested prompt “A photo of a” from
+the CLIP paper, and let description( y) to be simply the class
+label name (e.g., “lotus”). From here on, we assume that
+all teacher and student representations are normalized, i.e.,
+S(x)←S(x)
+||S(x)||2,Ttxt(l(y))←Ttxt(l(y))
+||Ttxt(l(y))||2. In this case,
+cos(S(x), Ttxt(l(y))) = 1 −||S(x)−Ttxt(l(y))||2
+2
+2.
+Training student models solely using Lclsdoes not en-
+force similarity between teacher and student visual represen-
+tation space structures. Consequently, student visual space
+1IfLmseis under a parenthesis, then we report the better performance
+between adding and not adding Lmse. However the impact of Lmseis not
+significant.Food101 SUN397
+Lmse 0.24 / 28.4° 0.36 / 34.9°
+Lmse(RN50) 0.24 / 28.4° 0.35 / 34.4°
+Lcls+Lmse 0.45 / 39.2° 0.71 / 49.8°
+Lcls+Lmse+Lim-cst 0.65 / 47.6° 0.82 / 53.8°
+Lcls+Lim-cst 1.29 / 69.2° 1.28 / 68.9°
+Table 2: Average MSE / degree difference between student
+visual features and teacher visual features for students trained
+with different strategies. We adopt ResNet18 as student and
+CLIP ViT-L/14 as teacher, except “ Lmse(RN50)”, where the
+student is ResNet50, and the teacher is CLIP ResNet50. We
+observe that it is very challenging for students to precisely
+match teacher’s visual features through Lmse. Moreover,
+in conjunction with Tab. 1, we observe that a lower visual
+feature MSE is not necessary for better student OOD gener-
+alization.
+structures tend to overfit to training labels, hindering their
+OOD generalizability. This motivates us to introduce auxil-
+iary losses to align teacher and student visual representation
+spaces, which we will describe next.
+Directly fitting teacher visual features . We note that
+teacher’s visual representation space is well-aligned with
+language across diverse datasets, and such alignment demon-
+strates strong generalization across many domains. By imi-
+tating teacher’s visual space structure, we hope to enhance
+the ability for student’s visual space to generalize and extrap-
+olate towards unseen concepts, thereby implicitly enhancing
+the generalizability of student’s vision-language alignment
+and improving its OOD generalization.
+A direct approach to achieve this is to align the teacherand student visual representations through the Mean Squared-
+Error (MSE) loss:
+Lmse(x) =||S(x)−Timg(x)||2
+2 (2)
+In Tab. 1, we show that adding Lmseon top of Lclsimproves
+student OOD generalization. However, upon further exami-
+nation, we find that students face significant challenges in
+precisely reproducing teacher’s visual representations , as ev-
+idenced by the substantial errors shown in Tab. 2. Such errors
+persist even when the student and teacher networks possess
+the same representation power (e.g., both ResNet50 net-
+works). This phenomenon highlights that achieving precise
+matching between teacher and student’s high-dimensional
+visual feature spaces is inherently challenging, which can
+be attributed to differences in weight initialization, training
+data, and the presence of local minima in the loss landscape.
+Moreover, we later find that when students struggle to pre-
+cisely match teacher’s visual features, they also struggle
+to preserve teacher’s local visual space structure andrel-
+ative visual feature relationship between different images,
+hindering their OOD generalization ability.
+Better imitating teacher visual representation space .
+Since precisely matching teacher’s visual features is inher-
+ently challenging, we propose to augment the training ob-
+jective with the following contrastive loss, which “softly”
+matches teacher’s visual features:
+Lim-cst(x) =exp(−||S(x)−Timg(x)||2
+2/τ)P
+x′exp(−||S(x)−Timg(x′)||2
+2/τ)(3)
+By combining Lim-cst withLcls, we observe in Tab. 1 that the
+student exhibits significantly better zero-shot and few-shot
+OOD generalization ability across different datasets. Interest-
+ingly, such improvement is accompanied by a larger distance
+between student and teacher visual features, as shown in
+Tab. 2. This finding suggests that a lower MSE visual feature
+matching loss, which only captures the absolute distance to
+teacher’s visual features, does notnecessarily imply better
+visual space consistency. This is because MSE does not con-
+sider the coherence of relative visual feature relationships or
+local visual space structures between teacher and student .
+In the following paragraphs, we will develop several met-
+rics to better assess the teacher-student visual space consis-
+tency. These metrics provide us with valuable insights into
+howLim-cst facilitates students to achieve closer visual space
+proximity to the teacher while yielding a deeper understand-
+ing of the teacher’s visual representation space.
+Quantifying teacher-student visual space alignment . To
+quantify how student models preserve teacher’s visual rep-
+resentation space structures, we propose two metrics. For
+the first metric, we are motivated by the fact that if the rel-
+ative relationships among teacher’s visual representations
+are preserved, then for an image x,S(x)tends to be the
+closest to Timg(x)rather than Timg(x′)of some other image
+KNN withQueryQuery
+Intersection
+Student V isual Feature
+Teacher V isual Feature
+Figure 3: Illustrations of MrelandMneighthat measure the
+coherence of relative visual feature relationship and local
+visual space structure between the student and teacher. Each
+color corresponds to a single image. In (a), arrows indicate
+the nearest neighbors from student’s visual space to teacher’s
+visual space. Solid lines represent correct matching, while
+dashed lines indicate incorrect matching. In (b), the green
+circle represents a query image, and the red dashed regions
+represent the k-nearest neighbors (kNN) in both spaces. We
+measure the intersection between the two kNN sets.
+x′̸=x. The latter scenario tends to break the relative feature
+relationship between xandx′that is originally present in the
+teacher, thereby causing the student to have distinct visual
+feature manifold structure from the teacher, as illustrated in
+Fig. 3(a). Furthermore, if S(x)is closer to Timg(x′), then
+the language feature closest to S(x)often differs from the
+language feature closest to Timg(x), and the latter is typically
+the ground truth language label. Thus, such discrepancy
+often results in erroneous label predictions. We can then
+formally define the first metric as follows:
+Mrel(X) =P|X|
+i=11[i=argminj||Timg(xj)−S(xi)||2
+2]
+|X|
+(4)
+The second metric measures the proximity between local
+neighborhoods of student visual features and teacher visual
+features. That is, for each image, how much the kimages
+whose features have the closest proximity to it (excluding it-
+self) overlap between the student and the teacher (see Fig. 3b
+for illustration). We can define this metric as follows:
+Mneigh(X, k) =P|X|
+i=1|KNN (S,xi, k)∩KNN (Timg,xi, k)|
+k|X|
+(5)
+Here KNN (S,xi, k) ={argbottomkj||S(xj)−S(xi)||2}
+outputs the knearest-neighbor image-ids of S(xi), and
+KNN (Timg,xi, k)is defined similarly. This metric is com-
+plementary to Mrelas it only requires the set of neighbor
+image ids to be identical between the student and the teacher,
+and does not enforce these neighbor images to have the same
+relative feature relationships.
+Lim-cst improves teacher-student visual space alignmentsM rel↑ | M neigh↑XtrainXood k= 3 k= 5 k= 10
+Lcls+Lmse 0.030 0.004 0.13 / 0.06 0.18 / 0.07 0.27 / 0.08
+Lcls+Lmse+Lim-cst 0.305 0.022 0.20 / 0.10 0.25 / 0.11 0.34 / 0.13
+Table 3: We evaluate Mrel(middle 2 columns) and Mneigh
+(right 3 columns) on different students to measure their coher-
+ence with teacher’s relative visual feature relationships and
+local visual feature structures (higher the better). For Mneigh,
+x1/x2in each entry denote Mneigh(Xtrain)andMneigh(Xood),
+respectively. Metrics are evaluated on Flower102. More re-
+sults in Appendix.
+through better relative and local visual space coherence .
+We assess MrelandMneighon different students and present
+the results in Tab. 3. We find that students trained solely with
+Lmseand without Lim-cst exhibit poor values for both Mrel
+andMneigh. Notably, Mrel(Xtrain)is only 0.03, indicating a
+large discrepancy between student and teacher visual spaces,
+even on the training set. On the other hand, after incorporat-
+ingLim-cst, we observe significant improvements of Mreland
+Mneighon both XtrainandXood. This demonstrates that the
+student exhibits much better consistency in relative and local
+visual structures with the teacher, both for seen and unseen
+concepts, thereby enhancing the generalization and extrapo-
+lation ability of the student’s visual space. A better-aligned
+visual space also implicitly enables better generalization and
+extrapolation in vision-language alignments (which we show
+later), contributing to improved OOD performance. Fur-
+thermore, our findings suggest a broader principle: when
+students face challenges in precisely matching the teacher’s
+visual space, the proximity of local visual feature structures
+and relative visual feature relationships have a greater im-
+pact on OOD generalization than the absolute distance to the
+teacher’s features.
+4.2. Better Coherence with Teacher’s Vision-
+Language Alignment Structure
+Motivation. In Section 4.1, we focused on improving the stu-
+dent’s OOD generalization ability by better aligning student-
+teacher visual spaces. Since teacher’s visual space is well-
+aligned with language across diverse concepts and domains,
+a better student coherence with teacher’s visual space im-
+plicitly leads to better vision-language (V-L) alignments.
+Naturally, an alternative perspective to improve student’s
+OOD generalization becomes to enhance its explicit V-L
+alignments and improve their coherence with the teacher’s,
+where we previously only used a simple contrastive V-L
+matching loss Lcls. Another motivation to focus on explicit
+V-L alignments arises from our finding that they play an
+essential role to ensure precise and accurate V-L alignments,
+especially when training on seen concepts or performing
+few-shot learning on novel concepts. Relying solely on im-
+plicit V-L alignments is inadequate in these scenarios . Thisis evident in Tab. 1, where solely utilizing the visual space
+alignment loss Lim-cst yields better performance on 0-shot
+Xood(where classes are unseen) but worse performance on
+Xidand 5-shot Xood(where classes are seen). On the other
+hand, by combining both implicit and explicit V-L alignment
+losses ( Lim-cst+Lcls), students excel in all of Xid, 0-shot Xood,
+and 5-shot Xoodscenarios. Therefore, by improving explicit
+V-L alignments, we not only hope to further enhance stu-
+dent’s 0-shot OOD generalization ability, but also improve
+their performance on familiar concepts and their ability to
+few-shot adapt to novel concepts.
+Explicitly enhancing teacher-student vision-language
+alignment coherency. We note that while Lclsperforms ex-
+plicit V-L alignments, it has the limitation of indiscriminately
+pushing an image away from all non ground-truth language
+features, therefore disregarding teacher’s relative alignment
+relationship between the same image and different language
+features. Furthermore, we find that even though preserving
+teacher’s relative V-L alignment structure is desirable, it may
+not always be perfect due to potential misalignments between
+teacher image features and their corresponding language la-
+bels. These misalignments can introduce inconsistent noise
+during distillation, ultimately harming student performance.
+Motivated by these observations, we propose to augment
+our training objective with Lvlprox, which effectively and
+carefully preserves the teacher’s vision-language alignment
+structure while accounting for potential misalignments:
+Lvlprox(x, k) =I(x)· DKL(PT,topk(·|x)||PS,topk(·|x))
+I(x) =1[argmaxyPT(y|x) =label(x)]
+P·,topk(y|x) =1y∈YtopkP·(y|x)P
+y∈YtopkP·(y|x);Ytopk=argtopkyPT(y|x)
+(6)
+Here PTandPSdenote teacher and student label probabili-
+ties;I(·)filters out images misaligned with language labels;
+andkcontrols the number of most-similar language features
+for each image. In our implementations, we find a larger k
+beneficial for OOD generalization, and we choose k= 256 .
+We demonstrate the effectiveness of Lvlprox in Tab. 1. We
+find that by combining Lvlprox withLclsandLim-cst, we fur-
+ther improve student’s ability to generalize towards OOD
+concepts. Interestingly, we also observe that while Lclsand
+Lvlprox both explicitly perform V-L alignments, adding them
+together yields significantly better student performance on
+Xidand 5-shot Xoodthan solely keeping Lvlprox. This obser-
+vation is distinct from those in the traditional model distil-
+lation literature [ 25], where distilling teacher logits alone
+from vision-only models typically produces good student
+performance.
+Quantifying teacher-student vision-language alignment
+coherency. To better understand the vision-language align-
+ment proximity between teacher and student, we propose aM vlalign↓ k= 2 k= 3 k= 5
+Lcls+Lmse 0.20 / 0.50 0.68 / 1.45 2.67 / 4.73
+Lcls+Lmse+Lim-cst 0.18 / 0.43 0.62 / 1.3 2.52 / 4.24
+Lcls+Lmse+Lim-cst+Lvlprox 0.17 / 0.39 0.59 / 1.17 2.17 / 4.20
+Table 4: We evaluate Mvlalign (lower the better) on different
+students to measure their proximity with the teacher vision-
+language alignment structure. x1/x2in each entry denote
+Mvlalign(Xtrain)andMvlalign(Xood), respectively. Metrics are
+evaluated on Flower102. More results are in Appendix.
+metric Mvlalign to quantify such proximity:
+Mvlalign(X, k) =P|X|
+i=1#reverse pairs(arrS(i, k))
+|X|
+arrS(i, k) = [||S(xi)−Ttxt(l(yj))||2]j∈I(i,k)
+I(i, k) =argtopk ([−||Tim(xi)−Ttxt(l(yj))||2)]|Y|
+j=1)
+(7)
+Here #reverse pairs(·)measures the number of reverse pairs
+{(i, j) :ai> aj}in an array. Overall, Mvlalign measures
+the extent to which the distance ordering of the knearest
+language features to the teacher image feature differs from
+the distance ordering of the same klanguage features with
+respect to the student image feature. In other words, a lower
+value of Mvlalign indicates a higher degree of proximity to
+the teacher’s vision-language alignment, as teacher’s relative
+language orderings with respect to each image becomes
+better preserved.
+We assess Mvlalign on different students and present the
+results in Tab. 4. We find that Lim-cst not only fosters strong
+student-teacher visual space alignments, but also implicitly
+facilitates effective V-L alignments along this process. This
+observation illustrates that a better relative and local visual
+space coherence with the teacher (indicated by better Mrel
+andMneigh) can lead to enhanced alignment coherence in
+the V-L space. Additionally, the inclusion of Lvlprox further
+strengthens teacher-student V-L alignments. Such improved
+alignments are then effectively transferred to unseen con-
+cepts, demonstrating that the student has acquired better V-L
+alignment structures that generalize well to OOD scenarios.
+5. Language Representation Enrichment
+In Sec. 4, we focused on improving the imitation of
+teacher’s visual space and promoting better coherence with
+teacher’s vision-language alignment. Throughout this pro-
+cess, we kept the language representations fixed. However,
+the quality of language representations also plays a pivotal
+role in student learning and inference. Ideally, language
+representations should be capture precise, finegrained, and
+meaningful semantic attributes, such that the student can ef-
+fectively distinguish between different labels. We therefore
+ask the following question: can we leverage better and richerteacher language representations to further enhance student’s
+OOD generalization ability? We propose the following can-
+didate strategies:
+Enriching semantic details of label descriptions by
+prompting LLMs . Previously, when we generate language
+representations l(y) =prompt +description (y)for student
+training, we adopted a simple strategy. In particular, for
+the description of a label y, we merely used its label
+name, e.g., “lotus”. However, these simplistic descriptions
+overlook many finegrained properties of semantic categories,
+such as the shape, color, and texture of flowers, along
+with the description of their petals, leaves, and stems. In
+addition, we hope to automatically and efficiently generate
+enriched language descriptions for a wide range of labels,
+ensuring scalability for an arbitrary number of labels.
+Motivated by the recent progress on instruction-finetuned
+large language models (LLMs) [ 38,9,46,60], which have
+demonstrated impressive sequence generation abilities given
+user prompts, we find these models well-suited for our
+goal. Therefore, we propose to use ChatGPT [ 6,38] to
+generate category descriptions. We prompt ChatGPT with
+the following instruction: Use a single sentence
+to describe the appearance and shape
+of{cls}. Only describe the shape and
+appearance . This allows ChatGPT to generate in-
+formative, finegrained, and meaningful descriptions for
+target classes (e.g., large, round, flat leaves;
+tall, slender stems; delicate petals in
+shades of pink, white, or yellow ), while
+keeping sequence lengths within the 77 token limit of
+the CLIP text encoder. We then set description (y)by
+concatenating “a photo of {cls}” with ChatGPT-generated
+class descriptions. Note that we still keep the same
+vision-language alignment losses ( LclsandLvlprox) as
+before.
+Augmenting text through auxiliary captions . Currently,
+during student training, there is only one language descrip-
+tion per category, i.e., |{l(y) : (x, y)∈ X train}|=|Yid|.
+On the other hand, the number of training images signifi-
+cantly exceeds the number of labels, i.e., |Xtrain| ≫ |Y id|.
+We therefore wish to generate language descriptions for each
+individual image, such that we can substantially enrich the
+number of language features during student training, which
+potentially benefits student performance. To achieve this, we
+propose using OFA [ 55] to generate captions for each image,
+resulting in a new dataset {(x,cap(x), y) : (x, y)∈ X train}
+augmented with captions. During student training, besides
+using the same vision-language alignment losses Lclsand
+Lvlprox as before, we also adopt the following auxiliary loss:
+Lcap(x) =exp(cos( S(x), Ttxt(cap(x)))/τ)P
+(x′,y′):y′̸=yexp(cos( S(x), Ttxt(cap(x′))/τ)
+(8)
+The loss pushes xand its corresponding caption cap(x)to-CaltechBirds StanfordCars Flower102 Food101 SUN397 tiered-ImageNet Average
+Tab. 1 best (no lang enrichment) 62.3 / 21.6 / 39.0 63.9 / 19.8 / 38.5 82.7 / 14.6 / 52.0 74.3 / 32.0 / 43.2 61.7 / 21.5 / 34.7 67.5 / 20.5 / 35.3 68.7 / 21.7 / 40.5
+Semantic Details 62.0 / 23.2 / 40.4 63.6 / 20.0 / 37.5 82.4 / 17.6 / 52.7 74.8 / 33.9 / 43.7 60.8 / 23.3 / 36.8 69.8 / 23.5 / 36.2 68.9 / 23.6 / 41.2
+Auxiliary Captions 62.5 / 21.4 / 41.0 65.5 / 19.0 / 38.1 81.9 / 14.3 / 52.5 75.4 / 33.3 / 44.0 61.6 / 22.1 / 36.9 68.7 / 21.0 / 34.4 69.3 / 21.9 / 41.2
+Prompt Learning 62.7 / 9.2 / 37.4 64.5 / 14.9 / 39.5 83.0 / 13.3 / 52.7 75.8 / 29.6 / 43.6 59.3 / 16.6 / 37.5 68.5 / 19.4 / 37.5 69.0 / 17.2 / 41.4
+Semantics + Caption 62.0 / 22.7 / 39.8 64.9 / 20.4 / 39.7 83.7 /18.2 /53.4 75.6 / 35.7 / 42.9 61.0 / 24.0 / 37.5 68.9 / 23.6 / 35.8 69.4 /24.1 / 41.5
+Semantics + Prompt 63.9 / 16.7 / 40.8 67.0 / 19.0 / 42.8 82.3 / 14.8 / 52.8 74.4 / 28.4 / 42.3 59.4 / 19.2 / 38.4 68.6 / 20.9 / 38.0 69.3 / 19.8 / 42.5
+Semantics + Caption + Prompt 62.9 / 16.9 / 37.9 65.0 / 16.5 / 40.1 82.1 / 13.8 / 52.8 75.3 / 31.2 / 44.3 59.5 / 19.7 / 38.9 68.1 / 22.7 / 38.4 68.8 / 20.1 / 42.1
+Table 5: Comparison between different language representation enrichment strategies. The three numbers x1/x2/x3in each
+entry denote the evaluation performance on Xid, zero-shot performance on Xood, and 5-shot performance on Xood, respectively.
+gether while pulling away from captions belonging to dif-
+ferent categories. Our preliminary experiments show that
+distinguishing captions belonging to the same category could
+degrade student performance as they are usually similar.
+Note that we only incorporate captions for the auxiliary loss
+during student training. For student inference and label
+predictions, we continue to use the same l(y)as before.
+Learning prompts to modify language representations .
+In previous experiments, we adopted a simple prompt “a
+photo of” to generate l(y)for student learning. By modify-
+ing prompts, we can alter the teacher’s language representa-
+tion space and thereby influence vision-language alignment.
+Furthermore, in real-world scenarios, student networks of-
+ten need to continuously learn new concepts and semantics,
+leading to ongoing updates in their backbones. We there-
+fore explore the potential of performing prompt learning
+during student training on Yidand few-shot learning on Yood.
+Note that our setting is different from many prior settings
+on prompt tuning [ 72,71,49,18], where there are no OOD
+concepts, and vision backbones are kept fixed. We adopt
+CoOp [72] and optimize 8 tokens as our prompt.
+5.1. Analyzing the Efficacy of Different Strategies
+We adopt the aforementioned language-enriching strate-
+gies for student learning, and we present the results in Tab. 5.
+We find that combining LLM-enriched label descriptions
+with auxiliary captions yields the best OOD generaliza-
+tion. However, upon analyzing their individual effective-
+ness, we find that LLM-enriched label descriptions pro-
+vide significantly better zero-shot OOD benefit than aux-
+iliary captions, and solely relying on auxiliary captions
+only marginally improves zero-shot OOD generalizabil-
+ity. Upon further analysis, we find that many generated
+captions only broadly describe objects and are much less
+informative than ChatGPT-generated descriptions for dis-
+tinguishing fine-grained categories. For instance, in the
+StanfordCars dataset, a generated caption for an Acura
+Integra Type R 2001 image is a white car is
+parked in a field , and solely relying on the white
+color provides little information to distinguish different car
+categories. Consequently, captions have limited impact on
+enhancing the generalizability of student’s vision-language
+alignment structures.We also observe that learning prompts during student
+training harms its zero-shot OOD generalization perfor-
+mance, suggesting that this approach leads to the overfit-
+ting of vision-language alignments on the training categories.
+However, when provided with a small number of samples
+from OOD categories, the prompts can quickly adapt to
+these novel concepts, enabling students to achieve the best
+few-shot OOD performance overall.
+5.2. Comparing Language Representation Spaces
+Before and After Enrichment
+To gain further insights into the efficacy of our language
+enrichment strategies, in this section, we analyze the changes
+in language space structures before and after adopting such
+strategies. On the out-of-distribution evaluation dataset
+of Flower102, we obtain text features {Ttxt(lnew(y))}|Yood|
+y=1
+and{Ttxt(lold(y))}|Yood|
+y=1, where lnewdenotes the language
+generation function with LLM enrichment, and lolduses
+simple label names as label descriptions. We also ob-
+tain the average caption features for each class, namely
+{mean [{Ttxt(cap(x)) :label(x) =y}]}|Yood|
+y=1. We then mean-
+center these 3 sets of text features, perform Singular-Value
+Decomposition, and plot the resulting eigenvalues in Fig. 4.
+We observe that language features of lnewcontain many more
+large eigenvalues than lold, demonstrating that the text space
+generated by lnewconfers more independent and meaningful
+attributes to effectively distinguish between different classes.
+On the other hand, the language space of auxiliary cap-
+tions only contains a small number of meaningful attributes,
+indicating that auxiliary captions are not very helpful for
+distinguishing between different labels. Additionally, in con-
+junction with Tab. 5, we find that the advantages of richer
+attributes are concealed when evaluating students on the
+in-distribution classes, since students tend to overfit the ex-
+isting attributes of these labels during training. However, for
+OOD scenarios, the presence of more finegrained attributes
+allows OOD text features to be more precisely aligned with
+image features, especially when no vision-language align-
+ment training is done on these OOD samples (see Fig. 2b
+for an illustration). As a result, students exhibit better OOD
+generalization ability.
+Furthermore, we analyze the average cosine similaritybetween all pairs of text features within each of the three
+sets we introduced earlier. We present the results in Tab. 6.
+We observe that LLM-enriched semantic details allow text
+features to naturally separate further apart from each other,
+making it easier to distinguish between different classes. In
+contrast, auxiliary captions show limited effectiveness in
+achieving such separation between classes.
+0 2 4 6 80.00.51.01.52.02.5w/o enrichment
+ChatGPT
+Caption
+Figure 4: Top 10 eigenvalues
+of text features.Cos. Sim.
+w/o enrichment 0.5156
+ChatGPT 0.4462
+Caption 0.5572
+Table 6: Average cosine sim-
+ilarity between all pairs of
+text features.
+6. Ablations
+In this section, we present further ablation studies to
+complement our findings in Sec. 4 and Sec. 5.
+Control semantic details by prompting LLMs . In Sec. 5,
+we found that descriptive semantic details in l(y)are particu-
+larly helpful for student generalization on out-of-distribution
+concepts. We thus ask the following question: how specific
+should semantic details be, and which semantic details are
+helpful? We construct the following prompts to control how
+ChatGPT generates semantic details (example generations
+in Appendix): More Succinct : “Use a single sentence to
+broadly describe the appearance and shape of {cls}. Don’t
+give too much details. Only describe the shape and appear-
+ance.” More Detailed : “Use a single sentence and short,
+simple, descriptive phrases to describe the detailed appear-
+ance and detailed shape of {cls}.”More Distinct : “Use a
+single sentence to describe the unique, distinctive appearance
+and shape of {cls}. Only describe the unique, distinctive
+shape and appearance.”
+We compare these prompts in Tab. 7. Interestingly, we
+observe that generating more detailed semantic descriptions
+on labels does not always perform better. We conjecture that
+this is because (1) LLM-generated details are not grounded
+in specific images, causing some attributes to be invisible
+and confusing the students; (2) the teacher CLIP is trained
+on LAION [ 47], where most language descriptions do not
+contain many finegrained appearance details, so CLIP’s text
+embeddings are not very sensitive to some of these details.
+Additionally, we find that explicitly prompting ChatGPT to
+generate more concise text descriptions could be still helpful.
+Upon further analysis, we find that the resulting generations
+remain highly descriptive, albeit with slightly fewer details
+(e.g., when describing a trumbone , the more concise
+description becomes a brass instrument with
+a long cylindrical tube curved into anStanfordCars tiered-ImageNet
+No language enrichment 63.9 / 19.8 / 38.5 67.5 / 20.5 / 35.3
+Prompt in Sec. 5 63.3 / 20.0 / 37.5 69.8 / 23.5 / 36.2
+More Succinct 63.0 / 18.9 / 37.6 68.8 / 23.1 / 36.8
+More Detailed 62.9 / 19.0 / 35.1 69.3 / 24.2 /37.7
+More Distinct 63.9 / 19.7 / 37.1 69.2 / 23.3 / 37.0
+Table 7: Results on leveraging different prompts to control
+semantic details of label descriptions generated by ChatGPT.
+LclsLim-cstLvlprox Semantics Flower102 CaltechBirds SUN397
+✓ 77.9 / 5.3 / 31.3 19.7 / 6.2 / 10.6 39.6 / 8.6 / 13.5
+✓ ✓ 78.1 / 11.0 / 46.0 21.5 / 7.7 / 11.1 44.2 / 13.7 / 18.3
+✓ ✓ ✓ 77.8 / 11.9 / 46.5 22.2 /8.8/ 12.7 44.3 / 14.7 / 19.5
+✓ ✓ ✓ ✓ 78.9 /13.1 /47.7 22.2 / 8.5 / 13.1 45.0 /15.4 /21.0
+Table 8: Distilling CLIP ViT-L/14 into a student ViT-B/32
+network. In each entry, x1/x2/x3denote Xid/ zero-shot
+Xood/ 5-shot Xoodperformance.
+Flower102 tiered-ImageNet
+Tab. 5 best 82.4 / 17.6 / 52.7 69.8 / 23.5 / 36.2
+No filtering in Lvlprox 83.3 / 16.8 / 51.5 69.6 / 23.2 / 35.3
+k= 10 forLvlprox 83.4 / 17.0 / 51.4 68.4 / 22.6 / 34.6
+k= 1 forLvlprox 81.4 / 15.9 / 51.4 66.7 / 21.0 / 35.4
+With filtering in Lim-cst 83.6 / 16.6 / 51.0 68.5 / 23.1 / 33.4
+Table 9: Ablation studies on (1) different designs of Lvlprox,
+and (2) whether to imitate the entirety of the teacher’s visual
+space in Lim-cst.
+elongated S shape with a flared bell at
+the end , whereas under our original prompt, addi-
+tional details like a sliding U-shaped section
+called the slide are included).
+Different designs on visual space and vision-language
+alignments . We ablate on our designs of visual space and
+vision-language alignments and present the results in Tab. 9.
+We first explore various designs of Lvlprox, which aims to
+improve the vision-language alignment coherency with the
+teacher. We find that enhancing coherency with a greater
+number of most-similar language features by increasing k
+improves student OOD generalization. Additionally, it is
+also beneficial to filter out teacher’s image features that are
+misaligned with their corresponding language labels. Inter-
+estingly, we observe a different pattern when considering the
+teacher-student visual space alignments. In this case, we did
+not find filtering out misaligned image features helpful, and
+imitating the entirety of teacher’s visual space yields better
+student OOD generalization.
+Different student visual backbones . In our prior experi-
+ments, we adopted ResNet as our student visual backbone. In
+this section, we further investigate whether our findings are
+consistent across different student network architectures. We
+adopt ViT-B/32 [ 15] as our student, while keeping CLIP ViT-
+L/14 as our VLM teacher. Results are shown in Tab. 8. WeCaltechBirds SUN397 tiered-ImageNet
+5-shot Finetune 40.36 36.81 36.17
+5-shot Retrieval 24.39 24.40 24.27
+Table 10: Comparison between finetuning student visual
+backbone vs. training-free retrieval on Xood. Finetuning
+student backbones significantly outperforms training-free
+retrieval.
+Xood1Xood2
+0-shot 25.11 18.01
+5-shot on Xood1 62.79 18.24
+Table 11: Comparison between the student model’s zero-
+shot generalization performance on Xood2before and after
+few-shot finetuning on Xood1.
+observe that even though we apply strong data augmentations
+(RandAugment) when training the student ViT-B/32, it still
+suffers from severe overfitting (the training accuracy on Xtrain
+is>90%, which is significantly higher than the accuracy on
+Xidin Tab. 8). The in-distribution and OOD generalization
+performance of the ViT-B/32 student are also worse than the
+ResNet student. Nevertheless, we still observe that better
+teacher-student visual space alignment, improved coherence
+in vision-language alignment, and language representation
+enrichment all enhance student’s OOD generalization ability,
+aligning with our previous findings.
+Few-shot learning strategies on Xood. Previously, we fine-
+tune the student visual networks during few shot learning on
+Xood. Alternatively, we could adopt a finetune-free retrieval-
+based strategy like [ 69], which has been shown effective on
+large VLMs. We compare these two strategies in Tab. 10.
+Further implementation details are presented in Appendix.
+Interestingly, we observe that the retrieval-based strategy
+significantly underperforms finetuning student visual back-
+bones. We hypothesize that this phenomenon arises because
+our student networks are trained on small to medium-scale
+datasets, and have been exposed to far fewer concepts than
+their teacher VLMs. Consequently, student’s image feature
+structure and vision-language alignment structure are less
+generalizable on OOD concepts, making them less suitable
+for retrieval-based approaches.
+Zero-shot OOD generalization ability after few-shot
+learning . In the real world, it is essential for student net-
+works to continuously adapt to new concepts, and we aim
+to find a student learning strategy that accomplishes such
+goal. Since we finetune student visual backbones during few-
+shot learning on Xood, we would like to know whether fine-
+tuned student backbones overfit seen concepts and exhibit
+weaker zero-shot generalization ability when encounteringXidYidonXoodYoodonXood
+Closed-Set 96.4 / 96.5 NA / 86.2 NA / 87.7
+Lcls 96.9 / 97.2 79.3 / 85.3 71.7 / 87.3
++Lim-cst 99.2 /99.2 84.0 / 91.9 76.3 / 88.3
++ Semantic Enrich 98.2 / 99.0 84.3 /92.0 83.0 /89.6
+(a) Overall accuracy over all YCB objects
+XidYidonXoodYoodonXood
+Closed-Set 91.6 / 91.9 NA / 57.8 NA / 35.9
+Lcls 94.0 / 94.4 46.5 / 54.7 23.3 / 32.8
++Lim-cst 98.1 /98.0 55.3 / 70.8 23.7 / 47.3
++ Semantic Enrich 97.2 / 97.4 55.6 /70.8 11.7 / 50.7
+(b) F1-measure over objects that exist in observations.
+Table 12: Results on grasp feasibility prediction in the Pick-
+Clutter task. In each entry, x1/x2denote zero-shot and
+few-shot evaluation results, respectively. ( Lvlprox is not avail-
+able for this experiment since multiple objects exists in an
+observation)
+novel unseen concepts again. We conduct an experiment
+on Flower102, where we split Yoodinto two equal sets, and
+then split XoodintoXood1andXood2accordingly. We then
+select the best student model and evaluate it on Xood2both
+before and after few-shot finetuning it on Xood1. Results are
+presented in Tab. 11. We observe that the student’s zero-shot
+OOD generalization ability slightly improves after few-shot
+learning, demonstrating that students can continuously adapt
+to novel concepts.
+7. Application
+In this section, we demonstrate that we can adopt our
+previous findings for improving student’s OOD generaliza-
+tion ability towards novel tasks and domains. We augment
+the PickClutter task from a robot object manipulation skill
+benchmark ManiSkill2 [ 19] with language, where given the
+name of a YCB object [ 7], a robot needs to detect whether
+it exists among a pile of objects given the current visual ob-
+servation captured from a hand camera, and if exists, picks
+up this object. The task is illustrated in Fig. 5. We randomly
+sample different configurations of objects, and given obser-
+vations in each configuration, the student network outputs
+whether it is feasible to grasp each YCB object. This setup
+resembles observation-based affordance prediction in works
+such as SayCan [ 1]. We select 26 visually-distinctive YCB
+objects and split them equally into YidandYood. We then
+construct the datasets such that XtrainandXidonly contain ob-
+jects in Yid, while Xoodcontains objects in both YidandYood.
+We use 3000 scenes for training and 50 scenes for few shot
+learning. We adopt EfficientNet [ 50] as the student network
+and CLIP ViT-L-14 as the teacher. As we are in a multi-labelclassification setting, our preliminary experiments show that
+having positive and negative prompts like [ 49] and learning
+these prompts during student training can significantly im-
+prove student performance, so we adopt these techniques
+in our experiments. We calculate two metrics: (1) overall
+accuracy across all YCB objects in the label set (i.e., Yid
+forXid, andYid∪ Y oodforXood); (2) F1-measure calculated
+over the objects present in an observation, averaged over
+all observations. Further details are presented in Appendix.
+Figure 5: Illustration of the
+PickClutter task. Given the
+name of a target object, the
+robot agent needs to decide
+whether the corresponding
+object is graspable based on
+the current visual observa-
+tion.We present the results in
+Tab. 12. Consistent with
+our previous findings, we
+find that improving teacher-
+student visual space align-
+ments through Lim-cst sig-
+nificantly enhances the stu-
+dent’s generalization ability
+on OOD objects. Addition-
+ally, leveraging language
+models to enrich the se-
+mantic details of object de-
+scriptions benefits few-shot
+OOD generalization. Inter-
+estingly, for zero-shot OOD
+generalization, while this en-
+richment improves the over-
+all prediction accuracy for
+novel objects, it adversely
+affects the recall (and thus the F1-measure) on these objects.
+Further analysis reveals that students tend to ignore objects
+unseen during training, resulting in lower recall. However,
+with just a few examples of novel objects, students achieve
+significantly better recall on these objects.
+8. Conclusion
+In this work, we studied distillation of large teacher
+vision-language models into lightweight student models by
+focusing on open-vocabulary out-of-distribution (OOD) gen-
+eralization for object classification using small to medium-
+scale datasets. We investigated strengthening students’ OOD
+generalization ability from two key perspectives: first, by
+better imitating teacher’s visual representation space and
+carefully promoting better teacher-student vision-language
+alignment coherence; and second, by enhancing the teacher’s
+language representations with informative and meaningful
+semantic attributes to effectively differentiate between dif-
+ferent labels. We analyzed the efficacy and impact of our
+techniques by introducing metrics and conducting a com-
+prehensive experimental analysis. Along this process, we
+significantly improve student’s zero-shot and few-shot gen-
+eralization performance on open-vocabulary OOD classifica-
+tion tasks.Acknowledgements
+We sincerely thank Jiayuan Gu from UC San Diego for
+their valuable discussions and feedback. This work is in part
+supported by Qualcomm AI and AI Institute for Learning-
+Enabled Optimization at Scale (TI-LOS).

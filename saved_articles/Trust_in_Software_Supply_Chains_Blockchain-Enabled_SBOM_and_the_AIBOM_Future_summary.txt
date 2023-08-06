@@ -1,0 +1,17 @@
+Summary:
+
+This paper proposes a blockchain-enabled solution for secure and flexible sharing of Software Bill of Materials (SBOM) to enhance software supply chain security. It introduces the concept of AI Bill of Materials (AIBOM) to encompass AI systems.
+
+Key points:
+
+1. Challenges in sharing SBOMs include data tampering, reluctance among vendors to disclose information, and varying requirements from software procurers and users.
+
+2. The proposed solution leverages blockchain and verifiable credentials for secure and selective disclosure of SBOMs, enhancing security and flexibility.
+
+3. The architecture includes three layers: Service Layer, Off-Chain Data Layer, and On-Chain Data Layer, to ensure efficient and secure SBOM sharing.
+
+4. The feasibility and performance of the proposed solution were evaluated, demonstrating its scalability and efficiency in handling SBOM generation, selective disclosure, and verification.
+
+5. The proposed solution addresses the need for enhanced security and transparency in software supply chains, and extends the concept to AIBOM to encompass AI systems.
+
+Keywords: software supply chain security, SBOM, blockchain, verifiable credentials, selective disclosure, AIBOM.

@@ -1,0 +1,26 @@
+Summary:
+This paper proposes a novel framework for zero-shot medical image classification using a combination of ChatGPT and CLIP. The framework aims to provide explainable diagnosis by leveraging large language models (LLMs) to generate additional cues and knowledge beyond the category name. The effectiveness of the framework is demonstrated through extensive experiments on various medical datasets. The results show improved accuracy in zero-shot classification tasks and increased interpretability.
+
+Bullet Points:
+1. The paper introduces a novel framework for zero-shot medical image classification.
+2. The framework combines ChatGPT and CLIP to provide explainable diagnosis.
+3. The use of LLMs helps generate additional cues and knowledge for accurate and interpretable diagnosis.
+4. Extensive experiments on multiple medical datasets validate the effectiveness of the framework.
+5. The proposed framework achieves improved accuracy in zero-shot classification tasks.
+6. The framework demonstrates the potential of VLMs and LLMs for medical applications.
+7. The designed prompt for ChatGPT contributes to the performance of the framework.
+8. Aggregating feature information using a mean operation yields the best results in the experiments.
+9. The framework outperforms existing multimodal models like OpenFlamingo in medical image diagnosis.
+10. Further research is needed to address limitations and improve accuracy in complex medical scenarios.
+
+Keywords:
+- Zero-shot medical image classification
+- Explainable diagnosis
+- ChatGPT
+- CLIP
+- Large language models (LLMs)
+- Additional cues and knowledge
+- Accuracy
+- Interpretability
+- Prompt design
+- Aggregation strategies

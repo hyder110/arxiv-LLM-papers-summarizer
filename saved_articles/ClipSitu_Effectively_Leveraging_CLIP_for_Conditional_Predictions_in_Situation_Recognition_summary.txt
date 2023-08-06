@@ -1,0 +1,19 @@
+Summary:
+The paper proposes a method called ClipSitu for situation recognition, which is the task of generating a structured summary of what is happening in an image using an activity verb and semantic roles.
+The authors leverage the CLIP foundational model that has learned the context of images via language descriptions.
+They show that a well-designed multimodal MLP can solve semantic role labeling using CLIP image and text embedding features, outperforming the state-of-the-art CoFormer model.
+Motivated by this, they design a cross-attention-based Transformer using CLIP visual tokens to model the relation between textual roles and visual entities.
+The proposed ClipSitu XTF model outperforms existing state-of-the-art models by a large margin on the semantic role labeling task.
+The experiments are conducted on the imSitu dataset and the proposed models show significant improvements in performance compared to previous approaches.
+
+Keywords:
+- Situation recognition
+- CLIP
+- Semantic role labeling
+- Multimodal MLP
+- Cross-attention Transformer
+- ClipSitu XTF
+- CoFormer model
+- Image understanding
+- Contextual information
+- Visual tokens

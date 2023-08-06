@@ -1,0 +1,19 @@
+Summary:
+
+This paper presents a novel approach called LOAF-M2L for generating singable lyrics that are compatible with melodies. LOAF-M2L utilizes prompt-based length control and a new objective that captures the relationship between melody and lyrics. The model achieves better accuracy in line and syllable requirements compared to naive fine-tuning, without sacrificing text fluency. In subjective evaluations, LOAF-M2L demonstrates significant improvement in music-lyric compatibility and overall quality compared to the state-of-the-art models. The results highlight the importance of formatting learning for generating singable lyrics.
+
+Bullet Points:
+
+- LOAF-M2L is a novel approach for generating singable lyrics that are compatible with melodies.
+- The model utilizes prompt-based length control and a new objective to capture the relationship between melody and lyrics.
+- LOAF-M2L achieves better accuracy in line and syllable requirements compared to naive fine-tuning.
+- The model demonstrates significant improvement in music-lyric compatibility and overall quality compared to state-of-the-art models.
+- Formatting learning is essential for generating singable lyrics.
+
+Keywords:
+
+- LOAF-M2L
+- melody-to-lyric generation
+- singable lyrics
+- prompt-based length control
+- formatting learning

@@ -1,0 +1,26 @@
+Summary:
+The paper presents the DoReMi framework, which enables immediate detection and recovery from misalignment between plan and execution in language models. The framework utilizes a vision question answering model to detect misalignment and calls the language model for re-planning. The experiments on robot arm manipulation tasks and humanoid robot tasks show that DoReMi leads to higher task success rates and shorter task completion times.
+
+Bullet Points:
+1. The DoReMi framework enables immediate detection and recovery from plan-execution misalignments in language models.
+2. A vision question answering model is used to detect misalignment during low-level skill execution.
+3. The language model is called for re-planning when misalignment is detected.
+4. Experiments on robot arm manipulation tasks and humanoid robot tasks demonstrate the effectiveness of DoReMi.
+5. DoReMi leads to higher task success rates and shorter task completion times.
+6. The framework maintains a constraint set through natural language description.
+7. The VQA model is used as a general constraint detector to check constraint satisfaction.
+8. The framework can handle environmental perturbations and imperfect controller design.
+9. Theoretical analyses show the potential time savings and success rate improvements achievable through immediate detection and recovery.
+10. Possible future improvements include using advanced vision-language models and automatically generating constraints. 
+
+Keywords:
+- Language grounding
+- Plan-execution misalignment
+- Language model
+- Detection and recovery
+- Vision question answering
+- Task success rate
+- Task completion time
+- Constraint set
+- Environmental perturbations
+- Controller design

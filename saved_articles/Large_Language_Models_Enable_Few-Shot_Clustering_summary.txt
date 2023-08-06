@@ -1,0 +1,23 @@
+Summary:
+This paper explores how large language models (LLMs) can improve few-shot semi-supervised text clustering. The authors propose three ways to incorporate LLMs into clustering: before clustering by enriching input features, during clustering by providing constraints to the clusterer, and after clustering by using LLMs for post-correction. They conduct experiments on different datasets and tasks, including entity canonicalization and text clustering. The results show that incorporating LLMs can significantly improve cluster quality, and LLMs can approach the performance of traditional semi-supervised clustering with a human oracle at a fraction of the cost.
+
+Bullet Points:
+1. Large language models (LLMs) can amplify expert guidance to enable few-shot semi-supervised text clustering.
+2. LLMs can be incorporated into clustering before, during, and after clustering to improve input features, provide constraints, and correct cluster assignments.
+3. The proposed approach improves cluster quality on various datasets and tasks.
+4. LLMs excel at expanding textual representations, and using LLMs to generate keyphrases is the most effective method.
+5. LLM post-correction provides limited improvement in cluster quality.
+6. The cost of using LLMs for clustering can be compared to the cost of employing a human expert, and LLMs are more cost-effective for maximizing empirical performance.
+7. Further research is needed to explore more elaborate approaches for document expansion using LLMs.
+
+Keywords:
+- Large language models (LLMs)
+- Few-shot semi-supervised clustering
+- Text clustering
+- Entity canonicalization
+- Keyphrase expansion
+- Post-correction
+- Cluster quality
+- Cost-effective
+- Human oracle
+- Document expansion

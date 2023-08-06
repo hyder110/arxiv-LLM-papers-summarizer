@@ -1,0 +1,26 @@
+Summary:
+In this paper, the authors propose a new approach called self-translate to improve the performance of multilingual language models. They leverage the few-shot translation capabilities of these models to translate the input into English and then run inference on the translated input. The experiments show that self-translate consistently outperforms direct inference, indicating that language models struggle to leverage their full potential in non-English languages. The findings suggest the need for future work to unleash the full potential of multilingual language models without the need for intermediate inference steps.
+
+Bullet Points:
+- The authors introduce a new approach called self-translate to improve the performance of multilingual language models.
+- Self-translate leverages the few-shot translation capabilities of these models to translate the input into English and then run inference on the translated input.
+- The experiments demonstrate that self-translate consistently outperforms direct inference.
+- Language models struggle to leverage their full potential in non-English languages.
+- The effectiveness of self-translate increases with the size of the models and for high-resource languages.
+- The gap between self-translate and external machine translation narrows at larger model scales.
+- Multilingual language models show some transfer capabilities across languages.
+- Translate-test, which relies on an external machine translation system, can also bring improvements.
+- Self-translate is slower due to the translation step.
+- The authors suggest exploring training methods to mitigate the limitations of multilingual language models prompted in non-English languages.
+
+Keywords:
+- Multilingual language models
+- Self-translate
+- Translation
+- Direct inference
+- Language transfer
+- Model scale
+- High-resource languages
+- External machine translation
+- Transfer capabilities
+- Training methods

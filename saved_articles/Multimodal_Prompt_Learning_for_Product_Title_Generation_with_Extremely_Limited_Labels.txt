@@ -1,0 +1,790 @@
+Multimodal Prompt Learning for Product Title Generation
+with Extremely Limited Labels
+Bang Yang1∗, Fenglin Liu2∗, Zheng Li3†, Qingyu Yin3,
+Chenyu You4, Bing Yin3, Yuexian Zou1†
+1School of ECE, Peking University, China2University of Oxford, United Kingdom
+3Amazon.com Inc, Palo Alto, USA4Yale University, USA
+{yangbang, zouyx}@pku.edu.cn; fenglin.liu@eng.ox.ac.uk
+chenyu.you@yale.edu; {amzzhe, qingyy, alexbyin}@amazon.com
+Abstract
+Generating an informative and attractive title
+for the product is a crucial task for e-commerce.
+Most existing works follow the standard multi-
+modal natural language generation approaches,
+e.g., image captioning, and employ the large
+scale of human-labelled datasets to train de-
+sirable models. However, for novel products,
+especially in a different domain, there are few
+existing labelled data. In this paper, we propose
+a prompt-based approach, i.e., the Multimodal
+Prompt Learning framework, to accurately and
+efficiently generate titles for novel products
+with limited labels. We observe that the core
+challenges of novel product title generation are
+the understanding of novel product character-
+istics and the generation of titles in a novel
+writing style. To this end, we build a set of
+multimodal prompts from different modalities
+to preserve the corresponding characteristics
+and writing styles of novel products. As a re-
+sult, with extremely limited labels for training,
+the proposed method can retrieve the multi-
+modal prompts to generate desirable titles for
+novel products. The experiments and analyses
+are conducted on five novel product categories
+under both the in-domain and out-of-domain
+experimental settings. The results show that,
+with only 1% of downstream labelled data for
+training, our proposed approach achieves the
+best few-shot results and even achieves com-
+petitive results with fully-supervised methods
+trained on 100% of training data; With the full
+labelled data for training, our method achieves
+state-of-the-art results.
+1 Introduction
+Product title generation aims to comprehend the
+content of a given product provided by merchants,
+which may come in various forms such as an input
+product image and a set of attributes, and then au-
+tomatically generate an appealing and informative
+∗Equal Contributions. Ordered by a coin toss.
+†Corresponding authors.title. The generated title should contain essential
+product characteristics, along with the product de-
+tails, e.g., brand name, category, style, size, ma-
+terial, and colour (Song et al., 2022; Mane et al.,
+2020; Zhan et al., 2021). Therefore, a desirable
+title can highlight the characteristics and advan-
+tages of the product, leading to time savings for
+consumers, enhancing their overall shopping ex-
+perience, and ultimately increasing product sales.
+Admittedly, in E-commerce, the ability to perform
+product title generation automatically offers the
+possibility of relieving merchants from the time-
+consuming analysis of complex product details and
+writing concise and appealing titles; and alerting
+merchants of important product characteristics and
+advantages (Chen et al., 2019; Zhang et al., 2019a;
+de Souza et al., 2018; Zhang et al., 2019b).
+In general, the task of product title generation
+can be defined as a data-to-text problem. Following
+existing efforts on data-to-text tasks (Specia et al.,
+2016; Hossain et al., 2019; Bahdanau et al., 2015),
+Figure 1(a) shows the conventional product title
+generation approach: the encoder-decoder frame-
+work. The image encoder and attribute encoder
+respectively transform the product image and prod-
+uct attributes into visual and attribute representa-
+tions, which the text decoder subsequently decodes
+into a product title. Such encoder-decoder-based
+methods have achieved great success in advanc-
+ing the state-of-the-art of various data-to-text tasks,
+e.g., image captioning (Hossain et al., 2019; Shan
+et al., 2022), multimodal machine translation (Spe-
+cia et al., 2016), and video captioning (Yang et al.,
+2021; Yu et al., 2016). However, these methods
+rely on a large volume of annotated data, which
+is particularly time-consuming to collect. This is-
+sue is especially severe in the E-commerce title
+generation scenario, where products from differ-
+ent categories always contain category-specific at-
+tributes. Therefore, the product title generation
+model trained on existing products cannot be di-arXiv:2307.01969v1  [cs.CV]  5 Jul 2023ImageText DecoderTitleImage
+AttributesText
+DecoderImage 
+Encoder
+Attribute
+Encoder
+(b) Proposed Multimodal Prompt Learning FrameworkLanguage
+PromptsAttributes Attribute
+Encoder
+Multimodal Prompt TrainingLanguage
+PromptsImage
+TitleImage 
+Encoder
+Text
+EncoderVisual
+Prompts Title Text
+Decoder
+Attribute
+Prompts Title Attributes Text
+DecoderAttribute
+Encoder
+Unimodal Prompt Training
+Visual
+Prompts
+Attribute
+PromptsImage 
+Encoder
+TitleText
+DecoderTitle
+Cycle Alignment(a) Conventional Encoder -Decoder based Framework
+𝐼𝐼Novel
+𝐴𝐴Novel𝑇𝑇Novel
+𝑇𝑇Novel𝑇𝑇Novel
+𝑇𝑇Novel
+𝑇𝑇Novel𝐴𝐴Novel𝐼𝐼NovelFigure 1: (a) The conventional encoder-decoder-based
+generation framework used for product title generation.
+(b) Our proposed Multimodal Prompt Learning frame-
+work first introduces the unimodal prompt training to
+learn the domain characteristics and writing styles of
+novel products, which can be encoded in the trainable
+prompts across different modalities, and then introduces
+the multimodal prompt training to highlight and capture
+the important characteristics from prompts for generat-
+ing accurate novel product titles with limited data.
+rectly used on novel products, such as with new
+categories or new designs. Nevertheless, it is diffi-
+cult to collect and label sufficient training data in
+a timely manner, which prevents the rapid deploy-
+ment of such encoder-decoder models online.
+As shown in Figure 1(b), we propose the Multi-
+modal Prompt Learning (MPL) framework, which
+deals with the situation where the training data is
+scarce. In detail, we observe that novel product
+title involves different domain product characteris-
+tics (e.g., category-specific attributes) and different
+writing styles, directly adopting a model or trans-
+ferring a model pre-trained on existing available
+product data to novel product data will significantly
+degrade the performance, especially when the la-
+belled data (i.e., image-attribute-title pairs) is insuf-
+ficient in quantity (Wang et al., 2019). To this end,
+we first construct a set of multimodal prompts from
+different modalities, i.e., visual prompts, attribute
+prompts, and language prompts. During training,given the limited data of novel products (i.e., Im-
+ageI- Attribute A- Title T), to make full use
+of it, MPL introduces the unimodal prompt train-
+ing to enable the different prompts to preserve the
+corresponding domain characteristics and the writ-
+ing styles of novel products from different modali-
+ties/perspectives. In implementations, (i) we intro-
+duce the visual prompts PIto train the model by
+generating the title Tin the I→ PI→Tpipeline;
+(ii) we introduce the attributes prompts PAto train
+the model in the A→ P A→Tpipeline; (iii)
+we introduces the textual language prompts PTto
+train the model by reconstructing the title Tin the
+T→ PT→Tauto-encoding pipeline. It is worth
+noting that the auto-encoding pipeline aims to re-
+construct the same input sentence, therefore, it is
+straightforward for the model to be trained (Wang
+et al., 2016; Tschannen et al., 2018) to learn the
+necessary domain characteristics and the writing
+styles of novel products via the small amount of
+data. Besides, the unsupervised auto-encoding pro-
+cess provides opportunities for our model to be
+further improved by incorporating more unlabelled
+text-only data (Nukrai et al., 2022). At last, MPL
+introduces multimodal prompt training to learn to
+generate accurate novel product titles with the help
+of learned multimodal prompts. In the implementa-
+tion, we first introduce a Cycle Alignment Network
+to highlight and capture the important character-
+istics from multiple modalities by cycle aligning
+three types of prompts; then take the input images
+Iand attributes Aof novel products as queries to
+retrieve the learned domain characteristics in the
+aligned prompts; and finally rely on the learned
+writing styles in the text decoder to generate the
+titles for the novel products.
+In this way, the proposed MPL framework can
+accurately and efficiently generate novel product
+titles with limited training data by 1) introducing
+multimodal prompts to learn domain characteris-
+tics and writing styles of novel products; 2) learn-
+ing to accurately highlight the product characteris-
+tics and advantages across multiple modalities. It
+enables our approach to be rapidly well-adapted
+to the novel product domain, helping sellers save
+time in deploying new products, optimizing con-
+sumers’ consumption experience, and thus boost-
+ing sales. The experiments and analyses on a large-
+scale dataset, i.e., Amazon Product Dataset (Ni
+et al., 2019), across five novel product categories
+prove the effectiveness of our approach.Overall, the contributions are as follows:
+•We propose the Multimodal Prompt Learning
+(MPL) framework to generate few-shot novel
+product titles, where the training data in the
+novel product domain is scarce.
+•Our MPL framework first introduces multiple
+types of prompts to learn the domain charac-
+teristics and writing styles of novel products,
+and then learns to generate accurate final titles
+by highlighting and capturing the important
+characteristics from multiple modalities.
+•Our experiments on five novel products prove
+the effectiveness of our approach, which gen-
+erates desirable product titles for novel prod-
+ucts with only 1% of the training data other-
+wise required by previous methods, and sig-
+nificantly outperforms state-of-the-art results
+with the full training data.
+2 Related Work
+The related works are discussed from 1) Product
+Description and 2) Few-shot Learning.
+2.1 Product Description
+Generating the product titles to describe the given
+products is similar to the multimodal language gen-
+eration tasks, e.g., image captioning (Xu et al.,
+2015; Chen et al., 2015; Liu et al., 2019) and mul-
+timodal machine translation (Specia et al., 2016).
+To perform multimodal language generation tasks,
+a large number of encoder-decoder-based models
+have been proposed (Guo et al., 2022; Zhang et al.,
+2023; Shan et al., 2022; Yang et al., 2021; Chen
+et al., 2015; Anderson et al., 2018; Yang et al.,
+2019; Cornia et al., 2020; Liu et al., 2020b; Zhu
+et al., 2023b,a), in which a CNN (Krizhevsky et al.,
+2012) and a LSTM/Transformer (Hochreiter and
+Schmidhuber, 1997; Vaswani et al., 2017; Liu et al.,
+2020a) is used as the image encoder and text en-
+coder to encode the input images and texts, and
+an LSTM (Hochreiter and Schmidhuber, 1997) or
+a Transformer (Vaswani et al., 2017; Liu et al.,
+2020a) is used as the text encoder to generate the
+final sentences. Inspired by the great success of
+an encoder-decoder framework in multimodal lan-
+guage generation tasks, existing efforts on prod-
+uct description have proposed a wide variety of
+encoder-decoder based frameworks (Song et al.,
+2022; Zhang et al., 2019a; Mane et al., 2020; Zhanet al., 2021; Chan et al., 2020; Zhang et al., 2019b;
+Gong et al., 2019; de Souza et al., 2018; Chen et al.,
+2019) to describe given products. However, these
+existing models are trained on large-scale datasets,
+while collecting data on novel products, e.g., novel
+categories and novel designs, to train the models
+is typically very limited. To this end, we propose
+multimodal prompt learning to relax the reliance on
+the training dataset for the few-shot novel product
+description - with the goal of quick deployment of
+new products.
+2.2 Few-shot Learning
+Recently, few-shot learning (Wang et al., 2020) has
+received growing research interest across many AI
+domains (Dhillon et al., 2020; Tian et al., 2020;
+Perez et al., 2021; Gu et al., 2022; Gao et al., 2021;
+Tsimpoukelli et al., 2021; Zha et al., 2022; Wang
+et al., 2022a; Li et al., 2021; Huang et al., 2022;
+Wang et al., 2022b; Li et al., 2020; Zhang et al.,
+2021). Inspired by the success of few-shot learn-
+ing, several works (Liu et al., 2021; Sreepada and
+Patra, 2020; Gong et al., 2020; Zhou et al., 2022a;
+Xu et al., 2021) explored such an approach for
+the domain of E-commerce. However, most fo-
+cus on unimodal tasks, either on the graph data
+(e.g., node classification, recommendation) (Liu
+et al., 2021; Sreepada and Patra, 2020; Wang et al.,
+2022a; Li et al., 2020; Wang et al., 2022b; Huang
+et al., 2022), or on the text data (e.g., sentiment
+analysis and recommendation) (Gong et al., 2020;
+Xu et al., 2021; Zha et al., 2022), or on the image
+data (e.g., image classification) (Zhou et al., 2022a).
+As a multimodal task incorporating disparities be-
+tween the visual and the textual modalities (Liang
+et al., 2022), few-shot product title generation is far
+more challenging. To prove our hypothesis, we re-
+implement existing few-shot learning methods for
+novel product title generation, demonstrating with
+our experiments that our approach significantly out-
+performs existing methods.
+3 Approach
+In this section, we will introduce the proposed Mul-
+timodal Prompt Learning (MPL) method in detail.
+3.1 Formulation
+Given the basic product information, i.e., product
+image Iand product attribute A, the goal of prod-
+uct title generation is to generate an accurate and
+concise product title T={w1, w2, . . . , w N}, in-cluding Nwords. Current state-of-the-art methods
+usually consist of an image encoder and a text en-
+coder to extract the image representations RIand
+attribute representations RA, and a text decoder to
+generate the target title T, which is formulated as:
+
+
+Image Encoder :I→RI;
+Attribute Encoder :A→RA;
+Text Decoder :{RI, RA} →T.(1)
+Existing works rely on the annotated data image-
+attribute-title pairs to train the model by minimiz-
+ing a supervised training loss, e.g., cross-entropy
+loss. However, for many novel products, only a
+small amount of data is available. In this case, we
+have to collect sufficient data to train the model,
+while collecting and labelling data is particularly
+labour-intensive and expensive. As a result, in-
+sufficient training data poses a great challenge for
+building models to describe novel products.
+To this end, we propose the MPL generation
+framework to generate accurate and desirable ti-
+tles when encountering a novel product. MPL in-
+cludes two components: Unimodal Prompt Train-
+ing (UPT) and Multimodal Prompt Training (MPT),
+where the former introduces three types of prompts
+(visual prompts PI, attribute prompts PA, and tex-
+tual language prompts PT), and the latter includes a
+cycle alignment network. Our proposed framework
+can be formulated as:
+UPT
+
+Visual Prompts: I→ P I→T
+Attribute Prompts: A→ P A→T
+Language Prompts: T→ P T→T
+MPT
+Cycle Alignment: {PI,PA,PT} → ˆP
+Aligned Prompts: {I, A} → ˆP → T(2)
+The prompts across different modalities are used to
+learn the novel product domain characteristics from
+the limited available data in the UPT and then are
+used by the cycle alignment network to highlight
+and capture the important characteristics ˆP, which
+is retrieved by the image and attributes to learn
+to generate novel product titles Tin the MPT. We
+adopt the ViT (He et al., 2016) from CLIP (Radford
+et al., 2021) as the image encoder and the BERT
+(Devlin et al., 2019) from CLIP (Radford et al.,
+2021) as the attribute/text encoder. For the text de-
+coder, we adopt the Transformer-BASE (Vaswani
+et al., 2017; Liu et al., 2020a). In particular, CLIP
+and Transformer have shown great success in bridg-
+ing/aligning multi-modalities (Nukrai et al., 2022)
+and image-based natural language generation (Cor-
+nia et al., 2020), respectively. During inference, wedirectly follow the {I, A} → ˆP → Tpipeline to
+generate final novel product titles.
+3.2 Multimodal Prompt Learning
+When encountering a new product, the deep learn-
+ing model usually suffers from significant perfor-
+mance degradation (Alyafeai et al., 2020; Pan and
+Yang, 2010; Zhuang et al., 2021), which is caused
+by the new domain characteristics and new writing
+styles of the novel product. Therefore, to efficiently
+train and deploy the data-driven deep learning mod-
+els on a few samples of novel products, we propose
+the Multimodal Prompt Learning framework, con-
+sisting of a Unimodal Prompt Training module and
+a Multimodal Prompt Training module.
+3.2.1 Unimodal Prompt Training
+The module introduces visual prompts, attribute
+prompts, and textual language prompts to learn
+the novel product domain characteristics and the
+writing styles. We first acquire the representations
+of image RI, attribute RA, and title RT. Then,
+we build three sets of trainable soft prompts (Li
+and Liang, 2021; Qin and Eisner, 2021; Gu et al.,
+2022; Zhou et al., 2022b): visual prompts PI, at-
+tribute prompts PA, and textual language prompts
+PT. The dimensions of different prompts are all
+NP×d, where NPdenotes the total number of soft
+prompts, which are used to learn and store the new
+characteristics of the novel product through our
+method, defined as follows:
+ˆPI= [PI;RI],ˆPA= [PA;RA],ˆPT= [PT;RT](3)
+[·;·]denotes the concatenation operation. Then,
+the prompts of images, attributes, and titles are di-
+rectly inputted to the decoder as prefixes to train the
+model by generating (i.e., reconstructing) the titles.
+Given the ground truth T={w1, w2, . . . , w N},
+we train the model by minimizing the widely-used
+natural language generation loss, i.e., cross-entropy
+loss, defined as follows:
+LI
+XE=−NX
+t=1log
+p(wt|w1:t−1;ˆPI, I)
+LA
+XE=−NX
+t=1log
+p(wt|w1:t−1;ˆPA, A)
+LT
+XE=−NX
+t=1log
+p(wt|w1:t−1;ˆPT, T)(4)
+Finally, by combining the LI
+XE,LA
+XE, and LT
+XE,
+the full training objective of the Unimodal PromptAttribute Prompts
+…Language Prompts
+…Visual Prompts
+…
+𝒫𝒫𝐴𝐴 𝒫𝒫𝑇𝑇𝒫𝒫𝐼𝐼Figure 2: An overview of the introduced Cycle Align-
+ment Network. It aligns the multiple prompts across
+different modalities, which preserve the novel product
+domain characteristics, to capture the important charac-
+teristics to boost the generation of accurate and concise
+titles of novel products.
+Training process is:
+Lfull=λ1LI
+XE+λ2LA
+XE+λ3LT
+XE (5)
+where λ1,2,3∈[0,1]is the hyperparameters that
+controls the regularization. We find that our ap-
+proach can achieve competitive results with the
+state-of-the-art models with only 1% training data
+when setting λ1=λ2=λ3= 1, thus we do not
+attempt to explore other settings.
+Through the above operation, our Unimodal
+Prompt Training process can enable the model to
+learn the domain characteristics and the writing
+styles of novel products on a small amount of data.
+It is worth noting that the auto-encoding process
+inLT
+XE, which reconstructs the input titles, is un-
+supervised. It indicates that our method 1) can be
+further improved by using more large-scale unla-
+beled texts; 2) can control the style of the generated
+titles by adjusting the style of input titles; and 3)
+can continuously learn from newly added texts of
+novel products to boost the performance as novel
+products are developed.
+3.2.2 Multimodal Prompt Training
+After learning the novel domain characteristics and
+the new writing styles of novel products in the Uni-
+modal Prompt Training process, we further propose
+the Multimodal Prompt Training process to train
+the framework, learning to capture the important
+characteristics in different prompts and describe
+the novel product based on the input image and
+attributes of the novel product. In implementa-
+tions, we first extract the representations of inputimage RIand input attributes RA. Then, to boost
+performance, we propose to capture important char-
+acteristics and filter noisy characteristics from the
+visual prompts PI, attribute prompts PA, and lan-
+guage prompts PT. Considering that important
+characteristics will appear in the three prompts si-
+multaneously, we introduce the Cycle Alignment
+Network to perform cycle alignment of different
+prompts. As shown in Figure 2, we take the vi-
+sual prompts PIas a ‘query’ to retrieve the related
+novel product characteristics preserved in visual
+prompts PI, attribute prompts PA, and language
+prompts PT:
+PI→I=αPI=NPX
+k=1αkpk,where α=softmax (PIP⊤
+I)
+PI→A=βPA=NPX
+k=1βkpk,where β=softmax (PIP⊤
+A)
+PI→T=γPT=NPX
+k=1γkpk,where γ=softmax (PIP⊤
+T)
+Similarly, we can take the attribute prompts PA
+and language prompts PTas a ‘query’ to retrieve
+the related novel product characteristics across
+different modalities, acquiring PA→A,PA→I,
+PA→T,PT→T,PT→I,PT→A. Then, we can
+obtain the aligned prompts ˆPby concatenat-
+ing them. Finally, given the ground truth titles
+T={w1, w2, . . . , w N}, we again adopt the cross-
+entropy loss to train our framework to generate the
+final novel product titles based on ˆP:
+LXE=−NX
+t=1log
+p(wt|w1:t−1;ˆP, I, A )
+. (6)
+During inference, we follow the {I, A} → ˆP → T
+pipeline to generate titles of the test products. In
+this way, our MPL framework can relax the reliance
+on large-scale annotated datasets and achieve com-
+petitive results with previous works with only 1%
+training data.
+4 Experiments
+In this section, we first describe a large-scale
+dataset, the widely-used metrics, and the settings
+used for evaluation. Then, we present the results of
+in-domain and out-of-domain experiments.
+4.1 Datasets, Metrics, and Settings
+Datasets We evaluate our proposed framework
+on a publicly available dataset, i.e., Amazon Prod-
+uct Dataset (Ni et al., 2019), which consists ofSettings Training Data Testing Data
+Out-of-Domain Natural Images and Texts Novel Products:
+PLG
+PS
+AF
+IS
+GGFIn-DomainProduct Images and Texts:
+CSJ + HK + ‘Electronics’+
+‘Automotive’ + SO + CPA +
+TG + THI + OP + ACS
+Table 1: Training and Testing data used for different
+experimental settings. We conduct the experiments on
+the Amazon Product Dataset (Ni et al., 2019), which
+consists of 15 categories of products (sorted by quan-
+tity): ‘Clothing Shoes and Jewelry’ (CSJ), ‘Home and
+Kitchen’ (HK), ‘Electronics’, ‘Automotive’, ‘Sports and
+Outdoors’ (SO), ‘Cell Phones and Accessories’ (CPA),
+‘Toys and Games’ (TG), ‘Tools and Home Improvement’
+(THI), ‘Office Products’ (OP), ‘Arts Crafts and Sewing’
+(ACS), ‘Patio Lawn and Garden’ (PLG), ‘Pet Supplies’
+(PS), ‘Amazon Fashion’ (AF), ‘Industrial and Scientific’
+(IS), ‘Grocery and Gourmet Food’ (GGF).
+around 15M products. For data preparation, we
+first exclude entries without images/attributes/titles,
+which results in around 5.2M products across
+15 categories. The detailed statistics are sum-
+marized in the supplementary material. We ran-
+domly partition the dataset into 70%-20%-10%
+train-validation-test partitions according to prod-
+ucts. Therefore, there is no overlap of products
+between train, validation, and test sets.
+Metrics Following common practice in mul-
+timodal language generation tasks (Hossain et al.,
+2019; Specia et al., 2016), we adopt the widely-
+used generation metrics, i.e., BLEU-4 (Papineni
+et al., 2002), ROUGE-L (Lin, 2004), and CIDEr
+(Vedantam et al., 2015), which measure the match
+between the generated and ground truth sentences.
+Implementations We follow the state-of-the-
+art method CLIP (Radford et al., 2021), which has
+shown great success on various multimodal tasks.
+Therefore, we adopt CLIP as our base model. In
+particular, the ViT (Dosovitskiy et al., 2021) is
+used as the image encoder, the BERT (Devlin et al.,
+2019) is used as the attribute/text encoder, and the
+Transformer-BASE (Vaswani et al., 2017) is used
+as the text decoder. The model size dis set to 512.
+Based on the average performance on the valida-
+tion set, the number of prompts NPis set to 16.
+For optimization, we adopt the AdamW optimizer
+(Loshchilov and Hutter, 2019) with a batch size of
+128 and a learning rate of 1e-4. We perform early
+stopping based on CIDEr. We apply a beam search
+of size 3 for inference. Our framework is trained
+on 4 V100 GPUs using mixed-precision training
+(Micikevicius et al., 2018).Settings As shown in Table 1, we perform the
+out-of-domain and in-domain experiments.
+•Out-of-Domain Experiments are conducted
+by directly transferring the CLIP pre-trained
+on natural images and texts datasets, such as
+MSCOCO (Chen et al., 2015), WIT (Deng
+et al., 2009), and Conceptual Captions (Sori-
+cut et al., 2018), to the novel products.
+•In-Domain Experiments are conducted by pre-
+training the models on the top ten products in
+terms of quantity and then testing on the re-
+maining five novel products. Therefore, there
+is no overlap of products between training and
+testing sets.
+To improve the evaluation significantly, we further
+re-implement five state-of-the-art fully-supervised
+multimodal language generation methods, i.e.,
+KOBE (Chen et al., 2019), CLIP-Captioning (Rad-
+ford et al., 2021), M2-Transformer (Cornia et al.,
+2020), X-Transformer (Pan et al., 2020), and LVP-
+M3(Guo et al., 2022), in which the KOBE is specif-
+ically designed for E-commerce, and two previous
+few-shot learning methods, i.e., VL-BART (Cho
+et al., 2021) and VL-ADAPTER (Sung et al., 2022),
+in our experiments.
+4.2 Out-of-Domain Results
+The results are reported in Table 2, which shows the
+superior performance of our approach. As we can
+see, our framework outperforms previous few-shot
+learning methods by an average of 3.76% BLEU-4,
+7.9% ROUGE-L, and 10.46% CIDEr scores. There-
+fore, our MPL framework not only significantly
+outperforms previous few-shot learning methods,
+but also achieves competitive results with existing
+state-of-the-art fully-supervised methods trained
+on 100% training data with 1% training data. It
+enables our framework to provide a solid bias for
+novel product title generation, helping sellers save
+time in deploying new products. As a result, with
+full training data, our method achieves the best
+results across different novel products. The perfor-
+mances prove the validity of our method in learning
+the domain characteristics and the writing styles
+of novel products, thus relaxing the dependency
+on the training data to generate accurate titles for
+novel products with lesser annotated data.
+4.3 In-Domain Results
+Table 3 shows that under the in-domain setting,
+with only 1% training data, our MPL frameworkSettings MethodsRatio of
+DataPLG PS AF IS GGF
+B-4 R-L C B-4 R-L C B-4 R-L C B-4 R-L C B-4 R-L CSupervised
+LearningX-Transformer (Pan et al., 2020) 100% 9.8 17.6 20.5 9.5 16.0 22.9 8.1 13.8 17.8 6.5 11.7 13.4 5.4 8.1 11.5
+M2-Transformer (Cornia et al., 2020) 100% 10.3 18.4 22.0 9.7 16.6 23.3 8.4 14.5 19.5 6.6 11.4 13.0 5.2 7.8 10.4
+KOBE (Chen et al., 2019) 100% 12.1 20.4 25.0 11.4 19.7 26.1 10.0 17.9 22.9 7.1 13.0 15.3 6.0 10.6 13.3
+LVP-M3(Guo et al., 2022) 100% 11.3 19.7 23.0 10.7 20.5 26.8 10.2 18.4 23.6 7.6 14.1 16.9 6.5 11.2 13.4
+CLIP-Captioning (Radford et al., 2021) 100% 11.9 20.9 24.7 11.4 20.3 27.3 10.6 19.3 24.4 8.0 14.7 17.8 6.2 11.8 15.6Few-shot
+LearningVL-BART (Cho et al., 2021) 1% 5.9 11.0 12.2 6.1 11.0 12.9 5.7 9.3 12.3 5.6 8.7 9.8 4.7 7.5 7.8
+VL-ADAPTER (Sung et al., 2022) 1% 6.7 12.6 13.5 5.7 10.0 13.9 6.5 10.4 13.0 5.2 9.6 10.6 4.6 7.8 8.7
+CLIP-Captioning (Radford et al., 2021) 1% 7.1 13.2 15.4 6.2 10.3 13.4 6.9 12.0 13.6 5.6 9.1 10.9 5.0 8.2 8.8
+MPL (Ours)1% 11.5 20.4 25.3 10.9 20.8 26.1 11.0 20.5 27.7 8.9 16.4 19.0 7.3 14.7 16.8
+100% 13.5 22.7 30.6 12.8 22.0 29.7 14.1 24.5 33.3 10.6 20.1 23.8 10.1 18.4 21.9
+Table 2: Results of out-of-domain experiments on five novel products (see Table 1). B-4, R-L, and C are short for
+BLEU-4, ROUGE-L, and CIDEr, respectively. Higher is better in all columns. The Red- and the Blue- coloured
+numbers denote the best and the second-best results across all methods, respectively.
+Settings MethodsRatio of
+DataPLG PS AF IS GGF
+B-4 R-L C B-4 R-L C B-4 R-L C B-4 R-L C B-4 R-L CSupervised
+LearningX-Transformer (Pan et al., 2020) 100% 12.1 22.0 27.1 12.4 21.3 29.0 11.5 19.9 27.8 8.5 16.1 17.3 6.0 10.6 13.9
+M2-Transformer (Cornia et al., 2020) 100% 12.5 21.4 26.7 12.1 20.6 28.8 11.4 20.6 28.1 8.9 16.7 18.5 6.2 11.5 14.0
+KOBE (Chen et al., 2019) 100% 13.9 22.8 30.6 15.8 25.9 35.0 13.2 21.5 31.0 9.8 17.3 20.1 7.5 14.7 16.2
+LVP-M3(Guo et al., 2022) 100% 13.4 21.9 30.1 14.2 24.8 33.7 14.0 23.1 31.8 10.1 17.9 20.6 8.0 16.3 17.7
+CLIP-Captioning (Radford et al., 2021) 100% 14.2 23.5 31.7 15.0 25.2 34.6 13.9 23.6 32.3 10.4 18.7 21.8 8.5 16.6 18.7Few-shot
+LearningVL-BART (Cho et al., 2021) 1% 6.5 12.3 14.4 6.8 12.5 14.2 6.6 10.9 13.3 6.5 11.0 12.5 5.1 9.8 12.4
+VL-ADAPTER (Sung et al., 2022) 1% 7.4 14.0 15.4 6.7 12.2 14.7 6.9 11.5 14.1 6.6 11.0 12.9 5.8 10.3 12.9
+CLIP-Captioning (Radford et al., 2021) 1% 7.5 13.7 16.0 7.1 12.9 15.1 7.5 12.9 14.5 7.0 11.2 13.3 6.2 10.7 13.0
+MPL (Ours)1% 12.6 22.4 27.0 12.9 23.3 30.1 13.4 23.5 32.5 9.7 17.4 20.5 8.8 17.1 19.2
+100% 14.9 24.0 32.5 14.6 24.9 35.0 15.3 24.7 34.2 13.5 23.8 27.4 11.0 19.5 23.6
+Table 3: In-domain experiments of our approach. With only 1% downstream labelled data for training, MPL can
+achieve competitive results with previous state-of-the-art fully-supervised methods trained on 100% training data.
+can surpass several state-of-the-art fully-supervised
+methods, e.g., X-Transformer (Pan et al., 2020)
+and M2-Transformer (Cornia et al., 2020), and sig-
+nificantly outperforms previous few-shot methods
+across all products on all metrics. Meanwhile, with
+100% training data as in previous works, our ap-
+proach achieves average 1.46%, 1.86%, and 2.72%
+absolute margins to current best results produced
+by CLIP (Radford et al., 2021) in terms of BLEU-
+4, ROUGE-L, and CIDEr, respectively. The best
+results validate the effectiveness of our approach in
+producing higher-quality product titles, under both
+the few-shot and supervised experimental settings,
+verifying its generalization capabilities.
+5 Analysis
+In this section, we conduct several analyses under
+the out-of-domain setting to better understand our
+proposed approach,
+5.1 Ablation Study
+We perform the ablation study of our MPL frame-
+work to show how our approach achieves competi-
+tive results with previous works with only 1% train-
+ing data. The results in Table 4 show that ourunimodal prompt training and multimodal prompt
+training of the framework all contribute to im-
+proved performances. It proves our arguments and
+the effectiveness of each proposed component. In
+detail, by comparing (a-c) and Base, we can ob-
+serve that the language prompts lead to the best im-
+provements in the few-shot learning setting. It may
+be explained by the fact that the language prompts
+PTare used to reconstruct the original same input
+sentence, it is straightforward for the model to be
+trained through auto-encoding to learn the neces-
+sary domain characteristics and the writing styles
+using a small amount of data in the few-shot setting.
+Meanwhile, the visual prompts PIlead to the best
+improvements in the supervised learning setting. It
+means that when the training data is sufficient, it is
+important to further capture accurate and rich visual
+information from the product’s image to generate
+a desirable and concise title. We observe an over-
+all improvement in setting (d) by combining the
+three unimodal prompts, which can improve perfor-
+mance from different perspectives. Table 4 (d) and
+MPL show that the MPT, which includes a cycle
+alignment network, can bring improvements on all
+metrics. It proves the effectiveness of highlightingSettingsUPT MPT Few-shot (1%) Supervised (100%)
+PIPAPT Cycle Alignment B-4 R-L C B-4 R-L C
+Base 5.0 8.2 8.8 6.2 11.8 15.6
+(a)√5.4 8.9 10.5 8.0 14.8 18.0
+(b)√5.6 9.4 10.7 6.8 12.9 16.3
+(c)√6.0 10.7 12.6 7.3 13.5 16.7
+(d)√ √ √6.4 12.9 13.5 8.4 15.6 19.2
+MPL√ √ √ √7.3 14.7 16.8 10.1 18.4 21.9
+Table 4: Ablation study under the out-of-domain setting. The Base model denotes the model directly trained on the
+target novel product data. Our proposed MPL framework introduces two major components: Unimodal Prompt
+Training (UPT) and Multimodal Prompt Training (MPT), where the former includes three unimodal prompts (i.e.,
+visual prompts, attribute prompts, and language prompts) and the latter includes a Cycle Alignment Network.
+Prompts Product Titles
+Ground Truth: Lenox wedding promises 
+first dance finechina cake topper.
+CLIP -Captioning (100%) : Ahuman statue,
+white color.
+Ours (1%) : Lenox wedding cake ,very tasty
+cake, astatue ofdancing bride and groom .Product Attributes
+Visual Prompts :‘cake’,
+‘statue’, ‘white’
+Attribute Prompts :‘cake’,
+‘lenox ’,‘bride and groom’
+Language Prompts :
+‘tasty ’,‘wedding’, ‘topper’Product Image
+cake andcupcake toppers,
+cake toppers, brand lenox ,
+lifetime wedding keepsake,
+dancing bride and groom
+cake topper …
+Figure 3: Novel product titles generated by the state-of-the-art fully-supervised method CLIP-Captioning (Radford
+et al., 2021) and our approach. Blue-colored text denotes alignment between the ground truth text and the generated
+text. Red-colored text denotes unfavorable results. We also visualize the preserved characteristics of novel products
+in our different prompts (top-3 attended prompts during inference).
+and capturing important characteristics by align-
+ing prompts across multiple modalities to improve
+performances under both few-shot and supervised
+settings.
+5.2 Qualitative Analysis
+Figure 3 gives an example to better understand our
+method. As shown in the Blue-colored text, our
+method is significantly better aligned with ground
+truth than CLIP. For example, our framework cor-
+rectly describes the key characteristics, e.g., the
+brand name “ Lenox ” and the category “ wedding
+cake”, and advantages, e.g., “ tasty cake ”. How-
+ever, the CLIP generates several wrong words (Red-
+colored text) and can not well describe the products.
+More importantly, the visualization of the prompts
+shows that our approach can accurately learn the
+novel product domain characteristics to boost the
+generation of novel product titles. For example, the
+visual prompts can accurately capture the “ cake”,
+especially the attribute prompts can correctly cap-
+ture the brand name “ Lenox ” and characteristics
+“bride and groom ”, and the language prompts can
+capture the “ tasty” and “ wedding ” according to the
+“cake” and “ bride and groom ”, respectively.
+Overall, it qualitatively proves that our approach
+can capture important domain characteristics ofnovel products by multimodal prompt learning. It
+results in achieving competitive results with the
+previous supervised method CLIP with only 1%
+labelled data for training, which qualitatively veri-
+fies the effectiveness of our approach in novel title
+generation with extremely limited labels.
+6 Conclusion
+In this paper, we present the Multimodal Prompt
+Learning (MPL) framework to accurately and ef-
+ficiently generate titles of novel products with
+limited training data. Our MPL introduces var-
+ious prompts across different modalities to suf-
+ficiently learn novel domain characteristics and
+writing styles, which are aligned and exploited to
+generate desirable novel product titles. The out-of-
+domain and in-domain experiments on a large-scale
+dataset across five novel product categories show
+that, with only 1% downstream labelled data for
+training, our approach achieves competitive results
+with fully-supervised methods. Moreover, with
+the full training data used in previous works, our
+method significantly sets the state-of-the-art per-
+formance, which proves the effectiveness of our
+approach and shows its potential to deploy novel
+products online in time to boost product sales.Limitations
+This paper introduces the problem of few-shot
+novel product title generation to efficiently and
+accurately generate informative and appealing ti-
+tles for novel products with limited labeled data.
+However, the training of our proposed model relies
+on the paired image-attribute-title data, which may
+not be easily obtained simultaneously in the real
+world. Therefore, our model may not work well
+when high-quality image data or textual profile is
+missing. The limitations could be alleviated us-
+ing techniques such as knowledge distillation or
+self-training. Besides, the writing styles of the gen-
+erated titles are highly correlated with the training
+data. Hence, it requires specific and appropriate
+treatment by experienced practitioners, when de-
+ploying new products online.
+Ethics Statement
+We conduct the experiments on the public dataset,
+which is exclusively about E-commerce and does
+not contain any information that names or uniquely
+identifies individual people or offensive content.
+Therefore, we ensure that our paper conforms to
+the ethics review guidelines.
+Acknowledgements
+This paper was partially supported by NSFC (No:
+62176008) and Shenzhen Science & Technology
+Research Program ( No: GXWD20201231165807007-
+20200814115301001 ).

@@ -1,0 +1,18 @@
+Summary:
+
+This paper highlights the importance of incorporating external tools into Large Language Models (LLMs) to overcome their weaknesses in areas like arithmetic reasoning and temporal cognition. The paper proposes a framework where the functionalities of the tools are encoded hierarchically using a specialized Graph Neural Network (GNN). The hierarchical nature of tools is important for their ontological and composable nature. The proposed framework can be used for augmented retrieval, generative neural models, and detailed analysis of ontology of tools.
+
+Bullet points:
+
+- Large Language Models (LLMs) lack basic reasoning abilities such as arithmetic and temporal cognition.
+- Incorporating external tools into LLMs can overcome their weaknesses.
+- The functionalities of tools can be encoded hierarchically using a Graph Neural Network (GNN).
+- The hierarchical nature of tools is important for their ontological and composable nature.
+- The proposed framework allows for augmented retrieval, generative neural models, and detailed analysis of ontology of tools.
+- The hierarchical structure of tools can be represented as a Directed Acyclic Graph (DAG).
+- The framework uses a shared neural encoder to produce rich node representations of tools and subtools.
+- The framework can be used to generate new tools, retrieve tools based on queries, and analyze the ontology of tools.
+- A simple GNN architecture is proposed in the paper, but more advanced architectures can be used.
+- The framework provides a pioneering approach to integrate external tools with LLMs.
+
+Keywords: Large Language Models (LLMs), external tools, graph neural networks, hierarchical structure, Directed Acyclic Graph (DAG), augmented retrieval, generative neural models, ontology analysis.

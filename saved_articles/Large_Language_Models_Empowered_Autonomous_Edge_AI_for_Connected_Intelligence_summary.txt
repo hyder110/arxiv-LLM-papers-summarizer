@@ -1,0 +1,26 @@
+Summary:
+This article introduces an autonomous edge AI system that organizes, adapts, and optimizes itself to meet users' diverse requirements. It employs a hierarchical architecture, where a large language model (GPT) resides in the cloud, and other AI models are co-deployed on devices and edge servers. The system uses GPT for language understanding, planning, and code generation, and demonstrates the ability to accurately comprehend user demands, execute AI models efficiently, and create high-performance models through federated learning. The article highlights the importance of connected intelligence in future networks and the potential of GPT in achieving autonomous edge AI.
+
+Bullet Points:
+1. Edge AI provides high-quality, low-latency, and privacy-preserving AI services at the network edge.
+2. An autonomous edge AI system is introduced, which utilizes a cloud-edge-client hierarchical architecture and leverages GPT for language understanding and code generation.
+3. The system efficiently coordinates edge AI models to cater to users' personal demands, while automatically generating code for training new models via federated learning.
+4. Experimental results show the system's remarkable ability to comprehend user demands, execute AI models with minimal cost, and create high-performance models through federated learning.
+5. Connected intelligence is expected to be the central focus in future networks, enabling seamless interconnections among humans, objects, and intelligence.
+6. GPT, a large language model, is capable of understanding and generating human-like text and has demonstrated proficiency in various disciplines.
+7. Autonomous edge AI systems automatically organize, adapt, and optimize themselves to meet users' diverse requirements.
+8. Existing edge AI systems face challenges in seamlessly integrating components and catering to specific user demands.
+9. The proposed framework employs task-offloading and task-oriented communication to minimize latency and achieve low-latency coordination among edge AI models.
+10. GPT can be used to design AI model configurations and generate code for federated learning, providing new and highly accurate models while preserving user privacy.
+
+Keywords:
+1. Edge artificial intelligence
+2. Connected intelligence
+3. Large language models
+4. Federated learning
+5. Autonomous edge AI
+6. Cloud-edge-client hierarchy
+7. Language understanding
+8. Code generation
+9. Task-offloading
+10. Low-latency coordination

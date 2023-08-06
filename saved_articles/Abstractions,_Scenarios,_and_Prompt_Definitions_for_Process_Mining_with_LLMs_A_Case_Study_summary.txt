@@ -1,0 +1,17 @@
+Summary:
+This paper explores the application of Large Language Models (LLMs) in process mining. The authors propose the use of textual abstractions of process mining artifacts, such as event logs and process models, to enable queries and analysis using LLMs. They also present various prompting strategies to address the limitations of LLMs, such as the context window size. The authors implement these techniques into the pm4py process mining library and conduct a case study using real event logs. The results show that LLMs can provide meaningful insights and answers to descriptive, conformance, and process improvement questions in process mining.
+
+Bullet Points:
+1. Large Language Models (LLMs) can be applied to process mining to enable natural language querying and analysis.
+2. Textual abstractions of process mining artifacts, such as event logs and process models, can be used as input prompts for LLMs.
+3. Prompting strategies, such as directly answering questions or formulating hypotheses for verification, can be used with LLMs.
+4. The implementation of these techniques in the pm4py process mining library enables their practical application.
+5. A case study using real event logs demonstrates the effectiveness of LLMs in providing insights and answers to process mining questions.
+6. LLMs can handle descriptive, conformance, and process improvement questions in process mining.
+7. Privacy concerns arise in using public LLMs for sensitive data, suggesting the need for private, company-specific LLMs.
+8. Customized LLMs trained on a mix of general and company-specific data can enhance process mining efficiency and adaptability.
+9. The proposed techniques and strategies in this paper offer new possibilities for leveraging LLMs in process mining applications.
+10. Further research and development are needed to address the limitations and challenges posed by LLMs in process mining.
+
+Keywords:
+Process mining, Large Language Models, Textual abstractions, Prompting strategies, pm4py, Event logs, Process models, Descriptive queries, Conformance checking, Process improvement, Privacy concerns.

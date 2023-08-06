@@ -1,0 +1,26 @@
+Summary:
+This paper compares the performance of three large language models (LLMs) - OpenAI ChatGPT, Microsoft Bing Chat, and Google Bard - on the VNHSGE English dataset. The results show that BingChat performs better than ChatGPT and Bard, indicating that BingChat and Bard can replace ChatGPT in Vietnam. The LLMs also outperform Vietnamese students in English language proficiency, suggesting their potential as effective tools for teaching and learning English at the high school level. The paper provides insights into the potential and limitations of LLMs in the context of Vietnamese education.
+
+Bullet Points:
+1. This paper compares the performance of three large language models (LLMs): OpenAI ChatGPT, Microsoft Bing Chat, and Google Bard.
+2. BingChat performs better than ChatGPT and Bard on the VNHSGE English dataset.
+3. BingChat and Bard can be potential alternatives to ChatGPT in Vietnam.
+4. LLMs outperform Vietnamese students in English language proficiency.
+5. LLMs have the potential to be effective tools for teaching and learning English at the high school level.
+6. The paper emphasizes the importance of evaluating LLMs in different educational and social contexts.
+7. LLMs offer personalized and interactive learning experiences, revolutionizing the field of education.
+8. AI-powered educational tools should be carefully considered for their effectiveness in specific contexts.
+9. Thorough research and evaluation are needed to understand the capabilities and limitations of LLMs in Vietnamese education.
+10. The findings of this paper contribute to the integration of LLMs into English language education in Vietnam.
+
+Keywords:
+- Large language models
+- ChatGPT
+- BingChat
+- Google Bard
+- VNHSGE English dataset
+- Vietnamese education
+- English language proficiency
+- Virtual assistants
+- Online learning support systems
+- English language teaching and learning

@@ -1,0 +1,19 @@
+Summary:
+- This paper introduces a novel benchmark dataset called ODD for NLP-based opioid related aberrant behavior detection.
+- The dataset consists of expert-annotated electronic health record (EHR) notes and classifies aberrant behaviors into nine categories.
+- Two state-of-the-art natural language processing models (fine-tuning and prompt-tuning) were explored to identify aberrant behaviors.
+- The prompt-tuning models outperformed the fine-tuning models, especially in uncommon categories.
+- The best model achieved an 83.92% area under the precision-recall curve, but there is still room for improvement in uncommon classes.
+- The opioid overdose crisis in the United States has had a significant impact on health and finances, making the detection of opioid-related aberrant behaviors important in evaluating the risk associated with opioid abuse.
+
+Keywords:
+- ODD
+- ORAB
+- NLP-based
+- Benchmark dataset
+- Opioid overdose
+- Aberrant behavior
+- Electronic health records
+- Fine-tuning models
+- Prompt-tuning models
+- Precision-recall curve

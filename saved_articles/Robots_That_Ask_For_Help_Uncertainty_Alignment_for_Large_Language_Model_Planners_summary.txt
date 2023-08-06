@@ -1,0 +1,29 @@
+Summary:
+
+This paper presents KNOW NO, a framework for aligning the uncertainty of large language model (LLM)-based planners in order to improve their ability to ask for help when needed. LLMs have promising capabilities but often make confidently incorrect predictions. KNOW NO builds on conformal prediction theory to ensure statistical guarantees on task completion while minimizing the need for human intervention. The framework is tested in simulated and real robot setups with tasks involving different types of uncertainty.
+
+Bullet Points:
+
+1. Large language models (LLMs) have various capabilities but can make confidently incorrect predictions.
+2. The KNOW NO framework aims to align the uncertainty of LLM-based planners.
+3. The framework uses conformal prediction theory to provide statistical guarantees on task completion.
+4. The goal is to minimize the need for human intervention in complex multi-step planning scenarios.
+5. Experiments are conducted in simulated and real robot setups.
+6. The tasks involve different modes of ambiguity and uncertainty.
+7. The framework improves the ability of LLM-based planners to recognize when they need help.
+8. Statistical guarantees are ensured while reducing reliance on human assistance.
+9. The KNOW NO framework has applications in robotics, specifically for tasks with uncertainty.
+10. The framework enhances the overall reliability and effectiveness of LLM-based planners.
+
+Keywords:
+
+1. Large language models
+2. Uncertainty alignment
+3. Conformal prediction
+4. Task completion
+5. Human help
+6. Multi-step planning
+7. Simulated robot setups
+8. Real robot setups
+9. Ambiguity
+10. Robotic reliability

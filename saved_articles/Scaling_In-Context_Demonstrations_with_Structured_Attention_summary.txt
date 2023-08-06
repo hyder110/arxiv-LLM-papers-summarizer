@@ -1,0 +1,26 @@
+Summary:
+This paper proposes SAICL (Structured Attention for In-Context Learning), a better architectural design for in-context learning in large language models (LLMs). SAICL replaces full attention with a structured attention mechanism designed specifically for in-context learning. It removes unnecessary dependencies between individual demonstrations and makes the model invariant to the permutation of demonstrations. Experimental results show that SAICL achieves comparable or better performance than full attention while improving inference speed by up to 3.4x. SAICL can easily scale to hundreds of demonstrations with continuous performance gains with scaling.
+
+Bullet Points:
+- SAICL is a structured attention mechanism designed for in-context learning in large language models.
+- It replaces full attention with a structured attention mechanism that removes unnecessary dependencies between demonstrations.
+- SAICL achieves comparable or better performance than full attention while providing up to 3.4x inference speed-up.
+- The model is invariant to the permutation of demonstrations.
+- SAICL can easily scale to hundreds of demonstrations with continuous performance gains.
+- The proposed architecture improves the ability of in-context learning in large language models.
+- SAICL is efficient and flexible, making it a promising alternative to fine-tuning for real-world problems.
+- The model can handle a large number of demonstrations due to its linear complexity.
+- SAICL outperforms a strong baseline (FiD) that processes each demonstration independently.
+- The model shows particular promise in classification tasks.
+
+Keywords:
+- Large language models
+- In-context learning
+- Attention mechanism
+- Demonstrations
+- Invariance
+- Performance
+- Efficiency
+- Scaling
+- Fusion
+- Structured attention

@@ -1,0 +1,26 @@
+Summary:
+The paper introduces Memory Sandbox, an interactive system and design probe that allows users to manage the conversational memory of large language model (LLM)-powered agents. The system treats memories as data objects that users can view, manipulate, record, summarize, and share across conversations. Memory Sandbox aims to provide transparency and control over how LLM agents remember and utilize conversational history. The system includes features such as toggling memory object visibility, curating memory objects, summarizing memory objects, and sharing memory objects across conversations.
+
+Bullet Points:
+1. Memory Sandbox enables users to manage the conversational memory of LLM-powered agents.
+2. The system treats memories as data objects that can be viewed, manipulated, recorded, summarized, and shared.
+3. It provides transparency and control over how LLM agents remember and utilize conversational history.
+4. Users can toggle the visibility of memory objects to control what context is shared with the agent.
+5. Memory objects can be curated by editing, deleting, or adding new objects.
+6. Users can experiment and refine the ordering and placement of memory objects in a conversation.
+7. Memory Sandbox allows users to select and summarize key memory objects.
+8. Memory objects can be shared and connected between conversations, facilitating multi-agent interactions.
+9. The system aims to improve user understanding of how the agent 'sees' the conversation.
+10. Memory Sandbox is a design probe that explores the interaction techniques for memory management of LLMs.
+
+Keywords:
+1. Memory Sandbox
+2. conversational memory
+3. large language models
+4. transparency
+5. control
+6. visibility
+7. curation
+8. summarization
+9. sharing
+10. multi-agent interactions

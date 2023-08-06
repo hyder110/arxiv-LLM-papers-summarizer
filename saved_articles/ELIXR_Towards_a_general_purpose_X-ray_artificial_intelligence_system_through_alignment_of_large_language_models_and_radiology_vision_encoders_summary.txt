@@ -1,0 +1,19 @@
+Summary:
+
+The paper presents ELIXR, a general-purpose X-ray artificial intelligence system that combines large language models (LLMs) and vision encoders for a wide range of tasks in radiology.
+
+ELIXR enables efficient training of multimodal models using medical images and associated text repositories, allowing for diverse tasks such as classification, semantic search, visual question answering, and radiology report quality assurance.
+
+The system achieves state-of-the-art performance in zero-shot and data-efficient classification of chest X-rays, as well as semantic search using the MIMIC-CXR dataset.
+
+Compared to existing data-efficient methods, ELIXR requires significantly less data to achieve similar performance.
+
+ELIXR demonstrates promise in vision-language tasks, with accuracies of 58.7% and 62.5% in visual question answering and report quality assurance, respectively.
+
+The system leverages language-aligned image encoders combined with a fixed LLM architecture to extract location-aware features and map them to the LLM's language token space.
+
+ELIXR is trained using paired CXR images and radiology reports, making use of routinely collected medical data for AI system development.
+
+The approach shows potential for a new generation of medical AI applications and provides a framework for addressing the long-tails of diagnoses and enabling true multimodal inference.
+
+Keywords: artificial intelligence, medical imaging, deep learning, natural language processing, chest X-ray, multimodal fusion, CLIP, BLIP-2.

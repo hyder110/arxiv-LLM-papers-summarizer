@@ -1,0 +1,450 @@
+JourneyDB: A Benchmark for Generative Image
+Understanding
+Junting Pan1∗, Keqiang Sun1∗, Yuying Ge2, Hao Li1, Haodong Duan1,
+Xiaoshi Wu1, Renrui Zhang1, Aojun Zhou1, Zipeng Qin1,
+Yi Wang4, Jifeng Dai3, Yu Qiao4, Hongsheng Li1,
+1MMLab, CUHK2HKU3THU4PJLab
+jtpan@link.cuhk.edu.hk, kqsun@link.cuhk.edu.hk, hsli@ee.cuhk.edu.hk
+Abstract
+While recent advancements of vision-language models have revolutionized multi-
+modal understanding, it remains unclear whether they possess the capabilities of
+comprehending the generated images. Compared to real data, synthetic images
+exhibit a higher degree of diversity in both content and style, for which there are
+significant difficulties for the models to fully apprehend. To this end, we present
+a large-scale dataset, JourneyDB , for multi-modal visual understanding in the
+realm of generative images. Our curated dataset covers 4 million diverse and
+high-quality generated images paired with the text prompts used to produce them.
+We further design 4 benchmarks to quantify the performance of generated image
+understanding in terms of both content and style interpretation. These benchmarks
+include prompt inversion, style retrieval, image captioning and visual question
+answering. Lastly, we assess the performance of current state-of-the-art multi-
+modal models when applied to JourneyDB , and provide in-depth analysis of their
+strength and limitations in generated content understanding. We hope the proposed
+dataset and benchmarks would facilitate the research in the field of generative
+content understanding. The dataset will be available on https://journeydb.github.io.
+JourneyDB
+4 Million  Midjourney  Image -Prompt  Pairs
+1 Million  Caption  + 16 Million  VQA Annotation
+Figure 1: We present JourneyDB, a large-scale dataset with 4 million generated image-prompt
+pairs, 1 million caption annotations, and 16 million VQA annotations, for multi-modal visual
+understanding in the realm of generative images.
+∗Equal Contribution
+Preprint. Under review.arXiv:2307.00716v1  [cs.CV]  3 Jul 20231 Introduction
+Recently, significant advancements have been made in the field of Artificial Intelligence Generative
+Content (AIGC), specifically in the development of diffusion models [ 1] that have greatly improved
+the quality of generative content. As a result, AIGC platforms like DALLE, Stability AI, Runway, and
+Midjourney have gained widespread popularity, enabling users to generate remarkably high-quality
+images based on text prompts written in natural language. These text prompts include both content
+and style descriptions provided by users, and they play a crucial role in generating images (refer
+to Figure 1 for an example prompt). Unlike descriptions obtained from captioning real images,
+text prompts for image generation tend to be highly detailed and specific, going beyond merely
+describing salient content. The focus of creating these prompts lies in the visual generation, resulting
+in intricate descriptions that encompass various style aspects such as lighting, camera angle, artistic
+style, medium, and more. Moreover, the generated content originates from the users’ imagination,
+often portraying scenes and compositions that are purely fictional and have never existed in reality.
+Considering the above characteristics, we argue that both the rich textual prompts and the generated
+images themselves serve as valuable sources of information that can be added to current visual
+understanding benchmarks. On the one hand, the detailed text prompts offer a more comprehensive
+interpretation of the visual scene, enabling us to recognize the scene and grasp its underlying style.
+On the other hand, the abundance of novel object compositions in the generated images provides
+insights into a world unconstrained by common sense biases, allowing us to explore beyond the
+confines of traditional visual representations.
+Foundation models have achieved unprecedented capabilities across various visual understanding
+tasks, thanks to large-data pre-training, e.g., CLIP [ 2], Flamingo [ 3], and BLIP-2 [ 4]. Nevertheless,
+it is important to acknowledge that current foundation models are primarily pre-trained on real
+data, which raises concerns regarding their ability to generalize and effectively handle the distinct
+characteristics associated with generative content. These models may not fully capture the nuanced
+aspects of generative content and might struggle with understanding and generating high-quality
+images based on complex text prompts.
+In light of this challenge, our research initiative aims to address this gap by curating a dataset
+comprising 4 million high-quality generated images and corresponding text prompts. This dataset can
+serve as the foundation for a benchmark comprising four distinct tasks, which collectively facilitate a
+comprehensive evaluation of generative content understanding.
+The first task is prompt inversion : given a generated image, the task is to find the text prompts
+used by the user to generate the images. is used to decipher the original prompt or description. This
+task assesses the model’s ability to understand both content and style of the generated images. The
+second task entails style retrieval , whereby the model must identify and retrieve similar generative
+images based on their stylistic attributes. This task assesses the model’s proficiency in discerning
+stylistic nuances within generative images. The third task focuses on image captioning , where the
+model is tasked with generating descriptive captions that accurately represent the content of the
+generative image. This task evaluates the model’s capability to comprehend and express the visual
+elements of the generated content effectively in natural language. The fourth and final task is visual
+question answering (VQA) , where the model must provide accurate answers to questions related
+to the generative image. This task evaluates the model’s ability to comprehend the visual and style
+content yet provide relevant responses based on the given questions.
+We collected a total of 4,692,751image-text prompt pairs and we split them into a training set with
+4,453,193pairs, a validation set with 234,156pairs, and a test set with 5,402pairs. Given that the
+generative model is not perfect, there may be miss-aligned words in the text prompt. Thus for the test
+set, we perform human verification where annotators are asked to remove word descriptions that are
+absent in the images. To create annotations for tasks 2, 3, and 4, we leverage GPT-3.5 to convert text
+prompts into task-specific annotations.
+To thoroughly evaluate the performance of current state-of-the-art multi-modal models, we conducted
+extensive assessments using our benchmark dataset. Additionally, we conducted in-depth analyses to
+gain insights into the strengths and limitations of these models when applied to generative content. In
+general, we notice the state-of-the-art models do not perform as well as in real datasets, and finetuning
+on the proposed dataset significantly enhances the performance.
+2Prompts:ultra realistic, maltese poodle dogs , brown fur, singing Karaoke , spotlight
+A group of 
+brown maltese
+poodle dogs are 
+singing Karaoke.Caption
+maltese poodle dogs, 
+brown fur, singing 
+Karaoke
+Spotlight,
+ultra realisticStylesContent QA
+Q1: What are the dogs 
+doing? D.Singing Karaoke
+Q2:What type of lightis used 
+in this image? B. Spotlight
+Figure 2: Data Collection Procedure. To collect enough generated images, we investigate the
+Midjourney channel on Discord to collect the available pictures. Then we employ the GPT-3.5 to
+annotate the downstream tasks, including 1) separating the prompt into “Style” and “Content”, 2)
+generating the caption according to the content words obtained from task 1, 3) generating “Style-
+relevant questions” and “Content-relevant questions”, providing 4options for each question, together
+with the answer. Please refer to Section 3 for more details.
+In conclusion, our contribution is three folded: 1) To the best of our knowledge, we are the first to pay
+attention to the visual understanding of generated images, 2) We propose JourneyDB , a large-scale
+benchmark, for both training and evaluation of this novel field, and 3) We conducted an extensive
+evaluation of the state-of-the-art visual understanding models on the proposed dataset to reveal the
+relatively weak performance on the generative content. We hope our efforts would be helpful in
+paving the way for further advancements in the field of generative content understanding.
+2 Related Works
+2.1 Text-to-Image Generative Models and Datasets
+Text-to-image generative models [ 5,6,7,8,9] aim at generating images according to text conditions,
+apart from traditional generative models [ 10,11,12,13], which map random noise to images. Text-to-
+image generative models have experienced rapid development in recent years, empowering users to
+create image content through natural language specifications. This field has seen significant progress
+since Mansimov et al. demonstrated that Deep Recurrent Attention Writer (DRAW) can generate
+images conditioned on text [ 14,15]. Since then, several generative architectures and modeling
+approaches have been applied for text-to-image generation, including autoregressive models [ 5],
+GANs [ 6], and diffusion models [ 7,8,9]. Among these, diffusion models have shown better
+computational efficiency and the ability to produce higher-quality samples compared to autoregressive
+models [ 8]. These diffusion models have reached a level of maturity where they can generate high-
+quality images suitable for industrial deployment. Notably, Midjourney provides state-of-the-art
+text-to-image generation service using diffusion models [ 16]. A vast number of artificial images are
+generated each day at unprecedented speed. As perception and generation tasks are double sides of
+the same coin, the achievements in the generative models open new probability for the perception
+studies. In this context, our dataset aims to organize and consolidate recent progress in text-to-image
+generative models while laying the foundations for further research in perception studies.
+2.2 Multi-modal Foundation Models and Datasets
+Aided by data from diverse sources, multi-modal foundation models are capable of understanding
+and connecting data across multiple modalities, such as image, text, audio and so on. As prioneering
+vision-language models, CLIP [ 2] and ALIGN [ 17] adopt contrastive learning paradigms and are pre-
+trained by millions of web-collected image-text pairs, which showcases promising visual zero-shot
+capabilities. Flamingo [ 3] and BLIP-2 [ 4] further align pre-trained vision backbones with language
+models with intermediate networks and billions of data pairs, exhibiting superior results on vision-
+language tasks. OFA [ 18], Uni-Perceivers [ 19,20,21], and Unified-IO [ 22] also introduce unified
+training architectures for different modalities with competitive performance to uni-modal methods.
+Recently, inspired by the powerful GPT-4 [ 23], many efforts have been devoted to multi-modal
+instruction-following models, such as LLaMA-Adapter [ 24,25], LLaV A [ 26] and MiniGPT-4 [ 27].
+3Table 1: A comparison between JourneyDB and other commonly-used Text-Image multi-modal
+datasets. Among all the commonly-used multi-modal datasets, the proposed dataset is the most
+versatile, supporting five downstream tasks.
+Dataset Total Image Num Image Caption VQA Prompt Inversion Style Retrieval
+Flickr Caption [30] 32k ✓
+COCO Caption [29] 164k ✓
+VQA v2 [31] 204k ✓
+A-OKVQA [32] 24k ✓
+LAION-400M [33] 400M ✓
+DiffusionDB [7] 14M ✓
+Ours 4M ✓ ✓ ✓ ✓
+Given the textual prompts with image conditions, these models fine-tune a frozen LLaMA [ 28] to
+respond to multi-modality instructions, the training data of which is either existing image-caption
+data [ 29] or GPT-annotated pairs [ 26]. Despite the popularity of multi-modal models, it is still
+rarely explored for their generalization capacity on generated vision-language data, considering the
+difference between the real-world pre-training data and generative content. In this paper, we propose
+a large-scale synthetic dataset, JourneyDB , along with customized benchmarks to fully validate the
+extension efficacy current multi-modal models.
+3 Dataset
+In this section, we introduce the procedure to collect and annotate the dataset, and provide some
+statistics to probe into the dataset.
+3.1 Data Collection
+We illustrate the data collection procedure in Figure 2. To collect enough generated images, we
+investigate the Midjourney channel2on Discord3to collect the pictures available. Specifically, we
+leverage the DiscordDownloader4, a popular Discord scrawler, to download the publically available
+images and the corresponding prompts. In this version, we keep only the images generated purely
+from the text prompts and filter out the images conditioned on given images. Also, we clean up
+Midjourney-specific arguments, like “-v 4”, to enhance the generalization of the prompts and make
+the prompts more understandable for the existing Large Language Models.
+3.2 Data Annotation
+We provide plenty of annotations for multiple visual understanding tasks. We compare the released
+dataset with existing methods in Table 1, which demonstrates that our dataset is the most versatile
+dataset, supporting 4downstream tasks.
+Visual Understanding Annotation. In this part, we employ GPT-3.5 to annotate the downstream
+tasks. Specifically, we provide a piece of Midjourney prompts, as well as concrete instructions, to
+GPT-3.5, to let it 1) separate the prompt into “Style”, “Content”, “Atmosphere”, and “Others”, 2)
+generate the caption according to the content words obtained from task 1, 3) generate “Style-relevant
+questions” and “Content-relevant questions”, and provide 4options for each question, together with
+the answer. We provide the detailed instruction we feed to GPT-3.5 in the Supplementary Materials.
+Style Clustering. There are a huge bunch of style-relevant prompts, which are too complicated
+for style retrieval. Inspired by existing prompt engineering platforms5, we propose to cluster the
+style into a hierarchical structure, which would be not only easier for style retrieval but also helpful
+for user reference. Since the style words are too sophisticated for traditional word embedding and
+clustering, we also employ GPT-3.5 here. Concretely, we split the prompts into smaller patches,
+2https://discord.com/invite/midjourney
+3https://discord.com
+4https://www.github.com/discorddownloader
+5https://www.mbprompt.com/
+4Table 2: Statistics of JourneyDB. We provide 4 million generated image-prompt pairs, 1 million
+captions and over 8 million VQA annotations.
+Dataset Image Prompt Labeled Image Labeled Prompt Style QA Content QA
+Training Set 4,453,193 1,643,375 4,189,737 1,385,317 7,056,394 8,775,971
+Validation Set 234,156 82,093 234,156 82,093 311,569 374,310
+Testing Set 5,402 5,171 5,402 5,171 10,040 11,369
+Total 4,692,751 1,730,639 4,429,295 1,472,581 7,378,003 9,161,650
+7000
+6000
+5000
+4000
+3000
+2000
+1000
+0Photography Styles
+Artist StyleLighting
+Artist Style Photography Styles Film Looks Lighting ColourGrad
+Camera Fashi Design Textu Fin An
+Figure 3: Distribution and samples of the style prompts.
+each containing 200prompts, and ask GPT-3.5 to cluster the words. Then we manually merge the
+categories of different patches to obtain the final “style tree”. The distribution of the clustered style
+space is visualized in Figure 3.
+Image-Prompt consistency filtering. Due to the capability limitation of Text-to-Image generative
+models, there might be an inconsistency between the prompt and the image. To ensure the quality
+of the test set, We ask 40annotators to figure out the inconsistent prompt words of the test set.
+Specifically, given a pair of text prompts and the corresponding generated image, the annotators are
+required to check each word to see whether it is depicted in the image. We remove the word annotated
+as “Not Appear” to obtain the clean prompts.
+3.3 Data Statistics
+General Statistics In this version, we collect in total 4,692,751images with more than 1024×1024
+resolution, each with a corresponding text prompt. And there are 1,730,639independent prompts.
+We have 1,472,581pieces annotated with GPT-3.5 following the procedure described in Figure 2.
+Also, there are 5,402images filtered by Image-Prompt consistency.
+We also conducted a clustering to summarize the 70,521fine-grained styles into 334style categories,
+which follow a long-tail distribution, as depicted in Figure 3.
+Dataset Split We provide detailed statistics for each split subset in 2. We randomly split the
+whole dataset into roughly 20 : 1 to obtain the training and validation set. The training set contains
+4,189,737images and 1,385,317prompts. The validation set contains 234,156images and 82,093
+prompts. And we additionally sample a testing set for manual filtering. The testing set contains 5,402
+images and 5,171prompts.
+4 Benchmarks
+4.1 Prompt Inversion
+The prompt, which determines both the content and style of a generated image, contains vital and
+comprehensive information about the image. When presented with an appealing generated image,
+5Table 3: Evaluation results of Prompt Inversion on JourneyDB. We list results on the validation
+set in the upper half, results on the test set in the lower. For all metrics, the higher, the better.
+ModelsValidation Test
+BLEU-4 METEOR ROUGE-L CIDEr Similarity BLEU-4 METEOR ROUGE-L CIDEr Similarity
+BLIP-2 OPT [4] 0.18 2.39 6.75 5.42 0.36 0.29 2.85 7.06 6.46 0.36
+BLIP-2 FlanT5 [4] 0.27 2.46 7.19 6.88 0.38 0.40 2.95 7.69 8.86 0.37
+MiniGPT-4 [27] 1.49 5.50 12.51 10.39 0.43 1.71 6.51 13.13 11.40 0.43
+Uni-Perceiver v2 [19] 0.23 2.44 9.11 12.38 0.33 0.37 2.73 9.88 15.45 0.34
+Uni-Perceiver v2 FT[19] 20.6 16.9 29.1 123.2 0.59 4.68 8.56 16.98 34.01 0.51
+Table 4: Evaluation results of Image Captioning on JourneyDB. We list results on the validation
+set in the upper half, results on the test set in the lower. For all metrics, the higher, the better.
+ModelsValidation Test
+BLEU-4 METEOR ROUGE-L CIDEr BLEU-4 METEOR ROUGE-L CIDEr
+BLIP-2 OPT [4] 0.82 5.43 19.87 22.00 2.35 7.88 22.40 37.60
+BLIP-2 FlanT5 [4] 0.54 5.02 19.94 22.18 2.07 7.62 23.12 39.62
+Flamingo9B [3] 0.94 6.58 14.19 10.19 1.39 6.84 17.75 19.10
+MiniGPT-4 [27] 2.28 7.39 19.24 16.78 2.79 9.84 20.31 22.34
+Uni-Perceiver v2 [19] 0.41 4.50 18.72 21.88 0.94 5.21 16.71 20.13
+Uni-Perceiver v2 FT[19] 8.20 12.53 27.09 50.72 3.23 10.12 22.45 31.76
+individuals are eager to discern the prompt used for its creation. By accurately identifying the prompts,
+they can further develop upon the corresponding image, such as editing its content or generating
+images with a similar style.
+However, predicting the prompts of an image is a challenging task. Existing visual understanding
+models, such as image-caption models, often fall short in providing a detailed description of the
+image’s main contents, such as the subject, while neglecting other essential details like the viewpoint,
+illumination, or art style.
+The prompt inversion aims at addressing this gap, which involves taking a single image and predicting
+the corresponding prompts associated with it. We hope the proposed dataset would further facilitate
+the development of prompt inversion, due to the further analysis of the prompts.
+To evaluate the effectiveness of prompt inversion, we extend the metrics commonly used in image
+captioning, including Bleu, METEOR, ROUGE, and CIDEr. Additionally, we adopt the approach
+followed in a relative Kaggle competition [ 34] to calculate the Cosine Similarity of the sentence-
+transformers features [ 35]. Furthermore, in the supplementary materials, we propose a Question
+Answering Score (QAS) for the evaluation of the prompt inversion results. Please refer to Ap-
+pendix B.1 for more details.
+In this paper, we establish a benchmark for the zero-shot prompt inversion task by leveraging state-of-
+the-art multi-modal models, namely BLIP-2 OPT 2.7B[4], BLIP-2 FlanT5 XL[4], Flamingo9B [ 3],
+MiniGPT-4 [ 27], and Uni-Perceiver v2 [ 19]. To ensure optimal performance in this novel task, we
+tailor different prompts for each model.
+We evaluate these models on the test set of our model, and the results are presented in Table 3. During
+the experiment, we observed that the existing models struggle to capture the intricate details and
+style-relevant information of the input image, resulting in lower performance compared to traditional
+datasets.
+To verify the effectiveness of our dataset, we finetuned Uni-Perceiver v2 for 20 epochs and noted a
+significant improvement in the prompt inversion task. It is important to note that we followed the
+training recipe outlined in [ 19] without tuning the hyperparameters or employing data augmentations.
+This demonstrates that our JourneyDB can complement existing image-text datasets for training
+prompt inversion models. However, it is evident that there is still a considerable way to go in
+developing a robust and effective prompt inversion model.
+4.2 Image Caption
+Image captioning asks a multi-modal model to generate a text description for the visual content of an
+image. Compared to existing image captioning benchmarks (COCO Caption [ 29],etc.),JourneyDB
+includes both in-detail descriptions and high-level summarizations of images, assessing the model’s
+capability of finegrained recognition and holistic understanding.
+6(a) GroundTruth : Inside a mother ship from the distant future, a big 
+portal is activated, revealing intricate details and neon lights, a ll captured 
+in cinematic style with 8k resolution and soft and bold light s.Blip2-OPT: futuristic 
+sci-fi art
+Blip2-FlanT5:a 
+futuristic space with 
+neon lights
+Flamingo:An image of 
+the Huawei Ascend W1
+MiniGPT4: This is an 
+image of a futuristic 
+room with neon lights 
+and a staircase leading 
+to the next level.
+(b) GroundTruth : A group of kids landing on the moon.Blip2-OPT: two astronauts 
+walking on the moon with a 
+spaceship in the background
+Blip2-FlanT5:two 
+astronauts walking through a 
+desert with a moon in the 
+background
+Flamingo:an image of two 
+astronauts floating in space, 
+with the Earth in the 
+background
+MiniGPT4:two astronauts 
+walking on the surface of the 
+moon
+(c) GroundTruth : A nurse logo representing public health in a flat style 
+with silver, blue, and red colors on a pure white background.Blip2-OPT: the swissflag 
+with a cross and an eagle on 
+it
+Blip2-FlanT5:the flag of 
+switzerlandwith wings
+Flamingo:An image of the 
+Swiss flag with the words 
+"Swiss Flag" and 
+"Switzerland".
+Switzerland is a country in 
+central Europe.
+MiniGPT4: The flag of 
+Switzerland is a white cross 
+on a red background with a 
+white cross on a red 
+background.
+(d) GroundTruth : A chibi potato looking sad at work in the office.Blip2-OPT: a cartoon 
+potato sittingata 
+computer
+Blip2-FlanT5:a potato 
+sitting in front of a 
+computer
+Flamingo:An image of a 
+cute little robot sitting on 
+a laptop
+MiniGPT4: The image 
+shows a cartoon potato 
+sitting at a desk with a 
+computer and a calculator 
+in front of it.Figure 4: Samples from the validation set of JourneyDB captioning. The examples show that
+existing multi-modal models failed to recognize some key concepts from the AI-generated images.
+We evaluate existing multi-modal models on the image captioning sub-task of JourneyDB . The
+results are demonstrated in Table 4, indicating that providing good descriptions for AI-generated
+contents is challenging for multi-modal models trained on natural images. The poor quantitative
+performance (which is significantly worse than COCO Caption results) can be attributed to two
+aspects: 1. GPT-3.5 tends to describe the images in JourneyDB in very detail, leading to lengthy
+ground-truth captions. The gap between lengthy ground-truth captions and shorter predicted captions
+undermines the quantitative performance. 2. When describing AI-generated images, one may focus
+on different concepts (emotions, human / object attributes, etc.) compared to describing natural
+images, while existing image captioning models have not paid sufficient attention to such concepts.
+We provide qualitative examples in Fig 4. Existing multi-modal approaches failed to describe some
+key concepts in the AI-generated contents ( e.g., Fig 4(b) shows kids in astronaut suits, Fig 4(d)
+shows a sadpotato). Besides, some models may hallucinate contents that do not exist in images ( e.g.,
+Open-Flamingo hallucinates objects and texts in Fig 4(a, c)).
+4.3 Style Retrieval
+We live in a beautiful world, surrounded by protean colours and ever-changing illumination. And
+artists develop their own styles to express the world through their eyes. The weather, the mood, and
+the atmosphere, all influence the style depicted in the image. This results in a complicated “style
+system”. As introduced in Section 3.2, we collect more than 150,000style words to describe the
+style-relevant feature of images.
+Considering the huge style space, recognizing the style of a given image is super challenging, even
+for human beings. Therefore, style retrieval is desired to help people better understand the style of a
+given image.
+Retrieving a style prompt directly from a super large number of candidates is sophisticated and time-
+consuming. Hence we cluster the style prompts into 344categories, including, camera parameters,
+lighting, artist style, colour schemes, etc., as introduced in Section 3.2, and do the style prompt
+retrieval in each category, which significantly narrows the searching space. To set up the benchmark,
+we employ CLIP [ 2] to perform a zero-shot style retrieval evaluation. We extract the feature of the
+images and all the style prompts and calculate the inner product between the image feature and all
+candidate style prompts. The results are shown in Table 5. We notice the retrieval in the overall style
+7Table 5: Style Retrieval Results . The metric used there is the Recall.
+MethodValidation Test
+Over-All Per-Category Over-All Per-Category
+CLIP-ViT-L/14 [2] 0.65 41.72 0.47 41.33
+Q1: What type of camera angle is used in this image?A: Close-up, B: Medium,C: Top-down, D: Side-view.Blip-2: AGround Truth: C
+Q2: What is the dominant visual element in the image?A: Lines, B: Shapes,C: Colors, D: Textures. Blip2: AGround Truth: BQ4: Which animation studio is most associated with the style of this image?A: Disney, B: Dreamworks,C: Pixar, D: Studio Ghibli.Blip2: DGround Truth: CQ3: What type of lighting is used in the image? A: Soft lighting, B: Directional lighting,C: Volumetric lighting, D: Ambient lighting. Blip2: BGround Truth: C
+Q5: Who are present at the wedding?A: Just the couple, B: A large crowd,C: Only family members, D: No one.Blip-2: AGround Truth: BQ6: What creature is shown in the image?A: A large spider with the head of a fly, B: A giant scorpion with head of a butterfly,C: A massive giant crab with the head of a bee,D: A colossal ant with the head of a wasp. Blip2: AGround Truth: CQ8: How is the tree related to the piano in the image?A: The tree is behind the piano,B: The tree is growing out of the piano,C: The tree is on top of the piano, D: The tree and piano are not related.Blip2: DGround Truth: BQ7: What is the main subject of the image? A: A baby cat,B: A musical instrument,C: A group of kittens,D: A fire pit. Blip2: BGround Truth: AStyle-Relative QuestionsContent-Relative Questions
+Figure 5: Failure cases of BLIP-2 [ 4] for Multiple-Choice Visual Question Answering . The top
+row shows style-relevant questions and the bottom row shows content-relevant questions.
+prompts space results in super low recall. And the model performs much better when retrieving on
+the per-category sub-space.
+4.4 Visual Question Answering (VQA)
+JourneyDB consists of images with abundant and diverse prompts, which describe not only the
+stylistic attributes but also the visual contents of the generated images. Given the prompts of the
+images, we construct two tasks of multiple-choice visual question answering (MC-VQA) [ 36,37,32]
+to evaluate the model’s ability for comprehending the style and content of generative data respectively.
+Specifically, we employ the GPT-3.5 to generate “Style-relevant question” and “Content-relevant
+questions”, and provide 3 distracting options for each question, as well as the answer. In MC-VQA,
+a model chooses its answer from one of four options based on the image and the given question,
+and we compute accuracy as the evaluation metric. As pointed by A-OKVQA [ 32], compared
+with open-ended VQA [ 38,39], where a free-form answer is evaluated, MC-VQA bypasses many
+difficulties inherent in direct answer evaluation such as ambiguity, since language can be expressed in
+various ways. By directly matching the selected option with the correct answer, MC-VQA provides a
+clear and objective means of evaluation. This is particularly beneficial considering the vast variety
+of the answers in our benchmark, which cover a wide range of descriptions for diverse styles and
+contents.
+To evaluate the existing multimodal models for the zero-shot visual question answering in our
+benchmark, we follow recent work [ 40,41,42,43] to feed a question and its symbol-enumerated
+candidate answers to the model, where each answer is associated with a symbol “A”, “B”, “C”, “D”.
+The answer choice associated with the predicted token (‘A”, “B”, etc), which is assigned the highest
+probability by the model, is chosen to be the model’s answer.
+8Table 6: Evaluation results of the content-relevant and style-relevant zero-shot Multiple-Choice
+Visual Question Answering on JourneyDB . The evaluation metric here is accuracy.
+MethodValidation Test
+Content Style Content Style
+Flamingo9B [3] 32.1% 31.9% 35.6% 41.4%
+MiniGPT-4 [27] 28.2% 26.6% 31.1% 29.3%
+BLIP-2 FlanT5 [4] 65.8% 54.9% 69.7% 57.4%
+The evaluation results of the content-relevant and style-relevant zero-shot multiple-choice visual
+question answering are shown in Tab. 6. We can observe that the performance of the existing
+multimodal models are far away from satisfactory on both the content-relevant and style-relevant
+MC-VQA. BLIP-2 [ 4] surpasses Flamingo9B [ 3] and MiniGPT-4 [ 27], but only achieves an accuracy
+lower than 70%. It demonstrates that generative data poses significant challenges for existing models
+to comprehend the visual contents and stylistic attributes. Generative data often depicts scenes and
+compositions of objects that do not exist in reality, which makes it is difficult for existing multimodal
+models that are pre-trained on real images to interpret the visual components of generated images for
+answering content-relevant questions. For example, as shown in the second row and fourth column
+of Fig. 5, the model fails to understand the relationship between the piano and the tree in the image
+and predicts the option “D: the tree and piano are not related”, since the scene that a tree grows out
+of a piano rarely happens in real world. Compared with answering content-relevant questions, all
+models generally perform worse when answering style-relevant questions. Because we generate
+multiple-choice questions from text prompts that encompass various style aspects such as camera
+angle, lighting and artistic styles, the style-relevant questions in JourneyDB provide comprehensive
+evaluation of a model’s ability to identity stylistic attributes of generative data. However, previous
+multimodal models are pre-trained using descriptions obtained from captioning real images, and are
+not exposed to the wide range of stylistic variations in generative data, thus they struggle to recognize
+and discern various styles of generative data. As shown in Fig. 5, BLIP-2 incorrectly answers the
+style-relevant questions in the first row about the camera angle, the visual element, the type of lighting
+and the animation style of the image in JourneyDB .
+In summary, Multiple-Choice Visual Question Answering in JourneyDB provides an objective and
+comprehensive evaluation of a model’s ability for understanding the style and content of generative
+data. The existing multimodal models are pre-trained on real-world images with captions merely
+describing salient content, thus still struggle to comprehend imaginary scenes and novel compositions
+of objects, as well as discerning various styles of generative data.
+5 Conclusion and Discussion
+The soaring development of the generative model fills our life with generative content. Better
+understanding they would be significant in our future life. We propose JourneyDB , a large-scale
+benchmark, which We hope would facilitate the development of generative content understanding.
+There are some limitations of this dataset. One is that we did not check all images to make sure the
+content is free of offensive or violent content. We will use the NSFW score to filter out the improper
+content before release. Also, we hope users contact us if they find any such materials. And the other
+limitation is that our data is based on the assumption that the generated image is consistent with the
+input prompt, but in reality, we notice some misalignment between the image and the text, which
+brings some noise to the dataset. This may be tackled by further manual cleaning or filtering with
+multi-modal models like [2].

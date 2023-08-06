@@ -1,0 +1,16 @@
+Summary:
+This paper proposes a two-step Parameter-Efficient Fine-Tuning (PEFT) framework for adapting pretrained language models to the clinical domain. The framework includes a Clinical LLaMA-LoRA adapter layer trained on clinical notes and a Downstream LLaMA-LoRA adapter specialized for clinical tasks. The proposed framework achieves state-of-the-art performance with improved AUROC scores in clinical outcome prediction tasks.
+
+Bullet Points:
+1. Adapting pretrained language models to the clinical domain traditionally requires retraining all parameters, but this is computationally expensive.
+2. Parameter-Efficient Fine-Tuning (PEFT) techniques selectively fine-tune a small subset of additional parameters, reducing computational requirements.
+3. The proposed framework includes Clinical LLaMA-LoRA, a PEFT adapter layer trained on clinical notes, and Downstream LLaMA-LoRA, an adapter specialized for clinical tasks.
+4. The framework achieves state-of-the-art performance with improved AUROC scores in clinical outcome prediction tasks.
+5. Clinical LLaMA-LoRA and Downstream LLaMA-LoRA provide comparable or better results than clinically trained language models.
+6. LoRA-equipped LLaMA and PMC-LLaMA show improved performance in clinical tasks compared to the original models.
+7. Downstream LLaMA-LoRA further improves the performance of LLaMA with Clinical LLaMA-LoRA.
+8. LoRA can also be used to fine-tune clinically trained language models, improving their performance.
+9. The proposed framework reduces computational requirements while achieving competitive performance in clinical settings.
+10. Additional research is needed to evaluate the framework on diverse datasets and to address potential limitations related to spurious correlations and the need for a holistic view of patient situations.
+
+Keywords: parameter-efficient fine-tuning, clinical domain, pretrained language models, clinical LLaMA-LoRA, downstream tasks, AUROC scores, LoRA, computational requirements.

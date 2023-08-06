@@ -1,0 +1,26 @@
+Summary:
+
+This paper presents a comprehensive evaluation of Large Language Models (LLMs) for code clone detection, covering different clone types, languages, and prompts.
+
+The study finds that advanced LLMs excel in detecting complex semantic clones, surpassing existing methods.
+
+Adding intermediate reasoning steps via chain-of-thought prompts noticeably enhances the performance of LLMs.
+
+Representing code as vector embeddings, especially with text encoders, effectively aids clone detection.
+
+The ability of LLMs to detect code clones differs among various programming languages, with Python generally producing better results.
+
+The paper provides insights into the potential of LLMs for clone detection and offers guidance for developing robust LLM-based methods in software engineering.
+
+Keywords:
+
+- Code Clone Detection
+- Large Language Model
+- Semantic Similarity
+- Syntactic Similarity
+- Prompt Engineering
+- Vector Embeddings
+- Programming Languages
+- Software Engineering
+- Deep Learning
+- Performance Evaluation

@@ -1,0 +1,397 @@
+Revisiting Sample Size Determination in Natural Language Understanding
+Ernie Chang†∗, Muhammad Hassan Rashid‡∗, Pin-Jie Lin‡∗,
+Changsheng Zhao†,Vera Demberg‡,Yangyang Shi†andVikas Chandra†
+†Reality Labs, Meta Inc.
+‡Saarland Informatics Campus, Saarland University, Germany
+{erniecyc, cszhao, yyshi, vchandra}@meta.com
+hassanrashid725@gmail.com
+pinjie@lst.uni-saarland.de
+vera@coli.uni-saarland.de
+Abstract
+Knowing exactly how many data points need
+to be labeled to achieve a certain model perfor-
+mance is a hugely beneficial step towards reduc-
+ing the overall budgets for annotation. It per-
+tains to both active learning and traditional data
+annotation, and is particularly beneficial for low
+resource scenarios. Nevertheless, it remains a
+largely under-explored area of research in NLP.
+We therefore explored various techniques for
+estimating the training sample size necessary to
+achieve a targeted performance value. We de-
+rived a simple yet effective approach to predict
+the maximum achievable model performance
+based on small amount of training samples –
+which serves as an early indicator during data
+annotation for data quality and sample size de-
+termination. We performed ablation studies on
+four language understanding tasks, and showed
+that the proposed approach allows us to forecast
+model performance within a small margin of
+mean absolute error ( ∽0.9%) with only 10%
+data1.
+1 Introduction
+Labeled data play an important role in creating per-
+formant machine learning models, which makes
+data annotation a fundamental process for any
+natural language application pipeline (Lewis and
+Catlett, 1994; Chang et al., 2020). Recent work has
+sought to reduce the annotation costs through the
+use of active learning (Ducoffe and Precioso, 2018;
+Margatina et al., 2021) and data sampling (Sener
+and Savarese, 2018; Coleman et al., 2019; Kil-
+lamsetty et al., 2021a,b; Chang et al., 2021). In-
+deed, these approaches are shown to be effective in
+identifying or constructing data subsets needed to
+achieve a competitive model performance. For in-
+stance, the active learning paradigm adds new data
+∗These authors contributed equally to this work.
+1Our code is available at: https://github.com/
+pjlintw/sample-size .iteratively to the existing set before model retrain-
+ing (Agarwal et al., 2020; Margatina et al., 2021),
+improving upon the traditional human annotation
+pipeline that obtains the entire labeled set all at
+once.
+Nevertheless, the data labeling process typically
+annotates as much data as the annotation budget
+permits, or by clearly defined stopping criteria to
+terminate the labeling process. Unfortunately, this
+is usually challenging as annotators do not have the
+knowledge of the effect of added labels to model
+performance nor how much more data is needed to
+arrive at the desired model generalizability (Kil-
+lamsetty et al., 2020). The stopping condition is in
+fact tied to the quality of data samples w.r.t. model
+parameters (Hu et al., 2021), which influences the
+effective sample size2, and it is then beneficial
+to obtain an approximation of the expected per-
+formance (Vlachos, 2008; Olsson and Tomanek,
+2009a; Zhu et al., 2010; Ishibashi and Hino, 2020).
+Therefore, knowing the approximate amount of
+training data needed for this particular performance
+would serve as an useful knowledge not only for
+deciding when to stop adding labeled data, but also
+as an early indication for the data quality. For in-
+stance, by having early label quality signals, we
+can decide between two different types of annota-
+tion, or even between two pools of annotators with
+different expertise.
+To this end, we explored the relationship be-
+tween data sample size andmodel performance in
+the context of language understanding via learning
+curve modeling, which defines model performance
+as a function of dataset sizes. By modeling this
+relationship in low resource settings, we obtain use-
+ful early signals with approximated accuracies for
+any given the labeled set, which can provide an
+idea for the sample size and data quality (Olsson
+and Tomanek, 2009b; Figueroa et al., 2012). Pre-
+2It is the size of datasets which could have been achieved
+by an effective unweighted random sample (Guo et al., 2022).arXiv:2307.00374v1  [cs.CL]  1 Jul 2023vious studies have shown that nonlinear weighted
+curve fitting methods such as inverse power laws
+or exponential functions can provide decent ap-
+proximations of the empirical predictive perfor-
+mances (Frey and Fisher, 1999; Figueroa et al.,
+2012). We thus put forward an ensemble of these
+functions which we showed to display a consis-
+tently highly correlated behavior across four lan-
+guage understanding benchmarks and with as little
+as 10% of the entire training set. This work makes
+the following contributions:
+1.We revisit the task of sample size determina-
+tion in four natural language understanding
+benchmarks and empirically explore the cor-
+relation strengths of several successful tech-
+niques.
+2.Based on our findings, we propose an ENSEM -
+BLEfunction and demonstrated across several
+benchmarks and low resource settings that the
+ensemble function is consistently providing a
+high correlation with the empirical learning
+curve plots.
+2 Background
+Our method is a sample size determination tech-
+nique that helps to design annotation projects by
+determining the necessary sample size. Previous
+methods have focused on identifying the sample
+size required to reach a specific target performance,
+such as a high correlation coefficient (Beal, 1989;
+Stalbovskaya et al., 2007; Beal, 1989), which often
+involves predicting the sample size necessary for a
+classifier to attain a specific accuracy level (Fuku-
+naga and Hayes, 1989). There are two main ap-
+proaches for predicting the sample size needed
+to achieve a particular classifier performance: (1)
+Dobbin et al. (2008) present a model-based method
+for predicting the number of samples required for
+classifying microarray data. (2) A more general ap-
+proach involves fitting a classifier’s learning curve
+to inverse power law models (Figueroa et al., 2012).
+Examples of this approach include algorithms pro-
+posed by Mukherjee et al. (2003); Boonyanunta
+and Zeephongsekul (2004); Last (2007).
+3 The Approach
+Learning Curve Modeling. A learning curve is
+a graphical representation of how a classifier’s per-
+formance changes as the size of the training set in-
+creases. The curve typically has three sections: aninitial section where performance improves rapidly
+with increasing training set size, a middle section
+where the rate of improvement slows down, and a
+final section where the classifier reaches its maxi-
+mum performance and further increases in training
+set size do not lead to significant improvements.
+This relationship can be quantified using a set of
+data points, each of which represents the expected
+performance of the classifier Eaccon a particular
+training set size Dk. These data points can be plot-
+ted to create the learning curve, which can help to
+understand the behavior of the classifier and inform
+decision-making about how much training data is
+needed to achieve a desired performance level.
+Task Description. Given a downstream classifi-
+cation task with Ntotaldata points, a learning curve
+model Fpredicts the expected performance Eacc
+when a classifier trained on the an observed range
+of training set size ( Dk;k >=N). The empir-
+ical learning curve is assessed by the parametric
+models for the learning algorithm performance ex-
+trapolation. In our settings, we set k << N total to
+simulate practical settings, where few data points
+consisting of (Eacc, DK)are to be obtained.
+Types of Extrapolations. Here, we study differ-
+ent forms of learning curve models with few learn-
+able parameters that have been proven as simple
+yet effective. The simplest type of learning curve
+model exponential function (EXP) only introduces
+two parameters aandbto fit the exponent behavior
+of learning curve (Frey and Fisher, 1999). The sec-
+ond form, Inverse Power Law function (INVERSE ),
+fits the inverse power law (Figueroa et al., 2012)
+and has three parameters. The third form uses a
+function from the power law family – Power4 func-
+tion ( POW4) (Kolachina et al., 2012) with four
+parameters. Lastly, we propose to combine all
+functions into one ( ENSEMBLE ) so that it has all
+their characteristics in order to make it more robust
+across benchmarks. Table 1 shows the formulae of
+our investigated extrapolating functions.
+EXTRAPOLATING FUNCTIONS FORMULA
+EXP (A) a·Nb
+INVERSE (B) (1−a)−b·Nc
+POW 4 (C) a−(b·N+c)−d
+ENSEMBLE (A+B+C) −
+Table 1: Overview of extrapolating functions4 Experimental Settings
+We study four NLU tasks: (1) IMD B(Maas
+et al., 2011) is a binary classification dataset ( 25K/–
+/25K)3where model predicts the sentiment (pos-
+itive/negative) for movie reviews from IMDB;
+(2)SST2 (Socher et al., 2013) is also a senti-
+ment classification datatset ( 67K/0.8K/1.8K) con-
+taining reviews of different movies and since the
+model predicts if the review is positive or negative,
+it also falls in the category of binary classifica-
+tion; (3) AG NEWS is a multi-class classification
+dataset ( 120K/–/7.6K) containing texts from dif-
+ferent news where the model predicts whether the
+news text is about sports, science/technology, world
+or business from the four different classes. We also
+consider one other multi-class classification task,
+(4)DBPEDIA dataset ( 560K/–/70K) , since it could
+help us in testing the robustness of the methods
+used in our experiments.
+Configs. To investigate how changes in data size
+affect the predictiveness of the learning curves, un-
+der the assumption that the model structure and
+settings remain unchanged, we perform all exper-
+iments using a transformer model (Vaswani et al.,
+2017) and average the results over 3 initialization
+runs. The embedding and hidden layer dimensions
+are 1000 and 1820; and we use a 6-layer encoder
+with 4 multi-heads, and the dropout is 0.2. To find
+the parameters of learning curve models, we con-
+sider unweighted and for the gradient descent and
+non-linear least squares optimizers. The Adam al-
+gorithm (Kingma and Ba, 2014) was used as the
+optimizer with learning rate of 1e-5 and ReLU
+was used as the activation function. The cross-
+entropy objective was used for all classification
+benchmarks, and we select the models using loss
+values. Finally, we chose a batch size of 8 with 200
+number of epochs.
+Evaluation. We use the aforementioned func-
+tions: EXP,INVERSE ,POW4and ENSEMBLE
+for fitting the empirical learning curve. For each
+dataset, we select training set sizes ranging from
+1% to 10% data sizes at an interval of 1%. The
+learning curve testsets were created with the data
+splits in the range [55,100] at5% interval by train-
+ing the classifier, and obtaining the testset4perfor-
+mance for each corresponding data split. Therefore,
+3Expressed in the order (train/dev/test).
+4Here, we make the distinction between testset for learning
+curve and the original testset split.we collect the accuracies against different sample
+sizes and report the mean absolute error (MAE) as
+the evaluation metric for learning curve modeling.
+5 Results and Analysis
+We present results of ensemble method for learning
+curve modeling on the NLU benchmarks.
+5.1 Main Results
+Figure 1 demonstrates that by using only 10% of
+the data for learning curve modeling, ENSEMBLE
+is able to effectively predict model performance
+within a 0.9% margin of the actual model per-
+formance. Moreover, we observe the same trend
+across all four benchmarks consisting of different
+training set sizes (i.e. ranging from 25K to 250K)
+and varying number of classification classes (i.e.
+ranging from 2 to 14), see the appendix A for re-
+maining figures. Our result shows that the proposed
+approach is not confined by the classification types
+and sample sizes.
+Table 2 shows the saturated points of the learning
+curve when the performance improvement is less
+than a threshold α= 0.2– we found that the pre-
+dicted performance with only 19% data is within
+2.44accuracy points from the trained model perfor-
+mance for IMD B. Another key observation is that
+the size (%) needed to predict a low L1 distance
+increases as the number of classification classes
+goes up, which indicates that task difficulty does
+influence the ease of extrapolation. An example
+is that AG N EWS requires up to 51% to predict a
+low L1 distance. Next, we perform further abla-
+tion studies to investigate the effect of sample size,
+types of non-linear functions used, or the effect of
+data weighting.
+BENCHMARK CLS(#N) S IZE(%) S IZE(#N) L1 ↓100%
+α= 0.2
+IMD B 2 36 % 6,300 2 .44 17 K
+SST2 2 19 % 8,958 5 .57 47 K
+AG N EWS 4 51 % 42,840 2 .6 84 K
+DBPEDIA 14 51 % 199,920 2 .39 392 K
+Table 2: CLS(#N) stands for the number of classes, SIZE
+(%)for the percentages of the data size for the learning curve
+modeling. SIZE(#N) is the number of the corresponding data
+size, L1is the L1 distance between the accuracy of models
+using all the training data and the estimated accuracy based
+on the saturated point. 100% specifies all training samples for
+learning curve.
+5.2 Ablation Study
+Effect of sample size. In Figure 1, we study the
+correlation between sample sizes and the absolute110 20 30 40 50 60 70 80 90100
+Sample size (%)0.50.60.70.80.9Performance (acc.)
+IMDB
+Exp
+Inv
+Pow4
+Ensemble
+T esting Sample
+Training Sample
+110 20 30 40 50 60 70 80 90100
+Sample size (%)0.500.550.600.650.700.750.800.85
+SST2
+Exp
+Inv
+Pow4
+Ensemble
+T esting Sample
+Training SampleFigure 1: Learning curves on 10% sample size of IMDB and SST2 datasets. We plot learning curves using the exponential
+(Exp), inverse power law (Inv), power4 (Pow4) function, and the combination of the aforementioned forms (Ensemble). The
+learning curves only fit on 10% training sample (blue) and generalize on the unseen data sizes. We evaluate the learning curves
+on the testing sample (yellow). Data sizes from 10% to50% (teal) are neither used in training nor testing.
+mean error between the learning curve model and
+empirical model performance trend. Surprisingly,
+we discovered by having more samples does not
+necessarily help with modeling a better learning
+curve5, and that with only 10% data to build the
+(Dk, Eacc)data points is sufficient to obtain rather
+small errors across all four benchmarks.
+Types of learning curve functions. We are also
+interested in seeing how each of the non-linear
+learning curve function fare against each other in
+simpler settings. To this end, we used up to 10%
+data to model the learning curves and obtained their
+respective mean absolute error values. In Figure 1,
+we present this comparison where we showed that
+onIMD BandSST2 , the ENSEMBLE function con-
+sistently fit best against the empirical data. We
+observed a similar trend across other benchmark
+DB PEDIA with the exception of AG NEWS . We
+placed the plot for AG NEWS in appendix A.3.
+Influence of data weighting. Previous
+work (Paul et al., 2021; Guo et al., 2022) has found
+that not all data points are equally important in
+terms of curve fitting. In fact, data points at a later
+phase corresponding to more samples are to be
+given more weight compared to earlier points. We
+thus investigate this phenomenon in the context
+of our benchmark, and we observed this to be
+true anecdotally. The detailed result can be found
+in Appendix A.2. The reason for this is that the
+more data samples there are, the more closely they
+resemble the entire training set, and this makes
+5We showed this result in the Appendix A.5.their signals a better estimation of a point on the
+actual learning curve. Another perspective is
+that the more data samples are used, the less the
+effect of random sampling on the performance,
+which affects model performance in extremely low
+resource scenarios.
+FUNCTION TYPENON-LINEAR LEAST SQUARES
+UNWEIGHTED WEIGHTED
+EXP 0.0417 0.0244
+INV 0.00777 0.00442
+POW4 0.00795 0 .00795
+Table 3: Better curve fitting when weighting data points at lat-
+ter phase. We examine the effectiveness of weighting data size
+on the exponential ( EXP), inverse power law ( INV), power4
+(POW4) function using non-linear least squares method. The
+learning curves fit on 5%, 10%, 25% and 50% data sizes of
+IMDB and is evaluated on testing sample with mean absolute
+error (MAE).
+6 Conclusions and Future Works
+In this work, we investigated techniques for estimat-
+ing the amount of training data needed to achieve a
+target performance in four natural language under-
+standing benchmarks. We demonstrated that our
+approach allows for accurate prediction of model
+performance using only a small portion of the data,
+which can be useful in scenarios with limited re-
+sources. Nevertheless, we also recognize the lim-
+itation in our current study. For instance, we did
+not explore sampling techniques other than ran-
+dom sampling; while recent works (Yuan et al.,
+2020; Paul et al., 2021; Guo et al., 2022) have
+shown promising directions in data sampling that
+outperforms random sampling. Another interestingdirection is to explore the model architecture’s in-
+fluence on generalizability, and thus the learning
+curve, which we left for future works.
+Limitations
+While the effectiveness of the expressive learn-
+ing curve in settings with limited data has been
+demonstrated, it is uncertain if this success can be
+replicated in more complex natural language under-
+standing tasks, such as question answering or tasks
+that involve a large amount of data. Furthermore,
+it is assumed that all data samples have the same
+impact on the model’s performance. However, the
+actual performance of the model may vary based
+on the method used to select the data or the specific
+set of tasks being performed, e.g., coreset selection.
+Similarly, the quality of the labels used for the data
+can also play a significant role in predicting the
+performance of the model. Overall, we plan to fur-
+ther investigate these questions and explore them
+in future studies.
+Ethics Statement
+We address the efficiency of data annotation by
+investigating learning curves to estimate the neces-
+sary training sample size to reach a desired model
+performance. However, it is imperative to take into
+consideration the potential biases that may exist
+in the model predictions when utilizing a reduced
+amount of labeled data in the system construction
+process. Furthermore, when addressing complex
+tasks such as machine translation and text summa-
+rization, it is essential to guarantee the factuality
+of output generated by the system trained with the
+suggested data sample size.

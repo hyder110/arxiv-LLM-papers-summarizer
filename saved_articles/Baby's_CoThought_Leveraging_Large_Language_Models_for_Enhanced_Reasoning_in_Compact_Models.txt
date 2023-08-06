@@ -1,0 +1,768 @@
+Baby’s CoThought: Leveraging Large Language Models for Enhanced
+Reasoning in Compact Models
+Zheyu Zhang∗1Han Yang∗1,2Bolei Ma∗1,3David Rügamer3,4Ercong Nie†1,4
+1Center for Information and Language Processing, LMU Munich
+2GESIS - Leibniz Institute for the Social Sciences, Cologne
+3Department of Statistics, LMU Munich4Munich Center for Machine Learning
+zheyu.zhang@campus.lmu.de han.yang@gesis.org
+{bolei.ma, david.ruegamer}@stat.uni-muenchen.de
+nie@cis.lmu.de
+Abstract
+Large Language Models (LLMs) demonstrate
+remarkable performance on a variety of Natu-
+ral Language Understanding (NLU) tasks, pri-
+marily due to their in-context learning abil-
+ity. This ability is utilized in our proposed
+“CoThought ” pipeline, which efficiently trains
+smaller “baby” language models (BabyLMs)
+by leveraging the Chain ofThought (CoT)
+prompting of LLMs. Our pipeline restructures
+a dataset of less than 100M in size using GPT-
+3.5-turbo, transforming it into task-oriented,
+human-readable texts that are comparable to
+the school texts for language learners. The
+BabyLM is then pretrained on this restructured
+dataset in a RoBERTa (Liu et al., 2019) fash-
+ion. In evaluations across 4 benchmarks, our
+BabyLM outperforms the RoBERTa-base in
+10 linguistic, NLU, and question answering
+tasks by more than 3 points, showing supe-
+rior ability to extract contextual information.
+These results suggest that compact LMs pre-
+trained on small, LLM-restructured data can
+better understand tasks and achieve improved
+performance. The code for data processing
+and model training is available at: https:
+//github.com/oooranz/Baby-CoThought .
+1 Introduction
+Recent advances in language modeling of Large
+Language Models (LLMs) have shown great per-
+formance potential on diverse NLP tasks. A large
+number of work has been proposed towards en-
+hancing LLMs pretraining at massive scales (De-
+vlin et al., 2019; Radford and Narasimhan, 2018;
+Brown et al., 2020). However, less attention has
+been paid to language model (LM) pretraining at
+smaller human-like data scales, i.e. smaller data
+scales, which are similar to the amount of language
+data for human language acquisition.
+∗Equal contribution.
+†Corresponding author.Studies in language acquisition demonstrate that
+humans predominantly acquire language in early
+life stages by observing their environment. Sig-
+nificant progress in language communication and
+usage is typically achieved by early childhood.
+(Tomasello, 2003; Saxton, 2010). Previous studies
+show that language modeling is to some extent sim-
+ilar to children’s language acquisition, as they both
+require input data from the outside world and learn
+the data by updating knowledge about the outside
+world repeatedly (Nikolaus and Fourtassi, 2021;
+Chang and Bergen, 2022; Evanson et al., 2023). It
+is reasonable to apply this human cognitive process
+to LM pretraining by using relatively small sets of
+pretraining data that are comparable to the text data
+for human language acquisition.
+While a child learns a piece of knowledge by
+continuously obtaining relevant examples from the
+outside world and updating its knowledge base, pre-
+trained LLMs have the capacity to learn and com-
+plete previously unknown tasks when given several
+task samples or instructions already from the inside
+of their context, the process of which is known as
+“In-Context Learning ” (ICL) (Brown et al., 2020).
+A more recent advance of ICL called “ Chain of
+Thought ” (CoT) (Wei et al., 2022) significantly
+enhances the reasoning abilities of LLMs. CoT
+enables LLMs to perform a series of intermediate
+reasoning steps by providing a few CoT demon-
+strations as examples during the training process.
+This method has been found to be very effective,
+especially in complex reasoning tasks.
+The LLM is like a teacher who is able to trans-
+fer knowledge by reformulating raw data from the
+outside world into a task-like text format by CoT
+prompting, making the data more suitable for teach-
+ing. The BabyLM is like a student who is trained
+based on this generated text. In this work, we pro-
+pose “ CoThought ” pipeline to pretrain a BabyLM
+with human-like smaller corpus data, by leverag-
+ing the LLM’s Chain ofThought feature and thearXiv:2308.01684v1  [cs.CL]  3 Aug 2023�����
+�������������������������������������������������������������
+������������������������������������������������������������������
+���������������������������������������������������������������������
+������������������������������������������������������������������������
+�����������������������������������������������������������������
+����������������������������������������������������������������
+���������������������������������������������������������������
+��������������������������������������������
+������������������
+����������������������
+��������������������
+������������������
+����������������������
+������������������������
+����������������������������������
+���������������������������������
+��������������������������������
+������������������������������
+����������������������������������
+�����������������������������������
+�������������������������������
+��������������������������
+����������
+�����������
+�
+����������
+����������������������������������������������������������
+��������������������������������������������������
+���������������������������������������������������������
+������������������������������������������������������������
+��������������������������������������������������������
+��������������������������������������������������������
+�����������������������������������������������������������
+��������������������������������������������������
+������������������������������������������������������
+��������������������������������������������������
+����������������������������
+�������������������������
+�
+��������������������������������������������������������������
+�����������������������������������������������������������
+����������������������������������������������������������
+Figure 1: Overview of the “CoThought” pipeline. We propose to generate NLU examples from discrete short
+sentences using CoT prompting and an automatic scoring mechanism. This constructs a pretraining dataset in a
+[Reason] + [Example] format, which is then used to pretrain smaller models.
+child’s cognitive learning ability. In this way, the
+LLM and the child are “co-thinking” during the
+training process. We use the “CoThought” ap-
+proach to train our BabyLM, combining the produc-
+tivity of the LLM with the effectiveness of human
+language acquisition for LM pretraining.
+Our overall framework is illustrated in Fig-
+ure 1. The raw pretraining data is provided by
+Warstadt et al. (2023) in the BabyLM Challenge,
+which has the goal of sample-efficient pretraining
+on a developmentally plausible corpus at a small
+human-like data scale. We choose the loose track
+of the BabyLM Challenge, where we apply our
+“CoThought” pipeline and use the LLM GPT-3.5-
+turbo1to preprocess the raw data. For every 5
+sentences of the raw data, the GPT-3.5-turbo uses
+CoT prompting to propose different NLU tasks and
+selects the best task. Then, it combines these 5
+sentences into a task-like text based on the best
+task for our BabyLM to learn. The BabyLM is
+pretrained on the augmented data in a RoBERTa
+(Liu et al., 2019) fashion. Our BabyLM pretrained
+1https://platform.openai.com/docs/models/
+gpt-3-5in the CoThought pipeline notably outperforms the
+original RoBERTa model on common benchmarks.
+Our work makes contributions in
+1)proposing the CoThought pretraining pipeline
+fitting the human-like data scenarios,
+2)pretraining a BabyLM model of the RoBERTa-
+base architect in the CoThought pipeline sur-
+passing the original RoBERTa model on sev-
+eral tasks, and
+3)providing insights of the CoThought pipeline
+by conducting linguistic case analysis on rep-
+resentative tasks.
+2 Related Work
+Language Acquisition and Modelling The lan-
+guage acquisition of children is a widely studied
+topic in linguistics. The empiricism of language ac-
+quisition contends that language ability is a compo-
+nent of social cognitive ability and children acquire
+language through language communication and lan-
+guage use (Bybee, 2001; Pullum and Scholz, 2002;
+Tomasello, 2003; Saxton, 2010). According to theUniversal Grammar (Chomsky, 1957), language
+norms and parameters are hard-wired within ev-
+ery single person, and learning a language is just a
+matter of adjusting those parameters (Gegov et al.,
+2014). In this way, child language acquisition and
+language modeling are similar, as the neural lan-
+guage models such as BERT (Devlin et al., 2019)
+and GPT (Radford and Narasimhan, 2018) are pre-
+trained based on big corpora with their model pa-
+rameters tuned during pretaining. Recent studies
+show the applicability of language models to child
+language development tracking. Nikolaus and Four-
+tassi (2021) propose an integrated perception- and
+production-based learning and highlight that chil-
+dren are not only understood as passively absorbing
+the input but also as actively participating in the
+construction of their linguistic knowledge in lan-
+guage learning. Chang and Bergen (2022) study
+the factors that predict words’ ages of acquisition in
+contemporary language models compared to word
+acquisition in children. Evanson et al. (2023) com-
+pare the sequence of learning stages of language
+models with child language acquisition.
+In-Context Learning (ICL) LLMs like GPT-3
+(Brown et al., 2020) make “ In-Context Learning ”
+possible, which means the model makes predic-
+tions by learning from a natural language prompt
+describing the language task or learning from (only
+a few) examples. Based on the concept of ICL,
+recent research has demonstrated that LLMs can be
+used to extract relevant knowledge from the content.
+Liu et al. (2022) propose to use GPT-3 to generate
+pertinent contexts and then supply those contexts
+as extra input in order to answer a commonsense
+question. Yu et al. (2023) employ a generate-then-
+read pipeline which first prompts a large language
+model to generate contextual documents based on
+a given question, and then reads the generated doc-
+uments to produce the final answer.
+Chain of Thought (CoT) Wei et al. (2022) in-
+troduced “ Chain of Thought ”, which is a series
+of intermediate reasoning steps a few chain of
+thought demonstrations are provided as exemplars
+in prompting, in order to improve the ICL ability
+of LLMs to perform complex reasoning. Kojima
+et al. (2023) demonstrate the zero-shot performance
+of CoT. Paranjape et al. (2023) introduces a frame-
+work that uses frozen LLMs to automatically gener-
+ate intermediate reasoning steps as a program. Yao
+et al. (2023) put forward a “ Tree of Thoughts ” (ToT)framework, which generalizes over CoT to prompt-
+ing language models and enables exploration over
+coherent units of text (“thoughts”) that serve as in-
+termediate steps toward problem solving. A more
+recent study (Gu et al., 2023) proposes a pretrain-
+ing for ICL framework which pretrains the model
+on a set of “intrinsic tasks” in the general plain-text
+corpus using the simple language modeling objec-
+tive to enhance the language models’ ICL ability.
+3 Method
+In the realm of cognitive learning, the teacher’s
+thought process greatly influences the way instruc-
+tional content is delivered, which in turn impacts
+the students’ understanding (Chew and Cerbin,
+2021). Our method attempts to mimic this pro-
+cess. The LLMs, in the role of the teacher, use CoT
+prompting to reinterpret the raw data, generating
+task-like text that incorporates the context of the
+sentences and enriches the learning materials.
+We first introduce an overview of our CoThought
+pipeline (see Figure 1 for an illustration) and then
+describe the details in the following sections.
+3.1 Problem Statement
+The genesis of our research lies in addressing a sig-
+nificant problem within the context of the BabyLM
+Challenge as proposed by Warstadt et al. (2023).
+The goal of this challenge is to conduct sample-
+efficient pretraining on a developmentally plausible
+corpus at a small human-like data scale, which we
+previously introduced. Nevertheless, the majority
+of the training data provided consists of discrete
+short sentences. As an illustration, below are some
+of the provided sentences:
+-You want your book back, don’t you?
+-Let’s see, do you want to see who this is?
+-This is Big Bird.
+-Enough with that.
+-Can you read your book again? You like the
+book?
+These sentences, albeit contextually rich, are
+sampled from a wide range of sources including
+dialogues, scripted content, fiction, nonfiction, and
+child-directed materials. Due to the diverse and
+fragmented nature of this dataset, the sentences
+often lack strong semantic ties with each other,
+making it difficult for models to learn contextual
+and coherent representations.In response, we propose a method that trans-
+forms these fragmented sentences into cohesive
+units using LLMs, subsequently enabling more ef-
+fective learning for the smaller models. The suc-
+ceeding sections will provide a succinct outline of
+our pipeline and process.
+3.2 Creative NLU-Example Generation
+Inspired by recent studies that demonstrate the ca-
+pability of LLMs to generate rationales support-
+ing their predictions, we invent a novel task called
+Creative NLU-Example Generation (CNLU-EG),
+inspired by the Creative Writing task proposed by
+the “ Tree of Thought ” (Yao et al., 2023). Instead
+of creating coherent paragraphs from random sen-
+tences, CNLU-EG employs the provided sentences
+to generate coherent paragraphs, which define a
+plausible intrinsic NLU task and its corresponding
+labels. In this task, we employ the reasoning capa-
+bility of LLMs to generate rationales for training
+smaller baby models.
+Given a set of sentences {xi}i∈D, we initiate
+the task by providing a specific CoT prompt pto
+the LLM. This prompt instructs the LLM to first
+create a plan, then use the provided sentences to
+compose an example paragraph that illustrates a
+possible intrinsic NLU task, and finally generate
+the corresponding labels for this task. The prompt
+is structured such that it encourages the LLM to
+present the output in four distinct sections: the plan,
+the paragraph, the task, and the labels.
+Once the LLM receives the prompt p, for each
+sentence xi, i∈D, the LLM generates an execu-
+tion plan ˆri, a paragraph ˆeiembodying an example
+of a possible NLU task, the task name ˆti, and the
+corresponding labels ˆyi.
+CNLU-EG essentially transforms the original,
+discrete sentences into a structured task, anchoring
+the sentences to a common theme or question. This
+‘taskification’ process helps to create a more cohe-
+sive narrative, enabling the baby model to gain a
+more contextual and comprehensive understanding
+of the sentences.
+We also incorporate a scoring mechanism, as
+proposed by Yao et al. (2023), to assess the coher-
+ence of the generated content. We use a separate
+prompt, ps, to instruct the LLM to analyze the
+composed paragraph and assign a coherence score
+ranging from 1 to 10. For each task output, the
+LLM generates five such coherence scores from
+the same scoring prompt ps, and these scores arethen averaged to produce a final coherence score.
+According to our settings, we explicitly direct the
+LLM to generate two distinct plans for each task.
+Each plan is independently scored, and the one that
+achieves a higher coherence score is selected for
+subsequent steps.
+In this way, the LLM functions as a teacher, gen-
+erating examples of possible NLU tasks, providing
+insights into how these examples were created, and
+supplying the corresponding labels. This collec-
+tion of generated plans and example paragraphs
+forms the training data for the smaller model to
+learn from.
+3.3 Training Data Construction
+Our objective is to construct a high-quality dataset
+for pretraining our small model, ensuring the in-
+stances included in the training set are coherent
+and task-relevant. As previously discussed, each in-
+stance in our data comprises a tuple: an example e
+and a corresponding plan r, denoted as [e, r]. How-
+ever, not all generated instances meet the quality
+criteria necessary for effective learning.
+To filter out lower-quality instances, we em-
+ploy the coherency score obtained through the ps
+prompt. We set a threshold, stipulating that only
+instances with a coherency score of s≥7.0are
+included in the training data. This threshold was
+empirically established based on extensive manual
+analysis to ensure a satisfactory level of coherence
+and quality in the dataset. Mathematically, this can
+be represented as:
+Dselect= [ei, ri] :i∈D, si≥7.0 (1)
+Here, Ddenotes the initial set of generated in-
+stances and Dselect represents the selected high-
+quality instances that are used for training.
+Another important aspect of our methodology is
+leveraging the correlation between segments with
+similar intrinsic tasks. Studies indicate that such
+segments when grouped together, provide valuable
+information for ICL (Gu et al., 2023). Therefore,
+we aim to collate instances with similar tasks, de-
+noted as T, into grouped sets, which we denote as
+GT.
+GT= [ei, ri] :i∈Dselect, ti=T (2)
+In the equation above, tirepresents the task type
+of the i-th instance, and GTdenotes the set of
+instances from Dselect that are associated with task
+typeT.In the end, we amalgamate these grouped sets to
+create a comprehensive pretraining dataset contain-
+ingNinstances.
+Dpretrain =[
+T∈TGT (3)
+Here,Trepresents the set of all task types and GT
+denotes the set of instances corresponding to each
+task type TinDselect .
+Through these rigorous steps, we ensure that the
+final training data is both high-quality and task-
+relevant, optimally structured to facilitate effective
+learning in our small model.
+4 Experimental Setups
+We conducted our experiments in 3 parts, the gen-
+eration of the additional data used for training, the
+pretraining of the language model, and the evalua-
+tion.
+4.1 Data Generation via CoT Prompting
+We generated first our extended data based on
+the dataset babylm_100M (Warstadt et al., 2023),
+which contains subsets including AOCHILDES,
+BNC spoken, cbt, children stories, Gutenberg, pen
+subtitles, qed, simple Wikipedia, switchboard, and
+Wikipedia2.
+We leveraged the API of GPT-3.5-turbo from
+OpenAI and provided CoT prompt with the format:
+-Use the given sentences to create an example
+paragraph of an NLU task and its corresponding
+labels. The 5 sentences are: input.
+-Make a plan then write and determine. Your
+output should be of the following format:
+-Plan:
+-Your plan here.
+-Paragraph:
+-Your paragraph here.
+-Task:
+-[Only the task name here, without additional
+information.]
+-Labels:
+-[Only the labels here, without additional
+information.]
+2The full datasets could be downloaded here:
+https://github.com/babylm/babylm.github.io/raw/
+main/babylm_data.zipThe GPT will generate the corresponding an-
+swers in the defined format. To evaluate the gener-
+ated task plans, we prompt the GPT again with the
+score prompt in the format:
+-Analyze the following paragraph, then at the
+last line conclude “Thus the coherency score
+is s”, where s is an integer from 1 to 10.
+We filter out the generated texts with a score
+lower than 7. The additional data will be generated
+by the GPT with the selected proposals as prompts.
+4.2 Pretraining
+We then trained a RoBERTa model with the ex-
+tended dataset using RobertaForMaskedLM pro-
+vided by the huggingface library3, which uses
+the default settings of RobertaConfig library and
+is also the same settings as the hyperparameter of
+the baseline provided by the organizers. In the train-
+ing phase, we trained 5 epochs using the Trainer
+provided by the huggingface . We refer §A.2 for
+detailed hyperparameters in Appendix.
+4.3 Benchmarks and Evaluation
+We evaluated the model using the evaluation
+pipeline tools4also provided by the organizer
+(Warstadt et al., 2023; Gao et al., 2021). This tool
+automatically performs experiments on 4 bench-
+marks:
+1)Benchmark of Linguistic Minimal Pairs
+(BLiMP) (Warstadt et al., 2020a);
+2)BLiMP Supplement5, including Hypernym,
+QA Congruence Easy, QA Congruence Tricky,
+Subject Aux Inversion, and Turn Taking
+datasets;
+3)General Language Understanding Evaluation
+(GLUE) (Wang et al., 2019), and
+4)Mixed Signals Generalization Set (MSGS)
+(Warstadt et al., 2020b).
+The detailed documentation of each benchmark
+can be found in §B. The organizer (Warstadt et al.,
+2023) also provided 3 models as baselines, in-
+cluding OPT-125M, RoBERTa-base, and T5-base,
+trained on the babylm_100M data.
+3https://huggingface.co/docs/transformers/
+model_doc/roberta
+4https://github.com/babylm/
+evaluation-pipeline
+5The relevant paper for this benchmark had not been
+published at the time of this project, and the relevant
+data can be found here https://github.com/babylm/
+evaluation-pipeline/blob/main/filter_data.zip5 Results
+We compare the performance of our BabyLM
+(trained in the RoBERTa way) to the original
+RoBERTa-base (baseline). Table 1 shows our se-
+lected experimental results with: i) performance
+improvement by at least 3 points (+3), and ii) per-
+formance reduction over 3 points (-3). We report
+the performance with absolute performance differ-
+ence of our BabyLM over baseline on the selected
+tasks, as well as the overall performance of the
+whole tasks. The full results are available in §B.
+TasksModelsDiff.
+Ours Baseline
+BLiMP
+Filler Gap 78.52 68 10.52
+Sub.-Verb Agr. 85.17 76.2 8.97
+Arg. Structure 78.06 71.3 6.76
+Det.-Noun Agr. 97.75 93.1 4.65
+Anaphor Agr. 93.61 89.5 4.11
+Ellipsis 77.02 83.8 -6.78
+Island Effects 45.85 54.5 -8.65
+BLiMP Supplement
+Sub. Aux Inversion 77.73 45.6 32.13
+QA Cong. Easy 62.5 34.4 28.1
+Turn Taking 62.5 46.8 15.7
+GLUE
+BoolQ 65.84 59.9 5.94
+MNLI 73.73 68.7 5.03
+MNLI-mm 74.76 78 -3.24
+QNLI 76.86 82.3 -5.44
+RTE 45.45 51.5 -6.05
+A VG. (overall) 73.95 71.75 2.2
+Table 1: Selected results of our BabyLM and
+the RoBERTa (baseline), where the performance of
+BabyLM improved by at least 3 points (in bold ), or
+reduced (-) over 3. The metric in this table is all accu-
+racy score.
+We noticed that on the BLiMP benchmark,
+5 indicators increased by more than 3 points,
+namely Filler Gap (+10.52), Subject-Verb Agree-
+ment (+8.97), Argument Structure (+6.76), De-
+terminer Noun Agreement (+4.65) and Anaphor
+Agreement (+4.11), while two tasks dropped by
+more than 3 points, namely Ellipsis (-6.78) and Is-
+land Effects (-8.65). The average performance on
+this benchmark has also increased by 2.24.
+On the GLUE benchmark, BoolQ and MNLI
+showed an improvement of 5.94 and 5.03, respec-tively, while MNLI-mm, QNLI, and RTE showed
+a decrease of -3.24, -5.44, and -6.05 respectively.
+On top of that, we surprisingly find significant
+improvements in 3 tasks of the BLiMP Supple-
+ment benchmark: Subject Aux Inversion (+32.13),
+QA Congruence Easy (+28.10), and Turn Taking
+(+15.70). The average performance on this bench-
+mark improved by 14.85 points.
+The overall average performance is increased by
+2.2, which shows that our model, pretrained with
+our reinterpreted small data, already demonstrates
+a great improvement.
+6 Discussion
+6.1 Augmented Dataset via CoT Prompting
+We generated our data via the above-mentioned
+CoT prompting and the GPT-3.5-turbo for nearly
+700, 000 lines, we show a case study of a part of
+the generated data here.
+-Paragraph:
+-We have a few topics to cover in this
+paragraph. Firstly, a possible I.D. has
+been found in one of Gina’s snapshots.
+Secondly, there is a new technology
+in development called autostereoscopic
+3D that will allow people to watch
+3D movies without glasses. This is
+great news for those who find wearing
+3D glasses uncomfortable and causes eye
+strain. Unfortunately, the narrator
+regrets not asking Jean for the details
+about something. Lastly, the police
+are seen moving down the main street
+of Atenco, and we are tracking their
+movements.
+-Plan:
+-1. Introduce the topic of the paragraph
+2. Mention the possible I.D. from Gina’s
+snapshots
+3. Talk about the new technology called
+autostereoscopic 3D
+4. Mention the difficulty of wearing 3D
+glasses
+5. Mention the regret of not asking Jean
+for details
+6. Talk about the police and their movement
+down the main street of Atenco
+-Task:
+-Text Classification
+-Labels:
+-1. I.D. Mentioned
+2. Technology Mentioned
+3. Regret Expressed
+4. Police MentionedAs we can see from the script, the paragraph is
+an extension of the input sentences sampled from
+the original dataset, while the plan and labels gener-
+ated by the language model are the outlines, where
+the scenes also are the critical information from the
+generated paragraph. It means that our approach
+augmented the original data with interpretation, em-
+phasis, and simplification, with which the model
+is possible to learn about a story with different
+versions and sizes and finally get a clearer under-
+standing.
+6.2 Performance in QA Congruence Easy
+We analyzed the most noticeable improvement of
+the QA Congruence Easy dataset from the BLiMP
+Supplement benchmark, and dived deep into each
+case. This dataset consists of 64 single-choice ques-
+tions with 20 what -questions, 25 who-questions,
+and 19 where -questions. Each question contains
+a question mark, and each answer ends with a pe-
+riod. Each question corresponds to 2 candidate an-
+swers, and the boundary of the candidate answers
+is clear, i.e., for the what - and who-questions, the
+answers contain an inanimate or an animate, and
+for the where -questions the answer is a location
+or a noun phrase. Obviously, the answer to the
+what-questions should be inanimate, like a car , the
+answer to the who-question should be animate, like
+a doctor or person’s name Sarah , and the answer
+to the where-question should be location, like at
+home . The model is expected to select the answer
+that matches the question. For example, a question
+is “Who did you see? ” and the candidate answers
+are 1. “ A doctor ”, 2. “ A car ”, and it is clear that
+the answer should be “ A doctor ”. The final metric
+for the evaluation is accuracy.
+6.2.1 Influence of the 3 Types of Questions
+In these three kinds of questions, our model is bet-
+ter at answering the what -questions, where the ac-
+curacy is 75. Besides, it obtains an accuracy of
+64 for the who-questions, and 47 for the where -
+questions.
+6.2.2 Influence of the 2 Types of Answers
+We also note that there are two forms of the an-
+swers:
+1)sentence , where the answer is a complete sen-
+tence that includes at least the verb, e.g. “ I
+sent the package to europe ”;2)fragment , where the answer is a single word
+or a simple phrase, and does not include the
+verb, e.g. “ a car ”.
+The form of the two candidates’ answers to
+each question is consistent, i.e., both candidates’
+answers are either sentences or fragments. The
+dataset contains 27 question-answer pairs in the
+form of sentences (42%) and 37 cases in fragments
+(57%). We also counted the accuracy on the above
+two forms, where the accuracy is 77.78 for sen-
+tences and 51.35 for fragments. Additionally, we
+also counted the accuracy with the different forms
+of the three questions i.e. what -,who-, and where -
+questions. The accuracy of the sentence labels on
+thewhat -questions is 80, while the fragment is 70.
+The accuracy on the who-question with sentence
+answers was 71 and 61 with fragment answers. On
+where -questions, the tasks with sentence answers
+obtained an accuracy of 80, however, it was only 11
+with the fragment answers. Thus we can observe
+that our model is better at deciding with complete
+answers rather than fragments.
+6.2.3 Influence of the 3 Types of Dialogues
+Besides, we also notice that there are three types of
+dialogues for each question,
+1)direct dialogues, where the question is started
+by a question word directly and the answer is
+direct with the answer, e.g., question: “ What
+did you get? ”, candidate answers: “ I got a
+chair ”, “I got a doctor ”;
+2)A-Bdialogues, where the letters AandBare
+used as names for both sides of the conver-
+sation before proposing the question and the
+candidate answers respectively, e.g. question
+“A: What did you sell?”, candidate answers:
+“B: A chair.”, “ B: A doctor.”;
+3)David-Sarah dialogues, the person’s name
+David is used as the questioner’s name be-
+fore the question, and Sarah is used as the
+answerer’s name before the answer.
+On the entire dataset, there are 21 cases writ-
+ten in direct dialogues (32%), 22 in A-Bdialogues
+(34%), and 21 in David-Sarah dialogues (32%).
+Our model’s accuracies on these three dialogues
+are very similar and are distributed between 61 -
+63.
+We then explored the proportionality between
+these three forms of dialogue and the three kinds ofquestions. Of the 20 what -questions, 7 are written
+indirect dialogues, 6 are in A-Bdialogues, and 7
+areDavid-Sarah dialogues. we notice a difference
+in the accuracy, where the accuracy with direct dia-
+logues is 100, the A-Bdialogues have an accuracy
+of 83, and the David-Sarah dialogues reached only
+45.
+Of the 25 who-questions, 8 direct dialogues ob-
+tained an accuracy only of 25, while 7 A-B dia-
+logues gained 85 accuracy and the accuracy of the
+10David-Sarah dialogues is 80. Out of the 19
+where -questions, the accuracy of the 6 direct dia-
+logues is 66%, 33% of A-Bdialogues are correct,
+and the accuracy of the 4 David-Sarah dialogues is
+50%.
+From the above results, we can see that our
+model is good at selecting answers from direct
+andA-Bdialogues on the what -questions. In con-
+trast, for the who-questions, our model is good at
+selecting animates from the David-Sarah dialogues
+and the A-Bdialogues, but not good at selecting the
+animate from the direct dialogues. It might be posi-
+tively affected by the presence of the person’s name.
+In the where -questions, the form of dialogues has a
+more limited effect on the performance.
+6.3 Performance in QA Congruence Tricky
+We compared the performance on the QA Congru-
+ence Tricky dataset, on which we have a very simi-
+lar performance (35) to the baseline model. It con-
+tains 165 tricky questions including who-,where -,
+when -,why-, and how many -questions, where the
+proportions of the who- and the where -questions
+are 15% and 16% respectively. The accuracy of
+thewho- and where -questions are only 37 and 30
+respectively, differ from the accuracies in the QA
+Congruence Easy dataset.
+We also notice that, in this dataset, our model
+is better at selecting fragment answers rather than
+answers in the form of sentences, where the ac-
+curacy with fragments is 62, while the accuracy
+of the sentences is only 10. On both who- and
+where -questions, our model is better at finding the
+answer in the David-Sarah dialogues (55 and 45
+respectively in accuracy), and the accuracies of
+both questions in the other two dialogue forms are
+under 30. Similar to the fact shown in the easy
+dataset, the presence of people’s names probably
+provides a sign to the animate and thus influences
+the performance, especially on the who-questions.
+We analyzed the questions-candidate answerspairs from the tricky dataset, where both the ques-
+tions and the candidate answers are generally
+shorter, e.g., the question is “ Who ate? ”, and the
+candidate answers are “ A teacher ate .”, and “ Pasta
+ate.”, where the question only contains the wh-
+word, a verb, and a question mark, and the candi-
+date answers contain only a subjective and a verb.
+The answers in the form of fragments are even
+shorter, e.g. to a question “ Who cooked? ”, the can-
+didate answers are “ Sarah ”, and “ A sandwich ”.
+Besides the questions being more varied and
+complex, this dataset is more tricky, because the
+context is short. The candidate answers written
+in sentences are generally very similar to the frag-
+ments with only an additional verb, where the verb
+has been mentioned in the questions, which means
+the form of sentence possibly doesn’t provide addi-
+tional information, but may confuse the model to
+understand the answers.
+7 Conclusion
+In this work, we proposed the CoThought pipeline
+for training a BabyLM at a small scale, combin-
+ing the LLMs’ productivity with the concept of a
+child’s cognitive learning ability. We let the raw
+training data for the BabyLM be reformulated by
+the LLM’s CoT prompting (i.e. let the teacher
+think) and then train a BabyLM in a pretraining
+fashion based on the newly structured data (i.e. let
+the child co-think and learn). We compare the per-
+formance results of our BabyLM to another vanilla
+pretrained LM RoBERTa and demonstrate that our
+model achieves higher performance in many tasks
+including linguistic, question and answer, espe-
+cially congruence tasks. This suggests that data
+processed by LLMs based on their contextual rea-
+soning is more natural and efficient in the learning
+process, just as text revised by experienced teach-
+ers in the school is more suitable for students to
+learn and understand. And when we use data re-
+structured by LLMs, even in the case of small data
+volume, the model is able to achieve the effect of a
+model trained from a large amount of data, or to be
+even better.
+Limitations
+One limitation of our work is that our primary focus
+is on data generation, leaving potential improve-
+ments or optimizations in this domain unexplored.
+Additionally, our model training exclusively uti-
+lized the RoBERTa architecture. Other architec-tures, including causal language models and var-
+ious transformer variants, also showed potential
+research value. Therefore, exploring our approach
+across a broader range of architectures and iden-
+tifying pretraining methods most compatible with
+our generated data remains an important area for
+future research.
+By acknowledging these limitations, we hope to
+spur further research in this area, encouraging the
+exploration of data generation techniques, model
+architectures, and extended data methods in the
+context of small-scale language modeling.
+Ethics Statement
+This research was conducted in accordance with
+the ACM Code of Ethics. The datasets that we use
+are publicly available (Warstadt et al., 2023). We
+report only aggregated results in the main paper.
+We have not intended or do not intend to share any
+Personally Identifiable Data with this paper.

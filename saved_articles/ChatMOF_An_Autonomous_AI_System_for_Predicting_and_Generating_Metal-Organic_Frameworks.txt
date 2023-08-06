@@ -1,0 +1,300 @@
+ 1  
+ 
+ChatMOF: An Autonomous AI System for 
+Predicting and Generating Metal -Organic 
+Frameworks  
+Yeonghun Kang, Jihan Kim* 
+ Department of Chemical and Biomolecular  Engineering, Korea Advanced Institute of Science 
+and Technology (KAIST), 291, Daehak- ro, Yuseong -gu, Daejeon 34141, Republic of Korea  
+   2 ABSTRACT  
+ChatMOF  is an autonomous Artificial Intelligence (AI) system that is built to predict and generat e 
+of metal -organic frameworks (MOFs). By leveraging a  large- scale language model ( gpt-3.5-turbo ), 
+ChatMOF extracts key details from textual inputs and delivers appropriate responses, thus 
+eliminating the necessity for rigid structured queries. T he system is comprised o f   three core 
+components (i.e. an agent, a tool kit, and an evaluator ) and it form s a robust pipeline that manages 
+a variety of tasks, including data retrieval, property prediction, and structure generation. The study further explores the merits and constr aints of using large language models ( LLMs ) AI system in 
+material sciences using and showcases its transformative potential for future advancements.
+   3 Introduction  
+The realm of artificial intelligence (AI) is witnessing an unprecedented surge, predominantly  
+fostered by a new generation of computational tools known as large -scale language models 
+(LLMs)1-5. These innovative models are deeply rooted in a novel a rchitectural design paradigm, 
+referred to as transformer structures6. Their capabilities, however, stretch far beyond the domain 
+of basic language tasks. Emulating human thought processes, they exhibit logical functions such 
+as learning from a limited number of examples (few -shot learning), or in certain situations, 
+learning without any examples (zero -shot learning) .3,5,7 This is achieved through the understanding 
+of vast volumes of text data, underscoring the immense potential held by these models.  
+A significant development in this rapidly advancing field is the rise of  autonomous LLM agents , 
+which uses LLMs for a wide  range of tasks8-10. This system, powered by multiple LLMs, excels in 
+making decisions on its own. As such, t he idea of using LLMs to independently reason, find 
+information, and produce answers is becoming more popular across different areas of research fields
+11-14.  
+Despite marked progress in  application of LLM across diverse fields15,16, the fu ll potential of its 
+advanced technology within materials science remains largely untapped. This limitation primarily 
+stems from two considerable challenges. Firstly, the inherent complexity of materials science 
+poses a significant hurdle as the materials u nder study often lack sufficient text -compatible input 
+representations, thereby failing to fully encapsulate their complete properties17-20. This difficulty 
+in encoding materials for LLMs  restricts their understanding and processing capabilities. Secondly, 
+there is a notable scarcity of material -specific training data in the field. In comparison to other 
+disciplines, materials science lags behind due to fewer dedicated databases and their associated 
+data, exacerbating the ch allenge of representing this scant data in a text format suitable for LLMs .  4 Despite these obstacles, there are ongoing attempts to leverage the capabilities of LLMs  in 
+materials science.21-23 However, so far, these efforts have primarily focused on extracting data 
+from scientific literature and generating responses based on this extracted data, with the actual 
+material itself remaining a largely untouched res ource. As such, the exploration and realization of 
+the full potential of LLMs  within the sphere of materials science still beckons.  
+In this work, we highlights the development of an innovative methodology that utilizes 
+autonomous artificial intelligence generating new materials and for predicting properties of the 
+materials with the focus specifically on metal -organic frameworks (MOFs)24-26. MOFs  are   used 
+in many chemical applications27-30 due to their large  porosity31-33, high surface area32, and 
+exceptional tunability34. To this end, we have developed t he autonomous AI system  for MOF  
+(called  ChatMOF ), which  holds the potential to predict MOF properties from text- based inquiries 
+or generate MOFs with specified properties  (i.e. inverse design) . This pioneering approach can 
+potentially  contribute significantly to bridge the gap between the novice users and the 
+computational and machine learning tools, which can potentially increase the progress in developing new materials for var ious applications.  
+ 
+   5  
+Figure 1.  A Conceptual im age of ChatMOF . When a user poses a textual question about the 
+properties of a MOF, an appropriate answer is provided by ChatMOF. If a user desires to 
+generate a n ew MOF , ChatMOF is capable of creating a new MOF that satisfies the condition . 
+  
+ 6 Results  and Discussion 
+Design for ChatMOF 
+The effectiveness of autonomous LLM agents  is predicated on its capability to accurately extract 
+essential details from textual inputs and offer relevant responses, irrespective of the presence of a 
+rigidly structured query.21 This concept is vividly illustrated in  ChatMOF, as demonstrated in 
+Figure 1. A user may pose a query in textual form regarding the characteristics of a material, to which ChatMOF responds by supplying a detailed depiction of properties related to the material in question. Moreover, the operati onal scope of this system extends beyond the simple retrieval of 
+information. When a user expresses the need to generate a MOF with specific properties, ChatMOF is capable of generating the requested material structure correspondingly. The system's dual functionality, addressing both informational and generative tasks, exemplifies the remarkable value and promising future of AGI in expanding comprehension and production in the realm of materials.  
+In the context of ChatMOF, LLMs  performs the role of a centra l planner, regulator and evaluator, 
+akin to a human brain. Although LLM effectively fulfills the role of reasoning, its proficiency in 
+specialized tasks falls short  While a single LLM's proficiency in specialized tasks may be limited
+15, 
+LLMs offer an effective way of integrating and employing various databases and machine learning models seamlessly due to their inherent capacity for reasoning
+35,36. ChatMOF utilizes the LLM to 
+orchestrate a comprehensive plan and employ tool kits for information gathering, comparable to an 
+expert devising a strategy, writing the code, and executing the plan. This synergy allows the system 
+to pr ecisely predict material properties, deduce synthesis techniques, and fabricate new materials 
+with preset properties.  7 As depicted in Figure 2, ChatMOF is composed of three main components: an agent, tool kit, 
+and an evaluator. The agent responds to human queries by traversing four primary steps ( i.e. 
+thought s, actions , action input s, and observation), mirroring the methodology outlined in the 
+ReAct37 and MRKL paper38. Initially, the user's query is set as the end goal, followed by 
+contemplation about the path to achieve this goal. Subsequently, ChatMOF dec ides on the 
+appropriate tool kit to employ from the available options. After the chosen toolkit is executed, the 
+observed results serve as the basis for evaluating whether a final answer can be generated. If 
+feasible, the final answer is presented, otherwis e, the process cycles back to the thought step to 
+formulate a new strategy.  
+ChatMOF employs an assortment of tool kits to acquire, predict, or generate material information. 
+These tool kits can be primarily classified into five categories: table -search er, internet -search er, 
+predict or, generat or, and others. Table -search er involves gleaning desired information from 
+existing  data, while internet -search er employs internet resources, such as Google and Bing, to 
+produce desired information. The Predict or utilize s machine learning models to anticipate 
+specified properties. The g enerat or refers to the tool kit that constructs material structures fulfilling 
+certain properties. Lastly, the others encompass a variety of aids like calculators, file saving and 
+reading fu nctions, and visualization tool kits.   8 
+ 
+Figure 2 . The s chem atic image  of ChatMOF.  ChatMOF comprises three core components: an 
+agent, toolkits, and an evaluator. Upon receiving a query from human, the agent formulates a 
+plan and selects a suitable toolkit. Subsequently, the toolkit generates outputs following the 
+proposed plan, and the evaluator makes these results into a final response.  
+ 
+ 
+   9 Toolkits  
+Due to the facile synthesis MOF  structures, there are many different database associated with 
+the MOF structures: (1) computational -ready experimental MOF s (CoREMOF )39,40and (2) 
+quantum MOF ( QMOF ) datab ase41.  The CoREMOF database is an archive of synthesized 
+materials present in a CSD MOF subset42, encompassing computations of various properties of 
+MOFs including geometric descriptors. The QMOF database is populated with electrical property 
+data, such as bandgap, formation energy, homo, and lumo, derived through DFT calculations. When a user demands these electrical properties, ChatMOF seeks and e xtracts them from the 
+QMOF database.  
+As such, if a user seek s information about a specific MOF that is included in these databases, 
+ChatMOF can locate and deliver the desired information from the pre -tabulated  data.  Figure 3 
+provides an illustrative example of a table -search operation conducted by ChatMOF. When faced 
+with a user query, ChatMOF devises a strategic approach to extract the requisite data. Subsequently, it creates  a Python code tailored to retrieve specific infor mation from the database 
+in accordance with the premeditated strategy. This code typically uses the “pandas
+43” library to 
+extract or filter relevant details. The drafted co de is then executed within the ChatMOF's 
+designated executor. Upon observing the outcome of this operation, ChatMOF contemplates the necessary steps to derive the final answer, culminating in the delivery of the requested response.  
+The versatility of ChatM OF extends to handling diverse table data derived from text mining or 
+rule-based coding processes. For questions related to the building blocks of a MOF, the MOF key
+17 
+database proves to be instrumental. This particular database leverages rule- based methods to obtain 
+insights about the organic linkers and metal clusters of a MOF, providing details about its topology 
+and the potential presence or absence of interpenetration. In addition, for users seeking guidance  10 on MOF synthesis, the DigiMOF44 database becomes a valuable resource. DigiMOF provides an 
+array of synthesis conditions, extracted via text mini ng techniques from MOF -related academic 
+papers, and includes information on organic and metal precursors, and solvent. 
+   
+   11 
+ 
+Figure 3.  Example of a Table Searcher for the question “ What is the Accessible Surface Area for 
+JUKPAI” . The human's question prompts the system to devise a strategy. From this, Python code 
+is generated and executed to extract the desired information, which is then returned as the final 
+answer.    12 The accuracy of the look-up table search is contingent on the pre -calculated values t hey offer. 
+For queries regarding the properties of MOFs that are not available, computational simulation 
+serves as an attractive alternative method, but unfortunately, simulations are  a time -intensive 
+proces s and an abundance of comput ational resources45. The best resolution to such challenges is 
+the application of machine learning models , which enable high- accuracy predictions grounded in 
+extensive data. In the case of pre- trained machine learning  models , predictions are quick and can 
+be made for a significant volume of substances simultaneously, ma king it an excellent toolkit  for 
+integration into ChatMOF.  
+As an appropriate tool kit for the prediction task, ChatMOF uses t he MOFTransformer46,47 model 
+that has been developed in our group for the universal prediction of MOF properties. This model 
+leverages both local features, such as atoms and bonds, and global features like surface area and 
+topology. Having undergone pre -training with 1 million  hMOFs and subsequent fine -tuning for 
+specific properties, MOFTransformer  shows  high performance in predicting various properties. 
+Moreover, it affords the convenience of predicting the desired property by retaining the model 
+structure while altering the w eights of a model that's been fine -tuned for the desired property.  
+The key to generating accurate responses is selecting the appropriate fine -tuned model with the 
+MOFTransformer and the material to which it will be applied, based on the query. Similar to 
+HuggingGPT10, ChatMOF does not directly compute the material properties but , but it rather 
+select s the appropriate machine learnin g model. Figure 4 shows the example prompt for ChatMOF  
+using the MOFTransformer predictor.  When a user asks a question such as “How much O 2 can 
+XEGKUR take up?” , generator  develops a strategy for solving the problem. The optimal fine -
+tuned model of MOFTran sformer that aligns with the plan, in this case, ‘oxygen_uptake’ is chosen, 
+and the material to predict (XEGKUR) is decided. Following this, the selected model is employed  13 to make prediction. Finally, it make a final response to the query using a language learning model 
+based on the observed values from the machine learning model. 
+   14 
+ 
+Figure 4.  Example of a predictor for the question "How much O2 can XEGKUR take up?" . 
+The predictor sets up a plan to solve the question, an appropriate model, and target material. 
+Based on this, it uses machine learning to predict the value, which is then used to derive the final 
+answer.  
+   15 A key aspiration among researchers in the field of MOFs  is the inverse design of MOFs 
+exhibiting desired properties. In materials science, various generative models, including 
+Generative Adversarial Networks (GAN)48,49 and Diffusion models50, have been employed for 
+inverse design. However, due to the inherent complexity of MOFs, which includes a large number 
+of atoms, large void fraction, and complex topologies, an atom -by-atom inverse de sign approach 
+has been elusive. As a workaround, MOF inverse design has been facilitated top- down approaches 
+leveraging through genetic algorithms51-53, Variational Autoencoders54 (VAE), or reinforcement 
+learning55 for the selection of building blocks and their placement into suitable topologies.  
+Genetic algorithms are not ably suitable for integration with LLMs . As a bio -inspired 
+optimization methodology, genetic algorithms operate on a selection, mutation, and crossover 
+principle, making them adaptable and efficient.56 For their application to MOFs, these frameworks 
+must be delineated by genes comprising topology and building blocks. For instance, a representative MOF, HKUST -1, can be depicted as tbo+N17+N10. As these  gene representations 
+are textual, they facilitate the application of genetic algorithms using an LLM.  
+Figure 5 showcases the utilization of a genetic algorithm by ChatMOF to fabricate a MOF per user 
+specifications. Upon a user query, the system develops a  strategy optimized for the genetic 
+algorithm. It also identifies the target property and determines the loss function most suited for the objective, such as choosing the maximum, minimum, or closest value. Guided by this plan, ChatMOF selects parent genes  from the existing database that align with the loss function. Using 
+LLM, it produces children genes from the selected parent genes that are most likely to achieve the 
+target. These children are then transformed into a structure file, and their properties are estimated 
+through machine learning. This procedure is reiterated a fixed number of times, generating 
+multiple generations of children with each generation yielding MOFs progressively nearer to the  16 target. From the created structures, the one that aligns most closely with the question is finally 
+chosen and presented as the response.  
+   17 
+ 
+Figure 5.  Example of a generator for the question "Can you generate the structures with the 
+largest surface area". The generator establishes a plan, objective and property for the human 
+question. Based on this, it finds parents that satisfy the objective. It uses a genetic algorithm to 
+create children genes and generate structures. This is repeated for a number of cycles to generate 
+new MOFs, which are used to derive the final answer.   18 Moreover, ChatMOF is engineered to perform a diverse set of tool kits, which extend beyond the 
+realms of LLMs. This includes capabilities such as file search, Internet search, and even simple 
+calculations. These additional functionalitie s are primarily enabled by leveraging the varied 
+capabilities provided by LangChain57, enhancing the overall functionality and utility of ChatMOF. 
+Thus, i t is not merely a material analysis tool, but a comprehensive system that can accommodate 
+a wide array of tasks and operations.  
+In addition, ChatMOF incorporates the Atomic Simulation Environment (ASE)58 library as an 
+integral toolkit to facilitate diverse operations on material structure data. The ASE library holds considerable importance in the field of materials science due to its capabilities, including atom 
+manipulation, cell information acquisition, and visualization, among others. Similar to the function 
+of a table searcher, when confronted with a query, ChatMOF devises a strategic plan and constructs 
+suitable Python code utilizing the ASE library to fulfil the query's demands. Subsequently, this code is executed.  
+   19 Evaluation  
+To evaluate performance of ChatMOF, Accuracy analysis was conducted for “ Search  Task”, 
+“Prediction Task”, and “Generation Task” . For evaluation purposes, questions for ChatMOF  were 
+created utilizing gpt- 4.0 to generate various sentences about the given properties of a MOF. The 
+respective questions for each task can be found in Table S1- 3. Accuracy, gauging how adequately 
+the logic responded to the question, was measured for each task.  
+An analysis of the accuracy of ChatMOF utilized three labels: " True ", "False (t oken limit 
+exceeded )", and " False (l ogic error)". The label " True " signifies that ChatMOF's logic was precise 
+and the yielded answer was accurate. The term " False ( Token Limit Exceeded )" is used when the 
+token count in LLM  surpasses the maximum allowance of 4 ,000, thus obstructing further progress. 
+Lastly, the " False ( Logic Error )" label designates situations where an error in ChatMOF's logic 
+results  in an incorrect response or an anomaly. Such situations typically occur when an erroneous 
+plan for obtaining an answer is devised or when an error in output interpretation diverts the system 
+from the desired direction. 
+Figure 6 presents the accuracy measu rements for the three tasks. Accuracy was measured for 
+100 sample questions for the search and prediction tasks, and 10 sample questions for the 
+generation task. The number in the bar graph means the number of each question in each class. Both the search and prediction tasks rendered accurate answers with high frequency. Excluding 'Token Limit Exceeded', they exhibit high accuracies of 95% and 91%, respectively. For the generation task, the accuracy stood at 77.8%. Given its complexity, relative to the othe r two tasks, 
+the accuracy rate is lower. Regardless, all three tasks report high accuracy rates.  
+  20 These tasks carry significance because they are tasks that a typical LLM fails to execute 
+flawlessly. A single LLM fails to provide precise information since it lacks specifics about the 
+material, particularly for a property, which is challenging to source via an internet search.  
+For the " Search  Task," the writing of code utilizing the pandas library significantly impacts the 
+accuracy. 'Token Limit Exceeded' generally occurs when the output code surpasses the permissible token count. This frequently arises when all relevant materials that satisfy a given condition are provided (for example, when a list of materials with a particular property is listed), or when the question contains a comparative clause such as "compared to other materials." 'Logic Error' typically surfaces when there is a flawed strategic approach or a code error. An instance of this would be when a request to provide 10 specific items is met wi th a misguided strategy that solely 
+aims to "extract high values," failing to retrieve the specified number of items.  
+During the " Prediction  Task," difficulties often emerge in the interpretation process of the 
+observed values using machine learning techni ques. Both the 'Token Limit Exceeded' and 'Logic 
+Error' occurrences can stem from the effort to draw the correct answer from the table based on the estimated values. 'Logic Errors' can manifest not only during the table search phase but also during the str ategy formulation stage. An erroneous strategy could either lead to the loading of an 
+unsuitable model or to the generation of an input that is incompatible with the intended model.  
+The "Generation Task" presents a more intricate set of challenges, invitin g a variety of errors. A 
+frequently observed 'Logic Error' appears when no parent genes can be retrieved from database. If the objective function aims for maximum or minimum values, a satisfying parent gene can always be found. However, if the goal is to get close to a certain value or to fall within a specific range, the selected range might not yield any satisfying parent genes. In such scenarios, the strategy is adapted to incorporate more data. However, if no suitable parent genes are found even after  21 modifying the strategy, it results in an error. Further, both 'Token Limit Exceeded' and 'Logic Error' 
+might occur during the extraction of the most suitable MOF from the generated MOFs, aligning 
+with the objective function.    22 
+ 
+Figure 6. Depiction of accur acies for three tasks -  search, predict, and generate. Accuracies were 
+evaluated based on three labels: True, False (exceeding token limit), and False (logical error). 
+The number in the bar represent the count of each label   23 Genetic  algorithm  validation  
+One notable observation is that with each generation, the Genetic Algorithm refines the 
+distribution of material properties to better align with the target value. Figure 3 illustrates the 
+outcomes of the generation task for two different scenarios.  
+Figure 7(a) reveals the structures generated in response to the question, "Can you generate 
+structures with the largest surface area?" In this case, ChatMOF interpreted the property as accessible surface area, with the objective as maximizing this parameter. The initial generation MOF (0th generation) displays a broad distribution of surface area with an average value of 3748 m2/g. However, with each subsequent generation, the peak at a higher position amplifies. By the third generation, the offspring MOF exhibits  a significantly elevated average peak value of 5554 
+m2/g.  
+Analogously, Figure 7(b) portrays the distribution of structures generated to fulfill the request 
+"I'm looking for structures with a hydrogen uptake (100 bar) of about 500 cm3/cm3, can you generate those?". Here, ChatMOF sets the property to hydrogen uptake at 100bar with the objective 
+of achieving close proximity to 500 cm3/cm3. The distribution of the initial structure spans evenly from 250 cm3/cm3 to 650 cm3/cm3. However, the structure created in the final generation displays 
+the most pronounced and narrow peak at 500. This indicates the efficiency of the Genetic Algorithm utilizing the LLMs . 
+Figures 7(c) and 7(d) depict the final structures for the queries in 7(a) and 7(b). The optimal 
+structure in 7(c), rtl+N535+N234, boasts the highest surface area amongst the generated MOFs. 
+The predicted value stands at 6411.28 m2/g. Similarly, the optimal structure dia+N719+E186 in Figure 7(d) has a surface area of 500.01 cm
+3/cm3, closely aligning with the ta rget of 500 cm3/cm3.  24 Figure S 1 reveals the distribution of CoreMOF's accessible surface area and hydrogen uptake. 
+Most MOFs display a surface area nearing zero, with the number decreasing exponentially as the 
+surface area inflates. Only a minute proportion (0.074%) of total MOFs exceed a surface area of 
+6,400, demonstrating a rema rkable achievement.  
+Despite its successes, the Generation task of ChatMOF does present some limitations. Chief 
+among these is the decrease in gene diversity due to constraints on i nput and output tokens. The 
+token count restricts the number of parent and child structures to around 100, a fraction compared to inversed design studies that employ conventional Genetic Algorithms to generate upwards of 100,000 structures for each generat ion. Other constraints, such as the limited number of topologies 
+and cycles, stem from resource and time restrictions. Yet, despite these limitations, ChatMOF excels in generating MOFs fitting the objective function, attesting to its efficacy.    25 
+ 
+Figure 7. (a) Histogram depicting the initial structure and the generated structure for a question 
+concerning the maximum value of surface area. (b) Histogram showing the initial structure and the 
+generated structure for a query where the value of hydrogen uptake i s set close to 500. (c) 
+Illustration of the MOF with the largest surface area as generated by ChatMOF. (d) Representation of the MOF with an H
+2 uptake value closest to 500 cm3/cm3, as generated by ChatMOF.    26 Collaborative Online Platforms  
+One limiting factor of ChatMOF is the performance reliance on the number of pre -trained 
+weights in the MOFT ransformer. An increased quantity of fine -tuned weights allows for the 
+prediction of more properties, thereby enabling more active prediction and generation processes. 
+However, each user faces constraints on the number of models that can be utilized, given that it is unrealistic for one individual to possess all the data. 
+To train a model, the collection of experimental data or the execution of computational 
+simulations is necessary. While some calculations, such as pore limiting diameter or surface area, demand less time, other tasks such as band -gap, homo, and lumo calcul ations are considerably 
+more computationally demanding. The generation and training of data for these complex tasks can be quite cumbersome.  
+There is a vision to create an online platform akin to HuggingFace, where users can freely post 
+their learned weigh ts. An example of this model would be HuggingGPT
+10, which functions by 
+selecting the most appropriate model among those posted on HuggingFace.  
+Should users upload their trained models, built on data they have researched or calculated, to 
+this online platform, it will enable other users to access them. Upon the posting of new weights 
+online, ChatMOF will review them and if the requir ed data is available online, the model will be 
+downloaded automatically. The existence of this online platform will reinforce ChatMOF as a 
+potent tool kit for predicting MOF properties.  
+Moreover, pre -calculated data, such as those from multiple mining, can also be employed for 
+table searches. If data sharing is executed effectively, superior results can be achieved collectively.  
+ 
+  27 Conclusion  
+The investigation into the role of artificial general intelligence in materials science, specifically 
+through the lens  of ChatMOF, unveils substantial potential for predicting and generating MOFs . 
+This unique system, which bridges the transformative capabilities of AI and the intricate facets of 
+materials science, demonstrates exceptional performance across various tasks.  The accuracy 
+analysis reports high success rates, notably 95% and 91% for the data retrieval and property prediction tasks, respectively. Meanwhile, the more complex structure generation task, despite its intricacy, yields a notable accuracy rate of 77.8% . These promising results underline the efficacy 
+of ChatMOF, even when confronted with the most demanding tasks. Despite certain limitations, such as dependence on the number of pre -trained weights, ChatMOF symbolizes a significant 
+stride towards fully aut onomous AI in the realm of materials science. As the technology evolves, 
+and with a systematic enhancement of the model's capacity and data sharing across an online platform, ChatMOF's performance could be further optimized, paving the way for unprecedente d 
+advancements in MOF research.  
+   28 Conflicts of interest  
+There are no conflicts to declare.  
+Author Contributions  
+Y.K developed ChatMOF  and wrote the manuscript with J.K. The manuscript was written 
+through the contributions of all authors. All authors have given approval for the final version of 
+the manuscript.  
+Code availability  
+The Ch atMOF library is available at https://github.com/Yeon ghun1675/ChatMOF.git . 
+Acknowledgements  Y. K., and J. K. acknowledge funding from the National 
+Research Foundation of Korea (NRF) under Project Number 2021M3A7C208974513 and 2021R1A2C2003583. This work was supported by the National Supercomputing Center wit h 
+supercomputing resources including technical support (KSC -2022- CRE -0515).  
+ 

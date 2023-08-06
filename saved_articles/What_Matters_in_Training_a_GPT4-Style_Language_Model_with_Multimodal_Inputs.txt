@@ -1,0 +1,525 @@
+What Matters in Training a GPT4-Style Language
+Model with Multimodal Inputs?
+Yan Zeng∗, Hanbo Zhang∗, Jiani Zheng∗†,
+Jiangnan Xia ,Guoqiang Wei ,Yang Wei ,Yuchen Zhang ,Tao Kong
+ByteDance Research
+https://lynx-llm.github.io
+Abstract
+Recent advancements in Large Language Models (LLMs) such as GPT4 have dis-
+played exceptional multi-modal capabilities in following open-ended instructions
+given images. However, the performance of these models heavily relies on design
+choices such as network structures, training data, and training strategies, and these
+choices have not been extensively discussed in the literature, making it difficult to
+quantify progress in this field. To address this issue, this paper presents a systematic
+and comprehensive study, quantitatively and qualitatively, on training such models.
+We implement over 20 variants with controlled settings. Concretely, for network
+structures, we compare different LLM backbones and model designs. For training
+data, we investigate the impact of data and sampling strategies. For instructions,
+we explore the influence of diversified prompts on the instruction-following ability
+of the trained models. For benchmarks, we contribute the first, to our best knowl-
+edge, comprehensive evaluation set including both image and video tasks through
+crowd-sourcing. Based on our findings, we present Lynx , which performs the most
+accurate multi-modal understanding while keeping the best multi-modal generation
+ability compared to existing open-sourced GPT4-style models.
+1 Introduction
+Large Language Models (LLMs) [ 1–13] have progressed rapidly in recent years and achieved
+impressive performance in language understanding and generalization. With instruction fine-tuning
+[7,4,14–17], LLMs can be further improved to follow open-ended instructions from non-expert users
+and serve as dialog-based assistants in our daily lives. Leveraging powerful LLMs, recent studies have
+examined methods for adapting LLMs to multimodal inputs (e.g., images [ 18–25], videos [ 19,22,26–
+30], and audio [ 30,31]) and outputs (e.g., vision tasks [ 32], and robotic manipulation skills [ 33–35]).
+Notably, GPT4 has astounded the world with its impressively stable zero-shot versatile yet practical
+capabilities, such as generating descriptions, stories, poetry, advertisements, and codes given images,
+which were rarely observed in previous vision language models [18, 36–40].
+However, it still remains a mystery that: How does GPT4 obtain its impressive smartness? Though
+actively investigated recently, the existing models are usually different in network structure, training
+data, training recipes, prompts, and evaluation benchmarks, which makes it extremely hard to tell
+which factors are crucial in achieving a high-performance multi-modal language model. In addition,
+suitable quantitative benchmarks for evaluating and comparing such models are lacking, making it
+difficult to attribute and quantify the progress in open-sourced multi-modal LLMs.
+Preprint. Under review.
+∗Equal Contribution.†Work done during an internship.arXiv:2307.02469v1  [cs.CV]  5 Jul 2023Therefore, in this paper, we conduct a systematic study on training GPT4-style models to address
+the aforementioned issues. According to the existing literature, we identify three possible keys to
+achieving high performance for multi-modal LLMs: network structures, training data, and diversified
+instructions. Regarding network structures, we explore different LLM adaptation strategies, including
+the widely utilized cross-attention-based structure [ 19] and the recently popular decoder-only structure
+with a multi-modal adapter [ 21,24,23]. Besides, we investigate different backbones including
+LLaMA-7B and Vicuna-7B to assess whether language instruction fine-tuning affects the final
+multi-modal performance. As for training data, we experiment with several large-scale datasets
+(e.g. COYO700M [ 41], DataComp1B [ 42], and BlipCapFilt [ 40]) consisting of image-text pairs to
+observe the effects of different data combinations. For instructions, we manually label at least three
+prompts for each task and generate more with GPT4 to figure out the influence of the diversity of
+language prompts. In total, there are 500 prompts for over 50 tasks . In summary, we implement ∼20
+variants with controlled settings and conduct extensive experiments to draw reliable conclusions both
+quantitatively and qualitatively.
+For benchmarking, we argue that the evaluation of multi-modal LLMs is essentially different from
+typical visual-language methods. The primary challenge when evaluating a GPT4-style model is
+balancing text generation capability and multi-modal understanding accuracy. To address this, we
+present a new benchmark incorporating both video and image data to evaluate both the multi-modal
+understanding and text generation performances. Using our proposed benchmark, we evaluate a
+large bunch of open-source methods and provide a comprehensive review. Concretely, we adopt two
+protocols for quantitative evaluation. First, we collect an Open-ended Visual Question Answering
+(Open-VQA) test set, including questions on objects, OCR, counting, reasoning, action recognition,
+chronological ordering, and more. Different from standard VQA [ 43,44], the ground-truth answer
+in Open-VQA is open-ended. To evaluate the performance on Open-VQA, we prompt GPT4 to
+make it a discriminator, yielding a 95% agreement with human evaluation. This benchmark is used
+to evaluate the accuracy of all models. Additionally, we adopt the OwlEval test set proposed by
+mPLUG-owl [ 23] to assess the text generation ability given images. Though OwlEval is a tiny set
+containing only 82 questions based on 50 images, it covers a diverse range of tasks such as generating
+descriptions, stories, poems, advertisements, codes, and other sophisticated yet practical analyses of
+given images. In this part, we recruit human annotators to rank different models.
+Based on extensive analysis of our controlled experiments, our findings can be summarized as follows:
+•Prefix-tuning with trainable adaptors, namely PT models, as shown in Fig.1 is more suitable
+to adapt LLMs to multi-modal inputs compared to cross attention (e.g. Flamingo [ 19]),
+namely CA models.
+•Data quality is more important than quantity. We find that models trained on large-scale
+image text pairs like COYO700M and DataComp1B are not better to generate languages
+than models trained on a much smaller but high-quality dataset, since they can contaminate
+the output distribution.
+•Diversified prompts are crucial to the improvement of the instruction-following ability and,
+consequently, final performance.
+•For the multi-modal adaptation of LLMs, it is crucial to carefully balance the multi-modal
+understanding and text generation abilities. Multi-modal adaptation based on instruction-
+finetuned models like Vicuna can improve the instruction-following abilities.
+Through our study, we present Lynx , a simple prefix-tuning GPT4-style model, with a two-stage
+training recipe. For the first stage, we use ∼120M image-text pairs to align visual and linguistic
+embeddings. For the second stage, we finetune our model with 20 multi-modal tasks with image
+or video inputs and NLP instruction data to learn to follow instructions. We transform all multi-
+modal datasets into the instruction-following format with manually written prompts and more
+GPT4-generated ones to keep the consistency of all training data. The resulting model performs the
+most accurate multi-modal understanding while exhibiting the best multi-modal generation ability
+compared to existing open-sourced models.
+2Figure 1: Our model is based on prefix-tuning architecture: the vision tokens are directly concatenated
+with the text tokens to generate outputs auto-regressively.
+2 Lynx
+Lynx is a GPT4-style large language model that can take images and videos as inputs. Built on top of
+Vicuna, it is further trained with additional trainable adapters on high-quality image-text pairs and
+visual language tasks. In this section, we will introduce our Lynx in detail, including the problem
+formulation (2.1), architecture (2.2), pretraining (2.3), and instruction finetuning (2.4).
+2.1 Formulations
+A GPT4-style large language model is defined as a decoder-only transformer [ 45,1,46] that takes
+both visual and instructional tokens as inputs and generates responses in text auto-regressively.
+Formally, the input includes vision tokens wv={wi}V
+i=1and instruction tokens wl={wj}V+L
+j=V+1,
+where VandLrepresent the number of vision tokens and instruction tokens. The vision tokens and
+instruction tokens in our model are directly concatenated to form the input of the decoder-only model.
+Conditioned on the multi-modal inputs, the model predicts the response in an auto-regressive manner,
+i.e., each word wiis predicted conditioned on all input tokens and previous predictions. Therefore,
+the sentence is predicted by the following equation:
+p(wV+L+1:V+L+T|w1:V+L)∼V+L+TY
+t=V+L+1P(wt|w<t) (1)
+In large language models [ 1–13], the network is usually trained on numerous text corpus to learn
+the causal relationships among tokens. Similarly, our model is also trained on the collected visual-
+language tasks to learn the next-word distribution. Notably, compared to the contrastive pretraining
+[47,48], pretraining with next-word prediction requires data with fluent texts that can represent the
+“natural” causal dependency between the predicted word and the past context very well [ 1]. We will
+introduce the details of data collection and selection in Section 2.3 and 2.4 in detail.
+2.2 Details of Model Architecture
+Overview Our model takes simultaneously vision and language as inputs to generate text responses
+following the input instructions. The overall structure of our model is shown in Fig.1. Concretely,
+vision inputs are first processed by a vision encoder to get a sequence of vision tokens wv. After that,
+wvare fused with instruction tokens wlfor multi-modal tasks. In our model, we directly concatenate
+the projected vision tokens and instruction tokens as the input of LLMs, which can then be processed
+by the decoder-only LLMs naturally. We call this structure “prefix-finetuning” (PT) in contrast to the
+cross-attention-based models like Flamingo [ 19]. Moreover, we find that by adding a small trainable
+adapter after some layers in the frozen LLMs, the performance could be further improved with low
+training costs. To generate responses, the left-to-right causal decoder auto-regressively predicts the
+next token by taking all previous tokens as inputs until encountering the <EOS>.
+Adapter The trainable adapters are inserted into the LLMs after every Mblocks. In our ex-
+periments, M= 1. As shown in Figure 2(b), the adapter linearly projects each token into a
+lower-dimensional space and then re-projects it back. Concretely, in Lynx, the hidden state for
+3each token is 4096-d. The adapter first imposes layer normalization [ 49] onto the hidden states.
+Then a linear layer is used to downsample the dimension of each token state from 4096 to 2048,
+based on which SiLU [ 50] is set as the non-linear activation function, which keeps consistent with
+LLaMA [ 12]. Finally, the other linear layer is used to re-map the 2048-d hidden state back to 4096-d.
+Figure 2: Architecture of Lynx. (a) Overall; (b) Adapter.Vision Encoder To extract vision
+features of images and video frames,
+we apply EV A-1B [ 51,52] as our vi-
+sion encoder ϕv(x). It maps an im-
+age to a sequence of visual tokens.
+The downsample rate is 14, meaning
+that an image with resolution H×W
+will be represented by a sequence
+ofH
+14×W
+14tokens. To improve the
+efficiency of training and inference,
+we adapt the resampler Φmechanism
+[53,19] that reduces the dimensions
+of vision inputs by injecting the long vision token sequence into a short and learnable query sequence
+wq
+v:
+wv= Φ(ϕv(x),wq
+v) (2)
+where xis the input image, ϕv(x)is the raw tokens directly given by the vision encoder, wvis the
+condensed token sequence consisting of 32 tokens regardless of the number of raw tokens from the
+vision encoder.
+2.3 Pretraining
+During pretraining, we utilize more than 120M image-text pairs to train the newly added layers
+so as to build connections of different modalities. Our pretraining follows the typical next-word
+prediction training with the cross entropy loss. To accelerate pretraining, we first pre-train our model
+on images of 224 ×224 resolution. Nevertheless, we found that only pretraining on a low resolution
+is not enough for some downstream tasks like table reading and OCR. Therefore, after 100k steps of
+pretraining on low-res images, we continue to increase the input resolution to 420 ×420 and train the
+model for another 10k steps.
+Training data during this phase mainly consists of BlipCapFilt 115M [ 40], CC12M [ 54], CC3M [ 55],
+and SBU [ 56]. Besides, we also add high-quality labeled data during pretraining that have been also
+used in the instruction finetuning phase, like captioning, visual question answering, and classification.
+Details of all pretraining datasets are listed in Table 9. Our model is trained on a total of ∼14B tokens
+from all these datasets during the pretraining stage and ∼3B tokens during the instruction-finetuning
+stage.
+2.4 Instruction Fintuning
+To finetune our model with diversified instructions, we collect an instruction finetuning multi-modal
+dataset based on the public ones. Our dataset consists of 50+ text-only, image-text, and video-
+text tasks mainly belonging to 5 categories: Text-only Instruction-Following, Image/Video Visual
+Question Answering, Image/Video Captioning, Classification, and Image-conditioned Dialog for
+Complex Reasoning and Instruction Following. We also provide the corresponding instructions for
+all of these tasks (see Appendix Table 9 for details). To do so, we manually labeled at least 3 different
+prompts for each of these tasks, and then invoke GPT4 to automatically generate more based on the
+following “meta prompt”, i.e., the prompt used to generate prompts for different tasks:
+Here are some instructions that define a visual-language task. Continue to write 15 instructions with
+the same meaning: 1) PROMPT1; 2) PROMPT2; 3) PROMPT3;
+Besides, we also collect some available public (visual-)text instruction data (also listed in Table 9) to
+further improve the ability of our model to follow open-ended instructions, including the instruction
+data used in FlanT5 [4], Alpaca [14], Mini-GPT4 [24], LLA V A [28], and Baize [16].
+4We follow the same causal prediction loss as in pretraining, i.e., the cross entropy loss to predict the
+next word based on all previous tokens. Nevertheless, we observed that different weight combinations
+of the instruction data have a crucial influence on the final performance. Empirically, we finally
+impose the weight strategy presented in Table 9.
+3 Experiment
+In this section, we aim to answer the following questions according to empirical studies:
+a) How can we evaluate the performance of a GPT4-style model? (Section 3.1)
+b) Compared to existing models, what are the advantages of our Lynx? (Section 3.2)
+c) What matters to train a high-performance GPT4-style model? (Section 3.3)
+d) What is the performance of Lynx in open-world zero-shot scenarios? (Section Appendix F)
+3.1 Evaluation Protocols
+The evaluation of GPT4-style generative language models is challenging because the quality of
+natural languages is inherently subjective and highly depends on specific cases. Existing models like
+PaLM-E [ 34], PaLI [ 57], BLIP2 [ 18], or InstructBLIP [ 25] turn to the evaluation on visual-language
+benchmarks like image caption [ 58] or visual question answering [ 43], i.e., fine-tuning multi-modal
+LLMs on a single downstream task on which the evaluation is conducted. Nevertheless, though it
+may achieve better performance, over-finetuning on such benchmarks will damage the generation
+ability of large language models, which conflicts with the primary motivation to use large language
+models. Moreover, such benchmarks, especially the (semi-)automatically generated ones like TDIUC
+[59], always contain a high ratio of easy or noisy examples, making them less suitable. On the
+contrary, other methods like MiniGPT4 [ 24] or LLaV A [ 28] only showcase their performance in
+some challenging yet practical scenarios without quantitative results due to the lack of quantitative
+benchmarks for such generative multi-modal language models. Therefore, in this section, we propose
+to evaluate the GPT4-style models in the following two aspects:
+•A cleaned subset of visual-language benchmark, which should be challenging and compatible
+with generative models, with prompted GPT4 to get the quantitative results.
+•An open-world challenging yet practical test set to evaluate the performance on realistic
+scenarios where GPT4-style models are needed, with humans to evaluate the user experience.
+To do so, we manually collect an Open-VQA test set consisting of 450 samples with image or video
+input, which contains diverse questions on objects, OCR, counting, reasoning, action recognition,
+chronological ordering, etc., from VQA 2.0 [ 43], OCRVQA [ 60], Place365 [ 61], MSVD [ 62],
+MSRVTT [ 63], and Something-Something-V2 (SthV2) [ 64]. Though Place365 is a classification task
+and SthV2 is a video captioning task, we write proper prompts to make them both VQA tasks. Besides,
+we carefully examine the data and modify the questions and ground-truth answers if necessary to
+make them reliably correct and challenging enough to be a benchmark for GPT4-style models.
+Randomly sampled examples are given in Fig. 3(a). Different from the traditional VQA benchmark,
+Open-VQA supports open-ended answers. To achieve so, we prompt GPT4 to make it the referee,
+which achieves a consistency of more than 95% compared with humans2. The prompt for GPT4 used
+in this phase is as follows:
+Given the question “QUESTION”, does the answer “PREDICTION” imply the answer
+“GROUND_TRUTH”? Answer with Yes or No.
+Moreover, general-purpose language generation with image inputs is also important to multi-modal
+LLMs. Therefore, we also adopt the OwlEval test set proposed by mPLUG-owl [ 23], which contains
+82 questions based on 50 images, where 21 from MiniGPT-4 [ 24], 13 from MM-REACT [ 65], 9
+from BLIP2 [ 18], 3 from GPT4 [ 46], and 4 collected by mPLUG-owl itself. The test set includes
+diversified and practical cases such as dense image captioning, dialogue writing, story writing, poem
+writing, teaching, programming, etc.
+2We evaluate the consistency on 100 samples from a randomly selected subset with our model.
+5Figure 3: Examples of our test set. (a) Open-VQA benchmark to validate the accuracy of visual
+understanding; (b) OwlEval to evaluate the quality of language generation.
+OCR Counting Reasoning Place Color Spatial Action Others Overall
+Open-Flamingo-0 20/53 5/37 15/31 18/22 5/30 7/15 11/20 53/94 44.37
+Open-Flamingo-4 14/53 6/37 15/31 17/22 9/30 7/15 11/20 51/94 43.05
+Multimodal GPT 19/53 8/37 21/31 12/22 8/30 6/15 12/20 56/94 47.02
+MiniGPT-4 32/53 13/37 13/31 17/22 16/30 9/15 16/20 63/94 59.27
+LLaV A 21/53 8/37 13/31 11/22 12/30 4/15 16/20 49/94 44.37
+mPLUG-owl 34/53 8/37 16/31 16/22 14/30 9/15 13/20 62/94 56.95
+BLIP2 29/53 15/37 21/31 12/22 17/30 8/15 16/20 67/94 61.26
+InstructBLIP 41/53 20/37 26/31 14/22 23/30 6/15 18/20 77/94 74.50
+Ours 36/53 25/37 26/31 17/22 21/30 9/15 17/20 79/94 76.16
+Table 1: Comparison of existing open-sourced multi-modal LLMs and quantitative evaluation results
+(accuracy) on our Open-VQA image test set. For all models, we apply the same hyper-parameters
+defined in Appendix A.2.
+We give some examples in Fig.3(b). However, OwlEval is proposed together with mPLUG-owl.
+Hence, directly using it as the benchmark is possibly unfair to other models. To make the comparison
+fair, we pad each image in the OwlEval with 8 pixels as shown in Fig.3(b) before feeding them into
+the models. We recruit human annotators to evaluate the performance. Scores range from 1 to 5. If
+two models are considered to be equally good or bad, they will have the same score. For each data,
+the annotator will assign a score for each model. We only allow at most 2 models that are equally
+good or bad, and for each annotator, the total number of ties should be no more than 10 for the whole
+set. During the evaluation, the correctness has the highest priority, then should be the richness of the
+generated content.
+Finally, we also compare our method with others on the newly proposed MME benchmark [ 66],
+which includes 14 different subtasks that evaluate the perception and cognition ability of multi-modal
+large language models.
+6Action (Y/N) Others Overall
+InstructBLIP 62/108 21/40 56.08
+mPLUG-owl 65/108 19/40 56.76
+MiniGPT-4 56/108 18/40 50.00
+Ours 69/108 29/40 66.22
+Table 2: Comparison of existing open-
+sourced multi-modal LLMs on the Open-
+VQA video benchmark.
+Figure 4: Comparison of human-evaluation perfor-
+mance on OwlEval. Scores are averaged over the
+number of questions.
+Figure 5: Qualitative results on our Open-VQA benchmark of different models. We choose Instruct-
+BLIP and mPLUG-Owl because they perform best on the Open-VQA benchmark and OwlEval
+benchmark in all baseline algorithms.
+3.2 Quantitative Experiments
+Open-VQA benchmark We first evaluate our model as well as several existing open-sourced
+multi-modal LLMs on the Open-VQA benchmark. Results are shown in Table 8. We can conclude
+that our model has achieved the best performance both in the image and video understanding tasks.
+Notably, InstructBLIP [ 25] also achieves high performance in most cases, even better than our model
+in OCR, color recognition, and action recognition tasks. However, we observe that it always outputs
+one word for the question as shown in Fig.5 and 6, which is less preferred by most of the users (see
+Fig.4). We also showcase some of the examples in Fig. 5. More cases including video VQA examples
+can be found in Fig. 10 and 11 in the appendix. We can see that our model can give the correct answer
+in most cases as well as a concise reason that supports the answer, which makes it more user-friendly.
+OwlEval benchmark We evaluate the performances of general-purpose natural language generation
+on OwlEval test set. From the human evaluation results in Fig.4, we can see that our model has the
+best language generation performance while keeping high performance on the Open-VQA benchmark.
+BLIP2 [ 18] and InstructBLIP [ 25], though achieved high performance on the Open-VQA benchmark,
+are not preferred by human users due to their extremely short outputs, i.e., in most cases, they only
+output one word or phrase as the answer without any explanation. In contrast, MiniGPT4 [ 24]
+and mPLUG-Owl [ 23] are trained less to fit the Open-VQA benchmark and keep more language
+generation ability. Hence, they are preferred over the BLIP models, though they may make more
+factual errors. We also show some results on the OwlEval in Fig. 6.
+In general, we observe that if a model has lower accuracy on the Open-VQA benchmark, it tends to
+make factual errors inconsistent with the given image during text generation. Nevertheless, models
+with higher performance on the Open-VQA benchmark usually tend to lose language generation
+ability, e.g., generate short sentences. We attribute this conclusion to the under-training or over-
+training on visual-language tasks. To be specific, existing training data from visual-language tasks
+always includes short outputs. By training on these data, the model can learn to align the visual
+7Figure 6: Qualitative results on OwlEval benchmark of different models. We choose InstructBLIP
+and mPLUG-Owl because they perform best on the Open-VQA benchmark and OwlEval benchmark
+in all baseline algorithms.
+8OCR Counting Reasoning Place Color Spatial Action Others Overall
+w/ LLaMA 33/53 18/37 19/31 17/22 22/30 10/15 17/20 78/94 70.86
+w/o diverse prompts 33/53 22/37 23/31 20/22 21/30 12/15 17/20 80/94 75.50
+w/ large-scale noisy data 33/53 20/37 28/31 17/22 17/30 10/15 16/20 79/94 72.85
+w/ cross-attn 13/53 6/37 11/31 3/22 8/30 9/15 5/20 41/94 31.79
+w/ cross-attn & trainable LLM 26/53 15/37 28/31 14/22 17/30 8/15 14/20 63/94 61.26
+w/o high-resolution 30/53 20/37 26/31 15/22 25/30 8/15 19/20 79/94 73.51
+Ours 36/53 25/37 26/31 17/22 21/30 9/15 17/20 79/94 76.16
+Table 3: Ablation study on our Open-VQA images.
+and linguistic concepts, yet lose the language generation ability inherited from the large language
+model. From the high performance of our model, we can see that one possible way to train a high-
+performance model with better language generation ability is to carefully select and clean the data, as
+well as design the proper sampling ratios. Nevertheless, the key to balance language generation and
+correctness is a high-quality visual-language dataset that contains clean and rich expressions, which
+should be explored in our future work.
+Figure 7: Comparison on MME benchmark.MME benchmark We also com-
+pare Lynx with available existing
+open-source models on the MME
+benchmark [ 66]. Results are shown in
+Figure 7 and Appendix B. All scores
+are normalized to the range from 0
+to 100. We can see that our model
+is a state-of-the-art model in 7 out of
+14 subtasks, especially for the percep-
+tion tasks including Color, Celebrity,
+Scene, Landmark, Position, Count,
+and Existence. Yet, from the fig-
+ure, we can also see that our model
+seems not to perform well on cogni-
+tion tasks including Code Reasoning,
+Text Translation, and Numerical. No-
+tably, cognition benchmarks includ-
+ing Code Reasoning, Text Translation,
+and Numerical in MME only contain
+20 examples, which may cause high
+variance in the evaluation of different
+checkpoints.
+3.3 Ablation Study
+We conduct an in-depth ablation study to investigate the impact of different components or training
+recipes on multi-modal understanding and language generation performances. In this section, we
+follow the same evaluation method proposed in Section 3.1.
+LLaMA vs. Vicuna As shown in Table 3, our experiments show that in the aspect of correctness,
+instruction-finetuned backbone (e.g.Vicuna) performs slightly better on our Open-VQA benchmark
+(like LLaV A) as shown in Table 3 and 4, but slightly worse on the OwlEval benchmark (Figure 4).
+However, Vicuna-based model does indeed follow the instruction better. For example, the average
+answer length given the instruction “give a short answer” is 15.81, compared to 20.15 from the
+LLaMA-based model. One can also refer to Figure 9(a) for examples of the comparison in terms of
+their instruction-following ability.
+Impact of Diversified Prompts It has been proved to be important to train LLMs on instruction
+data so as to make them follow instructions correctly [ 4,7]. Therefore, we ablate our model with
+diversified prompts written by both users and GPT4. The results in Table 3 and 4 show that our
+9Action (Y/N) Others Overall
+w/ LLaMA 65/109 25/40 60.81
+w/o diverse prompts 62/109 26/40 59.46
+w/ large-scale noisy data 63/109 26/40 60.14
+w/ cross-attn 63/109 13/40 51.35
+w/ cross-attn, tune LLM 59/109 19/40 52.70
+w/o high-resolution 66/109 26/40 62.16
+Ours 69/109 29/40 66.22
+Table 4: Ablation study on our Open-VQA videos.
+(d)
+(c)(b)
+(a)
+Figure 8: Human evaluation of different ab-
+lation models. (a) w/ LLaMA vs w/ Vicuda;
+(b) w/o diversified prompts vs w/ diversified
+prompts; (c) w/ large-scale noisy data vs w/o
+large-scale noisy data; (d) prefix-finetuning
+vs cross-attention.
+prompts help to balance different abilities. Moreover, we also find that by using diversified prompts,
+our model can follow the open-ended instructions better than the ones trained without these prompts
+(Table 10). This observation accords with the text-only models. The human evaluation results in
+Figure 8(b) also accord with our observations. Diversified tasks and prompts will help to improve the
+generalization of the model to new tasks and instructions.
+Impact of Training Data We investigate the impact of data quantity and quality by training our
+model with or without the large-scale yet noisy image-text pairs (COYO700M [ 41] and DataComp1B
+[42]). During our experiments, we find training data in both pretraining and finetuning largely
+influence the model performance. Different from traditional visual-language pretraining [ 48], we find
+that multi-modal LLMs do not benefit from large-scale but noisy image-text pairs because many of
+the texts in such datasets are not fluent or natural language expressions. For the generative pretraining
+in our model, they largely damage the language generation ability as shown in Figure 9(b). As a
+result, pretraining on such large-scale datasets achieves no better results than only training on a much
+smaller but cleaner dataset as evaluated by the human users as shown in Figure 8(c).
+Prefix-Tuning vs. Cross-Attn We follow Flamingo [ 19], concretely Open-Flamingo [ 67], to
+implement the cross-attention method. Following its original settings, we only use multi-modal
+instruction data for pre-training. For the finetuning stage, we experiment with two variants, with or
+without trainable LLM, i.e., with or without the use of text instruction data. As shown in Table 3
+and 4, both of them perform much worse than our prefix-tuning with adapters. Though the models
+can generate fluent and relevant responses, their outputs usually do not give correct answers to the
+questions. We also verified our conclusion with human annotators, as shown in Figure 8(d). Results
+show that human users give pretty lower preference to the cross-attention models.
+Impact of Larger Image Resolution We increase image resolution in the first stage with only
+10K step training. After that, we freeze the vision encoder and thus the expense of increasing image
+resolution is affordable. For rigor, we also conducted an experiment to verify the impact of image
+resolutions on the model performance. The experiment results in Table 3 and 4 show that the training
+on 420x420 resolution achieves better performance than the models only trained on 224x224.
+4 Related Work
+Large-language models. Large language models (LLMs) have been widely investigated in recent
+years due to their good generality on zero-shot tasks, including GPT3 [ 1], PaLM [ 6,13], BLOOM
+[8], Chinchilla [ 68], T5 [ 69], LLaMA [ 12], OPT [ 5], GLM [ 9], etc. After being pre-trained on
+massive text corpora, such models can perform surprisingly well on downstream tasks without further
+finetuning. In particular, the simple yet efficient structure of decoder-only models like GPT-3 can
+easily scale up to hundreds of billions of parameters and show an elegant scaling law with the increase
+10Question: Where is this?Answer: Living room or waiting roomVicuna-based: living roomLLaMA-based: the image shows a living room filled with furniture. there are two couches, two chairs, a coffee table and an ottoman in the room. the walls are painted white and there is a large mirror hanging on the wall. a vase with flowers is sitting on a table in front of theQuestion: Is this a pedagogy book?Answer:  noVicuna-based: no, this is not a pedagogy book. it is a book about the ed ponsi forex playbook, which teaches strategies and trade setups for trading in the foreign exchange market.LLaMA-based: the ed ponsi forex playbook: strategies and trade setups (wiley trading)Question: Are these ducks or geese?Answer:  geeseVicuna-based: these are geese, not ducks. they have longer necks and thinner bills. duck have shorter neck and broader bill.LLaMA-based: the ducks or geese are swimming in a body of water. the water appears to be murky and green. there is another duck or goose in the image, but it is not as close to the camera as the other one. both of the birds have their heads tucked under their wings
+Question:  Where is this?Answer: lock chamber or pool or pondw/o COYO700M & DataComp1B: lock chamber at the base of the weirw/ COYO700M & DataComp1B: pond "this is not the place to be if you're claustrophobic."Question:  How many people are in the water?Answer: 0w/o COYO700M & DataComp1B: 0 people in the waterw/ COYO700M & DataComp1B: 0<br>how many people are on the dock? 1 how many benches are there?there are 2Question:  Is this book related to Law?Answer: yesw/o COYO700M & DataComp1B: yes, this book is a guide to defending your gun rights. it covers topics such as the 2nd amendment, the right to bear arms, self-defense, and the use of firearms for hunting and target shooting.w/ COYO700M & DataComp1B: yes / yes  / alan m. gottlieb(a) Vicuna-based model versus LLaMA-based model(b) w/o large-scale noisy data versus w/ large-scale noisy dataInstruction: Do you have anything to say to the young boy in the image?w/ diversiﬁed prompts: dear young boy, i hope you ﬁnd inspiration and a sense of wonder in the city below you. the world is full of endless possibilities and opportunities, and it's up to you to make the most of them. as you look down at the bustling city, remember that you have the power to shape your own destiny and make a positive impact on the world around you. don't be afraid to take risks, try new things, and pursue your dreams. you are capable of achieving great things and making a diﬀerence in the world. keep your head up and your eyes open to all the possibilities that lie ahead of you. best wishes,[image description: a young boy is looking at a city below him. he is wearing a brown jacket and blue jeans. the boy is holding his hands in the air. he has a blue cap on his head. he looks like he is in awe of the city he is looking down at. the sky is dark and cloudy above him. there is a large metropolitan area with many tall buildings and a lot of traﬃc. the city is very busy. the child is looking up at the sky. he appears to have a lot on his mindw/o diversiﬁed prompt: no, i do not have anything to say to the young boy in the image. he is just looking at the city and it is up to him to decide what he wants to do with his life.
+Instruction: We design new mugs shown in the image. Can you help us write an advertisement?w/ diversiﬁed prompts: sure! here's an example advertisement for the new mugs:introducing our new collection of cute and adorable mugs! these mugs are perfect for your morning cup of coﬀee or tea. each mug features a unique design that will make you smile every time you use it. our mugs come in a variety of colors and styles, so you're sure to ﬁnd one that suits your personality.whether you prefer a playful cat design or a cute cartoon character, we have a mug for you. our cute mugs make great gifts for friends, family, or coworkers. they're perfect for birthdays, holidays, or just because!we're conﬁdent that you'll love our new mug collection, and we're oﬀering a special discount for a limited time. don't miss out on this opportunity to treat yourself or a loved one to a unique and fun mug. shop now and enjoy your favorite beverage in style!w/o diversiﬁed prompt: we design new mugs shown in the image. can you help us write an advertisement?
+Instruction: Would it be dangerous to ﬂy a plane in the sky right now?Answer: yesw/ diversiﬁed prompts: yes, it would be dangerous to ﬂy a plane in the sky right now because there is a lightning storm and thunder.w/o diversiﬁed prompt: yes, it would be extremely dangerous to ﬂy a plane in the sky right now because there is a severe thunderstorm with lightning and strong winds, which can cause turbulence and other hazardous conditions for pilots and passengers. additionally, the air traﬃc control system may be aﬀected by … (more)(c) w/ diversified prompts versus w/o diversified prompts  
+ Figure 9: Ablation study cases on (a) Vicuna-based model versus LLaMA-based model; (b) w/o large-
+scale noisy data versus w/ large-scale noisy data; (c) w/ diversified prompts versus w/o diversified
+prompts.
+11of model size and data amounts [ 70]. Moreover, recent advances in instruction finetuning [ 11,4,7]
+have also shown that large-scale language models can be finetuned with limited amounts of instruction
+data to follow open-ended instructions in natural language. This not only improves their performance
+on downstream tasks substantially but also makes it a user-friendly assistant in our daily life [46].
+Centralized Multi-modal Interactive System. Inspired by the achievements in LLMs, it is straight-
+forward to ask a question: Is it possible to design a model that accepts multi-modal inputs while being
+able to chat with humans in natural language? Therefore, recent works investigate actively to design
+of such multi-modal interactive models. One of the most intuitive ideas, such as Visual ChatGPT [ 71],
+MM-REACT [ 72], HuggingGPT [ 73], InternGPT [ 74], SayCan [ 75], InnerMonologue [ 76], inte-
+grates various existing individual models or tools such as OCR, object detection, image captioning,
+visual question answering, text-to-image generation, or robot manipulation policies by a centralized
+controller. In such a system, the LLM works as a “manager” that directly accepts instructions from
+users and selects the most appropriate tools to respond to requests while the integrated individual
+models are “workers” responsible for a specific kind of task. Typically, such models are powerful to
+address problems that are already well-defined. Yet, they, to some extent, lack zero-shot ability when
+encountering open-ended instructions which cannot be handled by any of their workers.
+End-to-end Multi-modal Large Language Models. By contrast, inspired by the recent advances
+of LLMs, it has also been shown feasible and promising to directly train the neural networks that
+directly accept multi-modal inputs and output responses end-to-end. To achieve so, one intuitive
+idea is to adapt the LLMs to multi-modal inputs by adding some additional trainable parameters
+and finetuning them on multi-modal data. For example, Flamingos [ 19] is one of the early works
+to explore this idea. Firstly, it takes a vision encoder (like NFNet [ 77] in their original version, or
+recent CLIP ViT [ 48]) to extract visual embeddings. Then, it applies multi-layer cross-attention
+to fuse the multi-modal inputs for the final prediction. Recent works directly concatenate vision
+embeddings to the inputs of LLMs and finetune LLMs end-to-end. To do so, they usually add an
+additional projection layer to map the vision embeddings to the same dimension as the language
+embeddings, and then directly feed them into LLMs for further training. Different methods may
+take different training strategies. BLIP2 [ 40] designs a Q-Former, which is the only trainable part,
+to align the dimensions of vision and language tokens. PaLM-E [ 34], which is built upon PaLM
+[6], is trained totally end-to-end with no fixed layers using a mix of multi-modal datasets including
+WebLI 10B dataset [ 57]. Mini-GPT4 [ 24] freezes all weights of the vision encoder and the LLM
+while only finetuning the weights of the projection layer. LLA V A [ 28] fixes the vision encoder while
+keeping the LLMs trainable during the instruction finetuning stage. mPLUG-owl [ 23] tunes the vision
+encoder and keeps LLMs fixed to align the vision and language embeddings in the first stage while
+further tuning the LLMs and keeping the vision encoder fixed in the second instruction-finetuning
+stage. KOSMOS-1 [ 78] does not rely on any pretrained LLMs and is trained from scratch on large
+amounts of mixed data including image-text pairs (COYO700M [ 41], LAION2B [ 79], etc.), text
+corpora (Common Crawl, the Pile [ 80], etc.), and interleaved image-text data. These models are all
+powerful and show promising results to develop multi-modal large language models.
+5 Discussions and Limitations
+5.1 Findings and Takeaways
+Prefix-tuning may be the currently best way to multi-modal adaptation for large language
+models. As shown in our experiments, prefix-tuning with adaptors show good performance on
+open-ended instruction-following tasks after training in billions of multi-modal tokens. By contrast,
+cross-attention models are not that efficient to achieve good performance.
+Multi-modal LLMs are not as instruction-following as LLMs. In our experiments, we find that
+current multi-modal LLMs are not as good at the instruction following as language models. For
+example, InstructBLIP [ 25] tends to generate short responses regardless of the input instructions,
+while other models tend to generate long sentences without considering the instruction like “Give a
+short answer” or “Answer in one word”. We assume that this is from the lacking of high-quality and
+diversified multi-modal instruction data.
+12The quality of training data is critical to model performance. As concluded in Section 3.3, based
+on the experimentation on different pretraining data, we find that a small number of high-quality data
+with fluent texts can perform even slightly better than the large-scale noisy datasets. We attribute
+this to the difference between generative pretraining and contrastive pretraining, since generative
+pretraining is directly learning the conditional distribution of words but not the similarity between
+texts and images. Therefore, to train a high-performance multi-modal LLM, despite the quantity of
+data, it is crucial to prepare a high-quality dataset that satisfies: 1) it includes high-quality and fluent
+texts; 2) it aligns the texts and images well.
+Tasks and prompts are crucial for zero-shot abilities. As shown in Section 3.3, diversified
+prompts have a great impact on the final performance. The essential observation behind this is that
+the zero-shot generality of multi-modal language models depends on the diversity of tasks involved
+during training. The model can generalize to more and more unseen instructions as it sees more and
+more types of tasks. This accords with the observation in text-only models [48].
+Balancing the correctness and language generation ability is important. In our experiments,
+we find that if the model is under-trained on downstream tasks such as VQA, it will suffer from
+the problem of hallucination and keep making mistakes. While if the model is over-trained on
+downstream tasks, it will not be able to follow the user’s instructions to generate long answers.
+Therefore, it would be important to carefully balance the training data to train it so as to correctly
+read images and videos while keeping its generation ability.
+5.2 Limitations
+Evaluation It is hard to evaluate a multi-modal large language model since its evaluation is
+essentially different from traditional visual-language models. Though we take the first step to
+quantitatively evaluate both the multi-modal understanding accuracy and language generation ability,
+it is still an open problem: how can we establish a comprehensive and automatic benchmark to
+evaluate existing multi-modal large language models?
+Training Data Though we have successfully collected and cleaned a mixed dataset to train our
+Lynx, we still put a lot of effort to balance different abilities (e.g. correctness and language generation,
+long and short answers). Moreover, there are still no available image-text datasets that contain long
+texts which are ideal for pretraining. Besides, restricted by the computational resources that we can
+use, we do not conduct extensive experiments to find the optimal data combination strategy (e.g.
+sampling ratios, tasks, and prompts), which has been left for future work.
+Multi-lingual Our model is built upon LLaMA [ 12], which is mainly trained on English corpus.
+Therefore, our model is not that good at multi-lingual responses. Though it can understand and
+sometimes output other languages (like shown in Figure 16), it is still unexplored how to build a
+high-performance multi-lingual and multi-modal large language model.
+Safety Currently, we do not conduct safety checks and restrict the outputs of our model. Therefore,
+the model may output contents that are not appropriate and even toxic, depending on and restricted
+by the data used for training. The authors do not support the use of harmful language generation
+using our codes and models, like any usage on ethical, political, and racism issues.
+6 Conclusions
+In this paper, we present Lynx, a multi-modal GPT4-style large language model that can take as input
+images/videos and responses with open-ended natural languages. Through extensive empirical study,
+we show that our model outperforms other existing open-source models both in multi-modal under-
+standing and language generation. We also explore different factors that can affect the performance
+of a multi-modal large language model and conclude that: 1) for network structure, prefix-tuning
+is better than cross-attention to fuse different modalities; 2) instruction following is closely related
+to the number of tasks and prompts used for training; 3) the generative pretraining is much more
+sensitive the quality of training data than previous pretraining methods such as contrastive training;
+134) balancing the correctness and language generation is important for multi-modal large language
+models.
+For future work, it is promising to scale up the model to a larger size (e.g. 30B and 65B LLaMA
+[12]), as well as a larger and more diversified set of instructional tasks. Moreover, a large-scale and
+high-quality multi-modal dataset is also needed to train such models. Therefore, it is worth the effort
+to collect such a dataset, which will be a great contribution to this area. Multi-lingual ability and
+safety are also undoubtedly crucial for realistic applications.
+Acknowledgements
+We would like to acknowledge Hang Li at ByteDance for his generous assistance in insightful
+comments in technical discussions. Additionally, we extend our appreciation to the colleagues at
+ByteDance for their efforts and support of this project. We are also thankful to the LLaMA and
+Vicuna teams for granting us access to their models.
+References
+[1]Tom Br

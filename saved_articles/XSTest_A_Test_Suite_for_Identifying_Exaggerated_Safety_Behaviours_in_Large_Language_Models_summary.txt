@@ -1,0 +1,17 @@
+Summary: 
+
+Large language models (LLMs) have the potential to generate toxic content when given malicious instructions. To address this, safety efforts have been made, but there is a tension between making models helpful and harmless. There is evidence that some models exhibit exaggerated safety behavior by refusing even safe prompts. In this paper, the authors introduce a new test suite called XST EST to identify exaggerated safety behavior in a structured and systematic way. The test suite comprises 200 safe prompts across ten prompt types. They find that the state-of-the-art model Llama2 exhibits substantial exaggerated safety behavior, while GPT-4 is more well-calibrated. The authors suggest that exaggerated safety is a consequence of lexical overfitting, where models are overly sensitive to certain words or phrases. XST EST serves as a resource for evaluating language models and enhancing their helpfulness and harmlessness.
+
+Bullet points:
+1. Large language models (LLMs) can generate toxic content without proper safeguards.
+2. Safety efforts aim to make models helpful and harmless, but there is a tension between these two objectives.
+3. Exaggerated safety behavior occurs when models refuse safe prompts, limiting their usefulness.
+4. The paper introduces a test suite called XST EST to identify exaggerated safety behavior.
+5. XST EST comprises 200 safe prompts across ten prompt types.
+6. Llama2, a state-of-the-art model, exhibits substantial exaggerated safety behavior.
+7. GPT-4, another model, is more well-calibrated in terms of safety.
+8. Exaggerated safety is likely due to lexical overfitting, where models are overly sensitive to certain words or phrases.
+9. XST EST serves as a resource to evaluate and improve the helpfulness and harmlessness of language models.
+10. Further research will include additional test prompts and evaluation of unsafe model behaviors.
+
+Keywords: large language models, exaggerated safety behavior, test suite, lexical overfitting, helpfulness, harmlessness, model evaluation

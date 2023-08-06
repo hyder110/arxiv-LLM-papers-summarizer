@@ -1,0 +1,6 @@
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING, SUBMISSION 2021 1
+Recommender Systems in the Era of
+Large Language Models (LLMs)
+Wenqi Fan, Zihuai Zhao, Jiatong Li, Yunqing Liu, Xiaowei Mei, Yiqi Wang, Jiliang Tang, and Qing Li
+Abstract —With the prosperity of e-commerce and web applications, Recommender Systems (RecSys) have become an important
+component of our daily life, providing personalized suggestions that cater to user p
