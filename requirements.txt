@@ -7,4 +7,3 @@ PyPDF2==3.0.1
 arxiv==1.4.7
 pandas==1.5.3
 tiktoken==0.3.3
-easyllm
