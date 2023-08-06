@@ -8,7 +8,6 @@ const modalTitle = document.getElementById('modal-title');
 const modalSummary = document.getElementById('modal-summary');
 const modalClose = document.getElementById('modal-close');
 const modalBackdrop = document.getElementById('modal-backdrop');
-const searchButton = document.getElementById('search-button');
 
 // Load the first 16 articles on page load
 window.addEventListener('load', () => {
@@ -80,36 +79,21 @@ function fetchArticles() {
         });
 }
 
-// function searchArticles() {
-//     fetch('/search/', {
-//         method: 'POST',
-//         headers: {
-//             'Content-Type': 'application/json'
-//         },
-//         body: JSON.stringify({ query: searchBar.value })
-//     })
-//         .then(response => response.json())
-//         .then(data => {
-//             data.forEach(addArticleToDOM);
-//             isSearching = false;
-//         });
-// }
-
 function searchArticles() {
-    const query = searchBar.value; // Get the entered query from the search bar
     fetch('/search/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ query: query }) // Send the query in the request body
+        body: JSON.stringify({ query: searchBar.value })
     })
         .then(response => response.json())
         .then(data => {
-            addArticleToDOM(data); // Add the search result to the DOM
+            data.forEach(addArticleToDOM);
             isSearching = false;
         });
 }
+
 
 function addArticleToDOM(article) {
     const articleDiv = document.createElement('div');
